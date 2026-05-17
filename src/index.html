@@ -1141,6 +1141,42 @@ body {
 
 .quick-btn:hover { border-color: var(--gold); color: var(--gold); }
 
+.ai-suggestions {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: #c9a84c06;
+}
+.ai-suggestions-label {
+  font-size: 11px;
+  color: var(--gold);
+  display: block;
+  margin-bottom: 6px;
+}
+.ai-suggestions-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ai-suggestion-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  color: var(--text1);
+  padding: 6px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 20px;
+  font-family: inherit;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.ai-suggestion-btn:hover {
+  background: var(--gold);
+  color: #000;
+  border-color: var(--gold);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px #c9a84c30;
+}
+
 .submit-bar {
   display: flex;
   align-items: center;
@@ -1857,6 +1893,12 @@ body {
 
       <!-- 输入区 -->
       <div class="game-input-area">
+
+        <!-- AI推荐行动（动态） -->
+        <div id="ai-suggestions" class="ai-suggestions" style="display:none">
+          <span class="ai-suggestions-label">💡 建议行动</span>
+          <div id="ai-suggestions-list" class="ai-suggestions-list"></div>
+        </div>
 
         <!-- 一起行动模式：宣言池 -->
         <div id="input-together" class="input-mode-panel active">
@@ -3335,7 +3377,8 @@ ${JSON.stringify(players, null, 2)}
     "newItems": [],
     "sceneChange": null
   },
-  "nextPrompt": "引导下一步行动的简短提示（1-2句）"
+  "nextPrompt": "引导下一步行动的简短提示（1-2句）",
+  "playerChoices": ["建议行动1（简短，2-8字）", "建议行动2", "建议行动3"]
 }
 
 ## 重要规则
@@ -3420,6 +3463,40 @@ async function callAIDM(actions, mode) {
   }
 }
 
+// ============================================================
+// ===== AI推荐行动建议 =====
+// ============================================================
+function renderPlayerChoices(choices) {
+  const wrap = document.getElementById('ai-suggestions');
+  const list = document.getElementById('ai-suggestions-list');
+  if (!wrap || !list || !choices?.length) {
+    if (wrap) wrap.style.display = 'none';
+    return;
+  }
+  list.innerHTML = choices.map(text =>
+    `<button class="ai-suggestion-btn" onclick="applySuggestion(${JSON.stringify(text).replace(/"/g, '&quot;')})">${text}</button>`
+  ).join('');
+  wrap.style.display = 'block';
+}
+
+function applySuggestion(text) {
+  // 根据当前模式填充对应输入框
+  const exploreMode = gameState.exploreMode || 'together';
+  if (exploreMode === 'split') {
+    // 分头模式：填充 textarea
+    const ta = document.getElementById('split-textarea');
+    if (ta) { ta.value = text; }
+  } else {
+    // 一起模式：找第一个空的宣言框
+    quickAction(text);
+  }
+}
+
+function hidePlayerChoices() {
+  const wrap = document.getElementById('ai-suggestions');
+  if (wrap) wrap.style.display = 'none';
+}
+
 function processAIResponse(raw) {
   // 提取JSON
   let parsed;
@@ -3488,6 +3565,9 @@ function processAIResponse(raw) {
   } else if (parsed.nextPrompt) {
     appendNarrative('system', parsed.nextPrompt);
   }
+
+  // 推荐行动选项
+  renderPlayerChoices(parsed.playerChoices);
 
   addLog(parsed.narrative?.slice(0, 40) + '...');
 }
