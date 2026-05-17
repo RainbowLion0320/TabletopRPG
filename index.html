@@ -1907,6 +1907,9 @@ body {
   </div>
 </div>
 
+<!-- 本地配置（API Key等敏感信息，不提交到 git） -->
+<script src="config.local.js"></script>
+
 <script>
 // ============================================================
 // ===== 数据：职业定义 =====
@@ -2066,17 +2069,10 @@ function init() {
   loadAPIConfig();
 }
 
-// 预置 key 历史（首次加载时写入，不覆盖用户已有数据）
+// 预置 key 历史（从 config.local.js 注入的 window.LOCAL_API_KEYS 读取，不覆盖用户已有数据）
 function initPresetKeyHistory() {
-  const PRESET_KEYS = [
-    {
-      key: 'REMOVED_API_KEY',
-      provider: 'mimo',
-      endpoint: 'https://token-plan-cn.xiaomimimo.com/v1',
-      model: 'mimo-v2.5',
-      label: 'MiMo tp-cwzfmx…',
-    },
-  ];
+  const PRESET_KEYS = window.LOCAL_API_KEYS || [];
+  if (PRESET_KEYS.length === 0) return;
   const history = getKeyHistory();
   let changed = false;
   PRESET_KEYS.forEach(preset => {
