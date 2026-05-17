@@ -1171,6 +1171,82 @@ body {
 }
 .ai-suggestion-btn:hover {
   background: var(--gold);
+}
+
+/* ===== 错误日志系统 ===== */
+.game-log-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text3);
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  border-radius: var(--radius);
+  font-family: inherit;
+  opacity: 0.5;
+  transition: all 0.2s;
+}
+.game-log-btn:hover { opacity: 1; border-color: var(--gold); color: var(--gold); }
+
+#modal-log-export {
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--text2);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: var(--bg1);
+  padding: 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  margin-top: 12px;
+}
+.log-counter {
+  font-size: 10px;
+  color: var(--red);
+  min-width: 16px;
+  text-align: center;
+}
+
+}
+
+/* ===== 错误日志系统 ===== */
+.game-log-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text3);
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  border-radius: var(--radius);
+  font-family: inherit;
+  opacity: 0.5;
+  transition: all 0.2s;
+}
+.game-log-btn:hover { opacity: 1; border-color: var(--gold); color: var(--gold); }
+
+#modal-log-export {
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--text2);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: var(--bg1);
+  padding: 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  margin-top: 12px;
+}
+.log-counter {
+  font-size: 10px;
+  color: var(--red);
+  min-width: 16px;
+  text-align: center;
+}
+
   color: #000;
   border-color: var(--gold);
   transform: translateY(-1px);
@@ -1861,6 +1937,7 @@ body {
     <div class="game-topbar-actions">
       <button class="icon-btn" onclick="saveGame()" title="保存游戏">💾</button>
       <span id="save-tip" style="font-size:11px;color:var(--green);opacity:0;transition:opacity 0.5s;margin-right:4px"></span>
+      <button class="game-log-btn" id="log-error-btn" onclick="exportLogs()" title="导出测试日志">🪵 <span id="log-error-count">0</span></button>
       <button class="icon-btn" onclick="togglePanel('clues')" title="线索">📄</button>
       <button class="icon-btn" onclick="togglePanel('log')" title="行动日志">📋</button>
       <button class="icon-btn" onclick="showPage('page-create')" title="重新创建">⚙</button>
@@ -3035,6 +3112,68 @@ const SCENES_LIST = [
 ];
 
 // ============================================================
+// ===== 内置错误日志系统 =====
+// ============================================================
+const _LOG_KEY = 'trpg-game-logs';
+const _LOG_MAX = 200;
+let _gameLogs = [];
+try { _gameLogs = JSON.parse(localStorage.getItem(_LOG_KEY) || '[]'); } catch(e) { _gameLogs = []; }
+if (_gameLogs.length > _LOG_MAX) _gameLogs = _gameLogs.slice(-_LOG_MAX);
+
+function _log(type, message, detail) {
+  const entry = { time: new Date().toISOString(), type, message, detail: detail || '' };
+  _gameLogs.push(entry);
+  if (_gameLogs.length > _LOG_MAX) _gameLogs = _gameLogs.slice(-_LOG_MAX);
+  try { localStorage.setItem(_LOG_KEY, JSON.stringify(_gameLogs)); } catch(e) {}
+  const el = document.getElementById('log-error-count');
+  if (el) {
+    const count = _gameLogs.filter(l => l.type === 'error').length;
+    el.textContent = count;
+    el.style.display = count > 0 ? 'inline-block' : 'none';
+  }
+}
+
+// 恢复历史日志
+window.addEventListener('DOMContentLoaded', () => {
+  if (_gameLogs.length) _log('info', '日志系统已恢复 ' + _gameLogs.length + ' 条历史记录');
+});
+
+// 捕获 JS 运行时错误
+window.onerror = function(msg, src, line, col, err) {
+  _log('error', msg + ' @ ' + src + ':' + line + ':' + col, err?.stack || '');
+};
+window.addEventListener('unhandledrejection', function(e) {
+  const reason = e.reason;
+  _log('error', 'Unhandled Promise: ' + (reason?.message || reason), reason?.stack || '');
+});
+
+function exportLogs() {
+  const el = document.getElementById('modal-log-export');
+  if (!el) return;
+  el.textContent = _gameLogs.map(l =>
+    `[${l.time}] [${l.type}] ${l.message}` + (l.detail ? '\n  Detail: ' + l.detail : '')
+  ).join('\n\n');
+  const modal = document.getElementById('modal-log');
+  if (modal) modal.style.display = 'flex';
+}
+function copyLogs() {
+  const el = document.getElementById('modal-log-export');
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent).then(() => {
+    const btn = document.getElementById('log-copy-btn');
+    if (btn) { btn.textContent = '已复制 ✓'; setTimeout(() => { btn.textContent = '复制日志'; }, 1500); }
+  });
+}
+function clearLogs() {
+  _gameLogs = [];
+  try { localStorage.removeItem(_LOG_KEY); } catch(e) {}
+  const el = document.getElementById('modal-log-export');
+  if (el) el.textContent = '(日志已清空)';
+  const counter = document.getElementById('log-error-count');
+  if (counter) { counter.textContent = '0'; counter.style.display = 'none'; }
+}
+
+// ============================================================
 // ===== 游戏状态 =====
 // ============================================================
 let gameState = {
@@ -3457,6 +3596,7 @@ async function callAIDM(actions, mode) {
     processAIResponse(responseText);
 
   } catch (err) {
+    _log('error', 'AI DM API失败: ' + err.message, err.stack);
     appendNarrative('system', `⚠ AI DM 连接失败：${err.message}`);
   } finally {
     showThinking(false);
@@ -3553,6 +3693,7 @@ function processAIResponse(raw) {
     // 场景切换
     if (su.sceneChange) {
       gameState.currentScene = su.sceneChange;
+      _log('action', '场景切换: ' + (STORY_DATA.scenes[su.sceneChange]?.name || su.sceneChange));
       updateSceneName();
     }
 
@@ -3567,6 +3708,7 @@ function processAIResponse(raw) {
   }
 
   // 推荐行动选项
+  _log('action', parsed.narrative?.slice(0, 80) || '(no narrative)');
   renderPlayerChoices(parsed.playerChoices);
 
   addLog(parsed.narrative?.slice(0, 40) + '...');
