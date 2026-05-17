@@ -1561,7 +1561,8 @@ body {
     <div class="title-rule"></div>
     <div class="title-desc">1920年，伦敦。雾夜中，真相如何隐匿于黑暗之间。</div>
     <button class="btn-primary" onclick="startGame()">▶ 开始游戏</button>
-    <br><br>
+    <button class="btn-secondary" id="btn-continue" onclick="continueGame()" style="margin-top:12px;display:none">⏮ 继续游戏</button>
+    <br>
     <button class="btn-secondary" onclick="showAPIConfig()" style="margin-top:12px;font-size:12px;opacity:0.6">
       ⚙ 配置 AI API
     </button>
@@ -1582,15 +1583,18 @@ body {
 
   <div class="create-body">
 
-    <!-- ===== Step 1: 基础信息 & 职业 ===== -->
+    <!-- ===== Step 1: 基础信息 & 职业 & 预设 ===== -->
     <div id="step-1" class="step-panel">
       <div class="step-title">调查员简介</div>
-      <div class="step-hint">为你的调查员取个名字，选择职业。职业决定你的本职技能和技能点分配方式。</div>
+      <div class="step-hint">为你的调查员取个名字，选择职业。也可以直接选择预设调查员快速开始。</div>
 
       <div class="form-grid">
         <div class="form-group">
           <label>姓名</label>
-          <input id="inp-name" type="text" placeholder="调查员的名字" maxlength="20">
+          <div style="display:flex;gap:6px;align-items:center">
+            <input id="inp-name" type="text" placeholder="调查员的名字" maxlength="20" style="flex:1">
+            <button onclick="randomName()" style="padding:6px 10px;background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:var(--radius);cursor:pointer;white-space:nowrap;font-size:12px" title="随机名字">🎲 随机</button>
+          </div>
         </div>
         <div class="form-group">
           <label>性别</label>
@@ -1617,6 +1621,12 @@ body {
         <!-- 由JS填充 -->
       </div>
 
+      <div class="step-title" style="margin-top:20px;margin-bottom:6px">— 或选择预设调查员 —</div>
+      <div class="step-hint">预设调查员提供平衡的属性配置，选择后将自动填入姓名、职业和属性，跳过属性生成步骤。</div>
+      <div class="preset-grid" id="preset-grid-step1">
+        <!-- 由JS填充 -->
+      </div>
+
       <div id="step1-err" class="err"></div>
     </div>
 
@@ -1626,21 +1636,12 @@ body {
       <div class="step-hint">选择你的属性来源方式。所有属性均在COC第七版规则范围内。</div>
 
       <div class="attr-mode-tabs">
-        <button class="attr-mode-tab active" onclick="switchAttrMode('preset')">🎭 选择预设角色</button>
-        <button class="attr-mode-tab" onclick="switchAttrMode('roll')">🎲 系统随机骰点</button>
-        <button class="attr-mode-tab" onclick="switchAttrMode('manual')">✏️ 手动输入属性</button>
-      </div>
-
-      <!-- 预设选择 -->
-      <div id="attr-preset" class="attr-panel active">
-        <div class="tip">💡 预设角色提供平衡的属性配置，适合不熟悉规则的新手。选择后仍可在技能分配阶段自定义技能点投入。</div>
-        <div class="preset-grid" id="preset-grid">
-          <!-- 由JS填充 -->
-        </div>
+        <button class="attr-mode-tab active" id="tab-roll" onclick="switchAttrMode('roll')">🎲 系统随机骰点</button>
+        <button class="attr-mode-tab" id="tab-manual" onclick="switchAttrMode('manual')">✏️ 手动输入属性</button>
       </div>
 
       <!-- 骰点 -->
-      <div id="attr-roll" class="attr-panel">
+      <div id="attr-roll" class="attr-panel active">
         <div class="tip">💡 系统将按COC规则自动掷骰：力量/体质/敏捷/外貌/智力/意志/教育为(2D6+6)×5，体型为(2D6+6)×5，幸运独立骰3D6×5。</div>
         <button class="roll-btn" onclick="rollAllAttrs()">
           <span id="roll-icon">🎲</span>
@@ -1759,6 +1760,8 @@ body {
       <button class="mode-btn" id="btn-mode-split" onclick="setExploreMode('split')">🗺️ 分头探索</button>
     </div>
     <div class="game-topbar-actions">
+      <button class="icon-btn" onclick="saveGame()" title="保存游戏">💾</button>
+      <span id="save-tip" style="font-size:11px;color:var(--green);opacity:0;transition:opacity 0.5s;margin-right:4px"></span>
       <button class="icon-btn" onclick="togglePanel('clues')" title="线索">📄</button>
       <button class="icon-btn" onclick="togglePanel('log')" title="行动日志">📋</button>
       <button class="icon-btn" onclick="showPage('page-create')" title="重新创建">⚙</button>
@@ -2062,11 +2065,16 @@ let state = {
 // ============================================================
 function init() {
   renderJobGrid();
-  renderPresetGrid();
+  renderPresetGridStep1();
   renderRollAttrsGrid();
   renderManualAttrsGrid();
   initPresetKeyHistory();
   loadAPIConfig();
+  // 检测存档，显示"继续游戏"按钮
+  if (localStorage.getItem('trpg-save')) {
+    const btn = document.getElementById('btn-continue');
+    if (btn) btn.style.display = 'inline-block';
+  }
 }
 
 // 预置 key 历史（从 config.local.js 注入的 window.LOCAL_API_KEYS 读取，不覆盖用户已有数据）
@@ -2102,11 +2110,30 @@ function selectJob(id) {
   document.getElementById('job-' + id)?.classList.add('selected');
 }
 
-// ===== 渲染预设角色 =====
-function renderPresetGrid() {
-  const grid = document.getElementById('preset-grid');
+// ===== 随机名字 =====
+const RANDOM_NAMES_MALE = [
+  '亨利·格雷', '托马斯·贝尔', '罗伯特·肖', '威廉·霍姆', '爱德华·兰顿',
+  '查尔斯·芬顿', '弗雷德里克·布莱克', '亚瑟·斯通', '乔治·唐纳德', '詹姆斯·霍利',
+  '安德鲁·科林', '约翰·默里', '哈罗德·维尔', '西蒙·格兰特', '菲利普·雷恩',
+];
+const RANDOM_NAMES_FEMALE = [
+  '艾达·华莱士', '玛格丽特·沃克', '伊莲娜·波特', '多萝西·里德', '露西·柏恩',
+  '维多利亚·肖恩', '克莱尔·霍普', '罗斯·菲尔茨', '伊芙琳·诺顿', '海伦·克罗斯',
+  '凯瑟琳·多恩', '莫德·普莱斯', '玛丽·布鲁克', '西西莉·沃顿', '弗洛伦斯·基', 
+];
+function randomName() {
+  const gender = document.getElementById('inp-gender').value;
+  const pool = gender === '女' ? RANDOM_NAMES_FEMALE : RANDOM_NAMES_MALE;
+  const name = pool[Math.floor(Math.random() * pool.length)];
+  document.getElementById('inp-name').value = name;
+}
+
+// ===== 渲染预设角色（整合到Step1） =====
+function renderPresetGridStep1() {
+  const grid = document.getElementById('preset-grid-step1');
+  if (!grid) return;
   grid.innerHTML = PRESETS.map(p => `
-    <div class="preset-card" id="preset-${p.id}" onclick="selectPreset('${p.id}')">
+    <div class="preset-card" id="preset1-${p.id}" onclick="selectPresetStep1('${p.id}')">
       <div class="preset-name">${p.name}</div>
       <div class="preset-role">${p.role}</div>
       <div class="preset-attrs">
@@ -2117,24 +2144,31 @@ function renderPresetGrid() {
           </div>
         `).join('')}
       </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px">${p.desc}</div>
     </div>
   `).join('');
 }
 
-function selectPreset(id) {
-  state.selectedPreset = id;
+function selectPresetStep1(id) {
   const preset = PRESETS.find(p => p.id === id);
-  state.attrs = { ...preset.attrs };
-  // 自动同步职业
+  if (!preset) return;
+  // 填入姓名
+  document.getElementById('inp-name').value = preset.name;
+  // 填入性别（预设角色姓名暗示性别，这里按preset.job做简单推断，没有就保持默认）
+  // 同步职业
   state.job = preset.job;
+  state.attrs = { ...preset.attrs };
+  state.attrMode = 'preset';
+  state.selectedPreset = id;
   document.querySelectorAll('.job-card').forEach(c => c.classList.remove('selected'));
   document.getElementById('job-' + preset.job)?.classList.add('selected');
-  // 自动填姓名
-  if (!document.getElementById('inp-name').value) {
-    document.getElementById('inp-name').value = preset.name;
-  }
-  document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('selected'));
-  document.getElementById('preset-' + id)?.classList.add('selected');
+  document.querySelectorAll('#preset-grid-step1 .preset-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('preset1-' + id)?.classList.add('selected');
+  document.getElementById('step1-err').textContent = '';
+  // 跳过属性页，直接到技能分配（step3）
+  state.step = 3;
+  renderSkills();
+  updateStepUI();
 }
 
 // ===== 骰点面板 =====
@@ -2278,8 +2312,7 @@ function switchAttrMode(mode) {
   state.attrMode = mode;
   document.querySelectorAll('.attr-mode-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.attr-panel').forEach(p => p.classList.remove('active'));
-  const modeIndex = ['preset', 'roll', 'manual'].indexOf(mode);
-  document.querySelectorAll('.attr-mode-tab')[modeIndex]?.classList.add('active');
+  document.getElementById('tab-' + mode)?.classList.add('active');
   document.getElementById('attr-' + mode)?.classList.add('active');
   state.attrs = null;
   state.selectedPreset = null;
@@ -2414,7 +2447,7 @@ function validateStep(step) {
     return true;
   }
   if (step === 2) {
-    if (!state.attrs) { document.getElementById('step2-err').textContent = '请选择或生成属性（选择预设、骰点或手动输入）'; return false; }
+    if (!state.attrs) { document.getElementById('step2-err').textContent = '请骰点或手动填写属性'; return false; }
     // 手动校验
     if (state.attrMode === 'manual') {
       for (const a of ATTR_DEFS) {
@@ -2498,8 +2531,52 @@ function enterGame() {
     },
   };
   localStorage.setItem('trpg-character', JSON.stringify(character));
+  // 清空旧存档（新游戏覆盖）
+  localStorage.removeItem('trpg-save');
   showPage('page-game');
   initGame();
+}
+
+// ============================================================
+// ===== 存档机制 =====
+// ============================================================
+function saveGame() {
+  const saveData = {
+    character: JSON.parse(localStorage.getItem('trpg-character') || 'null'),
+    gameState: {
+      players: gameState.players,
+      exploreMode: gameState.exploreMode,
+      playerLocations: gameState.playerLocations,
+      clues: gameState.clues,
+      flags: gameState.flags,
+      currentScene: gameState.currentScene,
+      actionLog: gameState.actionLog.slice(0, 30),
+      conversationHistory: gameState.conversationHistory.slice(-30),
+    },
+    savedAt: new Date().toLocaleString('zh-CN'),
+  };
+  localStorage.setItem('trpg-save', JSON.stringify(saveData));
+  // 显示保存提示
+  const tip = document.getElementById('save-tip');
+  if (tip) {
+    tip.textContent = '✓ 已保存 ' + saveData.savedAt;
+    tip.style.opacity = '1';
+    setTimeout(() => { tip.style.opacity = '0'; }, 2000);
+  }
+  // 标题页继续游戏按钮激活
+  const btn = document.getElementById('btn-continue');
+  if (btn) btn.style.display = 'inline-block';
+}
+
+function continueGame() {
+  const raw = localStorage.getItem('trpg-save');
+  if (!raw) { alert('没有找到存档'); return; }
+  const saveData = JSON.parse(raw);
+  if (saveData.character) {
+    localStorage.setItem('trpg-character', JSON.stringify(saveData.character));
+  }
+  showPage('page-game');
+  initGame(saveData.gameState);
 }
 
 // ============================================================
@@ -2678,25 +2755,62 @@ let gameState = {
 // ============================================================
 // ===== 游戏初始化 =====
 // ============================================================
-function initGame() {
+function initGame(savedState) {
   // 加载角色
   const saved = localStorage.getItem('trpg-character');
   if (!saved) { showPage('page-create'); return; }
   const char = JSON.parse(saved);
-  // 支持多角色（未来扩展），现在先单角色
-  gameState.players = [{ ...char, currentHp: char.hp, currentSan: char.san, currentMp: char.mp }];
-  gameState.playerLocations = { 0: 'S01' };
-  gameState.declarations = {};
+
+  if (savedState) {
+    // 从存档恢复游戏状态
+    gameState.players = savedState.players || [{ ...char, currentHp: char.hp, currentSan: char.san, currentMp: char.mp }];
+    gameState.exploreMode = savedState.exploreMode || 'together';
+    gameState.playerLocations = savedState.playerLocations || { 0: 'S01' };
+    gameState.clues = savedState.clues || [];
+    gameState.flags = savedState.flags || { ...STORY_DATA.flags };
+    gameState.currentScene = savedState.currentScene || 'S01';
+    gameState.actionLog = savedState.actionLog || [];
+    gameState.conversationHistory = savedState.conversationHistory || [];
+    gameState.declarations = {};
+  } else {
+    // 新游戏
+    gameState.players = [{ ...char, currentHp: char.hp, currentSan: char.san, currentMp: char.mp }];
+    gameState.playerLocations = { 0: 'S01' };
+    gameState.declarations = {};
+    gameState.clues = [];
+    gameState.flags = { ...STORY_DATA.flags };
+    gameState.currentScene = 'S01';
+    gameState.conversationHistory = [];
+    gameState.actionLog = [];
+  }
 
   renderCharStatus();
   renderDeclarationPool();
   renderSplitTabs();
   renderSplitScenes(0);
   updateSceneName();
+  updateCluesPanel();
 
-  // 开场白
-  appendNarrative('dm', `${STORY_DATA.era}。\n\n雨夜的伦敦裹在浓雾之中，煤气灯的光晕在水汽里渗散开来。你站在纽伦上街101号的门廊下，手中握着伊莎贝拉·摩勒小姐的求助信。\n\n信中写道：「我父亲埃里克·摩勒于三日前失踪，警察局毫无进展。若您能找到他，必有重谢。」\n\n大门虚掩着，里面透出一缕昏黄的灯光。`);
-  addLog('游戏开始 · 摩勒住宅');
+  if (savedState) {
+    // 恢复对话历史显示
+    const area = document.getElementById('chat-area');
+    if (area && gameState.conversationHistory.length) {
+      appendNarrative('system', `— 存档已加载，时间：${new Date().toLocaleString('zh-CN')} —`);
+      // 重现最后几条对话
+      const recent = gameState.conversationHistory.slice(-6);
+      recent.forEach(msg => {
+        if (msg.role === 'assistant') appendNarrative('dm', msg.content, false);
+        else if (msg.role === 'user') appendNarrative('player', msg.content);
+      });
+    } else {
+      appendNarrative('system', '— 存档已加载 —');
+    }
+    addLog('存档读取 · ' + (STORY_DATA.scenes[gameState.currentScene]?.name || ''));
+  } else {
+    // 开场白
+    appendNarrative('dm', `${STORY_DATA.era}。\n\n雨夜的伦敦裹在浓雾之中，煤气灯的光晕在水汽里渗散开来。你站在纽伦上街101号的门廊下，手中握着伊莎贝拉·摩勒小姐的求助信。\n\n信中写道：「我父亲埃里克·摩勒于三日前失踪，警察局毫无进展。若您能找到他，必有重谢。」\n\n大门虚掩着，里面透出一缕昏黄的灯光。`);
+    addLog('游戏开始 · 摩勒住宅');
+  }
 }
 
 // ============================================================
