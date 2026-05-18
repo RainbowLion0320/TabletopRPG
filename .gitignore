@@ -2,6 +2,8 @@
 .env
 .env.local
 *.key
+config.local.js
+src/config.local.js
 
 # macOS
 .DS_Store
