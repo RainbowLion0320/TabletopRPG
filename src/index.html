@@ -46,7 +46,7 @@ body {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: radial-gradient(ellipse at 50% 30%, #1a1030 0%, #0d0d0f 70%);
+  background: var(--bg);
   position: relative;
   overflow: hidden;
 }
@@ -55,15 +55,21 @@ body {
   content: '';
   position: absolute;
   inset: 0;
-  background:
-    url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='30' cy='30' r='1' fill='%23ffffff08'/%3E%3C/svg%3E") repeat;
-  opacity: 0.5;
+  background: url("../assets/scenes/scene_main_fog_london.gif") center / cover no-repeat;
+  opacity: 0.72;
+}
+
+#page-title::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 35%, rgba(13, 13, 15, 0.22) 0%, rgba(13, 13, 15, 0.78) 72%);
 }
 
 .title-content {
   text-align: center;
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 .title-fog {
