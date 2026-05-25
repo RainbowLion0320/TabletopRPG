@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="50%" stop-color="#2d2d44"/>
+      <stop offset="100%" stop-color="#222238"/>
+    </linearGradient>
+    <radialGradient id="lamp" cx="50%" cy="30%" r="40%">
+      <stop offset="0%" stop-color="#7a8a9a" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+    <filter id="noise"><feTurbulence baseFrequency="0.7" numOctaves="3" type="fractalNoise"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope="0.06"/></feComponentTransfer></filter>
+  </defs>
+  <rect width="960" height="360" fill="url(#bg)"/>
+  <rect width="960" height="360" fill="url(#lamp)"/>
+  <rect width="960" height="360" filter="url(#noise)" opacity="0.4"/>
+  <!-- 走廊线条 -->
+  <line x1="200" y1="0" x2="200" y2="360" stroke="#3d3d55" stroke-width="1" opacity="0.3"/>
+  <line x1="760" y1="0" x2="760" y2="360" stroke="#3d3d55" stroke-width="1" opacity="0.3"/>
+  <rect x="380" y="80" width="200" height="260" rx="4" fill="#1a1a2e" stroke="#3d3d55" stroke-width="1" opacity="0.4"/>
+  <rect y="280" width="960" height="80" fill="#111122" opacity="0.5"/>
+  <text x="480" y="180" text-anchor="middle" font-family="Georgia,serif" font-size="28" fill="#7a8a9a" opacity="0.25" letter-spacing="8">上城区第二分局</text>
+  <text x="480" y="210" text-anchor="middle" font-family="Georgia,serif" font-size="12" fill="#7a8a9a" opacity="0.15" letter-spacing="4">POLICE STATION · 1920</text>
+</svg>

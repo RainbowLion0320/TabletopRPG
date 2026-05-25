@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1f1510"/>
+      <stop offset="50%" stop-color="#3a2518"/>
+      <stop offset="100%" stop-color="#2a1a10"/>
+    </linearGradient>
+    <radialGradient id="warm" cx="50%" cy="40%" r="45%">
+      <stop offset="0%" stop-color="#d4a050" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+    <filter id="noise"><feTurbulence baseFrequency="0.6" numOctaves="3" type="fractalNoise"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope="0.07"/></feComponentTransfer></filter>
+  </defs>
+  <rect width="960" height="360" fill="url(#bg)"/>
+  <rect width="960" height="360" fill="url(#warm)"/>
+  <rect width="960" height="360" filter="url(#noise)" opacity="0.5"/>
+  <!-- 多个暖光点 -->
+  <ellipse cx="200" cy="80" rx="80" ry="50" fill="#d4a050" opacity="0.05"/>
+  <ellipse cx="600" cy="100" rx="100" ry="60" fill="#d4a050" opacity="0.04"/>
+  <ellipse cx="800" cy="60" rx="60" ry="40" fill="#d4a050" opacity="0.05"/>
+  <!-- 吧台暗示 -->
+  <rect x="100" y="250" width="760" height="8" rx="4" fill="#4d3020" opacity="0.3"/>
+  <rect y="290" width="960" height="70" fill="#140c06" opacity="0.5"/>
+  <text x="480" y="180" text-anchor="middle" font-family="Georgia,serif" font-size="28" fill="#d4a050" opacity="0.25" letter-spacing="8">老赫特酒吧</text>
+  <text x="480" y="210" text-anchor="middle" font-family="Georgia,serif" font-size="12" fill="#d4a050" opacity="0.15" letter-spacing="4">OLD HERT'S TAVERN · 1920</text>
+</svg>
