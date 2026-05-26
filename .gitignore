@@ -33,6 +33,7 @@ Desktop.ini
 *.tmp
 *.bak
 *~
+vite-preview.log
 
 # Obsidian
 .obsidian/
