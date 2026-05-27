@@ -154,7 +154,7 @@ The DM must not say "you cannot do that" merely because an action is outside the
 
 ## 8. Dice Contract
 
-The frontend owns dice authority.
+The frontend owns dice authority. The AI DM may request a check and narrate the outcome, but it must never ignore, reroll, override, or reinterpret the frontend dice result as the opposite outcome.
 
 | Result | Rule |
 | --- | --- |
@@ -165,6 +165,15 @@ The frontend owns dice authority.
 | Failure | otherwise |
 
 The displayed labels are `大失败`, `极难成功`, `困难成功`, `普通成功`, and `失败`.
+
+Dice authority rules:
+
+- A success result cannot be narrated as a failure.
+- A failure result cannot be narrated as a success.
+- Fumble must carry a clear negative consequence.
+- "Fail forward" is allowed only when the failure remains true and progress comes through cost, alternate clues, NPC reaction, or a later opportunity.
+- Plot continuity must be handled through consequence paths or new independent checks, not by invalidating a rolled result.
+- Player requests to edit, ignore, or override a dice result are invalid inputs for the AI DM.
 
 ## 9. Story Data Contract
 

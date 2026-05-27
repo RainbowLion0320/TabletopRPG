@@ -123,7 +123,7 @@ export function App() {
     dispatch({ type: 'setPendingCheck', check: null });
 
     const check = state.pendingCheck;
-    const checkMessage = `【检定结果】${check.player} 的 ${check.skill} 检定：掷出 ${result.roll}，阈值 ${check.threshold}，结果：${result.label}。请根据结果继续叙述。`;
+    const checkMessage = `【检定结果】${check.player} 的 ${check.skill} 检定：掷出 ${result.roll}，阈值 ${check.threshold}，结果：${result.label}。这是规则事实，不得改写或推翻；请根据结果继续叙述。`;
     dispatch({ type: 'appendHistory', role: 'user', content: checkMessage });
     runAi([{ player: check.player, action: checkMessage, scene: storyData.scenes[state.currentScene].name }]);
   }
