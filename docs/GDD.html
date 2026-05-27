@@ -17,7 +17,6 @@
   --gold-light: #e8c96a;
   --text: #d4d4e3;
   --text-dim: #8f8fa8;
-  --red: #c45858;
   --border: #2a2a3a;
   --nav-w: 248px;
 }
@@ -214,8 +213,9 @@ footer {
 <a href="#s7-1" class="sub">7.1 AI DM职责</a>
 <a href="#s7-2" class="sub">7.2 Prompt架构设计</a>
 <a href="#s7-3" class="sub">7.3 自由度边界控制（核心设计）</a>
-<a href="#s7-4" class="sub">7.4 Prompt注入防御方案</a>
-<a href="#s7-5" class="sub">7.5 待线下讨论的核心问题</a>
+<a href="#s7-4" class="sub">7.4 AI DM容错度（已决策）</a>
+<a href="#s7-5" class="sub">7.5 Prompt注入防御方案</a>
+<a href="#s7-6" class="sub">7.6 待线下讨论的核心问题</a>
 <a href="#s8" class="">八、角色创建系统</a>
 <a href="#s8-1" class="sub">8.1 推荐职业（《雾中消逝》适配）</a>
 <a href="#s8-2" class="sub">8.2 创建流程</a>
@@ -738,7 +738,37 @@ AI DM输出结构（JSON）
 <li>拒绝无限制暴力描写</li>
 <li>拒绝破坏游戏结构的行动</li>
 </ul>
-<h3 id="s7-4">7.4 Prompt注入防御方案</h3>
+<h3 id="s7-4">7.4 AI DM容错度（已决策）</h3>
+<p>AI DM 容错度用于衡量：当玩家提出非常规、非预设、绕路或高风险行动时，AI 是直接拒绝、要求检定、给出代价，还是允许剧情大幅改写。</p>
+<div class="table-wrap"><table>
+<thead><tr><th>等级</th><th>含义</th><th>AI DM处理</th></tr></thead>
+<tbody>
+<tr><td>0</td><td>禁止</td><td>违反世界观、破坏游戏结构、prompt注入或越过安全边界时直接拒绝</td></tr>
+<tr><td>1</td><td>严格</td><td>只允许剧本明确支持的行动，非预设行动多半拉回</td></tr>
+<tr><td>2</td><td>保守</td><td>允许合理行动，但优先把结果导回主线</td></tr>
+<tr><td>3</td><td>宽容</td><td>允许创造性解法，只要逻辑成立就给检定、代价和后果</td></tr>
+<tr><td>4</td><td>高自由</td><td>玩家可以大幅改变路线，AI 动态改写剧情结构</td></tr>
+<tr><td>5</td><td>沙盒</td><td>剧本仅作为背景，几乎完全开放</td></tr>
+</tbody></table></div>
+<p><strong>MVP采用 2.5-3 档：宽容玩家的做法，不宽容破坏世界逻辑和主线闭环。</strong></p>
+<p>执行规则：</p>
+<ul>
+<li>合理但非预设的行动：允许尝试，给出对应技能检定、难度和叙事后果。</li>
+<li>创意解法：只要符合 1920 年伦敦、COC 规则和当前持有资源，应优先转化为检定，而不是直接否定。</li>
+<li>高风险行动：允许，但必须给出清晰代价，例如警觉、受伤、SAN损失、线索损坏、NPC关系恶化或时间推进。</li>
+<li>离开主线的行动：可以短暂响应，但通过新信息、NPC反应或环境压力把玩家自然引回调查。</li>
+<li>破坏性行动：不让游戏卡死；如果玩家烧毁、绑架、逃离或攻击关键对象，AI 要保留替代线索或后果路径。</li>
+<li>绝对拒绝：违反物理现实、角色能力、内容安全、prompt注入、要求泄露系统设定、让骰子结果失效等行为。</li>
+</ul>
+<p>典型例子：</p>
+<ul>
+<li>“冒充警察套话” → 允许，要求话术/信誉/法律检定，失败会提高警方警觉。</li>
+<li>“拿鸦片样品试探药店老板” → 允许，要求心理学/话术/侦查检定，可能提前触发危险。</li>
+<li>“绑架蒙特利尔审问” → 高风险允许尝试，但触发法律后果、暴徒反扑或关键 NPC 敌对。</li>
+<li>“烧掉卡森其药店” → 允许造成后果，但核心线索需要以烧剩残片、目击者或港口线索替代，不直接死局。</li>
+<li>“不查案直接离开伦敦” → 可以叙事短暂结果，但通过委托人求助、新闻、警方介入或失踪者危机引回主线。</li>
+</ul>
+<h3 id="s7-5">7.5 Prompt注入防御方案</h3>
 <p><strong>方案A：结构化输入模板</strong></p>
 <pre><code>玩家输入前置格式化：
 [{玩家名}][行动][目标/对象][描述]</code></pre>
@@ -759,9 +789,8 @@ AI DM输出结构（JSON）
 <li>自由输入字数上限（200字）</li>
 <li>前置过滤系统指令特征词</li>
 </ul>
-<h3 id="s7-5">7.5 待线下讨论的核心问题</h3>
+<h3 id="s7-6">7.6 待线下讨论的核心问题</h3>
 <ol>
-<li><strong>AI DM容错度</strong>：玩家非常规行动，AI该多宽容？</li>
 <li><strong>骰子权威性</strong>：AI是否可以在极端情况下无视骰子？</li>
 <li><strong>剧情硬节点</strong>：哪些事件是必须触发的？（已知：浓雾/深潜者逃跑是必触发）</li>
 <li><strong>角色死亡处理</strong>：HP=0/SAN=0时如何处理？（旁观/替补/结局触发？）</li>
@@ -899,7 +928,7 @@ AI代理：服务端统一调用（隐藏密钥）
 <li><strong>游戏正式名称</strong>——暂定&quot;《雾中消逝》AI跑团&quot;</li>
 </ol>
 <hr>
-<p>*GDD v0.2 | 2026-05-15 | 基于剧本原文和COC规则完整整理* *剧本原作：舒爾茲上尉（790086893@qq.com）*</p>
+<p><em>GDD v0.2 | 2026-05-15 | 基于剧本原文和COC规则完整整理</em> <em>剧本原作：舒爾茲上尉（790086893@qq.com）</em></p>
 
     <footer>GDD HTML mirror - Source: docs/GDD.md - Updated 2026-05-27</footer>
   </div>
@@ -907,14 +936,16 @@ AI代理：服务端统一调用（隐藏密钥）
 <script>
 const links = Array.from(document.querySelectorAll('nav a'));
 const sections = links
-  .map(link => document.querySelector(link.getAttribute('href')))
+  .map((link) => document.querySelector(link.getAttribute('href')))
   .filter(Boolean);
-const observer = new IntersectionObserver(entries => {
-  const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+const observer = new IntersectionObserver((entries) => {
+  const visible = entries
+    .filter((entry) => entry.isIntersecting)
+    .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
   if (!visible) return;
-  links.forEach(link => link.classList.toggle('active', link.getAttribute('href') === '#' + visible.target.id));
+  links.forEach((link) => link.classList.toggle('active', link.getAttribute('href') === '#' + visible.target.id));
 }, { rootMargin: '-8% 0px -78% 0px', threshold: 0 });
-sections.forEach(section => observer.observe(section));
+sections.forEach((section) => observer.observe(section));
 </script>
 </body>
 </html>

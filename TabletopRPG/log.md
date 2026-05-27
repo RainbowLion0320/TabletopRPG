@@ -48,3 +48,9 @@
   - `concepts/core_loop.md`、`concepts/tech_stack.md`、`concepts/prompt_engineering.md`
   - `decisions/mvp_scope.md`、`decisions/ai_role_decision.md`
 - 主要修正：移除旧“单文件 HTML / 5 步自定义创建 / 旧存档 key”为当前事实的描述，明确这些内容进入 backlog 或历史记录。
+
+## [2026-05-27] update | AI DM 容错度决策落地
+
+- GDD 锁定 AI DM 容错度为 2.5-3 档：宽容玩家方法，不宽容破坏世界逻辑和主线闭环。
+- SPEC 和运行时 system prompt 同步加入容错执行规则。
+- Wiki 同步更新 AI DM 系统、提示词工程和 AI 角色定位决策。

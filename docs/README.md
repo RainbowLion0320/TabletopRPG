@@ -21,3 +21,5 @@
 ## 后续规划
 
 新增世界观、剧本、风格参考等资料时，优先保持与 `PRD.md`、`SPEC.md` 和 `TabletopRPG/` wiki 的事实一致。未实现的 GDD 模块应补充状态说明并进入 backlog，不应直接删除设计细节。
+
+更新 `GDD.md` 后运行 `npm run docs:gdd` 重新生成 `GDD.html`，保持 HTML 作为 Markdown 的镜像。

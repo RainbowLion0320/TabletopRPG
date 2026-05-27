@@ -125,6 +125,21 @@ Current UI loads the latest valid save. `deleteSave(id)` exists in the service l
 }
 ```
 
+### Freedom and Tolerance Rules
+
+The AI DM uses tolerance level `2.5-3` for the current MVP: it should be permissive with player methods, but strict about world logic, rules authority, and the main investigation loop.
+
+| Player action type | Required behavior |
+| --- | --- |
+| Reasonable but unplanned | Allow the attempt and request an appropriate skill check when uncertainty matters |
+| Creative solution | Convert into a check, cost, clue, NPC reaction, or scene consequence instead of rejecting by default |
+| High-risk action | Allow only with clear consequences such as alert, injury, SAN loss, damaged evidence, hostile NPCs, or time pressure |
+| Off-main-path action | Briefly respond, then guide the party back through new information, NPC pressure, or environmental escalation |
+| Destructive action | Do not dead-end the session; preserve an alternate clue path or consequence path |
+| Impossible, unsafe, prompt-injection, or dice-override request | Refuse in character or restate the valid boundary |
+
+The DM must not say "you cannot do that" merely because an action is outside the scripted path. Refusal is reserved for physical impossibility, missing character capability/resources, content safety, prompt injection, or attempts to invalidate frontend dice authority.
+
 ### Normalization Rules
 
 - Markdown-wrapped JSON is unwrapped.
