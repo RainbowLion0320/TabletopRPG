@@ -222,12 +222,12 @@ footer {
 <a href="#s8-1" class="sub">8.1 推荐职业（《雾中消逝》适配）</a>
 <a href="#s8-2" class="sub">8.2 创建流程</a>
 <a href="#s9" class="">九、技术架构</a>
-<a href="#s9-1" class="sub">9.1 DEMO技术栈（纯前端单文件）</a>
+<a href="#s9-1" class="sub">9.1 当前技术栈（Vite + React）</a>
 <a href="#s9-2" class="sub">9.2 AI API接入</a>
 <a href="#s9-3" class="sub">9.3 局域网多人技术栈（后续）</a>
 <a href="#s9-4" class="sub">9.4 文件结构</a>
 <a href="#s10" class="">十、开发计划</a>
-<a href="#s10-phase-1" class="sub">Phase 1：DEMO（本地多人，单文件）</a>
+<a href="#s10-phase-1" class="sub">Phase 1：MVP（本地多人，React/Vite）</a>
 <a href="#s10-phase-2" class="sub">Phase 2：局域网多人</a>
 <a href="#s10-phase-3" class="sub">Phase 3：内容扩展</a>
 <a href="#s11" class="">十一、待确认事项</a>
@@ -235,7 +235,7 @@ footer {
 <main>
   <div class="content">
 <header class="doc-header"><h1>《雾中消逝》AI跑团 游戏设计文档 (GDD)</h1><p class="doc-subtitle">Full GDD mirror - Source: docs/GDD.md - Updated 2026-05-27</p></header>
-<blockquote><p>设计版本：v0.2 | 原最后更新：2026-05-15</p><p>实现对齐补充：2026-05-27</p><p>规则体系：COC 第7版 | 首发模组：《雾中消逝》| 作者：舒爾茲上尉</p></blockquote>
+<blockquote><p>设计版本：v0.4 | 原始基线：2026-05-15</p><p>实现对齐补充：2026-05-27</p><p>规则体系：COC 第7版 | 首发模组：《雾中消逝》| 作者：舒爾茲上尉</p></blockquote>
 <hr>
 <h2 id="s0">0. 当前实现状态（2026-05-27 对齐补充）</h2>
 <blockquote><p>本文是完整 GDD，包含当前已实现内容、未开发模块、后续设计目标和细节规则。</p><p>当前可运行产品的产品范围见 <code>docs/PRD.md</code>，技术契约见 <code>docs/SPEC.md</code>。未实现模块不删除，统一按 backlog / 待开发处理。</p></blockquote>
@@ -250,7 +250,7 @@ footer {
 <tr><td>探索模式</td><td>一起行动 / 分头探索</td></tr>
 <tr><td>AI DM</td><td>OpenAI / Anthropic / MiMo / 自定义端点，严格 JSON 输出 + 兜底解析</td></tr>
 <tr><td>检定</td><td>前端 D100，AI 只请求检定并根据结果继续叙事</td></tr>
-<tr><td>存档</td><td><code>trpg-saves-v2</code> 新版存档，兼容旧 <code>trpg-saves</code></td></tr>
+<tr><td>存档</td><td><code>trpg-saves-v2</code> 存档槽位，最多保留 12 条</td></tr>
 <tr><td>剧本数据</td><td>5 个场景、6 个 NPC 条目、8 个线索物品</td></tr>
 </tbody></table></div>
 <h3 id="s0-2">0.2 当前未实现但保留为设计目标</h3>
@@ -876,17 +876,18 @@ AI DM输出结构（JSON）
 角色卡生成（可导出JSON）</code></pre>
 <hr>
 <h2 id="s9">九、技术架构</h2>
-<h3 id="s9-1">9.1 DEMO技术栈（纯前端单文件）</h3>
-<pre><code>前端：HTML5 + CSS3 + Vanilla JavaScript
-AI接入：OpenAI API / Anthropic API（可配置）
-数据：localStorage（角色卡/存档/剧情标记）
-骰子：CSS3动画 + JS随机数
-立绘：CSS绝对定位层叠
-打包：单文件HTML（除AI API外可离线）</code></pre>
+<h3 id="s9-1">9.1 当前技术栈（Vite + React）</h3>
+<pre><code>前端：Vite + React 18 + TypeScript
+AI接入：OpenAI / Anthropic / MiMo / OpenAI-compatible Custom Endpoint
+数据：localStorage（存档槽位/API配置/剧情状态）
+骰子：前端 D100 随机数 + React 检定卡
+状态：useReducer + GameState hydration
+资源：Vite import 场景图、NPC立绘和样式资源
+构建：npm run build 生成 dist/</code></pre>
 <h3 id="s9-2">9.2 AI API接入</h3>
 <pre><code class="language-javascript">AIConfig {
-  provider: &quot;openai&quot; | &quot;anthropic&quot; | &quot;custom&quot;,
-  model: &quot;gpt-4o&quot; | &quot;claude-sonnet-4-5&quot; | ...,
+  provider: &quot;openai&quot; | &quot;anthropic&quot; | &quot;mimo&quot; | &quot;custom&quot;,
+  model: &quot;gpt-4o&quot; | &quot;claude-3-5-sonnet-latest&quot; | &quot;mimo-v2.5&quot; | ...,
   apiKey: string,
   endpoint: string,
   maxTokens: 2048,
@@ -894,41 +895,28 @@ AI接入：OpenAI API / Anthropic API（可配置）
 }</code></pre>
 <h3 id="s9-3">9.3 局域网多人技术栈（后续）</h3>
 <pre><code>服务端：Node.js + Express + Socket.io
-客户端：HTML5（同DEMO前端）
+客户端：复用当前 React/Vite 前端
 通信：WebSocket实时双向
 AI代理：服务端统一调用（隐藏密钥）
 存储：JSON文件</code></pre>
 <h3 id="s9-4">9.4 文件结构</h3>
-<pre><code>projects/ai-trpg/
-├── index.html              ← DEMO主文件（单文件版）
-├── GDD.md                  ← 本文档
-├── GDD.html                ← 设计文档网页版
-│
-├── modules/
-│   └── wuzhong-xiaoshi/    ← 《雾中消逝》模组
-│       ├── module.json     ← 模组数据（场景/NPC/线索/触发）
-│       ├── scenes/         ← 场景图（S01-S05）
-│       ├── npcs/           ← NPC立绘（伊莎贝拉/蒙特利尔/深潜者/暴徒）
-│       └── items/          ← 道具立绘（便签/照片/小册子等）
-│
-├── engine/
-│   ├── dice.js             ← D100骰子系统
-│   ├── coc-rules.js        ← COC规则引擎（属性/技能/战斗/SAN）
-│   ├── ai-dm.js            ← AI DM接口（Prompt构建/防注入）
-│   ├── session.js          ← 游戏会话管理（轮序/标记）
-│   └── state.js            ← 状态管理（存档/读档）
-│
-├── server/                 ← 局域网多人（后续）
-│   ├── server.js
-│   └── room.js
-│
-└── assets/
-    ├── bgm/                ← 背景音乐（后续）
-    ├── sfx/                ← 音效（后续）
-    └── ui/                 ← UI资源（骰子/图标）</code></pre>
+<pre><code>TabletopRPG/
+├── docs/                   ← PRD / SPEC / GDD / HTML 镜像
+├── raw/                    ← 原始剧本资料，只读归档
+├── assets/                 ← 场景图、NPC 立绘等运行时资源
+├── scripts/                ← 文档生成脚本
+├── src/
+│   ├── app/                ← App 编排与屏幕状态
+│   ├── components/         ← setup/game UI 组件
+│   ├── data/               ← 剧本数据、技能、职业、预设调查员
+│   ├── services/           ← AI DM、骰子、存档服务
+│   ├── state/              ← reducer、hydration、AI 响应归一化
+│   ├── styles/             ← 全局样式
+│   └── types/              ← 领域类型
+└── TabletopRPG/            ← 项目 Wiki</code></pre>
 <hr>
 <h2 id="s10">十、开发计划</h2>
-<h3 id="s10-phase-1">Phase 1：DEMO（本地多人，单文件）</h3>
+<h3 id="s10-phase-1">Phase 1：MVP（本地多人，React/Vite）</h3>
 <div class="table-wrap"><table>
 <thead><tr><th>优先级</th><th>任务</th><th>说明</th></tr></thead>
 <tbody>
@@ -972,7 +960,7 @@ AI代理：服务端统一调用（隐藏密钥）
 <li><strong>游戏正式名称</strong>——暂定&quot;《雾中消逝》AI跑团&quot;</li>
 </ol>
 <hr>
-<p><em>GDD v0.2 | 2026-05-15 | 基于剧本原文和COC规则完整整理</em> <em>剧本原作：舒爾茲上尉（790086893@qq.com）</em></p>
+<p><em>GDD v0.4 | 2026-05-27 | 基于当前代码、PRD、SPEC 和保留设计目标整理</em> <em>剧本原作：舒爾茲上尉（790086893@qq.com）</em></p>
 
     <footer>GDD HTML mirror - Source: docs/GDD.md - Updated 2026-05-27</footer>
   </div>

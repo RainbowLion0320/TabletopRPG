@@ -1,6 +1,6 @@
 # 前端源码结构
 
-本目录现在使用 Vite + React + TypeScript，不再维护旧的单文件 HTML 入口。
+本目录使用 Vite + React + TypeScript。
 
 ## 目录
 
@@ -29,6 +29,6 @@ npm run preview
 ## 当前运行事实
 
 - 角色创建 UI 当前是 1-4 名预设调查员选择，不包含自定义 5 步创建。
-- 存档服务使用 `trpg-saves-v2`，并兼容读取旧 `trpg-saves`。
+- 存档服务使用 `trpg-saves-v2`。
 - AI 系统提示词当前在 `services/aiDm.ts` 内动态构建。
 - 游戏状态进入 UI 前应经过 `state/gameReducer.ts` 的水合/归一化逻辑。

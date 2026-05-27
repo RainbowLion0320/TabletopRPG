@@ -1,5 +1,5 @@
 # 《雾中消逝》AI跑团 游戏设计文档 (GDD)
-> 设计版本：v0.2 | 原最后更新：2026-05-15
+> 设计版本：v0.4 | 原始基线：2026-05-15
 > 实现对齐补充：2026-05-27
 > 规则体系：COC 第7版 | 首发模组：《雾中消逝》| 作者：舒爾茲上尉
 
@@ -21,7 +21,7 @@
 | 探索模式 | 一起行动 / 分头探索 |
 | AI DM | OpenAI / Anthropic / MiMo / 自定义端点，严格 JSON 输出 + 兜底解析 |
 | 检定 | 前端 D100，AI 只请求检定并根据结果继续叙事 |
-| 存档 | `trpg-saves-v2` 新版存档，兼容旧 `trpg-saves` |
+| 存档 | `trpg-saves-v2` 存档槽位，最多保留 12 条 |
 | 剧本数据 | 5 个场景、6 个 NPC 条目、8 个线索物品 |
 
 ### 0.2 当前未实现但保留为设计目标
@@ -691,23 +691,24 @@ MVP 执行方式：
 
 ## 九、技术架构
 
-### 9.1 DEMO技术栈（纯前端单文件）
+### 9.1 当前技术栈（Vite + React）
 
 ```
-前端：HTML5 + CSS3 + Vanilla JavaScript
-AI接入：OpenAI API / Anthropic API（可配置）
-数据：localStorage（角色卡/存档/剧情标记）
-骰子：CSS3动画 + JS随机数
-立绘：CSS绝对定位层叠
-打包：单文件HTML（除AI API外可离线）
+前端：Vite + React 18 + TypeScript
+AI接入：OpenAI / Anthropic / MiMo / OpenAI-compatible Custom Endpoint
+数据：localStorage（存档槽位/API配置/剧情状态）
+骰子：前端 D100 随机数 + React 检定卡
+状态：useReducer + GameState hydration
+资源：Vite import 场景图、NPC立绘和样式资源
+构建：npm run build 生成 dist/
 ```
 
 ### 9.2 AI API接入
 
 ```javascript
 AIConfig {
-  provider: "openai" | "anthropic" | "custom",
-  model: "gpt-4o" | "claude-sonnet-4-5" | ...,
+  provider: "openai" | "anthropic" | "mimo" | "custom",
+  model: "gpt-4o" | "claude-3-5-sonnet-latest" | "mimo-v2.5" | ...,
   apiKey: string,
   endpoint: string,
   maxTokens: 2048,
@@ -719,7 +720,7 @@ AIConfig {
 
 ```
 服务端：Node.js + Express + Socket.io
-客户端：HTML5（同DEMO前端）
+客户端：复用当前 React/Vite 前端
 通信：WebSocket实时双向
 AI代理：服务端统一调用（隐藏密钥）
 存储：JSON文件
@@ -728,40 +729,27 @@ AI代理：服务端统一调用（隐藏密钥）
 ### 9.4 文件结构
 
 ```
-projects/ai-trpg/
-├── index.html              ← DEMO主文件（单文件版）
-├── GDD.md                  ← 本文档
-├── GDD.html                ← 设计文档网页版
-│
-├── modules/
-│   └── wuzhong-xiaoshi/    ← 《雾中消逝》模组
-│       ├── module.json     ← 模组数据（场景/NPC/线索/触发）
-│       ├── scenes/         ← 场景图（S01-S05）
-│       ├── npcs/           ← NPC立绘（伊莎贝拉/蒙特利尔/深潜者/暴徒）
-│       └── items/          ← 道具立绘（便签/照片/小册子等）
-│
-├── engine/
-│   ├── dice.js             ← D100骰子系统
-│   ├── coc-rules.js        ← COC规则引擎（属性/技能/战斗/SAN）
-│   ├── ai-dm.js            ← AI DM接口（Prompt构建/防注入）
-│   ├── session.js          ← 游戏会话管理（轮序/标记）
-│   └── state.js            ← 状态管理（存档/读档）
-│
-├── server/                 ← 局域网多人（后续）
-│   ├── server.js
-│   └── room.js
-│
-└── assets/
-    ├── bgm/                ← 背景音乐（后续）
-    ├── sfx/                ← 音效（后续）
-    └── ui/                 ← UI资源（骰子/图标）
+TabletopRPG/
+├── docs/                   ← PRD / SPEC / GDD / HTML 镜像
+├── raw/                    ← 原始剧本资料，只读归档
+├── assets/                 ← 场景图、NPC 立绘等运行时资源
+├── scripts/                ← 文档生成脚本
+├── src/
+│   ├── app/                ← App 编排与屏幕状态
+│   ├── components/         ← setup/game UI 组件
+│   ├── data/               ← 剧本数据、技能、职业、预设调查员
+│   ├── services/           ← AI DM、骰子、存档服务
+│   ├── state/              ← reducer、hydration、AI 响应归一化
+│   ├── styles/             ← 全局样式
+│   └── types/              ← 领域类型
+└── TabletopRPG/            ← 项目 Wiki
 ```
 
 ---
 
 ## 十、开发计划
 
-### Phase 1：DEMO（本地多人，单文件）
+### Phase 1：MVP（本地多人，React/Vite）
 
 | 优先级 | 任务 | 说明 |
 |--------|------|------|
@@ -807,5 +795,5 @@ projects/ai-trpg/
 
 ---
 
-*GDD v0.2 | 2026-05-15 | 基于剧本原文和COC规则完整整理*
+*GDD v0.4 | 2026-05-27 | 基于当前代码、PRD、SPEC 和保留设计目标整理*
 *剧本原作：舒爾茲上尉（790086893@qq.com）*

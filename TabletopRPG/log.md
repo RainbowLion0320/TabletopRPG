@@ -67,3 +67,10 @@
 - SPEC 和运行时 system prompt 同步加入冲突处理流程。
 - 代码补充 `幸运` 检定按角色 Luck 值结算，用于冲突仲裁。
 - Wiki 同步更新 AI DM 系统、提示词工程、核心玩法循环和 AI 角色定位决策。
+
+## [2026-05-27] cleanup | 项目瘦身与旧方案清理
+
+- 移除旧 `trpg-saves` / API `key` 字段兼容路径和未使用的 `deleteSave()` 服务函数。
+- 移除 50MB 临时 GIF 主视觉，S01 改用轻量 `scene_s01.svg`。
+- 将原始模组素材从 `src/modules/` 移至 `raw/`，避免被误认为运行时代码。
+- 更新 PRD / SPEC / GDD / Wiki 中的旧单文件 HTML、旧存档兼容和临时素材描述。

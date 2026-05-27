@@ -194,7 +194,7 @@ function narrativeFromHistoryContent(content: string) {
       if (typeof parsed.narrative === 'string' && parsed.narrative.trim()) return parsed.narrative;
     }
   } catch {
-    // Keep the raw content if the old assistant turn was not strict JSON.
+    // Keep the raw content if the assistant turn was not strict JSON.
   }
   return content;
 }
@@ -255,9 +255,9 @@ function normalizeClues(value: unknown) {
 
 function normalizePlayerLocations(value: unknown, players: Investigator[], fallback: SceneId) {
   const source = isRecord(value) ? value : {};
-  return Object.fromEntries(players.map((player, index) => [
+  return Object.fromEntries(players.map((player) => [
     player.id,
-    normalizeSceneId(source[player.id] ?? source[String(index)] ?? fallback)
+    normalizeSceneId(source[player.id] ?? fallback)
   ])) as Record<string, SceneId>;
 }
 
@@ -361,9 +361,9 @@ export function createInitialGameState(players: Investigator[]): GameState {
   };
 }
 
-export function hydrateGameState(value: unknown, fallbackPlayers: unknown[] = []): GameState {
+export function hydrateGameState(value: unknown): GameState {
   const source = isRecord(value) ? value : {};
-  const rawPlayers = Array.isArray(source.players) && source.players.length ? source.players : fallbackPlayers;
+  const rawPlayers = Array.isArray(source.players) && source.players.length ? source.players : [];
   const players = rawPlayers
     .map((player, index) => normalizeInvestigator(player, index))
     .filter((player): player is Investigator => Boolean(player));

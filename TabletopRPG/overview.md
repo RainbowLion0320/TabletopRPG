@@ -33,7 +33,7 @@ updated: 2026-05-27
 - Together / Split 两种探索模式。
 - AI 推荐行动建议。
 - 资料抽屉：当前 NPC、已获线索、行动日志。
-- localStorage 存档：当前 key 为 `trpg-saves-v2`，兼容旧 `trpg-saves`。
+- localStorage 存档：当前 key 为 `trpg-saves-v2`。
 - 首个剧本模块「雾中消逝」：5 个场景、6 个 NPC 条目、8 个线索物品。
 
 ## 当前未实现/不在 MVP 范围

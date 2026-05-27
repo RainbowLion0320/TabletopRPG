@@ -1,6 +1,6 @@
 # TabletopRPG Technical Spec
 
-> Version: v0.3  
+> Version: v0.4
 > Updated: 2026-05-27  
 > Scope: current React/Vite implementation
 
@@ -85,10 +85,9 @@ The reducer is in `src/state/gameReducer.ts`. External or persisted state must p
 | Key | Status | Purpose |
 | --- | --- | --- |
 | `trpg-saves-v2` | current | Save slots, capped at 12 |
-| `trpg-saves` | legacy read/delete | Old save format, hydrated into current state |
 | `trpg-api` | current | Provider, API key, endpoint, model |
 
-Current UI loads the latest valid save. `deleteSave(id)` exists in the service layer but has no current UI entry.
+Current UI loads the latest valid save. Explicit save-slot deletion is not implemented in the service layer or UI.
 
 ## 7. AI DM Contract
 

@@ -11,14 +11,13 @@ updated: 2026-05-27
 
 ## 概述
 
-当前存档系统基于 browser localStorage。UI 支持保存当前游戏、读取最近有效存档、标题页继续游戏；服务层支持删除存档但当前没有删除 UI。
+当前存档系统基于 browser localStorage。UI 支持保存当前游戏、读取最近有效存档、标题页继续游戏。
 
 ## localStorage Key 分配
 
 | Key | 状态 | 用途 |
 |-----|------|------|
 | `trpg-saves-v2` | 当前 | 新版存档槽位数组，最多 12 条 |
-| `trpg-saves` | 兼容 | 旧版存档数组，读取时水合为新版状态 |
 | `trpg-api` | 当前 | AI Provider/API Key/endpoint/model |
 
 ## 存档数据结构
@@ -36,8 +35,7 @@ interface SaveSlot {
 `gameState` 在保存和读取时都会经过 `hydrateGameState()`，用于补齐或修复：
 
 - 缺失的 `messages` / `suggestions` / `actionLog` 等新字段。
-- 旧版 `playerLocations` 的数字索引。
-- 旧版角色字段缺失的 `id`、`currentHp`、`skills` 等。
+- 角色字段缺失的 `id`、`currentHp`、`skills` 等。
 - 非法场景、NPC、线索等引用。
 
 ## 功能特性
@@ -51,11 +49,10 @@ interface SaveSlot {
 ### 读档
 - 标题页“继续游戏”读取最新有效存档。
 - 游戏菜单“读取存档”也读取最新有效存档。
-- 读取时合并 `trpg-saves-v2` 与旧 `trpg-saves`，按时间倒序去重。
+- 读取 `trpg-saves-v2`，按时间倒序去重。
 
 ### API 配置
 - `trpg-api` 保存 provider、apiKey、endpoint、model。
-- 兼容旧配置中的 `key` 字段，会归一化为 `apiKey`。
 
 ## 当前限制
 

@@ -70,4 +70,4 @@ TabletopRPG/
 
 ## 资源说明
 
-当前首屏使用 `assets/scenes/scene_main_fog_london.gif` 作为临时高表现力场景资源。后续美术可替换为同等横屏规格的场景图，建议主视觉按 16:9 准备，目标展示尺寸以 1920x1080 为基准。
+当前首屏使用 `assets/scenes/scene_main_fog_london.gif` 作为高表现力场景资源。后续美术可替换为同等横屏规格的场景图，建议主视觉按 16:9 准备，目标展示尺寸以 1920x1080 为基准。

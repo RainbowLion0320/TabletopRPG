@@ -1,6 +1,6 @@
 # TabletopRPG PRD
 
-> Version: v0.3  
+> Version: v0.4
 > Updated: 2026-05-27  
 > Product baseline: Vite + React + TypeScript MVP
 
@@ -29,7 +29,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 - Strict JSON-oriented AI response contract with fallback parsing.
 - D100 skill check flow handled by the frontend.
 - State updates for HP, SAN, flags, scene change, clues, active NPC, and suggested actions.
-- localStorage saves with latest-save load and legacy `trpg-saves` hydration.
+- localStorage saves with latest-save load through `trpg-saves-v2`.
 - Built-in story data for "雾中消逝": 5 scenes, 6 NPC entries, 8 clue items.
 
 ### Out of Scope for Current MVP
@@ -54,10 +54,10 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 
 ### Continue Game
 
-1. App reads saves from `trpg-saves-v2` and legacy `trpg-saves`.
+1. App reads saves from `trpg-saves-v2`.
 2. Title screen enables "继续游戏" when a valid save exists.
 3. User loads the latest save.
-4. App hydrates missing or old fields before rendering.
+4. App hydrates missing fields before rendering.
 
 ### Action Round
 
@@ -84,7 +84,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 | AI response | Invalid scene names, unknown NPCs, string numeric deltas, and clue names are normalized or ignored safely |
 | Dice | 96-100 is treated as fumble before success levels |
 | Saves | Latest save is visible on title screen after saving and returning home |
-| Legacy saves | Old `trpg-saves` payloads can be loaded if they contain recoverable character/game state |
+| Saves | Invalid save payloads are ignored instead of crashing the title or game screen |
 
 ## 6. Traceability
 
@@ -101,7 +101,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 
 ## 7. Open Product Backlog
 
-- Add save slot list and delete UI using existing `deleteSave()`.
+- Add save slot list and delete UI when the product needs explicit slot management.
 - Add custom investigator creation only after preset flow stays stable.
 - Move API calls behind a backend proxy before public deployment with shared keys.
 - Add automated smoke tests for title -> setup -> game -> action -> save/load.

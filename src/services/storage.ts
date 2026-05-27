@@ -3,7 +3,6 @@ import { storyData } from '../data/storyData';
 import { hydrateGameState } from '../state/gameReducer';
 
 const SAVE_KEY = 'trpg-saves-v2';
-const LEGACY_SAVE_KEY = 'trpg-saves';
 const API_KEY = 'trpg-api';
 const MAX_SAVES = 12;
 
@@ -23,8 +22,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function normalizeSaveSlot(value: unknown): SaveSlot | null {
   if (!isRecord(value)) return null;
 
-  const fallbackPlayers = isRecord(value.character) ? [value.character] : [];
-  const gameState = hydrateGameState(value.gameState, fallbackPlayers);
+  const gameState = hydrateGameState(value.gameState);
   if (!gameState.players.length) return null;
 
   const id = Number(value.id) || Date.now();
@@ -42,7 +40,7 @@ function normalizeSaveSlot(value: unknown): SaveSlot | null {
 }
 
 export function readSaves(): SaveSlot[] {
-  const merged = [...parseArray(SAVE_KEY), ...parseArray(LEGACY_SAVE_KEY)]
+  const merged = parseArray(SAVE_KEY)
     .flatMap((slot) => {
       const normalized = normalizeSaveSlot(slot);
       return normalized ? [normalized] : [];
@@ -71,17 +69,11 @@ export function saveGameState(gameState: GameState) {
   return slot;
 }
 
-export function deleteSave(id: number) {
-  localStorage.setItem(SAVE_KEY, JSON.stringify(parseArray(SAVE_KEY).filter((slot) => !isRecord(slot) || Number(slot.id) !== id)));
-  localStorage.setItem(LEGACY_SAVE_KEY, JSON.stringify(parseArray(LEGACY_SAVE_KEY).filter((slot) => !isRecord(slot) || Number(slot.id) !== id)));
-}
-
 export function readApiConfig(): ApiConfig | null {
   try {
-    const cfg = JSON.parse(localStorage.getItem(API_KEY) || 'null') as (ApiConfig & { key?: string }) | null;
+    const cfg = JSON.parse(localStorage.getItem(API_KEY) || 'null') as ApiConfig | null;
     if (!cfg) return null;
-    const apiKey = cfg.apiKey || cfg.key || '';
-    return apiKey ? { ...cfg, apiKey } : null;
+    return cfg.apiKey ? cfg : null;
   } catch {
     return null;
   }
