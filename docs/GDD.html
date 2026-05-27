@@ -205,9 +205,9 @@ footer {
 <a href="#s5-2" class="sub">5.2 场景图规划</a>
 <a href="#s5-3" class="sub">5.3 立绘规划</a>
 <a href="#s5-4" class="sub">5.4 骰子动画</a>
-<a href="#s5-5" class="sub">5.5 音效规划（DEMO后实现）</a>
+<a href="#s5-5" class="sub">5.5 音效规划（MVP后实现）</a>
 <a href="#s6" class="">六、多人系统设计</a>
-<a href="#s6-1" class="sub">6.1 DEMO阶段：本地多人（同屏轮流制）</a>
+<a href="#s6-1" class="sub">6.1 MVP阶段：本地同屏多人</a>
 <a href="#s6-2" class="sub">6.2 后续阶段：局域网多人</a>
 <a href="#s7" class="">七、AI DM系统设计</a>
 <a href="#s7-1" class="sub">7.1 AI DM职责</a>
@@ -217,7 +217,7 @@ footer {
 <a href="#s7-5" class="sub">7.5 骰子权威性（已决策）</a>
 <a href="#s7-6" class="sub">7.6 多玩家冲突处理（已决策）</a>
 <a href="#s7-7" class="sub">7.7 Prompt注入防御方案</a>
-<a href="#s7-8" class="sub">7.8 待线下讨论的核心问题</a>
+<a href="#s7-8" class="sub">7.8 剩余规则边界（默认方案）</a>
 <a href="#s8" class="">八、角色创建系统</a>
 <a href="#s8-1" class="sub">8.1 推荐职业（《雾中消逝》适配）</a>
 <a href="#s8-2" class="sub">8.2 创建流程</a>
@@ -282,14 +282,15 @@ footer {
 <tr><td>核心体验</td><td>多人玩家在AI DM主持下，共同推进剧本模组，体验沉浸式跑团</td></tr>
 <tr><td>首发模组</td><td>《雾中消逝》（Disappear in Fog）</td></tr>
 <tr><td>背景时代</td><td>1920年，英国伦敦</td></tr>
-<tr><td>游玩人数</td><td>DEMO：本地多人（2-5人）；后续：局域网多人</td></tr>
+<tr><td>游玩人数</td><td>当前 MVP：1-4 名预设调查员；后续完整跑团目标：2-5 人与局域网多人</td></tr>
 <tr><td>游玩时长</td><td>约3小时（单次完整模组）</td></tr>
 </tbody></table></div>
 <h3 id="h-1">核心体验宣言</h3>
 <blockquote><p>你不需要一个KP朋友，AI就是你的KP。</p><p>带上队友和角色卡，1920年的伦敦雾夜等着你们。</p></blockquote>
 <hr>
 <h2 id="s2">二、玩家流程总览</h2>
-<pre><code>创建角色 → 组队（2-5人）→ 进入游戏
+<pre><code>当前 MVP：选择 1-4 名预设调查员 → 进入游戏
+后续目标：自定义角色 → 组队（2-5人）→ 进入游戏
     ↓
 【第一幕】摩勒住宅：接受委托，收集线索
     ↓
@@ -349,12 +350,12 @@ footer {
     ↓
 掷 D100
     ↓
-≤ 技能值/5  → 极难成功（大成功）⭐
+96-100      → 大失败（Fumble，优先判定）💀
+≤ 技能值/5  → 极难成功 ⭐
 ≤ 技能值/2  → 困难成功
 ≤ 技能值    → 普通成功
-&gt; 技能值    → 失败
-96-100      → 大失败（Fumble）💀</code></pre>
-<p><strong>优劣势规则</strong></p>
+&gt; 技能值    → 失败</code></pre>
+<p><strong>优劣势规则（设计目标，当前 MVP 未自动化）</strong></p>
 <ul>
 <li>优势：掷两次D100，取十位数较小值</li>
 <li>劣势：掷两次D100，取十位数较大值</li>
@@ -375,6 +376,7 @@ footer {
 <tr><td>克苏鲁神话</td><td>00%</td><td>幸运</td><td>Luck</td></tr>
 </tbody></table></div>
 <h3 id="s3-4">3.4 战斗系统</h3>
+<blockquote><p>当前 MVP 尚未自动化完整战斗轮序和伤害系统；本节为后续实现目标。当前遇到战斗时，由 AI DM 请求前端检定并按结果叙事，角色退场按 7.8 的默认保护规则处理。</p></blockquote>
 <p><strong>回合流程</strong></p>
 <pre><code>1. 宣言阶段：所有人宣布行动意图
 2. 行动顺序：DEX从高到低
@@ -395,10 +397,11 @@ AI DM解析：
 <p><strong>濒死与死亡</strong></p>
 <ul>
 <li>HP ≤ 0：濒死，每轮失去1HP，需急救</li>
-<li>HP降至负值等于最大HP：当场死亡</li>
+<li>完整规则目标：HP 降至负值等于最大 HP 时当场死亡；当前 MVP 先按 7.8 处理为软退场/救援机会</li>
 <li>重伤（单次≥最大HP/2）：体格检定失败→昏迷</li>
 </ul>
 <h3 id="s3-5">3.5 SAN值系统</h3>
+<blockquote><p>当前 MVP 尚未自动化完整疯狂表；本节保留数值规则与后续实现目标。SAN≤0 或失控场景按 7.8 先采用短期失控/剧情代价处理。</p></blockquote>
 <p><strong>《雾中消逝》SAN损失速查</strong></p>
 <div class="table-wrap"><table>
 <thead><tr><th>事件</th><th>SAN损失</th></tr></thead>
@@ -418,7 +421,7 @@ AI DM解析：
 <ul>
 <li>单次SAN损失 ≥ 1/5当前SAN → 临时疯狂（1d10轮）</li>
 <li>单次SAN损失 ≥ 1/2当前SAN → 不定期疯狂（1d10×10小时）</li>
-<li>SAN = 0 → 永久疯狂</li>
+<li>完整规则目标：SAN = 0 → 永久疯狂；当前 MVP 先按 7.8 处理为短期失控/剧情代价</li>
 </ul>
 <hr>
 <h2 id="s4">四、剧本模组：《雾中消逝》完整数据</h2>
@@ -534,7 +537,7 @@ AI DM解析：
   后续触发 → 暴徒事件（若调查员晚上去贝尔街）
 
 [S03 老赫特]
-  可选场景，仅丰富叙事，无关键线索
+  可选支线/替代信息源：提供“老鼠”信息和卡森其方向，但不是唯一主线入口
 
 [S04 卡森其药店] ← 核心场景，必经
   到达时间：约下午7点
@@ -608,12 +611,12 @@ AI DM解析：
 <h3 id="s5-4">5.4 骰子动画</h3>
 <ul>
 <li>检定时触发D100骰子翻滚动画（CSS3+JS实现）</li>
-<li>大成功：⭐金色光效 + &quot;极难成功！&quot;</li>
+<li>极难成功：⭐金色光效 + &quot;极难成功！&quot;</li>
 <li>失败：灰色淡出</li>
 <li>大失败：💀红色震动 + &quot;大失败！&quot;</li>
 <li>骰子外观：克苏鲁触手图案</li>
 </ul>
-<h3 id="s5-5">5.5 音效规划（DEMO后实现）</h3>
+<h3 id="s5-5">5.5 音效规划（MVP后实现）</h3>
 <div class="table-wrap"><table>
 <thead><tr><th>场景</th><th>音效/BGM</th></tr></thead>
 <tbody>
@@ -622,42 +625,40 @@ AI DM解析：
 <tr><td>贝尔街夜晚</td><td>风声，远处雾号，脚步声回响</td></tr>
 <tr><td>浓雾咒术</td><td>扭曲弦乐，海浪声</td></tr>
 <tr><td>战斗</td><td>打击音效，急促弦乐</td></tr>
-<tr><td>大成功</td><td>清脆铃声</td></tr>
+<tr><td>极难成功</td><td>清脆铃声</td></tr>
 <tr><td>大失败</td><td>沉重撞击声</td></tr>
 </tbody></table></div>
 <hr>
 <h2 id="s6">六、多人系统设计</h2>
-<h3 id="s6-1">6.1 DEMO阶段：本地多人（同屏轮流制）</h3>
+<h3 id="s6-1">6.1 MVP阶段：本地同屏多人</h3>
 <p><strong>实现方式</strong></p>
 <ul>
-<li>同一屏幕，玩家轮流操作（Hot Seat）</li>
-<li>当前行动玩家名字高亮显示</li>
-<li>其他玩家处于&quot;观看模式&quot;，可看到所有信息</li>
+<li>同一浏览器/同一屏幕，本地 hot-seat 体验。</li>
+<li>当前可选 1-4 名预设调查员。</li>
+<li>一起行动（Together）：所有调查员各输入一条本轮行动，AI 一次性结算。</li>
+<li>分头探索（Split）：选择一名调查员和所在场景，AI 单独结算该调查员行动。</li>
+<li>多玩家冲突按 7.6 执行：首次重输，本轮仍冲突则使用 <code>幸运</code> 检定仲裁。</li>
 </ul>
 <p><strong>探索阶段轮序</strong></p>
 <ul>
-<li>按玩家座位顺序轮流</li>
-<li>每人每轮可执行一个主要行动</li>
+<li>Together 没有固定座位顺序，以本轮声明整体结算。</li>
+<li>Split 用 <code>currentSplitPlayer</code> 指定当前行动调查员。</li>
+<li><code>playerLocations</code> 只在 Split 中表达每名调查员所在场景。</li>
 </ul>
-<p><strong>战斗阶段轮序</strong></p>
+<p><strong>战斗阶段轮序（设计目标，当前 MVP 未自动化）</strong></p>
 <ul>
-<li>按角色DEX值从高到低</li>
-<li>AI DM控制NPC/怪物轮次</li>
-<li>显示倒计时提示（扶桑花号6-7轮逃脱）</li>
+<li>完整战斗轮序后续按角色 DEX 值从高到低执行。</li>
+<li>AI DM 控制 NPC/怪物轮次。</li>
+<li>显示倒计时提示（扶桑花号6-7轮逃脱）。</li>
 </ul>
-<p><strong>本地数据结构</strong></p>
-<pre><code class="language-javascript">GameSession {
-  players: Player[],           // 2-5名玩家
-  currentPlayerIndex: number,
-  phase: &quot;exploration&quot; | &quot;combat&quot; | &quot;dialogue&quot;,
-  combatOrder: Player[],       // DEX排序
-  scene: SceneState,
-  flags: {                     // 剧情标记
-    metMontreal: boolean,      // 见过蒙特利尔→触发暴徒
-    foundMap: boolean,         // 找到地图→解锁港口
-    fogTriggered: boolean,     // 浓雾触发标记
-    shipRound: number          // 扶桑花号倒计时
-  }
+<p><strong>本地数据结构（当前实现）</strong></p>
+<pre><code class="language-typescript">GameState {
+  players: Investigator[];      // 当前 MVP：1-4 名预设调查员
+  exploreMode: &quot;together&quot; | &quot;split&quot;;
+  currentSplitPlayer: number;
+  playerLocations: Record&lt;string, SceneId&gt;;
+  declarations: Record&lt;string, string&gt;;
+  flags: Record&lt;string, unknown&gt;;
 }</code></pre>
 <h3 id="s6-2">6.2 后续阶段：局域网多人</h3>
 <p><strong>技术方案：Node.js + WebSocket</strong></p>
@@ -835,20 +836,34 @@ AI DM输出结构（JSON）
 <li>自由输入字数上限（200字）</li>
 <li>前置过滤系统指令特征词</li>
 </ul>
-<h3 id="s7-8">7.8 待线下讨论的核心问题</h3>
-<ol>
-<li><strong>剧情硬节点</strong>：哪些事件是必须触发的？（已知：浓雾/深潜者逃跑是必触发）</li>
-<li><strong>角色死亡处理</strong>：HP=0/SAN=0时如何处理？（旁观/替补/结局触发？）</li>
-<li><strong>AI记忆长度</strong>：上下文窗口限制下如何保持长线剧情一致性？</li>
-<li><strong>《雾中消逝》特殊处理</strong>：</li>
-</ol>
+<h3 id="s7-8">7.8 剩余规则边界（默认方案）</h3>
+<p><strong>剧情硬节点</strong></p>
 <ul>
-<li>蒙特利尔&quot;语言类技能默认失败&quot;如何对玩家呈现？</li>
-<li>深潜者露脸SAN check的时机控制</li>
-<li>扶桑花号6-7轮倒计时如何计数和展示？</li>
+<li>必触发：S04 的深潜者出逃、浓雾咒术、I07 地图笔记；S05 的终幕结算。</li>
+<li>可绕路但不可永久跳过：S03 老赫特、S02 警察局都可以作为信息源或压力源，玩家不去时由替代线索、NPC 反应或时间压力补足。</li>
+<li>不直接封死主线：关键线索被破坏时，AI DM 通过残片、目击者、NPC 转述、港口痕迹或后续检定提供替代路径。</li>
+</ul>
+<p><strong>角色死亡 / 失控处理</strong></p>
+<ul>
+<li>当前 MVP 不主动制造永久退场，HP≤0 先进入濒死，允许队友急救、NPC 干预或剧情代价换取继续参与。</li>
+<li>SAN≤0 先进入短期失控或恐惧反应，由 AI DM 描述失控行为和代价；完整长期疯狂表进入 backlog。</li>
+<li>如果玩家坚持高风险行为导致角色不可逆退场，AI DM 应明确后果、二次确认，并允许该玩家以旁观、临时 NPC 或后续替补角色继续参与。</li>
+</ul>
+<p><strong>AI 记忆长度</strong></p>
+<ul>
+<li>当前实现通过 <code>conversationHistory</code> 保留近期对话，通过 <code>flags</code>、<code>clues</code>、<code>currentScene</code>、<code>playerLocations</code> 和行动日志保留结构化状态。</li>
+<li>当上下文过长时，AI DM 优先依赖结构化状态，不把长篇自然语言回忆作为唯一事实来源。</li>
+<li>后续需要增加摘要压缩时，摘要只能记录已发生事实、线索、NPC态度和未解决问题，不应改写骰子结果或剧情标记。</li>
+</ul>
+<p><strong>《雾中消逝》特殊处理</strong></p>
+<ul>
+<li>蒙特利尔的语言类技能默认失败不应明说成“系统免疫”，而应表现为态度强硬、话术被识破、回答避重就轻；心理学可降为困难难度。</li>
+<li>深潜者露脸 SAN check 在玩家首次清楚目击深潜者、浓雾咒术或非人特征时触发；模糊声音、传闻和间接痕迹不强制触发。</li>
+<li>扶桑花号倒计时从 S05 明确进入追逐/战斗后开始计数，以“轮”为单位；交涉路线不使用 6-7 轮逃脱倒计时，但可以用雾、船员催促和敌方警觉制造压力。</li>
 </ul>
 <hr>
 <h2 id="s8">八、角色创建系统</h2>
+<blockquote><p>当前 MVP 使用 1-4 名预设调查员开局；本章为后续 5 步自定义角色创建设计，不代表当前已实现。</p></blockquote>
 <h3 id="s8-1">8.1 推荐职业（《雾中消逝》适配）</h3>
 <div class="table-wrap"><table>
 <thead><tr><th>职业</th><th>本职技能</th><th>模组适配度</th></tr></thead>
@@ -885,14 +900,19 @@ AI接入：OpenAI / Anthropic / MiMo / OpenAI-compatible Custom Endpoint
 资源：Vite import 场景图、NPC立绘和样式资源
 构建：npm run build 生成 dist/</code></pre>
 <h3 id="s9-2">9.2 AI API接入</h3>
-<pre><code class="language-javascript">AIConfig {
-  provider: &quot;openai&quot; | &quot;anthropic&quot; | &quot;mimo&quot; | &quot;custom&quot;,
-  model: &quot;gpt-4o&quot; | &quot;claude-3-5-sonnet-latest&quot; | &quot;mimo-v2.5&quot; | ...,
-  apiKey: string,
-  endpoint: string,
-  maxTokens: 2048,
-  temperature: 0.75  // 偏向稳定，但保留创意
+<p>当前运行时配置：</p>
+<pre><code class="language-typescript">ApiConfig {
+  provider: &quot;openai&quot; | &quot;anthropic&quot; | &quot;mimo&quot; | &quot;custom&quot;;
+  apiKey: string;
+  endpoint?: string;
+  model?: string;
 }</code></pre>
+<p>后续可配置项：</p>
+<ul>
+<li><code>maxTokens</code>：进入服务端 AI 代理或高级设置后再开放。</li>
+<li><code>temperature</code>：当前由调用层固定控制，后续可按“稳定裁判 / 戏剧叙事”做预设。</li>
+<li>Provider-specific safety style：不同模型的 JSON 约束、错误重试和内容安全策略。</li>
+</ul>
 <h3 id="s9-3">9.3 局域网多人技术栈（后续）</h3>
 <pre><code>服务端：Node.js + Express + Socket.io
 客户端：复用当前 React/Vite 前端
@@ -918,19 +938,17 @@ AI代理：服务端统一调用（隐藏密钥）
 <h2 id="s10">十、开发计划</h2>
 <h3 id="s10-phase-1">Phase 1：MVP（本地多人，React/Vite）</h3>
 <div class="table-wrap"><table>
-<thead><tr><th>优先级</th><th>任务</th><th>说明</th></tr></thead>
+<thead><tr><th>优先级</th><th>项目</th><th>当前状态</th><th>说明</th></tr></thead>
 <tbody>
-<tr><td>P0</td><td>COC规则引擎</td><td>属性/技能检定/战斗/SAN系统</td></tr>
-<tr><td>P0</td><td>AI DM核心Prompt + 防注入</td><td>《雾中消逝》完整剧本数据内嵌</td></tr>
-<tr><td>P0</td><td>角色创建系统</td><td>骰点+技能分配+导出</td></tr>
-<tr><td>P0</td><td>基础UI框架</td><td>叙事区+输入区+状态栏</td></tr>
-<tr><td>P1</td><td>场景图展示</td><td>S01-S05场景图切换</td></tr>
-<tr><td>P1</td><td>立绘系统</td><td>NPC立绘+状态切换</td></tr>
-<tr><td>P1</td><td>骰子动画</td><td>D100 CSS3动画</td></tr>
-<tr><td>P1</td><td>本地多人轮流系统</td><td>Hot Seat模式</td></tr>
-<tr><td>P2</td><td>存档/读档</td><td>localStorage</td></tr>
-<tr><td>P2</td><td>剧情标记系统</td><td>flags追踪（暴徒/浓雾/地图等）</td></tr>
-<tr><td>P3</td><td>SAN疯狂系统</td><td>临时/不定期疯狂</td></tr>
+<tr><td>P0</td><td>React/Vite 基础 UI</td><td>已实现</td><td>标题页、预设选择、游戏主界面、资料抽屉、菜单</td></tr>
+<tr><td>P0</td><td>AI DM 核心 Prompt + 防注入</td><td>已实现并持续迭代</td><td>JSON 契约、容错度、骰子权威、冲突处理</td></tr>
+<tr><td>P0</td><td>D100 检定</td><td>已实现</td><td>前端骰子权威，含 <code>幸运</code> 冲突仲裁</td></tr>
+<tr><td>P0</td><td>剧情标记 / 线索 / 场景</td><td>已实现基础版</td><td>5 个场景、6 个 NPC 条目、8 个线索物品</td></tr>
+<tr><td>P1</td><td>本地同屏多人</td><td>已实现基础版</td><td>1-4 名预设调查员，Together/Split 两种探索方式</td></tr>
+<tr><td>P1</td><td>存档 / 读档</td><td>已实现</td><td><code>trpg-saves-v2</code> 最近存档与存档槽位</td></tr>
+<tr><td>P2</td><td>5 步自定义角色创建</td><td>Backlog</td><td>保留骰点、技能分配、导出设计</td></tr>
+<tr><td>P2</td><td>完整战斗轮序 / 伤害 / SAN 疯狂</td><td>Backlog</td><td>规则保留，当前 MVP 未自动化</td></tr>
+<tr><td>P3</td><td>骰子动画 / 音效 / BGM</td><td>Backlog</td><td>当前只有基础检定卡和静态反馈</td></tr>
 </tbody></table></div>
 <h3 id="s10-phase-2">Phase 2：局域网多人</h3>
 <div class="table-wrap"><table>
@@ -953,11 +971,10 @@ AI代理：服务端统一调用（隐藏密钥）
 <hr>
 <h2 id="s11">十一、待确认事项</h2>
 <ol>
-<li><strong>AI DM自由度边界</strong>——线下讨论后细化第七章</li>
-<li><strong>立绘素材</strong>——现有素材？AI生成？风格（写实/插画）？</li>
-<li><strong>场景图</strong>——AI生成（Midjourney/ComfyUI）还是手绘？</li>
-<li><strong>AI API</strong>——OpenAI还是Anthropic？是否需要本地模型支持？</li>
-<li><strong>游戏正式名称</strong>——暂定&quot;《雾中消逝》AI跑团&quot;</li>
+<li><strong>立绘素材升级路线</strong>——现有素材继续使用；正式版是写实、插画、AI 生成还是手绘仍待定。</li>
+<li><strong>场景图升级路线</strong>——<code>scene_main_fog_london.gif</code> 作为高表现力主视觉保留；其余场景最终美术制作方式待定。</li>
+<li><strong>本地模型支持</strong>——OpenAI / Anthropic / MiMo / 自定义端点已支持；是否投入本地模型路线仍待评估。</li>
+<li><strong>游戏正式名称</strong>——暂定“《雾中消逝》AI跑团”。</li>
 </ol>
 <hr>
 <p><em>GDD v0.4 | 2026-05-27 | 基于当前代码、PRD、SPEC 和保留设计目标整理</em> <em>剧本原作：舒爾茲上尉（790086893@qq.com）</em></p>
