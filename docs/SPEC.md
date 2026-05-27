@@ -19,6 +19,7 @@
 
 ```bash
 npm install
+npm start
 npm run dev
 npm run build
 npm run preview

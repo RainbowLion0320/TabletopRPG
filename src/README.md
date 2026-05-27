@@ -19,6 +19,7 @@ src/
 ## 命令
 
 ```bash
+npm start
 npm run dev
 npm run build
 npm run preview

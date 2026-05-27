@@ -15,9 +15,13 @@ AI 驱动的横屏网页跑团游戏。当前项目已经迁移为 Vite + React 
 
 ## 快速开始
 
+最简单方式：双击项目根目录的 `start-game.bat`。脚本会检查依赖并自动打开浏览器。
+
+命令行方式：
+
 ```bash
 npm install
-npm run dev
+npm start
 ```
 
 构建生产版本：
