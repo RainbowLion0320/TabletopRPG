@@ -1,4 +1,4 @@
-import { useMemo, useReducer, useState } from 'react';
+import { useReducer, useRef, useState } from 'react';
 import { ActionDock } from '../components/game/ActionDock';
 import { ApiConfigModal } from '../components/game/ApiConfigModal';
 import { GameMenu } from '../components/game/GameMenu';
@@ -19,17 +19,25 @@ import type { ApiConfig, GameState, Investigator, SceneId } from '../types/game'
 type Screen = 'title' | 'setup' | 'game';
 
 export function App() {
-  const saves = useMemo(readSaves, []);
+  const [saves, setSaves] = useState(() => readSaves());
   const [screen, setScreen] = useState<Screen>('title');
   const [state, dispatch] = useReducer(gameReducer, null, () => createInitialGameState([]));
   const [menuOpen, setMenuOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [apiOpen, setApiOpen] = useState(false);
   const [toast, setToast] = useState('');
+  const toastTimer = useRef<number | null>(null);
 
   function notify(text: string) {
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
     setToast(text);
-    window.setTimeout(() => setToast(''), 1800);
+    toastTimer.current = window.setTimeout(() => setToast(''), 1800);
+  }
+
+  function refreshSaves() {
+    const latestSaves = readSaves();
+    setSaves(latestSaves);
+    return latestSaves;
   }
 
   function startGame(players: Investigator[]) {
@@ -38,7 +46,7 @@ export function App() {
   }
 
   function loadLatest() {
-    const latest = readSaves()[0];
+    const latest = refreshSaves()[0];
     if (!latest) return;
     dispatch({ type: 'restore', state: latest.gameState });
     setScreen('game');
@@ -46,12 +54,13 @@ export function App() {
 
   function saveCurrentGame() {
     saveGameState(state);
+    refreshSaves();
     setMenuOpen(false);
     notify('已保存');
   }
 
   function loadCurrentLatest() {
-    const latest = readSaves()[0];
+    const latest = refreshSaves()[0];
     if (!latest) {
       notify('暂无存档');
       return;
@@ -161,7 +170,11 @@ export function App() {
       <GameMenu
         mode={state.exploreMode}
         open={menuOpen}
-        onHome={() => setScreen('title')}
+        onHome={() => {
+          refreshSaves();
+          setMenuOpen(false);
+          setScreen('title');
+        }}
         onLoad={loadCurrentLatest}
         onModeChange={(mode) => {
           dispatch({ type: 'setExploreMode', mode });

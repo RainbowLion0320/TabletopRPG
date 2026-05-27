@@ -22,12 +22,13 @@ function compactPlayers(state: GameState) {
 }
 
 export function buildSystemPrompt(state: GameState) {
+  const currentScene = storyData.scenes[state.currentScene] ?? storyData.scenes.S01;
   const snapshot = {
-    currentScene: storyData.scenes[state.currentScene].name,
+    currentScene: currentScene.name,
     playerLocations: Object.fromEntries(
       Object.entries(state.playerLocations).map(([playerId, sceneId]) => [
         state.players.find((player) => player.id === playerId)?.name ?? playerId,
-        storyData.scenes[sceneId].name
+        (storyData.scenes[sceneId] ?? currentScene).name
       ])
     ),
     flags: state.flags,
@@ -84,15 +85,36 @@ export function buildUserMessage(actions: PlayerAction[], mode: GameState['explo
 }
 
 function extractJson(raw: string): AiResponse {
-  const cleaned = raw.trim().replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
-  try {
-    return JSON.parse(cleaned) as AiResponse;
-  } catch {
-    const match = cleaned.match(/\{[\s\S]*\}/);
-    if (!match) {
-      return { narrative: cleaned, activeNpc: null, check: null, playerChoices: ['继续调查', '查看线索', '询问同伴'] };
+  const cleaned = raw.trim();
+  const candidates = [
+    cleaned.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1]?.trim(),
+    cleaned,
+    cleaned.slice(cleaned.indexOf('{'), cleaned.lastIndexOf('}') + 1)
+  ].filter((candidate): candidate is string => Boolean(candidate));
+
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate) as AiResponse;
+    } catch {
+      // Try the next candidate. The fallback below keeps the session moving.
     }
-    return JSON.parse(match[0]) as AiResponse;
+  }
+
+  return {
+    narrative: cleaned || 'AI 没有返回可显示内容，请重试或检查模型配置。',
+    activeNpc: null,
+    check: null,
+    playerChoices: ['继续调查', '查看线索', '询问同伴']
+  };
+}
+
+async function readJsonResponse(response: Response) {
+  const text = await response.text();
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.slice(0, 120)}`);
+    throw new Error(`AI 响应不是 JSON：${text.slice(0, 120)}`);
   }
 }
 
@@ -116,13 +138,13 @@ export async function callAiDm(config: ApiConfig, state: GameState, actions: Pla
         messages: history
       })
     });
-    const data = await response.json();
-    if (data.error) throw new Error(data.error.message);
+    const data = await readJsonResponse(response);
+    if (!response.ok || data.error) throw new Error(data.error?.message ?? `HTTP ${response.status}`);
     raw = data.content?.[0]?.text || '';
   } else {
-    const endpoint = config.provider === 'mimo'
+    const endpoint = (config.provider === 'mimo'
       ? 'https://token-plan-cn.xiaomimimo.com/v1'
-      : config.endpoint || 'https://api.openai.com/v1';
+      : config.endpoint || 'https://api.openai.com/v1').replace(/\/+$/, '');
     const model = config.provider === 'mimo' ? (config.model || 'mimo-v2.5') : (config.model || 'gpt-4o');
     const response = await fetch(`${endpoint}/chat/completions`, {
       method: 'POST',
@@ -139,8 +161,8 @@ export async function callAiDm(config: ApiConfig, state: GameState, actions: Pla
         ]
       })
     });
-    const data = await response.json();
-    if (data.error) throw new Error(data.error.message);
+    const data = await readJsonResponse(response);
+    if (!response.ok || data.error) throw new Error(data.error?.message ?? `HTTP ${response.status}`);
     raw = data.choices?.[0]?.message?.content || '';
   }
 
