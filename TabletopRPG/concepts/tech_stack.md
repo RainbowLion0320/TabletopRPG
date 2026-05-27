@@ -19,6 +19,7 @@ updated: 2026-05-27
 | **AI 接入** | Anthropic / OpenAI / MiMo / 自定义端点 | 覆盖主流与兼容 OpenAI 的服务 |
 | **数据存储** | localStorage + JSON | 无需后端，适合本地 Demo |
 | **游戏规则** | COC 第七版风格 D100 | 检定机制明确，适合 AI 裁判 |
+| **自动化测试** | Playwright | 覆盖核心浏览器 smoke 流程与 D100 规则 |
 | **策划文档** | Markdown + Wiki | Git 可追溯，便于 AI/人协作维护 |
 
 ## 当前架构结构
@@ -57,11 +58,12 @@ src/
 
 - API Key 由用户在 UI 中输入并保存在本地浏览器，不能硬编码进仓库。
 - 存档或 AI 响应进入 UI 前必须经过归一化，避免坏 JSON 或非法引用破坏主流程。
+- 核心流程修改后应运行 `npm run test:smoke`。
 - 当前项目无后端；公开部署前若要隐藏 API Key，需要新增服务端代理。
 
 ## 风险点
 
-- **AI 输出质量**：已用 JSON 提取、文本兜底、状态归一化降低风险。
+- **AI 输出质量**：已用 JSON 提取、文本兜底、状态归一化和 smoke tests 降低风险。
 - **localStorage 容量**：对话历史限制在最近 32 条 conversation turns。
 - **浏览器直调 API**：适合 Demo，不适合共享密钥的公开生产环境。
 

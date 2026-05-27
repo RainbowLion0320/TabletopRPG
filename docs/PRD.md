@@ -31,6 +31,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 - State updates for HP, SAN, flags, scene change, clues, active NPC, and suggested actions.
 - localStorage saves with latest-save load through `trpg-saves-v2`.
 - Built-in story data for "雾中消逝": 5 scenes, 6 NPC entries, 8 clue items.
+- Automated smoke tests for the title/setup/game flow, no-key AI settings guard, save/continue, invalid saves, and D100 fumble priority.
 
 ### Out of Scope for Current MVP
 
@@ -85,6 +86,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 | Dice | 96-100 is treated as fumble before success levels |
 | Saves | Latest save is visible on title screen after saving and returning home |
 | Saves | Invalid save payloads are ignored instead of crashing the title or game screen |
+| Smoke tests | `npm run test:smoke` passes the automated core-flow suite |
 
 ## 6. Traceability
 
@@ -98,11 +100,11 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 | Story module data | `src/data/storyData.ts` |
 | Preset investigators | `src/data/presets.ts` |
 | Skills/jobs | `src/data/skills.ts` |
+| Smoke tests | `tests/smoke.spec.ts` |
 
 ## 7. Open Product Backlog
 
 - Add save slot list and delete UI when the product needs explicit slot management.
 - Add custom investigator creation only after preset flow stays stable.
 - Move API calls behind a backend proxy before public deployment with shared keys.
-- Add automated smoke tests for title -> setup -> game -> action -> save/load.
 - Externalize prompt variants from code into `/prompts` after prompt iteration begins.

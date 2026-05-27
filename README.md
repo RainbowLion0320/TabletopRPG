@@ -26,6 +26,13 @@ npm run dev
 npm run build
 ```
 
+运行核心流程 smoke tests：
+
+```bash
+npx playwright install chromium
+npm run test:smoke
+```
+
 ## 目录结构
 
 ```text

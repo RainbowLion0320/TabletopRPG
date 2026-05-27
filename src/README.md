@@ -22,6 +22,7 @@ src/
 npm run dev
 npm run build
 npm run preview
+npm run test:smoke
 ```
 
 正式入口在项目根目录的 `index.html`。

@@ -74,3 +74,9 @@
 - 移除 50MB 临时 GIF 主视觉，S01 改用轻量 `scene_s01.svg`。
 - 将原始模组素材从 `src/modules/` 移至 `raw/`，避免被误认为运行时代码。
 - 更新 PRD / SPEC / GDD / Wiki 中的旧单文件 HTML、旧存档兼容和临时素材描述。
+
+## [2026-05-27] update | P0 smoke tests 落地
+
+- 新增 Playwright smoke tests，覆盖标题页、预设选角、主界面、无 API Key 防崩溃、保存/继续、非法存档过滤和 D100 大失败优先规则。
+- 新增 `npm run test:smoke` 命令。
+- 同步 PRD / SPEC / GDD / Wiki，将自动化 smoke tests 从开放 P0 移入已实现质量护栏。

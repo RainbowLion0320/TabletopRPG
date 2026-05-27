@@ -1,0 +1,93 @@
+import { expect, test, type Page } from '@playwright/test';
+import { rollD100 } from '../src/services/dice';
+import type { CheckRequest } from '../src/types/game';
+
+async function gotoClean(page: Page) {
+  await page.addInitScript(() => window.localStorage.clear());
+  await page.goto('/');
+}
+
+async function startNewGame(page: Page) {
+  await gotoClean(page);
+  await expect(page.getByRole('heading', { name: '雾中消逝' })).toBeVisible();
+  await page.getByRole('button', { name: /开始游戏/ }).click();
+  await expect(page.getByRole('heading', { name: '选择调查员' })).toBeVisible();
+  await expect(page.locator('.preset-card-modern.selected')).toHaveCount(2);
+  await page.getByRole('button', { name: /进入游戏/ }).click();
+  await expect(page.locator('.game-screen')).toBeVisible();
+}
+
+test('new game reaches the main game screen with preset investigators', async ({ page }) => {
+  await startNewGame(page);
+
+  await expect(page.getByText('等待所有玩家输入行动...')).toBeVisible();
+  await expect(page.getByPlaceholder('亨利·格雷 想要做什么...')).toBeVisible();
+  await expect(page.getByPlaceholder('艾达·华莱士 想要做什么...')).toBeVisible();
+  await expect(page.getByText('伊莎贝拉·摩勒').first()).toBeVisible();
+});
+
+test('submitting an action without an API key opens AI settings instead of crashing', async ({ page }) => {
+  await startNewGame(page);
+
+  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('检查书房桌面。');
+  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('安抚并询问伊莎贝拉。');
+  await page.getByRole('button', { name: /提交本轮行动/ }).click();
+
+  await expect(page.getByText('请先在菜单中配置 AI API Key。')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'AI DM 配置' })).toBeVisible();
+});
+
+test('saving a game enables continuing the latest save from the title screen', async ({ page }) => {
+  await startNewGame(page);
+
+  await page.getByRole('button', { name: /菜单/ }).click();
+  await page.getByRole('button', { name: /保存游戏/ }).click();
+  await expect(page.getByText('已保存')).toBeVisible();
+
+  await page.getByRole('button', { name: /菜单/ }).click();
+  await page.getByRole('button', { name: /返回首页/ }).click();
+
+  await expect(page.getByRole('heading', { name: '雾中消逝' })).toBeVisible();
+  await expect(page.getByText(/最近存档：/)).toBeVisible();
+  await expect(page.getByRole('button', { name: '继续游戏' })).toBeEnabled();
+
+  await page.getByRole('button', { name: '继续游戏' }).click();
+  await expect(page.locator('.game-screen')).toBeVisible();
+  await expect(page.getByText('等待所有玩家输入行动...')).toBeVisible();
+});
+
+test('invalid save payloads are ignored on the title screen', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.clear();
+    window.localStorage.setItem('trpg-saves-v2', JSON.stringify([
+      { id: 1, savedAt: 'broken', gameState: { players: [] } },
+      'not-a-save'
+    ]));
+  });
+  await page.goto('/');
+
+  await expect(page.getByRole('heading', { name: '雾中消逝' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '继续游戏' })).toBeDisabled();
+  await expect(page.getByText(/最近存档：/)).toHaveCount(0);
+});
+
+test('D100 fumble has priority over success thresholds', () => {
+  const originalRandom = Math.random;
+  const check: CheckRequest = {
+    player: '亨利·格雷',
+    skill: '幸运',
+    difficulty: '普通',
+    skillVal: 100,
+    threshold: 100
+  };
+
+  try {
+    Math.random = () => 0.95;
+    expect(rollD100(check)).toMatchObject({
+      roll: 96,
+      level: 'fumble'
+    });
+  } finally {
+    Math.random = originalRandom;
+  }
+});

@@ -22,6 +22,7 @@ npm install
 npm run dev
 npm run build
 npm run preview
+npm run test:smoke
 ```
 
 ## 3. Directory Contract
@@ -203,6 +204,23 @@ Story data also includes 6 NPC entries and 8 item entries. Assets are imported d
 ## 10. Known Technical Limits
 
 - AI calls happen in the browser, so user-entered API keys remain local but are exposed to the browser runtime.
-- There is no automated test suite yet.
+- Automated coverage is currently smoke-level only: `tests/smoke.spec.ts` covers core navigation, no-key AI guard, save/continue, invalid save filtering, and D100 fumble priority.
 - No server-side state, multiplayer synchronization, or API proxy exists.
 - `docs/GDD.html` is a static documentation mirror, not an application entry.
+
+## 11. Smoke Test Contract
+
+The project uses Playwright for core smoke coverage.
+
+| Command | Coverage |
+| --- | --- |
+| `npx playwright install chromium` | One-time local browser install before first Playwright run |
+| `npm run test:smoke` | Starts Vite, opens Chromium, and runs the core-flow suite |
+
+Current smoke coverage:
+
+- Title screen -> preset investigator setup -> main game screen.
+- Submitting actions without an API key opens AI settings instead of crashing.
+- Saving a game enables "continue latest save" from the title screen.
+- Invalid save payloads are ignored on the title screen.
+- D100 rolls `96-100` are fumbles before success thresholds.

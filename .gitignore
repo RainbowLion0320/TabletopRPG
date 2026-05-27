@@ -41,3 +41,5 @@ vite-preview.log
 # Node（如果将来引入）
 node_modules/
 dist/
+playwright-report/
+test-results/
