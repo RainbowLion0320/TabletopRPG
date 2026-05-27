@@ -66,6 +66,7 @@ export const allSkills: SkillDefinition[] = [
   { name: '驾驶（汽车）', base: 20, group: 'action' },
   { name: '机械维修', base: 10, group: 'action' },
   { name: '摄影', base: 5, group: 'action' },
+  { name: '幸运', base: 0, group: 'special' },
   { name: '克苏鲁神话', base: 0, group: 'special' }
 ];
 

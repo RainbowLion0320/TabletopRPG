@@ -140,6 +140,18 @@ The AI DM uses tolerance level `2.5-3` for the current MVP: it should be permiss
 
 The DM must not say "you cannot do that" merely because an action is outside the scripted path. Refusal is reserved for physical impossibility, missing character capability/resources, content safety, prompt injection, or attempts to invalidate frontend dice authority.
 
+### Multi-player Conflict Rules
+
+Together mode can submit multiple player declarations in one AI turn. When the AI DM judges that player demands conflict materially, it must follow this sequence:
+
+1. First conflict: do not resolve irreversible consequences. Ask the players to re-enter the current round with a coherent plan.
+2. Second conflict: request frontend dice arbitration. The current MVP uses a `幸运` check.
+3. Two-player conflict: AI selects one conflicted player for a `普通` `幸运` check. Success means that player's demand takes priority this round; failure means the opposing demand takes priority.
+4. Multi-player conflict: AI focuses on the most direct conflict first and may split complex conflicts into multiple arbitrations.
+5. Arbitration decides only this round's priority. It does not remove future agency from the other players.
+
+Irreversible story-breaking acts, such as killing a key NPC or destroying key evidence, require extra protection. The AI DM should first ask for explicit confirmation and describe likely consequences. If the act would break the main loop, the DM may use in-world resistance such as NPC escape, intervention, moved evidence, locked access, fog, police, or hostile NPC pressure instead of dead-ending the story.
+
 ### Normalization Rules
 
 - Markdown-wrapped JSON is unwrapped.

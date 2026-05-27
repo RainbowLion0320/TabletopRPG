@@ -1,6 +1,9 @@
 import type { CheckRequest, DiceResult, Investigator } from '../types/game';
 
 export function getSkillTotal(player: Investigator, skill: string) {
+  if (skill === '幸运' || skill.toLowerCase() === 'luck' || skill === '运气') {
+    return player.luck ?? player.attrs.Luck;
+  }
   const value = player.skills[skill];
   return value ? value.base + value.added : 25;
 }
