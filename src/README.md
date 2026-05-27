@@ -25,3 +25,10 @@ npm run preview
 ```
 
 正式入口在项目根目录的 `index.html`。
+
+## 当前运行事实
+
+- 角色创建 UI 当前是 1-4 名预设调查员选择，不包含自定义 5 步创建。
+- 存档服务使用 `trpg-saves-v2`，并兼容读取旧 `trpg-saves`。
+- AI 系统提示词当前在 `services/aiDm.ts` 内动态构建。
+- 游戏状态进入 UI 前应经过 `state/gameReducer.ts` 的水合/归一化逻辑。

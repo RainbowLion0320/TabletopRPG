@@ -4,6 +4,8 @@
 
 每次修改提示词必须通过 Git commit 记录，保留完整可回溯历史。
 
+> 当前运行版系统提示词仍内嵌在 `src/services/aiDm.ts` 的 `buildSystemPrompt()` 中。此目录用于后续外部化、版本化和对比不同提示词方案；新增文件后需要同步代码接入方式和 `docs/SPEC.md`。
+
 ## 文件命名规范
 
 ```

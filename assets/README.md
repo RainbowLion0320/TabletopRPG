@@ -6,8 +6,8 @@
 
 | 类型 | 命名格式 | 示例 |
 |------|----------|------|
-| 场景背景 | `scene_描述.png` | `scene_forest.png` |
-| 角色头像 | `avatar_职业或名称.png` | `avatar_warrior.png` |
+| 场景背景 | `scene_描述.(png/svg/gif)` | `scene_s02.svg` |
+| NPC 立绘 | `npc_名称.png` | `npc_isabella.png` |
 | UI 元素 | `ui_描述.png` | `ui_dialog_bg.png` |
 | 道具图标 | `item_名称.png` | `item_sword.png` |
 
@@ -16,9 +16,9 @@
 > ⚠️ 尺寸标准在 Phase 1（05/21前）由茉莉 & Robert 确认，确认后填写在此处。
 
 ```
-场景背景: TBD
-角色头像: TBD
-UI 元素:  TBD
+主视觉/场景背景: 优先 16:9，目标展示 1920x1080
+NPC 立绘: 透明背景 PNG 优先
+UI 元素:  按实际组件需求补充
 ```
 
 ## 目录规划
@@ -26,13 +26,11 @@ UI 元素:  TBD
 ```
 assets/
 ├── scenes/     # 场景背景图
-├── avatars/    # 角色头像
-├── ui/         # UI 元素
-└── items/      # 道具图标
+└── npcs/       # NPC 立绘
 ```
 
 ## 注意事项
 
 - 优先使用 `.png` 格式（支持透明通道）
-- 大图压缩后再提交，单文件不超过 2MB
+- 大图压缩后再提交。当前 `scene_main_fog_london.gif` 属于临时高表现力主视觉，后续应替换为体积更可控的 16:9 资源。
 - 原始设计稿（PSD/AI）不需要提交到仓库

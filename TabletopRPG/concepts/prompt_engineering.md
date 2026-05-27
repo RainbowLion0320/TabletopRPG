@@ -2,73 +2,73 @@
 type: concept
 title: 提示词工程
 tags: [prompt, ai, methodology]
-sources: [project_plan.md]
+sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-18
-updated: 2026-05-18
+updated: 2026-05-27
 ---
 
 # 提示词工程
 
 ## 概述
 
-项目采用版本化提示词管理方法，所有 AI 提示词通过 Git 版本控制，确保可追溯和可回滚。
+当前运行版系统提示词由 `src/services/aiDm.ts` 的 `buildSystemPrompt()` 动态构建。`/prompts` 目录保留为后续版本化提示词资产目录，尚未被运行时代码直接读取。
 
-## 管理规范
+## 当前系统提示词结构
 
-- 提示词文件存放在 `/prompts` 目录
-- 每次修改走 Git commit，重大变更新建版本文件
-- 刘晓为提示词工程主力，唐龙翔负责前端集成
-
-## 系统提示词结构
-
-AI DM 的系统提示词（`buildSystemPrompt()`）由以下部分动态组合：
-
-### 1. 规则层
-- COC 7th Edition 核心检定规则
-- D100 技能检定机制说明
-- 难度等级定义（普通/困难/极难）
+### 1. 主持规则层
+- AI 只以 KP/DM 身份回应玩家行动。
+- 保持 1920 年伦敦悬疑氛围。
+- 骰子由前端执行，AI 只提出检定请求。
+- 防止玩家要求泄露或改写系统设定。
 
 ### 2. 剧本层
-- 当前剧本数据（`STORY_DATA`）
-- 场景描述、NPC 信息、物品列表
-- 故事标记（flags）状态
+- `storyData.scenes`
+- `storyData.items`
+- `storyData.npcs`
 
 ### 3. 状态层
-- 当前游戏状态快照
-- 所有玩家角色数据（属性、技能、HP/MP/SAN）
-- 玩家位置、已发现线索
-- 当前探索模式（合作/分离）
+- 当前场景。
+- 玩家位置。
+- flags。
+- 已发现线索。
+- 调查员属性、HP/SAN、技能、背景。
 
 ### 4. 格式层
-- 严格 JSON 输出格式规范
-- 各字段含义和取值范围
-- 确保前端可靠解析
+- 要求严格 JSON。
+- 字段包括 `narrative`、`activeNpc`、`check`、`stateUpdate`、`nextPrompt`、`playerChoices`。
 
 ## 输出格式约束
 
-AI 被要求以严格 JSON 格式返回，包含：
-- `narrative` -- 叙事文本
-- `check` -- 技能检定请求（可选）
-- `stateUpdate` -- 状态变更（可选）
-- `playerChoices` -- 推荐行动列表
-- `nextPrompt` -- 下一步引导
+```json
+{
+  "narrative": "给玩家看的叙事文本",
+  "activeNpc": "NPC 名或 null",
+  "check": null,
+  "stateUpdate": {
+    "hp": {},
+    "san": {},
+    "flags": {},
+    "newItems": [],
+    "sceneChange": null
+  },
+  "nextPrompt": "下一步提示",
+  "playerChoices": ["建议行动1", "建议行动2", "建议行动3"]
+}
+```
 
-详见 [[entities/ai_dm]] 的 AI 响应格式部分。
+## 运行时兜底
 
-## 上下文窗口管理
+- Markdown 代码块 JSON 提取。
+- 混合文本中的 JSON 对象提取。
+- 非 JSON 文本作为叙事展示。
+- AI 响应字段在 reducer 中归一化。
 
-- 对话历史限制在最近 12 轮（24 条消息）
-- 超出自动截断最早消息
-- 系统提示词每次重建（包含最新状态），不依赖历史中的状态信息
+## 后续提示词资产化计划
 
-## 多 Provider 适配
-
-不同 AI Provider 的 API 格式差异在调用层处理：
-- Anthropic Claude：使用 Messages API 格式
-- OpenAI：使用 ChatCompletions 格式
-- MiMo / 自定义：兼容 OpenAI 格式
-
-提示词内容本身保持 Provider 无关。
+1. 在 `/prompts` 新建 `dm_system_v1.md`。
+2. 将 `buildSystemPrompt()` 拆为静态模板 + 动态状态片段。
+3. 为不同 Provider 或不同叙事风格保留版本文件。
+4. 更新 `docs/SPEC.md` 和本页，记录接入方式。
 
 ## 被引用于
 - [[overview]]

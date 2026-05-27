@@ -4,7 +4,7 @@ title: 团队成员
 tags: [team, people]
 sources: [project_plan.md]
 created: 2026-05-14
-updated: 2026-05-14
+updated: 2026-05-27
 ---
 
 # 团队成员
@@ -37,8 +37,8 @@ updated: 2026-05-14
 
 ### 茉莉 · 美术
 - **主要输出**：UI 风格参考板、核心视觉资产（`assets/`）
-- **交付规范**：命名格式 `scene_xxx.png` / `avatar_xxx.png`，单文件 ≤ 2MB
-- **关键任务**：Phase 1 内确认美术风格与尺寸规范
+- **当前资源规范**：场景资源放在 `assets/scenes/`，NPC 立绘放在 `assets/npcs/`
+- **交付建议**：场景图优先 16:9，NPC 立绘优先透明背景 PNG；临时大体积 GIF 后续替换为更可控资源
 
 ## 被引用于
 - [[overview]]

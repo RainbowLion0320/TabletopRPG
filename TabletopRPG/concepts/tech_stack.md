@@ -1,65 +1,70 @@
 ---
 type: concept
 title: 技术选型
-tags: [tech, architecture, decision]
-sources: [project_plan.md]
+tags: [tech, architecture, decision, react, vite]
+sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-14
-updated: 2026-05-18
+updated: 2026-05-27
 ---
 
 # 技术选型
 
 ## 选型总览
 
-| 层次 | 选择 | 核心理由 |
+| 层次 | 选择 | 当前理由 |
 |------|------|----------|
-| **前端** | 原生 HTML + CSS + JS（单文件） | 无构建链，团队全员均可参与修改 |
-| **AI 接入** | Anthropic / OpenAI / MiMo API | 多 Provider 支持，直接调用，无需中间层 |
-| **数据存储** | localStorage + JSON | 无需后端，存档读档成本极低，纯前端闭环 |
-| **游戏规则** | COC 第七版（D100） | 成熟规则体系，技能检定机制明确 |
-| **策划文档** | Markdown | Git 原生渲染，策划直写，技术直读 |
-| **版本管理** | Git + GitHub | 文档 + 代码 + 资产统一管理 |
-| **部署** | GitHub Pages / Vercel | 零成本，URL 即可分享游玩 |
+| **前端** | React 18 + TypeScript | 组件化承载复杂 UI 和游戏状态 |
+| **构建工具** | Vite | 本地开发快，生产构建简单 |
+| **图标** | lucide-react | 轻量、统一的按钮图标来源 |
+| **AI 接入** | Anthropic / OpenAI / MiMo / 自定义端点 | 覆盖主流与兼容 OpenAI 的服务 |
+| **数据存储** | localStorage + JSON | 无需后端，适合本地 Demo |
+| **游戏规则** | COC 第七版风格 D100 | 检定机制明确，适合 AI 裁判 |
+| **策划文档** | Markdown + Wiki | Git 可追溯，便于 AI/人协作维护 |
 
-## 关键约束
-
-- **API Key 安全**：通过 `config.local.js`（gitignored）配置预设，或通过页面输入框传入，绝对不硬编码进代码提交
-- **单文件架构**：所有 HTML / CSS / JS 集中在 `src/index.html`，不引入 React/Vue 等框架
-- **代码规范**：缩进 2 空格，文件编码 UTF-8
-
-## 架构结构
+## 当前架构结构
 
 ```
 src/
-├── index.html            # 游戏主体（HTML + CSS + JS 单文件，~4000行）
-├── config.local.js       # API Key 预设配置（gitignored）
-└── config.local.example.js  # 配置模板
-
-代码逻辑分区（index.html 内部）：
-├── Pages / HTML 结构      # 页面结构（标题页、创建页、游戏页）
-├── Styles / CSS          # 全部样式
-├── Game Data             # 剧本数据（STORY_DATA）、职业定义、技能列表
-├── Game Logic            # 游戏状态管理、角色创建、存档读档
-├── AI Integration        # AI DM 调用、提示词构建、响应解析
-└── UI Handlers           # DOM 事件处理、打字机效果、骰子动画
+├── app/                 # App 编排、screen 状态、顶层事件
+├── components/
+│   ├── setup/           # 标题页、预设调查员选择
+│   └── game/            # 游戏主界面组件
+├── data/                # 剧本、技能、职业、预设调查员
+├── services/            # AI、骰子、存档/API 配置
+├── state/               # reducer、存档水合、AI 响应归一化
+├── styles/              # 全局样式
+├── types/               # 领域类型
+└── main.tsx             # React 挂载入口
 ```
 
 ## 数据存储（localStorage）
 
-| Key | 内容 |
-|-----|------|
-| `trpg-character` | 当前角色数据 |
-| `trpg-saves` | 存档槽位数组 |
-| `trpg-api` | API 配置（provider、key、endpoint、model） |
-| `trpg-api-history` | 最近 10 个使用过的 API Key |
-| `trpg-game-logs` | 错误/调试日志（上限 200 条） |
+| Key | 状态 | 内容 |
+|-----|------|------|
+| `trpg-saves-v2` | 当前 | 新版存档槽位数组，最多 12 条 |
+| `trpg-saves` | 兼容 | 旧版存档数组，读取时水合为新版状态 |
+| `trpg-api` | 当前 | API 配置（provider、apiKey、endpoint、model） |
+
+> 当前代码中仍保留 `deleteSave(id)` 服务函数，但 UI 暂未暴露存档列表和删除入口。
+
+## AI 调用
+
+- Anthropic：`https://api.anthropic.com/v1/messages`，默认 `claude-3-5-sonnet-latest`
+- OpenAI：`https://api.openai.com/v1/chat/completions`，默认 `gpt-4o`
+- MiMo：`https://token-plan-cn.xiaomimimo.com/v1/chat/completions`，默认 `mimo-v2.5`
+- 自定义：`{endpoint}/chat/completions`
+
+## 关键约束
+
+- API Key 由用户在 UI 中输入并保存在本地浏览器，不能硬编码进仓库。
+- 存档或 AI 响应进入 UI 前必须经过归一化，避免旧数据或坏 JSON 破坏主流程。
+- 当前项目无后端；公开部署前若要隐藏 API Key，需要新增服务端代理。
 
 ## 风险点
 
-- **Context Window 限制**：已实现截断策略（保留最近 12 轮 / 24 条消息）
-- **API 费用**：测试阶段用较便宜的模型（claude-haiku / gpt-4o-mini），生产用更好的
-- **localStorage 容量**：一般浏览器限制 5MB，长存档需要注意
-- **JSON 解析**：AI 返回非标准 JSON 时使用正则兜底提取
+- **AI 输出质量**：已用 JSON 提取、文本兜底、状态归一化降低风险。
+- **localStorage 容量**：对话历史限制在最近 32 条 conversation turns。
+- **浏览器直调 API**：适合 Demo，不适合共享密钥的公开生产环境。
 
 ## 被引用于
 - [[overview]]

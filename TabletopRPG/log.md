@@ -33,3 +33,18 @@
   - `wiki/decisions/mvp_scope.md` — MVP 功能范围（已实现清单、待确认项、排除项）
 - 更新：`wiki/index.md` — 全部状态标记刷新，所有引用链接指向已存在的文件
 - 发现并修复问题 13 项（详见对话记录）
+
+## [2026-05-27] update | PRD / SPEC / Wiki / Code 全量对齐
+
+- 对齐基线：以当前 Vite + React + TypeScript 运行时代码为事实源。
+- 新增文档：
+  - `docs/PRD.md` — 当前 MVP 产品范围、用户流程、验收标准
+  - `docs/SPEC.md` — 技术架构、状态、AI、存档、骰子契约
+- 重写/同步：
+  - `docs/GDD.md` / `docs/GDD.html` — 更新为 v0.3 当前实现版
+  - `README.md`、`docs/README.md`、`assets/README.md`、`prompts/README.md`、`src/README.md`
+  - `overview.md`、`index.md`
+  - `entities/ai_dm.md`、`entities/character_system.md`、`entities/save_system.md`、`entities/team.md`
+  - `concepts/core_loop.md`、`concepts/tech_stack.md`、`concepts/prompt_engineering.md`
+  - `decisions/mvp_scope.md`、`decisions/ai_role_decision.md`
+- 主要修正：移除旧“单文件 HTML / 5 步自定义创建 / 旧存档 key”为当前事实的描述，明确这些内容进入 backlog 或历史记录。

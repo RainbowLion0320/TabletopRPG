@@ -11,7 +11,7 @@ AI 驱动的横屏网页跑团游戏。当前项目已经迁移为 Vite + React 
 | 语言 | TypeScript |
 | 图标 | lucide-react |
 | 存储 | localStorage |
-| AI 接入 | OpenAI / Anthropic / 兼容 OpenAI 的自定义接口 |
+| AI 接入 | OpenAI / Anthropic / MiMo / 兼容 OpenAI 的自定义接口 |
 
 ## 快速开始
 
@@ -44,6 +44,18 @@ TabletopRPG/
 ├── prompts/                # AI 提示词资料
 └── TabletopRPG/            # 项目 wiki
 ```
+
+## 文档对齐
+
+当前项目以这几份文件作为事实源：
+
+| 模块 | 文件 |
+| --- | --- |
+| PRD | `docs/PRD.md` |
+| 技术规格 | `docs/SPEC.md` |
+| 游戏设计 | `docs/GDD.md` |
+| Wiki 索引 | `TabletopRPG/index.md` |
+| 运行时代码 | `src/` |
 
 ## 当前 UI 结构
 

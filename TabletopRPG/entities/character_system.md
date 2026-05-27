@@ -2,97 +2,121 @@
 type: entity
 title: 角色系统
 tags: [character, coc, game-system]
-sources: [project_plan.md]
+sources: [project_plan.md, ../../docs/PRD.md]
 created: 2026-05-18
-updated: 2026-05-18
+updated: 2026-05-27
 ---
 
 # 角色系统
 
 ## 概述
 
-基于 COC（克苏鲁的呼唤）第七版规则的完整角色创建与管理系统。支持预设角色快速开始和自定义角色创建两种模式。
+当前实现是“预设调查员选择”而不是自定义角色创建器。玩家可在开始游戏前从 4 个预设调查员中选择 1-4 名进入同一局游戏。
 
-## 角色创建流程（5 步向导）
+## 当前角色选择流程
 
-| 步骤 | 内容 | 说明 |
-|------|------|------|
-| Step 0 | 选择创建模式 | 预设角色 / 自定义创建 |
-| Step 1 | 基本信息 | 职业选择、姓名（支持随机生成）、年龄、性别 |
-| Step 2 | 属性生成 | 骰子投掷（2D6+6×5 等）或手动输入，COC 7th 规则 |
-| Step 3 | 技能分配 | 职业技能点 + 兴趣技能点分配 |
-| Step 4 | 角色背景 | 重要之人、信念、意义非凡之物、特质 |
-
-## 职业（6 种）
-
-| 职业 | 英文 | 核心技能方向 |
-|------|------|-------------|
-| 私家侦探 | Private Detective | 侦查、跟踪、心理学 |
-| 警察 | Police | 射击、格斗、威胁 |
-| 医生 | Doctor | 急救、医学、科学 |
-| 记者 | Journalist | 快速交谈、图书馆、说服 |
-| 学者 | Scholar | 图书馆、历史、考古 |
-| 平民 | Civilian | 通用技能 |
-
-## 属性体系（COC 7th Edition）
-
-### 基础属性
-
-| 属性 | 英文 | 生成规则 |
-|------|------|----------|
-| 力量 | STR | (2D6+6)×5 |
-| 体质 | CON | (2D6+6)×5 |
-| 体型 | SIZ | (2D6+6)×5 |
-| 敏捷 | DEX | (2D6+6)×5 |
-| 外貌 | APP | (2D6+6)×5 |
-| 智力 | INT | (2D6+6)×5 |
-| 意志 | POW | (2D6+6)×5 |
-| 教育 | EDU | (2D6+6)×5 |
-| 幸运 | Luck | (2D6+6)×5 |
-
-### 派生属性
-
-| 属性 | 计算公式 |
-|------|----------|
-| 生命值（HP） | (CON + SIZ) / 10 |
-| 魔法值（MP） | POW / 5 |
-| 理智值（SAN） | POW |
-
-## 技能系统（22 种）
-
-技能分为 6 大类：
-
-| 分类 | 技能 |
+| 步骤 | 内容 |
 |------|------|
-| 观察 | 侦查、聆听、灵感 |
-| 社交 | 话术、说服、威胁、魅惑 |
-| 知识 | 图书馆、历史、神秘学、科学、考古 |
-| 战斗 | 格斗、射击、闪避 |
-| 行动 | 潜行、攀爬、驾驶、急救 |
-| 特殊 | 心理学、克苏鲁神话、医学 |
+| 1 | 标题页点击“开始游戏” |
+| 2 | 进入“选择调查员”页面 |
+| 3 | 默认选中前 2 名预设调查员，可增减选择，最多 4 名 |
+| 4 | 点击“进入游戏”，初始化 `GameState` |
 
-技能基础值来源：固定数值或基于属性计算（如 闪避 = DEX×2，母语 = EDU×5）。
-
-## 预设角色（4 个）
+## 预设调查员
 
 | 角色名 | 职业 | 定位 |
 |--------|------|------|
-| Henry Grey | 私家侦探 | 侦探型 |
-| Ada Wallace | 医生 | 医疗型 |
-| Thomas Bell | 记者 | 信息收集型 |
-| Robert Shaw | 警察 | 战斗型 |
+| 亨利·格雷 | 私家侦探 | 前苏格兰场侦探，观察/心理/调查 |
+| 艾达·华莱士 | 医生 | 战地护士出身，医学/急救/心理 |
+| 托马斯·贝尔 | 记者 | 调查记者，图书馆/社交/信息收集 |
+| 罗伯特·肖 | 警察 | 老牌巡警，格斗/射击/执法 |
+
+## 职业定义
+
+代码中当前定义 5 个职业：
+
+| 职业 | id | 说明 |
+|------|----|------|
+| 私家侦探 | `detective` | 追踪线索，社交与观察并重 |
+| 警察 | `police` | 执法经验，战斗与社交兼备 |
+| 医生 | `doctor` | 急救、医学、生物学 |
+| 记者 | `journalist` | 调查、采访、消息灵通 |
+| 学者 | `scholar` | 研究古籍与神秘学（当前无预设角色） |
+
+## 属性体系
+
+角色数据保留 COC 风格基础属性：
+
+| 属性 | 英文 |
+|------|------|
+| 力量 | STR |
+| 体质 | CON |
+| 体型 | SIZ |
+| 敏捷 | DEX |
+| 外貌 | APP |
+| 智力 | INT |
+| 意志 | POW |
+| 教育 | EDU |
+| 幸运 | Luck |
+
+派生属性：
+
+| 属性 | 计算公式 |
+|------|----------|
+| HP | `floor((CON + SIZ) / 10)` |
+| MP | `floor(POW / 5)` |
+| SAN | `POW` |
+
+## 技能系统
+
+当前 `src/data/skills.ts` 定义 23 个技能，分为观察、社交、知识、战斗、行动、特殊 6 类。技能值结构为：
+
+```ts
+{
+  base: number,
+  added: number,
+  isJob?: boolean
+}
+```
+
+总技能值 = `base + added`。
 
 ## 角色数据结构
 
-```javascript
-{
-  name, job, gender, age, hometown, description,
-  attrs: { STR, CON, SIZ, DEX, APP, INT, POW, EDU, Luck },
-  skills: { skillName: value, ... },
-  background: { importantPerson, belief, meaningfulItem, trait },
-  hp, mp, san
+```ts
+interface Investigator {
+  id: string;
+  name: string;
+  gender: string;
+  age: number;
+  hometown: string;
+  job: string;
+  role?: string;
+  attrs: Attributes;
+  hp: number;
+  mp: number;
+  san: number;
+  luck: number;
+  currentHp: number;
+  currentMp: number;
+  currentSan: number;
+  skills: Record<string, SkillValue>;
+  background?: {
+    importantPerson?: string;
+    belief?: string;
+    meaningfulItem?: string;
+    trait?: string;
+    story?: string;
+  };
 }
 ```
+
+## Backlog
+
+- 自定义角色创建 UI。
+- 学者预设角色或隐藏未使用职业。
+- 角色导入/导出。
+- 头像与角色卡详情页。
 
 ## 被引用于
 - [[overview]]

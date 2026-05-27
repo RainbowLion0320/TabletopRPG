@@ -1,579 +1,126 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>《雾中消逝》AI跑团 GDD v0.2</title>
-<style>
-:root {
-  --bg: #0a0a0f;
-  --bg2: #0f0f18;
-  --bg3: #1a1a28;
-  --green-dark: #1a2a1a;
-  --green: #4a9e6a;
-  --green-light: #6abf8a;
-  --gold: #c9a84c;
-  --gold-light: #e8c96a;
-  --text: #c8c8d8;
-  --text-dim: #7a7a9a;
-  --red: #9e3a3a;
-  --border: #2a2a3a;
-  --nav-w: 220px;
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Georgia', '宋体', serif;
-  font-size: 15px;
-  line-height: 1.8;
-  display: flex;
-}
-
-/* ── NAV ── */
-nav {
-  position: fixed;
-  top: 0; left: 0;
-  width: var(--nav-w);
-  height: 100vh;
-  background: var(--bg2);
-  border-right: 1px solid var(--border);
-  overflow-y: auto;
-  padding: 20px 0;
-  z-index: 100;
-}
-nav .nav-title {
-  color: var(--gold);
-  font-size: 12px;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  padding: 0 16px 16px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 8px;
-}
-nav a {
-  display: block;
-  padding: 7px 16px;
-  color: var(--text-dim);
-  text-decoration: none;
-  font-size: 13px;
-  border-left: 2px solid transparent;
-  transition: all 0.2s;
-}
-nav a:hover, nav a.active {
-  color: var(--green-light);
-  border-left-color: var(--green);
-  background: rgba(74,158,106,0.08);
-}
-nav a.sub { padding-left: 28px; font-size: 12px; }
-
-/* ── MAIN ── */
-main {
-  margin-left: var(--nav-w);
-  flex: 1;
-  max-width: 960px;
-  padding: 40px 48px;
-}
-
-/* ── HEADER ── */
-.doc-header {
-  text-align: center;
-  padding: 40px 0 32px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 40px;
-  position: relative;
-}
-.doc-header::before, .doc-header::after {
-  content: '';
-  display: block;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--gold), transparent);
-  margin: 12px auto;
-  width: 60%;
-}
-.doc-header h1 {
-  font-size: 28px;
-  color: var(--gold);
-  letter-spacing: 4px;
-  text-shadow: 0 0 20px rgba(201,168,76,0.4);
-}
-.doc-header .subtitle {
-  color: var(--text-dim);
-  font-size: 13px;
-  margin-top: 8px;
-  letter-spacing: 2px;
-}
-.fog-deco {
-  font-size: 11px;
-  color: var(--green);
-  letter-spacing: 6px;
-  margin-top: 10px;
-  opacity: 0.7;
-}
-
-/* ── SECTIONS ── */
-section {
-  margin-bottom: 48px;
-  scroll-margin-top: 24px;
-}
-h2 {
-  font-size: 20px;
-  color: var(--gold);
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 10px;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-h2::before {
-  content: '';
-  display: inline-block;
-  width: 4px;
-  height: 20px;
-  background: var(--green);
-  border-radius: 2px;
-}
-h3 {
-  font-size: 16px;
-  color: var(--green-light);
-  margin: 20px 0 10px;
-  padding-left: 12px;
-  border-left: 2px solid var(--green-dark);
-}
-h4 {
-  font-size: 14px;
-  color: var(--gold-light);
-  margin: 16px 0 8px;
-}
-p { margin-bottom: 10px; }
-
-/* ── QUOTE / BLOCKQUOTE ── */
-blockquote {
-  background: var(--green-dark);
-  border-left: 3px solid var(--green);
-  padding: 12px 16px;
-  margin: 12px 0;
-  border-radius: 0 4px 4px 0;
-  font-size: 14px;
-  color: var(--text-dim);
-}
-.remark {
-  background: rgba(158,58,58,0.12);
-  border-left: 3px solid var(--red);
-  padding: 10px 14px;
-  margin: 10px 0;
-  border-radius: 0 4px 4px 0;
-  font-size: 13px;
-}
-
-/* ── TABLES ── */
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 12px 0 20px;
-  font-size: 14px;
-}
-th {
-  background: var(--bg3);
-  color: var(--gold);
-  padding: 9px 12px;
-  text-align: left;
-  border: 1px solid var(--border);
-  font-weight: normal;
-  letter-spacing: 1px;
-}
-td {
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  vertical-align: top;
-}
-tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
-tr:hover td { background: rgba(74,158,106,0.06); }
-
-/* ── CODE ── */
-pre {
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 16px;
-  overflow-x: auto;
-  font-family: 'Consolas', 'Monaco', monospace;
-  font-size: 13px;
-  color: var(--green-light);
-  margin: 12px 0;
-  line-height: 1.6;
-}
-code {
-  background: var(--bg3);
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-family: 'Consolas', monospace;
-  font-size: 13px;
-  color: var(--green-light);
-}
-
-/* ── LISTS ── */
-ul, ol {
-  padding-left: 20px;
-  margin: 8px 0;
-}
-li { margin-bottom: 4px; }
-li::marker { color: var(--green); }
-
-/* ── CARDS ── */
-.card-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 14px;
-  margin: 16px 0;
-}
-.card {
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 14px;
-}
-.card-label {
-  font-size: 11px;
-  color: var(--text-dim);
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-.card-value {
-  font-size: 18px;
-  color: var(--gold);
-}
-
-/* ── BADGE ── */
-.badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 12px;
-  margin: 2px;
-}
-.badge-green { background: rgba(74,158,106,0.2); color: var(--green-light); border: 1px solid var(--green-dark); }
-.badge-gold { background: rgba(201,168,76,0.15); color: var(--gold); border: 1px solid rgba(201,168,76,0.3); }
-.badge-red { background: rgba(158,58,58,0.2); color: #d97070; border: 1px solid rgba(158,58,58,0.4); }
-
-/* ── WARN ── */
-.warn {
-  background: rgba(201,168,76,0.08);
-  border: 1px solid rgba(201,168,76,0.25);
-  border-radius: 4px;
-  padding: 10px 14px;
-  margin: 10px 0;
-  font-size: 13px;
-  color: var(--gold-light);
-}
-.warn::before { content: '⚠️ '; }
-
-/* ── FLOW ── */
-.flow {
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 20px;
-  font-family: 'Consolas', monospace;
-  font-size: 13px;
-  color: var(--text);
-  margin: 14px 0;
-  white-space: pre;
-  line-height: 1.7;
-}
-
-/* ── ENDING CARDS ── */
-.ending-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 16px 0; }
-.ending-card {
-  border-radius: 6px;
-  padding: 16px;
-  border: 1px solid;
-}
-.ending-a { background: rgba(74,158,106,0.08); border-color: var(--green); }
-.ending-b { background: rgba(158,58,58,0.08); border-color: var(--red); }
-.ending-c { background: rgba(201,168,76,0.08); border-color: var(--gold); }
-.ending-card h4 { margin: 0 0 8px; font-size: 15px; }
-.ending-a h4 { color: var(--green-light); }
-.ending-b h4 { color: #d97070; }
-.ending-c h4 { color: var(--gold-light); }
-.ending-card ul { font-size: 13px; padding-left: 16px; }
-
-/* ── SEPARATOR ── */
-hr {
-  border: none;
-  border-top: 1px solid var(--border);
-  margin: 32px 0;
-}
-
-/* ── SCROLLBAR ── */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--green-dark); }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>《雾中消逝》AI 跑团 GDD v0.3</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif;
+      line-height: 1.7;
+      color: #221f1a;
+      background: #f7f3ea;
+    }
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 48px 24px 72px;
+    }
+    h1, h2 {
+      line-height: 1.25;
+    }
+    h1 {
+      margin-bottom: 4px;
+      font-size: 38px;
+    }
+    h2 {
+      margin-top: 36px;
+      border-bottom: 1px solid #d8c9aa;
+      padding-bottom: 8px;
+    }
+    .meta {
+      color: #6f6657;
+      margin-bottom: 32px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 20px;
+      background: #fffaf0;
+    }
+    th, td {
+      border: 1px solid #d8c9aa;
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #eadfc8;
+    }
+    code, pre {
+      font-family: "Cascadia Code", Consolas, monospace;
+    }
+    pre {
+      overflow: auto;
+      background: #221f1a;
+      color: #f7f3ea;
+      padding: 16px;
+      border-radius: 8px;
+    }
+    a {
+      color: #725118;
+    }
+  </style>
 </head>
 <body>
-
-<!-- NAV -->
-<nav id="sidebar">
-  <div class="nav-title">🌫 雾中消逝 GDD</div>
-  <a href="#s1">一、核心定位</a>
-  <a href="#s2">二、玩家流程</a>
-  <a href="#s3">三、COC规则引擎</a>
-  <a href="#s3-1" class="sub">3.1 角色属性</a>
-  <a href="#s3-2" class="sub">3.2 技能检定</a>
-  <a href="#s3-3" class="sub">3.3 技能初始值</a>
-  <a href="#s3-4" class="sub">3.4 战斗系统</a>
-  <a href="#s3-5" class="sub">3.5 SAN值系统</a>
-  <a href="#s4">四、剧本数据</a>
-  <a href="#s4-1" class="sub">4.1 基本信息</a>
-  <a href="#s4-2" class="sub">4.2 场景一览</a>
-  <a href="#s4-3" class="sub">4.3 线索物品</a>
-  <a href="#s4-4" class="sub">4.4 NPC数据</a>
-  <a href="#s4-5" class="sub">4.5 触发状态机</a>
-  <a href="#s4-6" class="sub">4.6 结局数据</a>
-  <a href="#s5">五、展示层设计</a>
-  <a href="#s6">六、多人系统</a>
-  <a href="#s7">七、AI DM系统</a>
-  <a href="#s7-3" class="sub">7.3 自由度边界</a>
-  <a href="#s7-4" class="sub">7.4 防注入方案</a>
-  <a href="#s7-5" class="sub">7.5 待讨论问题</a>
-  <a href="#s8">八、角色创建</a>
-  <a href="#s9">九、技术架构</a>
-  <a href="#s10">十、开发计划</a>
-  <a href="#s11">十一、待确认事项</a>
-</nav>
-
-<!-- MAIN -->
 <main>
+  <h1>《雾中消逝》AI 跑团 GDD</h1>
+  <p class="meta">Version v0.3 · Updated 2026-05-27 · Current implementation: Vite + React + TypeScript MVP</p>
 
-<div class="doc-header">
-  <div class="fog-deco">◈ ◈ ◈</div>
-  <h1>《雾中消逝》AI跑团</h1>
-  <div class="subtitle">游戏设计文档 GDD v0.2 · 2026-05-15</div>
-  <div class="subtitle" style="margin-top:6px">规则体系：COC 第7版 · 首发模组：Disappear in Fog · 作者：舒爾茲上尉</div>
-  <div class="fog-deco" style="margin-top:14px">◈ ◈ ◈</div>
-</div>
+  <h2>1. Core Positioning</h2>
+  <p>《雾中消逝》AI 跑团是一款本地浏览器 TRPG 原型。玩家选择预设调查员，在 AI DM 主持下探索 1920 年伦敦失踪案。当前版本优先保证核心闭环：场景叙事、玩家行动、AI 判定、D100 检定、状态更新、存档恢复。</p>
+  <p>产品范围见 <a href="PRD.md">PRD.md</a>，技术实现见 <a href="SPEC.md">SPEC.md</a>。</p>
 
-<!-- 一 -->
-<section id="s1">
-<h2>一、核心定位</h2>
-<table>
-<tr><th>项目</th><th>内容</th></tr>
-<tr><td>游戏名称</td><td>《雾中消逝》AI跑团（暂定）</td></tr>
-<tr><td>类型</td><td>AI辅助 TRPG / 多人互动叙事</td></tr>
-<tr><td>规则体系</td><td>COC（克苏鲁的呼唤）第7版</td></tr>
-<tr><td>核心体验</td><td>多人玩家在AI DM主持下，共同推进剧本模组，体验沉浸式跑团</td></tr>
-<tr><td>首发模组</td><td>《雾中消逝》（Disappear in Fog）</td></tr>
-<tr><td>背景时代</td><td>1920年，英国伦敦</td></tr>
-<tr><td>游玩人数</td><td>DEMO：本地多人（2-5人）；后续：局域网多人</td></tr>
-<tr><td>游玩时长</td><td>约3小时（单次完整模组）</td></tr>
-</table>
-<blockquote>你不需要一个KP朋友，AI就是你的KP。<br>带上队友和角色卡，1920年的伦敦雾夜等着你们。</blockquote>
-</section>
+  <h2>2. Current Playable Loop</h2>
+  <pre>标题页
+  ├─ 开始游戏 -> 选择预设调查员 -> 游戏主界面
+  ├─ 继续游戏 -> 读取最近有效存档 -> 游戏主界面
+  └─ AI 设置 -> 保存 provider / key / endpoint / model
 
-<!-- 二 -->
-<section id="s2">
-<h2>二、玩家流程总览</h2>
-<div class="flow">创建角色 → 组队（2-5人）→ 进入游戏
-    ↓
-【第一幕】摩勒住宅：接受委托，收集线索
-    ↓
-【三条路线并行】
-├── A. 上城区第二分局（找局长蒙特利尔）
-├── B. 老赫特之家（寻找"老鼠"线索）
-└── C. 卡森其药店·贝尔街（核心场景）
-    ↓
-【终幕】泰晤士港：扶桑花号决战/交涉
-    ↓
-【结局】
-├── 结局A：击败深潜者，救回埃里克（SAN+1d3，奖励200英镑）
-├── 结局B：深潜者逃脱（Bad End，可能被捕）
-└── 结局C：交涉成功，和平解决（SAN+1d6，奖励100英镑）</div>
-</section>
+游戏主界面
+  AI 叙事 -> 玩家输入行动 -> AI JSON 响应
+    ├─ 无检定：叙事、线索、场景、状态更新
+    └─ 有检定：前端 D100 -> 检定结果回传 AI -> 继续叙事</pre>
 
-<!-- 三 -->
-<section id="s3">
-<h2>三、COC规则引擎</h2>
+  <h2>3. Current Feature Scope</h2>
+  <table>
+    <tr><th>Implemented</th><th>Not Implemented Yet</th></tr>
+    <tr>
+      <td>React/Vite/TypeScript 单页应用；4 个预设调查员；Together/Split 探索模式；AI DM；D100 检定；localStorage 新旧存档兼容；5 场景、6 NPC、8 线索。</td>
+      <td>自定义角色创建；存档列表与删除 UI；完整战斗/SAN 自动化；音效；局域网/在线多人；多模组导入；后端 AI 代理。</td>
+    </tr>
+  </table>
 
-<h3 id="s3-1">3.1 角色属性（COC 第7版）</h3>
-<table>
-<tr><th>属性</th><th>英文</th><th>掷法</th><th>说明</th></tr>
-<tr><td>力量</td><td>STR</td><td>(2D6+6)×5</td><td>近战伤害、负重</td></tr>
-<tr><td>体质</td><td>CON</td><td>(2D6+6)×5</td><td>HP上限、体力检定</td></tr>
-<tr><td>体型</td><td>SIZ</td><td>3D6×5</td><td>HP、伤害加值</td></tr>
-<tr><td>敏捷</td><td>DEX</td><td>(2D6+6)×5</td><td>行动顺序、回避</td></tr>
-<tr><td>外貌</td><td>APP</td><td>2D6×5</td><td>社交说服</td></tr>
-<tr><td>智力</td><td>INT</td><td>(2D6+6)×5</td><td>技能点、侦查</td></tr>
-<tr><td>意志</td><td>POW</td><td>3D6×5</td><td>SAN上限、魔法</td></tr>
-<tr><td>教育</td><td>EDU</td><td>(2D6+6)×5</td><td>职业技能点</td></tr>
-<tr><td>幸运</td><td>Luck</td><td>3D6×5</td><td>独立骰</td></tr>
-</table>
+  <h2>4. Story Module</h2>
+  <table>
+    <tr><th>ID</th><th>Scene</th><th>Current Use</th></tr>
+    <tr><td>S01</td><td>摩勒住宅</td><td>开场场景，委托人与住宅线索</td></tr>
+    <tr><td>S02</td><td>上城区第二分局</td><td>洛夫·蒙特利尔相关调查</td></tr>
+    <tr><td>S03</td><td>老赫特酒吧</td><td>“老鼠”信息与支线调查</td></tr>
+    <tr><td>S04</td><td>卡森其药店</td><td>核心危险场景，深潜者痕迹与地图</td></tr>
+    <tr><td>S05</td><td>泰晤士港</td><td>终幕地点，扶桑花号相关推进</td></tr>
+  </table>
 
-<h4>派生属性</h4>
-<table>
-<tr><th>属性</th><th>计算方式</th></tr>
-<tr><td>HP</td><td>⌊(CON + SIZ) / 10⌋</td></tr>
-<tr><td>MP</td><td>⌊POW / 5⌋</td></tr>
-<tr><td>SAN</td><td>初始 = POW，最大 = 99 - 克苏鲁神话</td></tr>
-<tr><td>伤害加值(DB)</td><td>STR+SIZ查表</td></tr>
-<tr><td>体格(Build)</td><td>STR+SIZ查表</td></tr>
-<tr><td>移动速度</td><td>DEX/STR vs SIZ决定</td></tr>
-<tr><td>灵感</td><td>INT × 5</td></tr>
-</table>
+  <h2>5. D100 Rule Implementation</h2>
+  <table>
+    <tr><th>Result</th><th>Current Rule</th></tr>
+    <tr><td>大失败</td><td>roll &gt;= 96</td></tr>
+    <tr><td>极难成功</td><td>roll &lt;= skill / 5</td></tr>
+    <tr><td>困难成功</td><td>roll &lt;= skill / 2</td></tr>
+    <tr><td>普通成功</td><td>roll &lt;= skill</td></tr>
+    <tr><td>失败</td><td>otherwise</td></tr>
+  </table>
 
-<h4>DB / Build 对照表</h4>
-<table>
-<tr><th>STR+SIZ</th><th>伤害加值(DB)</th><th>体格(Build)</th></tr>
-<tr><td>2 - 64</td><td>-2</td><td>-2</td></tr>
-<tr><td>65 - 84</td><td>-1</td><td>-1</td></tr>
-<tr><td>85 - 124</td><td>无</td><td>0</td></tr>
-<tr><td>125 - 164</td><td>+1d4</td><td>1</td></tr>
-<tr><td>165 - 204</td><td>+1d6</td><td>2</td></tr>
-</table>
-
-<h3 id="s3-2">3.2 技能检定系统</h3>
-<div class="flow">AI DM判断触发技能 → 掷 D100
-
-≤ 技能值/5    →  ⭐ 极难成功（大成功）
-≤ 技能值/2    →  困难成功
-≤ 技能值      →  普通成功
-&gt; 技能值      →  失败
-96 - 100      →  💀 大失败（Fumble）</div>
-<ul>
-  <li><strong>优势：</strong>掷两次D100，取十位数较小值</li>
-  <li><strong>劣势：</strong>掷两次D100，取十位数较大值</li>
-  <li>多重叠加 → 仅保留一次优/劣势（不累加）</li>
-</ul>
-
-<h3 id="s3-3">3.3 《雾中消逝》常用技能初始值</h3>
-<table>
-<tr><th>技能</th><th>初始值</th><th>技能</th><th>初始值</th></tr>
-<tr><td>侦查</td><td>25%</td><td>聆听</td><td>20%</td></tr>
-<tr><td>图书馆使用</td><td>20%</td><td>医学</td><td>01%</td></tr>
-<tr><td>心理学</td><td>10%</td><td>说服</td><td>10%</td></tr>
-<tr><td>话术</td><td>05%</td><td>潜行</td><td>20%</td></tr>
-<tr><td>格斗（拳）</td><td>25%</td><td>闪避</td><td>DEX×2</td></tr>
-<tr><td>射击（手枪）</td><td>20%</td><td>急救</td><td>30%</td></tr>
-<tr><td>驾驶（汽车）</td><td>20%</td><td>机械维修</td><td>10%</td></tr>
-<tr><td>生物学</td><td>01%</td><td>灵感</td><td>INT×5</td></tr>
-<tr><td>克苏鲁神话</td><td>00%</td><td>幸运</td><td>Luck值</td></tr>
-</table>
-
-<h3 id="s3-4">3.4 战斗系统</h3>
-<div class="flow">1. 宣言阶段：所有人宣布行动意图
-2. 行动顺序：DEX 从高到低
-3. 执行阶段：逐个执行（AI裁判）
-4. 结算阶段：HP/SAN变化，状态更新</div>
-
-<h4>攻击判定流程</h4>
-<div class="flow">玩家输入攻击描述（自由文本）
-    ↓
-AI DM 解析：
-  ① 合理性：是否持有武器/具备能力？
-  ② 创意行动：非常规攻击如何处理？
-  ③ 优劣势：当前情境给予优/劣势？
-    ↓
-武器技能骰检定 → 命中→伤害骰+DB / 未命中→叙述失败</div>
-<ul>
-  <li>HP ≤ 0：濒死，每轮失去1HP，需急救</li>
-  <li>HP降至负值等于最大HP：当场死亡</li>
-  <li>重伤（单次≥最大HP/2）：体格检定失败→昏迷</li>
-</ul>
-
-<h3 id="s3-5">3.5 SAN值系统</h3>
-<h4>《雾中消逝》SAN损失速查</h4>
-<table>
-<tr><th>触发事件</th><th>SAN损失</th></tr>
-<tr><td>七月夏夜突现浓雾（深潜者咒术）</td><td><span class="badge badge-red">1/1d2</span></td></tr>
-<tr><td>发现深潜者扭曲脸庞（泰晤士港）</td><td><span class="badge badge-red">1/1d3</span></td></tr>
-</table>
-<h4>通用SAN参考</h4>
-<table>
-<tr><th>遭遇类型</th><th>SAN损失</th></tr>
-<tr><td>目击非正常死亡</td><td>0/1d6</td></tr>
-<tr><td>遭遇怪物（普通）</td><td>0/1d4</td></tr>
-<tr><td>遭遇神话生物</td><td>1/1d10</td></tr>
-</table>
-<ul>
-  <li>单次损失 ≥ 1/5当前SAN → 临时疯狂（1d10轮）</li>
-  <li>单次损失 ≥ 1/2当前SAN → 不定期疯狂（1d10×10小时）</li>
-  <li>SAN = 0 → 永久疯狂</li>
-</ul>
-</section>
-
-<!-- 四 -->
-<section id="s4">
-<h2>四、剧本模组：《雾中消逝》完整数据</h2>
-
-<h3 id="s4-1">4.1 基本信息</h3>
-<table>
-<tr><th>项目</th><th>内容</th></tr>
-<tr><td>时间</td><td>1920年7月13日</td></tr>
-<tr><td>地点</td><td>英国伦敦</td></tr>
-<tr><td>委托人</td><td>伊莎贝拉·摩勒（20余岁，苍白虚弱）</td></tr>
-<tr><td>目标</td><td>寻找失踪的埃里克·摩勒（其父）</td></tr>
-<tr><td>真相</td><td>深潜者混种藏于废弃药店（贝尔街14号），7月14日将乘扶桑花号北归，埃里克被绑架随行</td></tr>
-</table>
-
-<h3 id="s4-2">4.2 场景一览</h3>
-<table>
-<tr><th>场景ID</th><th>场景名</th><th>地点</th><th>主要线索</th></tr>
-<tr><td><span class="badge badge-green">S01</span></td><td>摩勒住宅</td><td>纽伦上街101-102号</td><td>便签、照片、名片、小册子、车库暗格</td></tr>
-<tr><td><span class="badge badge-green">S02</span></td><td>上城区第二分局</td><td>步行距S01约10分钟</td><td>蒙特利尔的反应、字迹对比</td></tr>
-<tr><td><span class="badge badge-green">S03</span></td><td>老赫特之家（酒吧）</td><td>本街区</td><td>醉汉战斗、"老鼠"信息</td></tr>
-<tr><td><span class="badge badge-gold">S04</span></td><td>卡森其药店 ⭐核心</td><td>贝尔街14号</td><td>血迹、深潜者痕迹、地图笔记</td></tr>
-<tr><td><span class="badge badge-red">S05</span></td><td>泰晤士港·扶桑花号 🔚终幕</td><td>港口偏僻角落</td><td>最终决战/交涉</td></tr>
-</table>
-
-<h3 id="s4-3">4.3 线索物品数据</h3>
-<table>
-<tr><th>物品ID</th><th>名称</th><th>获取地点</th><th>作用</th></tr>
-<tr><td>I01</td><td>便签</td><td>书房桌面</td><td>侦查检定：发现"别来找我"笔触加重——非自愿离开暗示</td></tr>
-<tr><td>I02</td><td>合影照片</td><td>书桌右抽屉</td><td>关联蒙特利尔；灵感检定（看过报纸后）可识别</td></tr>
-<tr><td>I03</td><td>名片</td><td>书桌右抽屉</td><td>摩勒医疗运输公司表面信息</td></tr>
-<tr><td>I04</td><td>小册子</td><td>书架夹缝（图书馆/医生可发现）<tr><td><span class="badge badge-gold">P1</span></td><td>本地多人轮流系统</td><td>Hot Seat模式</td></tr>
-<tr><td><span class="badge badge-green">P2</span></td><td>存档/读档</td><td>localStorage</td></tr>
-<tr><td><span class="badge badge-green">P2</span></td><td>剧情标记系统</td><td>flags追踪（暴徒/浓雾/地图等）</td></tr>
-<tr><td><span class="badge badge-green">P3</span></td><td>SAN疯狂系统</td><td>临时/不定期疯狂完整实现</td></tr>
-</table>
-<h3>Phase 2 · 局域网多人</h3><table>
-<tr><th>任务</th><th>说明</th></tr>
-<tr><td>WebSocket服务端</td><td>Node.js实现</td></tr>
-<tr><td>房间系统</td><td>创建/加入/房间码</td></tr>
-<tr><td>实时同步</td><td>状态/骰子/叙述</td></tr>
-<tr><td>AI调用迁移</td><td>前端→服务端代理</td></tr>
-</table>
-<h3>Phase 3 · 内容扩展</h3><ul>
-<li>BGM系统：场景自适应音乐</li>
-<li>更多模组：支持社区自制模组导入格式</li>
-<li>角色成长：跨模组经验积累</li>
-<li>模组编辑器：可视化剧本制作工具</li>
-</ul></section>
-<section id="s11"><h2>十一、待确认事项</h2><ol>
-<li><strong>AI DM自由度边界</strong>——线下讨论后细化第七章</li>
-<li><strong>立绘素材</strong>——现有素材？AI生成？风格（写实/插画）？</li>
-<li><strong>场景图</strong>——AI生成（Midjourney/ComfyUI）还是手绘？</li>
-<li><strong>AI API</strong>——OpenAI还是Anthropic？是否需要本地模型？</li>
-<li><strong>游戏正式名称</strong>——暂定"《雾中消逝》AI跑团"</li>
-</ol></section>
-<footer style="text-align:center;padding:40px 0 20px;color:var(--text-dim);font-size:12px;border-top:1px solid var(--border);margin-top:40px">
-GDD v0.2 &nbsp;·&nbsp; 2026-05-15 &nbsp;·&nbsp; 基于剧本原文和COC规则完整整理<br>剧本原作：舒爾茲上尉 &nbsp;·&nbsp; <a href="mailto:790086893@qq.com" style="color:var(--green)">790086893@qq.com</a>
-</footer></main>
-<script>
-// 导航高亮
-const sections = document.querySelectorAll("section[id], div.doc-header");
-const navLinks = document.querySelectorAll("nav a");
-const obs = new IntersectionObserver(entries => {
-  entries.forEach(e => {
-    if (e.isIntersecting) {
-      navLinks.forEach(l => l.classList.remove("active"));
-      const a = document.querySelector(`nav a[href="#${e.target.id}"]`);
-      if (a) a.classList.add("active");
-    }
-  });
-}, { threshold: 0.2 });
-sections.forEach(s => obs.observe(s));
-</script></body></html>
+  <h2>6. Source Of Truth</h2>
+  <table>
+    <tr><th>Area</th><th>File</th></tr>
+    <tr><td>Product requirements</td><td><code>docs/PRD.md</code></td></tr>
+    <tr><td>Technical spec</td><td><code>docs/SPEC.md</code></td></tr>
+    <tr><td>Runtime story data</td><td><code>src/data/storyData.ts</code></td></tr>
+    <tr><td>Runtime state</td><td><code>src/state/gameReducer.ts</code></td></tr>
+    <tr><td>Runtime AI</td><td><code>src/services/aiDm.ts</code></td></tr>
+  </table>
+</main>
+</body>
+</html>
