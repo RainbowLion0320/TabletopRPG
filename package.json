@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "npm run start:game",
-    "start:game": "vite --host 127.0.0.1 --port 5173 --open",
+    "start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-game.ps1",
+    "start:game": "vite --host 127.0.0.1 --port 5173 --strictPort",
     "dev": "vite --host 127.0.0.1",
     "docs:gdd": "node scripts/generate-gdd-html.cjs",
     "build": "tsc -b && vite build",
