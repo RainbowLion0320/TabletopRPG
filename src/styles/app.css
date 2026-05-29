@@ -164,9 +164,9 @@ button {
 }
 
 .preset-grid-modern {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   max-width: 1320px;
   margin: 0 auto;
 }
@@ -174,7 +174,7 @@ button {
 .preset-card-modern {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(220px, 0.78fr) minmax(0, 1fr);
+  grid-template-columns: clamp(154px, 14vw, 188px) minmax(0, 1fr);
   align-items: start;
   text-align: left;
   border: 1px solid var(--line-soft);
@@ -228,33 +228,46 @@ button {
 }
 
 .preset-card-content {
-  padding: 22px;
+  display: grid;
+  grid-template-columns: minmax(260px, 0.82fr) minmax(500px, 1.18fr);
+  grid-template-areas:
+    "name vitals"
+    "meta attrs"
+    "desc attrs"
+    "notes skills";
+  gap: 8px 18px;
+  padding: 18px 78px 18px 20px;
+  align-items: start;
 }
 
 .preset-card-modern strong {
   display: block;
+  grid-area: name;
   margin: 0;
   color: var(--gold);
-  font-size: 24px;
+  font-size: 22px;
+  line-height: 1.16;
 }
 
 .preset-card-modern small {
   display: block;
+  grid-area: meta;
   color: var(--quiet);
-  margin: 8px 0 14px;
+  margin: 0;
 }
 
 .preset-card-modern p {
+  grid-area: desc;
   color: var(--muted);
-  line-height: 1.7;
-  margin: 0 0 16px;
+  line-height: 1.6;
+  margin: 0;
 }
 
 .preset-vitals {
+  grid-area: vitals;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 6px;
 }
 
 .preset-vitals span,
@@ -262,7 +275,7 @@ button {
   border: 1px solid var(--line-soft);
   border-radius: 6px;
   background: rgba(255,255,255,0.035);
-  padding: 7px 8px;
+  padding: 6px 7px;
 }
 
 .preset-vitals b,
@@ -278,22 +291,24 @@ button {
 .preset-attrs em {
   display: block;
   color: var(--text);
-  font-size: 16px;
+  font-size: 15px;
   font-style: normal;
-  margin-top: 4px;
+  margin-top: 3px;
 }
 
 .preset-attrs {
+  grid-area: attrs;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(9, minmax(38px, 1fr));
+  gap: 6px;
 }
 
 .preset-skill-list {
+  grid-area: skills;
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-  margin-top: 16px;
+  margin-top: 0;
 }
 
 .preset-skill-list span {
@@ -305,12 +320,14 @@ button {
 }
 
 .preset-background-notes {
+  grid-area: notes;
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
-  margin-top: 16px;
+  margin-top: 2px;
   color: var(--muted);
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .preset-background-notes span {
@@ -1003,7 +1020,21 @@ button {
 
 @media (max-width: 1100px) {
   body { overflow: auto; }
-  .preset-grid-modern { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .preset-card-modern { grid-template-columns: clamp(136px, 20vw, 164px) minmax(0, 1fr); }
+  .preset-card-content {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "name"
+      "meta"
+      "desc"
+      "vitals"
+      "attrs"
+      "skills"
+      "notes";
+    padding-right: 70px;
+  }
+  .preset-attrs { grid-template-columns: repeat(5, minmax(42px, 1fr)); }
+  .preset-background-notes { grid-template-columns: 1fr; }
   .narrative-panel, .action-dock {
     left: 22px;
     right: 22px;
@@ -1020,13 +1051,14 @@ button {
 
 @media (max-width: 760px) {
   .setup-header { flex-direction: column; align-items: stretch; }
-  .preset-grid-modern { grid-template-columns: 1fr; }
   .preset-card-modern { grid-template-columns: 1fr; }
   .preset-portrait-frame {
     border-right: 0;
     border-bottom: 1px solid var(--line-soft);
   }
+  .preset-card-content { padding: 16px; }
   .preset-vitals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .preset-attrs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .game-top { padding: 18px; }
   .brand-title { font-size: 30px; }
   .menu-button { min-width: 104px; height: 44px; }

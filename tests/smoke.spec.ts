@@ -32,6 +32,23 @@ test('investigator setup shows portraits and full attribute blocks', async ({ pa
 
   await expect(page.getByRole('heading', { name: '选择调查员' })).toBeVisible();
   await expect(page.locator('.preset-card-modern img')).toHaveCount(4);
+  const layoutMetrics = await page.locator('.preset-grid-modern').evaluate((grid) => {
+    const cards = Array.from(grid.querySelectorAll('.preset-card-modern')).slice(0, 2);
+    const gridRect = grid.getBoundingClientRect();
+    const [firstCard, secondCard] = cards.map((card) => card.getBoundingClientRect());
+    const firstPortrait = cards[0].querySelector('.preset-portrait-frame')?.getBoundingClientRect();
+    return {
+      gridWidth: gridRect.width,
+      firstCardWidth: firstCard.width,
+      firstCardTop: firstCard.top,
+      firstCardHeight: firstCard.height,
+      secondCardTop: secondCard.top,
+      firstPortraitHeight: firstPortrait?.height ?? 0
+    };
+  });
+  expect(layoutMetrics.firstCardWidth).toBeGreaterThan(layoutMetrics.gridWidth * 0.96);
+  expect(layoutMetrics.secondCardTop).toBeGreaterThan(layoutMetrics.firstCardTop + layoutMetrics.firstCardHeight * 0.7);
+  expect(Math.abs(layoutMetrics.firstCardHeight - layoutMetrics.firstPortraitHeight)).toBeLessThanOrEqual(24);
   const firstCard = page.locator('.preset-card-modern').first();
   const portraitRatio = await firstCard.locator('.preset-portrait-frame').evaluate((element) => {
     const rect = element.getBoundingClientRect();
