@@ -64,8 +64,10 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 1. User enters investigator actions.
 2. App appends player messages and conversation history.
 3. App calls AI DM with current state and actions.
-4. AI returns JSON or recoverable text/JSON content.
-5. App normalizes response and updates narrative, checks, state, clues, scene, and suggestions.
+4. AI returns a JSON object matching the response contract.
+5. App validates the response format before it reaches the reducer.
+6. If the first AI response is malformed, App retries once with a format-repair prompt; if still invalid, the raw output is blocked and shown only as a system error.
+7. App normalizes the valid response and updates narrative, checks, state, clues, scene, and suggestions.
 
 ### Skill Check
 
@@ -81,7 +83,8 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 | Startup | `npm run dev` opens the app through Vite; `npm run build` succeeds |
 | New game | Preset selection can enter the main game with at least one investigator |
 | Submit action | Missing API key opens AI settings instead of crashing |
-| AI response | Invalid scene names, unknown NPCs, string numeric deltas, and clue names are normalized or ignored safely |
+| AI response | Malformed model output is retried once and never displayed as DM narrative |
+| AI response | Invalid scene names, unknown NPCs, string numeric deltas, and clue names are normalized or ignored safely after format validation |
 | Dice | 96-100 is treated as fumble before success levels |
 | Saves | Latest save is visible on title screen after saving and returning home |
 | Saves | Save manager lists valid slots, loads a selected slot, and deletes a selected slot |
@@ -101,6 +104,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 | Preset investigators | `src/data/presets.ts` |
 | Skills/jobs | `src/data/skills.ts` |
 | Smoke tests | `tests/smoke.spec.ts` |
+| AI response format tests | `tests/ai-dm.spec.ts` |
 
 ## 7. Open Product Backlog
 

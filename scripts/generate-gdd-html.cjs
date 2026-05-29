@@ -5,6 +5,7 @@ const root = path.resolve(__dirname, '..');
 const mdPath = path.join(root, 'docs', 'GDD.md');
 const htmlPath = path.join(root, 'docs', 'GDD.html');
 const md = fs.readFileSync(mdPath, 'utf8').replace(/^\uFEFF/, '');
+const updatedDate = '2026-05-29';
 
 function escapeHtml(value) {
   return value
@@ -149,7 +150,7 @@ while (i < lines.length) {
     if (level === 1) {
       title = text;
       body += `${firstH1 ? '<header class="doc-header">' : ''}<h1>${inline(text)}</h1>${
-        firstH1 ? '<p class="doc-subtitle">Full GDD mirror - Source: docs/GDD.md - Updated 2026-05-27</p></header>' : ''
+        firstH1 ? `<p class="doc-subtitle">Full GDD mirror - Source: docs/GDD.md - Updated ${updatedDate}</p></header>` : ''
       }\n`;
       firstH1 = false;
     } else {
@@ -402,7 +403,7 @@ ${nav}
 <main>
   <div class="content">
 ${body}
-    <footer>GDD HTML mirror - Source: docs/GDD.md - Updated 2026-05-27</footer>
+    <footer>GDD HTML mirror - Source: docs/GDD.md - Updated ${updatedDate}</footer>
   </div>
 </main>
 <script>

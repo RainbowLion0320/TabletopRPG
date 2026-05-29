@@ -87,3 +87,10 @@
 - 新增 `deleteSave()` 存档服务函数。
 - 扩展 Playwright smoke tests 覆盖存档管理载入/删除流程。
 - 同步 PRD / SPEC / GDD / Wiki，将“存档列表与删除 UI”从 backlog 移入已实现范围。
+
+## [2026-05-29] update | AI DM 响应格式护栏落地
+
+- AI DM 响应进入 reducer 前必须通过 JSON 契约校验。
+- 首次格式无效时自动向同一 Provider 发起一次修复重试；第二次仍无效则拦截原始输出。
+- 新增 Playwright 回归测试，覆盖坏 JSON 不会作为 DM 叙事展示。
+- 同步 PRD / SPEC / GDD / Wiki 中的 AI 输出稳定性描述。

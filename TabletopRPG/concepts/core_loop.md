@@ -4,7 +4,7 @@ title: 核心玩法循环
 tags: [gameplay, core, loop]
 sources: [project_plan.md, ../../docs/PRD.md, ../../docs/GDD.md]
 created: 2026-05-18
-updated: 2026-05-27
+updated: 2026-05-29
 ---
 
 # 核心玩法循环
@@ -19,7 +19,8 @@ updated: 2026-05-27
 AI 叙事
   -> 玩家输入行动
   -> callAiDm()
-  -> AI JSON / 文本响应
+  -> AI JSON 响应
+    ├─ 格式无效：修复重试一次；仍无效则拦截为系统错误
     ├─ 无检定：applyAiResponse() 更新状态与叙事
     └─ 有检定：prepareCheck() -> 玩家掷骰 -> 检定结果回传 AI
 ```

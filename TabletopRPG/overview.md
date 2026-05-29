@@ -29,6 +29,7 @@ updated: 2026-05-29
 - 标题页、预设调查员选择页、横屏游戏主界面。
 - 4 个预设调查员，可选择 1-4 名进入游戏。
 - AI DM 支持 OpenAI、Anthropic、MiMo、自定义 OpenAI-compatible endpoint。
+- AI DM 响应进入游戏前执行 JSON 契约校验，格式无效时自动修复重试一次。
 - D100 技能检定系统，骰子由前端执行。
 - Together / Split 两种探索模式。
 - AI 推荐行动建议。
@@ -58,7 +59,7 @@ updated: 2026-05-29
 
 ## 最大风险
 
-1. **AI 输出不稳定** -> 已加入 JSON 提取、文本兜底、状态归一化和核心 smoke tests；仍需扩大 AI 响应归一化测试覆盖。
+1. **AI 输出不稳定** -> 已加入 JSON 契约校验、格式修复重试、状态归一化和核心 smoke tests；仍需扩大 AI 响应边界测试覆盖。
 2. **浏览器直调 API Key 风险** -> 当前适合本地 Demo；公开部署前建议后端代理。
 3. **文档漂移** -> 本次建立 `PRD.md` / `SPEC.md` / `GDD.md` / wiki / code 对齐基线。
 4. **功能范围蔓延** -> 未实现功能统一进入 backlog。

@@ -104,6 +104,8 @@ Current UI loads the latest valid save from the title/menu shortcuts. Save Manag
 
 ### Response Shape
 
+The model output is accepted only after it parses as a JSON object matching this contract. Markdown-wrapped JSON and mixed text with an extractable JSON object are parsed as candidates, but arbitrary non-JSON text is rejected.
+
 ```json
 {
   "narrative": "string",
@@ -125,6 +127,13 @@ Current UI loads the latest valid save from the title/menu shortcuts. Save Manag
   "playerChoices": ["行动1", "行动2", "行动3"]
 }
 ```
+
+### Format Enforcement
+
+1. `callAiDm()` requests an AI response for the current action round.
+2. `parseAiResponse()` validates required fields and nested field types before the reducer sees the result.
+3. If the first model response is malformed, the frontend sends one repair prompt to the same provider with the invalid output and the exact JSON contract.
+4. If the repair response is still invalid, the raw model output is blocked and a system error is shown. Raw malformed JSON/Markdown must never be appended as a player-visible DM narrative.
 
 ### Freedom and Tolerance Rules
 
@@ -155,9 +164,9 @@ Irreversible story-breaking acts, such as killing a key NPC or destroying key ev
 
 ### Normalization Rules
 
-- Markdown-wrapped JSON is unwrapped.
-- Fallback extracts the first JSON-like object.
-- Non-JSON AI text is shown as narrative.
+- Markdown-wrapped JSON is unwrapped as a candidate.
+- Mixed text can be accepted only when a valid JSON object can be extracted.
+- Non-JSON AI text is rejected and retried once; it is never shown as narrative.
 - Unknown scene ids/names fall back to current scene.
 - Scene names are accepted in addition to `S01`-`S05`.
 - Unknown NPC names resolve to `null`.

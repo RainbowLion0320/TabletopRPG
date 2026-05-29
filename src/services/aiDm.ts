@@ -7,6 +7,13 @@ export interface PlayerAction {
   scene?: string;
 }
 
+export class AiResponseFormatError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AiResponseFormatError';
+  }
+}
+
 function compactPlayers(state: GameState) {
   return state.players.map((player) => ({
     name: player.name,
@@ -86,6 +93,8 @@ ${JSON.stringify(compactPlayers(state), null, 2)}
 - 如果剧情需要继续，应在承认失败的基础上使用代价、替代线索、NPC反应或后续机会推进，不得让本次失败变成成功。
 
 ## 输出格式：严格 JSON
+- 只返回一个合法 JSON 对象，不要 Markdown 代码块，不要解释，不要前后缀文本。
+- 所有字段必须存在；没有当前 NPC 或检定时使用 null，没有状态变化时使用空对象/空数组。
 {
   "narrative": "给玩家看的叙事文本，200字以内",
   "activeNpc": "当前交互 NPC 全名或 null",
@@ -104,28 +113,103 @@ export function buildUserMessage(actions: PlayerAction[], mode: GameState['explo
   return `【${action.player} 在 ${action.scene ?? '当前场景'}】${action.action}`;
 }
 
-function extractJson(raw: string): AiResponse {
-  const cleaned = raw.trim();
-  const candidates = [
-    cleaned.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1]?.trim(),
-    cleaned,
-    cleaned.slice(cleaned.indexOf('{'), cleaned.lastIndexOf('}') + 1)
-  ].filter((candidate): candidate is string => Boolean(candidate));
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
-  for (const candidate of candidates) {
+function collectJsonCandidates(raw: string) {
+  const cleaned = raw.trim();
+  const candidates: string[] = [];
+  for (const match of cleaned.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)) {
+    if (match[1]?.trim()) candidates.push(match[1].trim());
+  }
+  if (cleaned) candidates.push(cleaned);
+
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start >= 0 && end > start) candidates.push(cleaned.slice(start, end + 1));
+
+  return [...new Set(candidates)];
+}
+
+function ensureString(value: unknown, path: string, allowEmpty = false) {
+  if (typeof value !== 'string') throw new AiResponseFormatError(`${path} 必须是字符串。`);
+  if (!allowEmpty && !value.trim()) throw new AiResponseFormatError(`${path} 不能为空。`);
+}
+
+function ensureRecord(value: unknown, path: string) {
+  if (!isRecord(value)) throw new AiResponseFormatError(`${path} 必须是对象。`);
+  return value;
+}
+
+function ensureStringArray(value: unknown, path: string) {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
+    throw new AiResponseFormatError(`${path} 必须是字符串数组。`);
+  }
+}
+
+function ensureNumericDeltaRecord(value: unknown, path: string) {
+  const record = ensureRecord(value, path);
+  for (const [key, item] of Object.entries(record)) {
+    const numeric = typeof item === 'number' ? item : typeof item === 'string' ? Number(item) : Number.NaN;
+    if (!Number.isFinite(numeric)) {
+      throw new AiResponseFormatError(`${path}.${key} 必须是数字或数字字符串。`);
+    }
+  }
+}
+
+function validateCheck(value: unknown) {
+  if (value === null) return;
+  const check = ensureRecord(value, 'check');
+  ensureString(check.skill, 'check.skill');
+  if (!['普通', '困难', '极难'].includes(String(check.difficulty))) {
+    throw new AiResponseFormatError('check.difficulty 必须是 普通、困难 或 极难。');
+  }
+  ensureString(check.player, 'check.player');
+  if (check.reason !== undefined) ensureString(check.reason, 'check.reason');
+}
+
+function validateStateUpdate(value: unknown) {
+  const stateUpdate = ensureRecord(value, 'stateUpdate');
+  ensureNumericDeltaRecord(stateUpdate.hp, 'stateUpdate.hp');
+  ensureNumericDeltaRecord(stateUpdate.san, 'stateUpdate.san');
+  ensureRecord(stateUpdate.flags, 'stateUpdate.flags');
+  ensureStringArray(stateUpdate.newItems, 'stateUpdate.newItems');
+  if (stateUpdate.sceneChange !== null && typeof stateUpdate.sceneChange !== 'string') {
+    throw new AiResponseFormatError('stateUpdate.sceneChange 必须是字符串或 null。');
+  }
+}
+
+function validateAiResponseShape(value: unknown): AiResponse {
+  const response = ensureRecord(value, 'AI DM 响应');
+  for (const key of ['narrative', 'activeNpc', 'check', 'stateUpdate', 'nextPrompt', 'playerChoices']) {
+    if (!(key in response)) throw new AiResponseFormatError(`缺少字段 ${key}。`);
+  }
+
+  ensureString(response.narrative, 'narrative');
+  if (response.activeNpc !== null && typeof response.activeNpc !== 'string') {
+    throw new AiResponseFormatError('activeNpc 必须是字符串或 null。');
+  }
+  validateCheck(response.check);
+  validateStateUpdate(response.stateUpdate);
+  ensureString(response.nextPrompt, 'nextPrompt', true);
+  ensureStringArray(response.playerChoices, 'playerChoices');
+
+  return response as AiResponse;
+}
+
+export function parseAiResponse(raw: string): AiResponse {
+  let lastError = '没有找到可解析内容。';
+
+  for (const candidate of collectJsonCandidates(raw)) {
     try {
-      return JSON.parse(candidate) as AiResponse;
-    } catch {
-      // Try the next candidate. The fallback below keeps the session moving.
+      return validateAiResponseShape(JSON.parse(candidate));
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
     }
   }
 
-  return {
-    narrative: cleaned || 'AI 没有返回可显示内容，请重试或检查模型配置。',
-    activeNpc: null,
-    check: null,
-    playerChoices: ['继续调查', '查看线索', '询问同伴']
-  };
+  throw new AiResponseFormatError(`AI DM 响应格式无效：${lastError}`);
 }
 
 async function readJsonResponse(response: Response) {
@@ -138,11 +222,7 @@ async function readJsonResponse(response: Response) {
   }
 }
 
-export async function callAiDm(config: ApiConfig, state: GameState, actions: PlayerAction[]) {
-  const userMessage = buildUserMessage(actions, state.exploreMode);
-  const history = [...state.conversationHistory.slice(-24), { role: 'user' as const, content: userMessage }];
-  let raw = '';
-
+async function requestAiDmRaw(config: ApiConfig, state: GameState, history: GameState['conversationHistory']) {
   if (config.provider === 'anthropic') {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -160,31 +240,68 @@ export async function callAiDm(config: ApiConfig, state: GameState, actions: Pla
     });
     const data = await readJsonResponse(response);
     if (!response.ok || data.error) throw new Error(data.error?.message ?? `HTTP ${response.status}`);
-    raw = data.content?.[0]?.text || '';
-  } else {
-    const endpoint = (config.provider === 'mimo'
-      ? 'https://token-plan-cn.xiaomimimo.com/v1'
-      : config.endpoint || 'https://api.openai.com/v1').replace(/\/+$/, '');
-    const model = config.provider === 'mimo' ? (config.model || 'mimo-v2.5') : (config.model || 'gpt-4o');
-    const response = await fetch(`${endpoint}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${config.apiKey}`
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: 1024,
-        messages: [
-          { role: 'system', content: buildSystemPrompt(state) },
-          ...history
-        ]
-      })
-    });
-    const data = await readJsonResponse(response);
-    if (!response.ok || data.error) throw new Error(data.error?.message ?? `HTTP ${response.status}`);
-    raw = data.choices?.[0]?.message?.content || '';
+    return data.content?.[0]?.text || '';
   }
 
-  return { raw, response: extractJson(raw), userMessage };
+  const endpoint = (config.provider === 'mimo'
+    ? 'https://token-plan-cn.xiaomimimo.com/v1'
+    : config.endpoint || 'https://api.openai.com/v1').replace(/\/+$/, '');
+  const model = config.provider === 'mimo' ? (config.model || 'mimo-v2.5') : (config.model || 'gpt-4o');
+  const response = await fetch(`${endpoint}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${config.apiKey}`
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 1024,
+      messages: [
+        { role: 'system', content: buildSystemPrompt(state) },
+        ...history
+      ]
+    })
+  });
+  const data = await readJsonResponse(response);
+  if (!response.ok || data.error) throw new Error(data.error?.message ?? `HTTP ${response.status}`);
+  return data.choices?.[0]?.message?.content || '';
+}
+
+function buildFormatRepairMessage(raw: string) {
+  const clippedRaw = raw.trim().slice(0, 2400);
+  return `上一条 AI DM 输出不是合法契约 JSON，前端已拦截，不能展示给玩家。
+请基于同一回合内容重新返回结果，并严格遵守：
+- 只返回一个 JSON 对象，不要 Markdown 代码块，不要解释，不要前后缀文本。
+- 必须包含 narrative、activeNpc、check、stateUpdate、nextPrompt、playerChoices。
+- activeNpc 无当前 NPC 时为 null；check 无检定时为 null。
+- stateUpdate 必须包含 hp、san、flags、newItems、sceneChange；无变化时分别用 {}、{}、{}、[]、null。
+
+上一条无效输出如下：
+${clippedRaw || '(empty)'}`;
+}
+
+export async function callAiDm(config: ApiConfig, state: GameState, actions: PlayerAction[]) {
+  const userMessage = buildUserMessage(actions, state.exploreMode);
+  const history: GameState['conversationHistory'] = [
+    ...state.conversationHistory.slice(-24),
+    { role: 'user' as const, content: userMessage }
+  ];
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const raw = await requestAiDmRaw(config, state, history);
+    try {
+      return { raw, response: parseAiResponse(raw), userMessage };
+    } catch (error) {
+      if (!(error instanceof AiResponseFormatError)) throw error;
+      if (attempt === 1) {
+        throw new AiResponseFormatError('AI 连续返回无效格式，已拦截原始输出。请重试本轮行动或调整模型。');
+      }
+      history.push(
+        { role: 'assistant', content: raw },
+        { role: 'user', content: buildFormatRepairMessage(raw) }
+      );
+    }
+  }
+
+  throw new AiResponseFormatError('AI 连续返回无效格式，已拦截原始输出。请重试本轮行动或调整模型。');
 }

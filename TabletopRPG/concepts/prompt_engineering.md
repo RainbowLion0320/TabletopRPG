@@ -4,7 +4,7 @@ title: 提示词工程
 tags: [prompt, ai, methodology]
 sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-18
-updated: 2026-05-27
+updated: 2026-05-29
 ---
 
 # 提示词工程
@@ -55,6 +55,7 @@ updated: 2026-05-27
 ### 7. 格式层
 - 要求严格 JSON。
 - 字段包括 `narrative`、`activeNpc`、`check`、`stateUpdate`、`nextPrompt`、`playerChoices`。
+- 要求只返回 JSON 对象，不返回 Markdown 代码块、解释或前后缀文本。
 
 ## 输出格式约束
 
@@ -75,11 +76,12 @@ updated: 2026-05-27
 }
 ```
 
-## 运行时兜底
+## 运行时格式护栏
 
 - Markdown 代码块 JSON 提取。
-- 混合文本中的 JSON 对象提取。
-- 非 JSON 文本作为叙事展示。
+- 混合文本中的 JSON 对象提取，但必须通过完整契约校验。
+- 非 JSON 文本、坏 JSON 或缺字段响应会触发一次格式修复重试。
+- 重试后仍无效时，原始输出被拦截，不展示为 DM 叙事。
 - AI 响应字段在 reducer 中归一化。
 
 ## 后续提示词资产化计划

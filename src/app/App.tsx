@@ -11,7 +11,7 @@ import { TopBar } from '../components/game/TopBar';
 import { CharacterSetup } from '../components/setup/CharacterSetup';
 import { TitleScreen } from '../components/setup/TitleScreen';
 import { storyData } from '../data/storyData';
-import { callAiDm, type PlayerAction } from '../services/aiDm';
+import { AiResponseFormatError, callAiDm, type PlayerAction } from '../services/aiDm';
 import { prepareCheck, rollD100 } from '../services/dice';
 import { deleteSave, readApiConfig, readSaves, saveGameState, writeApiConfig } from '../services/storage';
 import { createInitialGameState, gameReducer } from '../state/gameReducer';
@@ -124,7 +124,8 @@ export function App() {
       dispatch({ type: 'applyAiResponse', response: prepared, raw });
     } catch (error) {
       dispatch({ type: 'setThinking', value: false });
-      dispatch({ type: 'appendMessage', message: { type: 'system', text: `AI DM 连接失败：${error instanceof Error ? error.message : String(error)}` } });
+      const prefix = error instanceof AiResponseFormatError ? 'AI DM 返回格式无效' : 'AI DM 连接失败';
+      dispatch({ type: 'appendMessage', message: { type: 'system', text: `${prefix}：${error instanceof Error ? error.message : String(error)}` } });
     }
   }
 
