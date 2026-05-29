@@ -60,23 +60,60 @@ test('investigator setup shows portraits and full attribute blocks', async ({ pa
   expect(portraitRatio).toBeGreaterThan(0.78);
   expect(portraitRatio).toBeLessThan(0.82);
   const attrBlock = firstCard.locator('.preset-attrs');
+  const skillList = firstCard.locator('.preset-skill-list');
   await expect(attrBlock).toBeHidden();
-  const selectedBeforeAttrsToggle = await page.locator('.preset-card-modern.selected').count();
-  await firstCard.locator('.preset-attrs-toggle').click();
-  await expect(page.locator('.preset-card-modern.selected')).toHaveCount(selectedBeforeAttrsToggle);
-  await expect(firstCard).toHaveClass(/selected/);
-  await expect(attrBlock).toBeVisible();
-  for (const attr of ['STR', 'CON', 'SIZ', 'DEX', 'APP', 'INT', 'POW', 'EDU']) {
-    await expect(attrBlock.getByText(attr, { exact: true })).toBeVisible();
-  }
-  const firstAttrTextAlign = await attrBlock.locator('span').first().evaluate((element) => getComputedStyle(element).textAlign);
-  expect(firstAttrTextAlign).toBe('center');
+  await expect(skillList).toBeHidden();
   const backgroundNoteTops = await firstCard.locator('.preset-background-notes span').evaluateAll((items) =>
     items.map((item) => Math.round(item.getBoundingClientRect().top))
   );
   expect(backgroundNoteTops.length).toBe(3);
   expect(new Set(backgroundNoteTops).size).toBe(3);
+  const collapsedLayout = await firstCard.evaluate((card) => {
+    const notes = card.querySelector('.preset-background-notes')?.getBoundingClientRect();
+    const vitalsRect = card.querySelector('.preset-vitals')?.getBoundingClientRect();
+    const toggle = card.querySelector('.preset-attrs-toggle')?.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    return {
+      cardHeight: cardRect.height,
+      notesTop: notes?.top ?? 0,
+      notesBottom: notes?.bottom ?? 0,
+      vitalsTop: vitalsRect?.top ?? 0,
+      toggleTop: toggle?.top ?? 0
+    };
+  });
+  expect(collapsedLayout.notesTop).toBeLessThan(collapsedLayout.vitalsTop);
+  expect(collapsedLayout.vitalsTop - collapsedLayout.notesBottom).toBeGreaterThanOrEqual(16);
+  expect(collapsedLayout.vitalsTop).toBeLessThan(collapsedLayout.toggleTop);
+  const selectedBeforeAttrsToggle = await page.locator('.preset-card-modern.selected').count();
+  await firstCard.locator('.preset-attrs-toggle').click();
+  await expect(page.locator('.preset-card-modern.selected')).toHaveCount(selectedBeforeAttrsToggle);
+  await expect(firstCard).toHaveClass(/selected/);
+  await expect(attrBlock).toBeVisible();
+  await expect(skillList).toBeVisible();
+  for (const attr of ['STR', 'CON', 'SIZ', 'DEX', 'APP', 'INT', 'POW', 'EDU']) {
+    await expect(attrBlock.getByText(attr, { exact: true })).toBeVisible();
+  }
+  for (const skill of ['侦查', '聆听', '心理学']) {
+    await expect(skillList.getByText(skill, { exact: false })).toBeVisible();
+  }
+  const firstAttrTextAlign = await attrBlock.locator('span').first().evaluate((element) => getComputedStyle(element).textAlign);
+  expect(firstAttrTextAlign).toBe('center');
   const vitals = firstCard.locator('.preset-vitals');
+  const expandedLayout = await firstCard.evaluate((card) => {
+    const panel = card.querySelector('.preset-other-panel')?.getBoundingClientRect();
+    const toggle = card.querySelector('.preset-attrs-toggle')?.getBoundingClientRect();
+    return {
+      cardHeight: card.getBoundingClientRect().height,
+      panelTop: panel?.top ?? 0,
+      toggleBottom: toggle?.bottom ?? 0
+    };
+  });
+  expect(Math.abs(expandedLayout.cardHeight - collapsedLayout.cardHeight)).toBeLessThanOrEqual(4);
+  expect(expandedLayout.panelTop).toBeGreaterThanOrEqual(expandedLayout.toggleBottom + 4);
+  const vitalBorderColors = await vitals.locator('span').evaluateAll((items) =>
+    items.map((item) => getComputedStyle(item).borderTopColor)
+  );
+  expect(new Set(vitalBorderColors).size).toBe(4);
   await expect(vitals.getByText('HP', { exact: true })).toBeVisible();
   await expect(vitals.getByText('12', { exact: true })).toHaveCount(2);
   await expect(vitals.getByText('MP', { exact: true })).toBeVisible();

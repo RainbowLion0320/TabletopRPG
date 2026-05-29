@@ -182,7 +182,7 @@ button {
   background: rgba(20, 18, 15, 0.86);
   color: var(--text);
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
   cursor: pointer;
   transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
 }
@@ -195,6 +195,10 @@ button {
 .preset-card-modern.selected {
   border-color: rgba(216,189,122,0.86);
   background: rgba(43, 34, 20, 0.8);
+}
+
+.preset-card-modern.attrs-expanded {
+  z-index: 30;
 }
 
 .preset-select-mark {
@@ -228,18 +232,18 @@ button {
 }
 
 .preset-card-content {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(128px, 0.62fr);
   grid-template-areas:
     "name name"
     "meta meta"
     "desc desc"
-    "vitals vitals"
     "notes notes"
-    "skills skills"
+    "vitals vitals"
     "toggle toggle"
-    "attrs attrs";
-  gap: 6px 8px;
+    ". .";
+  gap: 7px 8px;
   padding: 16px 56px 16px 16px;
   align-items: start;
 }
@@ -272,6 +276,7 @@ button {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
+  margin-top: 10px;
 }
 
 .preset-vitals span,
@@ -281,6 +286,18 @@ button {
   background: rgba(255,255,255,0.035);
   padding: 6px 7px;
 }
+
+.preset-vitals span {
+  border-color: color-mix(in srgb, var(--stat-color) 55%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--stat-color) 18%, transparent), rgba(255,255,255,0.03));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--stat-color) 20%, transparent);
+}
+
+.preset-vitals span:nth-child(1) { --stat-color: #d65f5f; }
+.preset-vitals span:nth-child(2) { --stat-color: #5d8fd6; }
+.preset-vitals span:nth-child(3) { --stat-color: #56b98f; }
+.preset-vitals span:nth-child(4) { --stat-color: #d8bd7a; }
 
 .preset-vitals span,
 .preset-attrs span {
@@ -296,6 +313,10 @@ button {
   line-height: 1.1;
 }
 
+.preset-vitals b {
+  color: color-mix(in srgb, var(--stat-color) 80%, white);
+}
+
 .preset-vitals em,
 .preset-attrs em {
   display: block;
@@ -305,24 +326,36 @@ button {
   margin-top: 3px;
 }
 
+.preset-other-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 16px;
+  right: 16px;
+  z-index: 35;
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(216,189,122,0.18);
+  border-radius: 6px;
+  background: rgba(13, 12, 10, 0.96);
+  box-shadow: 0 18px 34px rgba(0,0,0,0.44);
+  max-height: min(360px, calc(100dvh - 140px));
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.preset-other-panel[hidden] {
+  display: none;
+}
+
 .preset-attrs {
-  grid-area: attrs;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
-  border: 1px solid rgba(216,189,122,0.18);
-  border-radius: 6px;
-  background: rgba(0,0,0,0.16);
-  padding: 7px;
-}
-
-.preset-attrs[hidden] {
-  display: none;
 }
 
 .preset-attrs-toggle {
   grid-area: toggle;
-  justify-self: start;
+  justify-self: end;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -332,6 +365,7 @@ button {
   color: var(--quiet);
   font-size: 12px;
   line-height: 1;
+  margin-top: 5px;
   padding: 6px 10px;
   cursor: pointer;
 }
@@ -345,18 +379,11 @@ button {
 }
 
 .preset-skill-list {
-  grid-area: skills;
   display: flex;
   gap: 6px;
-  flex-wrap: nowrap;
-  overflow-x: auto;
+  flex-wrap: wrap;
   margin-top: 0;
   padding-bottom: 2px;
-  scrollbar-width: none;
-}
-
-.preset-skill-list::-webkit-scrollbar {
-  display: none;
 }
 
 .preset-skill-list span {
@@ -1077,10 +1104,10 @@ button {
       "name name"
       "meta meta"
       "desc desc"
+      "notes notes"
       "vitals vitals"
-      "notes skills"
       "toggle toggle"
-      "attrs attrs";
+      ". .";
     padding-right: 70px;
   }
   .preset-background-notes { grid-template-columns: 1fr; }
@@ -1111,11 +1138,10 @@ button {
       "name"
       "meta"
       "desc"
-      "vitals"
       "notes"
-      "skills"
+      "vitals"
       "toggle"
-      "attrs";
+      ".";
     padding: 16px;
   }
   .preset-vitals { grid-template-columns: repeat(2, minmax(0, 1fr)); }

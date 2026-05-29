@@ -82,7 +82,7 @@ export function CharacterSetup({ onBack, onStart }: CharacterSetupProps) {
           return (
             <article
               key={preset.id}
-              className={`preset-card-modern ${selected ? 'selected' : ''}`}
+              className={`preset-card-modern ${selected ? 'selected' : ''} ${attrsExpanded ? 'attrs-expanded' : ''}`}
               onClick={() => toggle(preset.id)}
               onKeyDown={(event) => handleCardKeyDown(event, preset.id)}
               role="button"
@@ -108,7 +108,7 @@ export function CharacterSetup({ onBack, onStart }: CharacterSetupProps) {
                 <button
                   className={`preset-attrs-toggle ${attrsExpanded ? 'expanded' : ''}`}
                   type="button"
-                  aria-controls={`${preset.id}-other-attrs`}
+                  aria-controls={`${preset.id}-other-panel`}
                   aria-expanded={attrsExpanded}
                   onClick={(event) => toggleAttrs(event, preset.id)}
                 >
@@ -117,23 +117,25 @@ export function CharacterSetup({ onBack, onStart }: CharacterSetupProps) {
                 </button>
 
                 <div
-                  className="preset-attrs"
-                  id={`${preset.id}-other-attrs`}
-                  aria-label={`${preset.name}完整属性`}
+                  className="preset-other-panel"
+                  id={`${preset.id}-other-panel`}
                   hidden={!attrsExpanded}
+                  onClick={(event) => event.stopPropagation()}
                 >
-                  {otherAttrRows.map(([key, label]) => (
-                    <span key={key} title={label}>
-                      <b>{key}</b>
-                      <em>{preset.attrs[key]}</em>
-                    </span>
-                  ))}
-                </div>
+                  <div className="preset-attrs" aria-label={`${preset.name}完整属性`}>
+                    {otherAttrRows.map(([key, label]) => (
+                      <span key={key} title={label}>
+                        <b>{key}</b>
+                        <em>{preset.attrs[key]}</em>
+                      </span>
+                    ))}
+                  </div>
 
-                <div className="preset-skill-list" aria-label={`${preset.name}技能`}>
-                  {skillEntries.map(([name, value]) => (
-                    <span key={name}>{name} {value}</span>
-                  ))}
+                  <div className="preset-skill-list" aria-label={`${preset.name}技能`}>
+                    {skillEntries.map(([name, value]) => (
+                      <span key={name}>{name} {value}</span>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="preset-background-notes">
