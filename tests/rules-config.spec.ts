@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test';
-import { createInvestigatorFromPreset, presets } from '../src/data/presets';
 import {
   deriveInvestigatorStats,
   getDifficultyThreshold,
@@ -21,18 +20,41 @@ test('game rules centralize derived investigator stats and skill bases', () => {
   expect(resolveSkillBase(25, attrs)).toBe(25);
 });
 
-test('preset investigators use the centralized derived stat rules', () => {
-  for (const preset of presets) {
-    const player = createInvestigatorFromPreset(preset);
-    const derived = deriveInvestigatorStats(preset.attrs);
+test('preset investigators use the centralized derived stat rules', async ({ page }) => {
+  await page.goto('/');
 
-    expect(player.hp).toBe(derived.hp);
-    expect(player.mp).toBe(derived.mp);
-    expect(player.san).toBe(derived.san);
-    expect(player.luck).toBe(derived.luck);
-    expect(player.currentHp).toBe(derived.hp);
-    expect(player.currentMp).toBe(derived.mp);
-    expect(player.currentSan).toBe(derived.san);
+  const results = await page.evaluate(async () => {
+    const [{ createInvestigatorFromPreset, presets }, { deriveInvestigatorStats }] = await Promise.all([
+      import('/src/data/presets.ts'),
+      import('/src/data/gameRules.ts')
+    ]);
+
+    return presets.map((preset) => {
+      const player = createInvestigatorFromPreset(preset);
+      const derived = deriveInvestigatorStats(preset.attrs);
+      return {
+        hp: player.hp === derived.hp,
+        mp: player.mp === derived.mp,
+        san: player.san === derived.san,
+        luck: player.luck === derived.luck,
+        currentHp: player.currentHp === derived.hp,
+        currentMp: player.currentMp === derived.mp,
+        currentSan: player.currentSan === derived.san
+      };
+    });
+  });
+
+  expect(results).toHaveLength(4);
+  for (const result of results) {
+    expect(result).toEqual({
+      hp: true,
+      mp: true,
+      san: true,
+      luck: true,
+      currentHp: true,
+      currentMp: true,
+      currentSan: true
+    });
   }
 });
 

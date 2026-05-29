@@ -25,6 +25,7 @@ export interface SkillValue {
 export interface Investigator {
   id: string;
   name: string;
+  portrait?: string;
   gender: string;
   age: number;
   hometown: string;
@@ -60,6 +61,7 @@ export interface JobDefinition {
 export interface PresetInvestigator {
   id: string;
   name: string;
+  portrait: string;
   role: string;
   job: string;
   gender: string;
@@ -90,7 +92,7 @@ export interface NpcDefinition {
   role: string;
   attitude: '友好' | '中立' | '警惕' | '敌对' | '未知';
   hp: number;
-  portrait: string;
+  portrait?: string;
   notes: string;
 }
 

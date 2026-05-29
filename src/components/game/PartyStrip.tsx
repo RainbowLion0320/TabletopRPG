@@ -7,12 +7,14 @@ interface PartyStripProps {
 export function PartyStrip({ state }: PartyStripProps) {
   return (
     <section className="party-strip-react">
-      {state.players.map((player, index) => {
+      {state.players.map((player) => {
         const hpPct = Math.round((player.currentHp / player.hp) * 100);
         const sanPct = Math.round((player.currentSan / player.san) * 100);
         return (
           <article className="party-card" key={player.id}>
-            <div className={`party-avatar avatar-${index}`} />
+            <div className="party-avatar">
+              {player.portrait ? <img src={player.portrait} alt="" /> : <span>{player.name.slice(0, 1)}</span>}
+            </div>
             <div className="party-meta">
               <strong>{player.name}</strong>
               <small>{player.job}</small>

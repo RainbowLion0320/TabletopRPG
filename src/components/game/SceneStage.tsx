@@ -13,7 +13,7 @@ export function SceneStage({ state }: SceneStageProps) {
     <div className="scene-stage">
       <img className="scene-backdrop-img" src={scene.image} alt="" />
       <div className="scene-shade" />
-      {npc ? (
+      {npc?.portrait ? (
         <img className="scene-npc" src={npc.portrait} alt="" />
       ) : null}
     </div>

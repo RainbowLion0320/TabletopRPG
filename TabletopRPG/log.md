@@ -101,3 +101,17 @@
 - 角色生成、存档水合、选角 UI 和骰子服务改为引用统一规则配置。
 - 新增 Playwright 规则配置测试，防止数值公式再次分散。
 - 同步 PRD / SPEC / GDD / Wiki 中的数值事实源说明。
+
+## [2026-05-29] update | 选角页信息展示增强
+
+- 预设调查员增加 portrait 字段，选角页展示现有立绘资产。
+- 选角卡显示完整 9 项属性、HP/MP/SAN/Luck、技能值和背景摘要。
+- 队伍条头像改为读取角色数据，不再用 CSS 索引硬绑定图片。
+- 新增 Playwright 回归测试覆盖选角页立绘和完整属性展示。
+
+## [2026-05-29] refactor | 调查员立绘资源命名对齐
+
+- 将 `assets/npcs/` 下 4 张预设调查员立绘迁移到 `assets/investigators/`。
+- 资源文件按角色名重命名为 `henry_gray.png`、`ada_wallace.png`、`thomas_bell.png`、`robert_shaw.png`。
+- NPC 数据不再复用调查员立绘；NPC portrait 改为可选字段。
+- 同步代码、资源 README、PRD/GDD、Wiki 和比赛 pitch 页面中的资源路径与表述。

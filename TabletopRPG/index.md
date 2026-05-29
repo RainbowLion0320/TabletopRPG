@@ -23,7 +23,7 @@ updated: 2026-05-29
 |------|------|------|
 | [团队成员](entities/team.md) | 团队成员分工与资源交付职责 | ✅ |
 | [AI DM 系统](entities/ai_dm.md) | AI DM Provider、提示词、响应格式校验、检定流程 | ✅ 已实现 |
-| [角色系统](entities/character_system.md) | 当前预设调查员选择、职业/技能数据结构、派生数值规则 | ✅ 已实现（预设选择） |
+| [角色系统](entities/character_system.md) | 当前预设调查员选择、立绘、完整属性、职业/技能数据结构、派生数值规则 | ✅ 已实现（预设选择） |
 | [存档系统](entities/save_system.md) | `trpg-saves-v2`、API 配置 | ✅ 已实现（最近存档、列表、删除） |
 
 ## 概念页（concepts/）

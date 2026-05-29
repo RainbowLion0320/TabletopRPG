@@ -9,6 +9,18 @@ interface CharacterSetupProps {
   onStart: (players: Investigator[]) => void;
 }
 
+const attrRows = [
+  ['STR', '力量'],
+  ['CON', '体质'],
+  ['SIZ', '体型'],
+  ['DEX', '敏捷'],
+  ['APP', '外貌'],
+  ['INT', '智力'],
+  ['POW', '意志'],
+  ['EDU', '教育'],
+  ['Luck', '幸运']
+] as const;
+
 export function CharacterSetup({ onBack, onStart }: CharacterSetupProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>(() => presets.slice(0, 2).map((item) => item.id));
   const selectedPlayers = useMemo(
@@ -45,6 +57,7 @@ export function CharacterSetup({ onBack, onStart }: CharacterSetupProps) {
         {presets.map((preset) => {
           const selected = selectedIds.includes(preset.id);
           const stats = deriveInvestigatorStats(preset.attrs);
+          const skillEntries = Object.entries(preset.skills);
           return (
             <button
               key={preset.id}
@@ -52,13 +65,41 @@ export function CharacterSetup({ onBack, onStart }: CharacterSetupProps) {
               onClick={() => toggle(preset.id)}
             >
               <span className="preset-select-mark">{selected ? '已选' : '选择'}</span>
-              <strong>{preset.name}</strong>
-              <small>{preset.role}</small>
-              <p>{preset.desc}</p>
-              <div className="preset-stats">
-                <span>HP {stats.hp}</span>
-                <span>SAN {stats.san}</span>
-                <span>Luck {stats.luck}</span>
+              <div className="preset-portrait-frame">
+                <img src={preset.portrait} alt={`${preset.name} 立绘`} />
+              </div>
+              <div className="preset-card-content">
+                <strong>{preset.name}</strong>
+                <small>{preset.role} · {preset.gender} · {preset.age}岁 · {preset.hometown}</small>
+                <p>{preset.desc}</p>
+
+                <div className="preset-vitals" aria-label={`${preset.name}派生数值`}>
+                  <span><b>HP</b><em>{stats.hp}</em></span>
+                  <span><b>MP</b><em>{stats.mp}</em></span>
+                  <span><b>SAN</b><em>{stats.san}</em></span>
+                  <span><b>Luck</b><em>{stats.luck}</em></span>
+                </div>
+
+                <div className="preset-attrs" aria-label={`${preset.name}完整属性`}>
+                  {attrRows.map(([key, label]) => (
+                    <span key={key} title={label}>
+                      <b>{key}</b>
+                      <em>{preset.attrs[key]}</em>
+                    </span>
+                  ))}
+                </div>
+
+                <div className="preset-skill-list" aria-label={`${preset.name}技能`}>
+                  {skillEntries.map(([name, value]) => (
+                    <span key={name}>{name} {value}</span>
+                  ))}
+                </div>
+
+                <div className="preset-background-notes">
+                  <span>{preset.background.belief}</span>
+                  <span>{preset.background.meaningfulItem}</span>
+                  <span>{preset.background.trait}</span>
+                </div>
               </div>
             </button>
           );

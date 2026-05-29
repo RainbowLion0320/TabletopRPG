@@ -7,7 +7,8 @@
 | 类型 | 命名格式 | 示例 |
 |------|----------|------|
 | 场景背景 | `scene_描述.(png/svg/gif)` | `scene_s02.svg` |
-| NPC 立绘 | `npc_名称.png` | `npc_isabella.png` |
+| 调查员立绘 | `角色名拼音.png` | `henry_gray.png` |
+| 后续 NPC 专属立绘 | `npc_名称.png` | `npc_bartender.png` |
 | UI 元素 | `ui_描述.png` | `ui_dialog_bg.png` |
 | 道具图标 | `item_名称.png` | `item_sword.png` |
 
@@ -17,7 +18,7 @@
 
 ```
 主视觉/场景背景: 优先 16:9，目标展示 1920x1080
-NPC 立绘: 透明背景 PNG 优先
+调查员/NPC 立绘: 透明背景 PNG 优先
 UI 元素:  按实际组件需求补充
 ```
 
@@ -25,8 +26,8 @@ UI 元素:  按实际组件需求补充
 
 ```
 assets/
-├── scenes/     # 场景背景图
-└── npcs/       # NPC 立绘
+├── scenes/         # 场景背景图
+└── investigators/  # 预设调查员立绘
 ```
 
 ## 注意事项

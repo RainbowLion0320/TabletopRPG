@@ -106,6 +106,7 @@ function normalizeInvestigator(value: unknown, index: number): Investigator | nu
   return {
     id: idValue,
     name,
+    portrait: typeof value.portrait === 'string' ? value.portrait : undefined,
     gender: stringValue(value.gender, '未知'),
     age: Math.max(0, Math.floor(numberValue(value.age, 30))),
     hometown: stringValue(value.hometown, '伦敦'),

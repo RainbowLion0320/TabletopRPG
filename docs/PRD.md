@@ -21,8 +21,8 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 ### In Scope
 
 - Title screen with new game, continue game, and AI settings.
-- Preset investigator selection for 1-4 investigators.
-- Main game screen with scene art, active NPC portrait, narrative feed, action dock, party status, menu, and info drawer.
+- Preset investigator selection for 1-4 investigators, with portraits, full attributes, derived stats, skill values, and background cues.
+- Main game screen with scene art, narrative feed, action dock, investigator party portraits/status, menu, and info drawer with active NPC information.
 - Together mode: all selected investigators submit one action round together.
 - Split mode: one investigator acts in a selected scene at a time.
 - AI DM integration through OpenAI, Anthropic, MiMo, or a custom OpenAI-compatible endpoint.
@@ -31,7 +31,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 - State updates for HP, SAN, flags, scene change, clues, active NPC, and suggested actions.
 - localStorage saves with latest-save load and save manager list/load/delete through `trpg-saves-v2`.
 - Built-in story data for "雾中消逝": 5 scenes, 6 NPC entries, 8 clue items.
-- Automated smoke tests for the title/setup/game flow, no-key AI settings guard, save/continue, invalid saves, and D100 fumble priority.
+- Automated smoke tests for the title/setup/game flow, setup portrait/full-attribute display, no-key AI settings guard, save/continue, invalid saves, and D100 fumble priority.
 
 ### Out of Scope for Current MVP
 

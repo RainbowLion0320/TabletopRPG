@@ -1,11 +1,16 @@
 import type { Investigator, PresetInvestigator, SkillValue } from '../types/game';
 import { deriveInvestigatorStats, resolveSkillBase } from './gameRules';
 import { allSkills, jobSkillMap, jobs } from './skills';
+import portraitNurse from '../../assets/investigators/ada_wallace.png';
+import portraitInspector from '../../assets/investigators/henry_gray.png';
+import portraitConstable from '../../assets/investigators/robert_shaw.png';
+import portraitReporter from '../../assets/investigators/thomas_bell.png';
 
 export const presets: PresetInvestigator[] = [
   {
     id: 'inspector',
     name: '亨利·格雷',
+    portrait: portraitInspector,
     role: '前苏格兰场侦探',
     job: 'detective',
     gender: '男',
@@ -24,6 +29,7 @@ export const presets: PresetInvestigator[] = [
   {
     id: 'nurse',
     name: '艾达·华莱士',
+    portrait: portraitNurse,
     role: '战地护士出身的医生',
     job: 'doctor',
     gender: '女',
@@ -42,6 +48,7 @@ export const presets: PresetInvestigator[] = [
   {
     id: 'reporter',
     name: '托马斯·贝尔',
+    portrait: portraitReporter,
     role: '《每日电讯》调查记者',
     job: 'journalist',
     gender: '男',
@@ -60,6 +67,7 @@ export const presets: PresetInvestigator[] = [
   {
     id: 'constable',
     name: '罗伯特·肖',
+    portrait: portraitConstable,
     role: '伦敦警察厅老牌巡警',
     job: 'police',
     gender: '男',
@@ -92,6 +100,7 @@ export function createInvestigatorFromPreset(preset: PresetInvestigator): Invest
   return {
     id: preset.id,
     name: preset.name,
+    portrait: preset.portrait,
     gender: preset.gender,
     age: preset.age,
     hometown: preset.hometown,

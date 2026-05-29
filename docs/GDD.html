@@ -245,8 +245,8 @@ footer {
 <tbody>
 <tr><td>前端架构</td><td>Vite + React + TypeScript 单页应用</td></tr>
 <tr><td>游戏入口</td><td>标题页、AI 设置、继续最近存档</td></tr>
-<tr><td>角色系统</td><td>4 个预设调查员选择，支持 1-4 人开局</td></tr>
-<tr><td>主界面</td><td>场景图、NPC 立绘、叙事区、行动输入、队伍状态、资料抽屉、菜单</td></tr>
+<tr><td>角色系统</td><td>4 个预设调查员选择，支持 1-4 人开局；选角页展示立绘、完整属性、派生数值、技能和背景摘要</td></tr>
+<tr><td>主界面</td><td>场景图、调查员立绘、叙事区、行动输入、队伍状态、资料抽屉、菜单</td></tr>
 <tr><td>探索模式</td><td>一起行动 / 分头探索</td></tr>
 <tr><td>AI DM</td><td>OpenAI / Anthropic / MiMo / 自定义端点，严格 JSON 输出 + 格式校验 + 一次修复重试</td></tr>
 <tr><td>检定</td><td>前端 D100，核心数值规则集中在 <code>src/data/gameRules.ts</code>，AI 只请求检定并根据结果继续叙事</td></tr>
@@ -578,8 +578,8 @@ AI DM解析：
 │                          │  │ 📖 小册子（已解密）         ││
 ├──────────────────────────┤  └──────────────────────────┘│
 │  [立绘区]                │  ┌─ 骰子区 ───────────────────┐│
-│  NPC立绘 / 敌人立绘      │  │ 🎲 侦查检定 D100=23        ││
-│  当前行动玩家立绘         │  │ → 普通成功！               ││
+│  调查员立绘              │  │ 🎲 侦查检定 D100=23        ││
+│  NPC专属立绘（后续）      │  │ → 普通成功！               ││
 │                          │  └──────────────────────────┘│
 ├──────────────────────────┴──────────────────────────────┤
 │  当前行动：[玩家1·凌渊]                                   │
@@ -906,7 +906,7 @@ AI接入：OpenAI / Anthropic / MiMo / OpenAI-compatible Custom Endpoint
 数据：localStorage（存档槽位/API配置/剧情状态）
 骰子：前端 D100 随机数 + React 检定卡
 状态：useReducer + GameState hydration
-资源：Vite import 场景图、NPC立绘和样式资源
+资源：Vite import 场景图、调查员立绘和样式资源
 构建：npm run build 生成 dist/</code></pre>
 <h3 id="s9-2">9.2 AI API接入</h3>
 <p>当前运行时配置：</p>
@@ -932,7 +932,7 @@ AI代理：服务端统一调用（隐藏密钥）
 <pre><code>TabletopRPG/
 ├── docs/                   ← PRD / SPEC / GDD / HTML 镜像
 ├── raw/                    ← 原始剧本资料，只读归档
-├── assets/                 ← 场景图、NPC 立绘等运行时资源
+├── assets/                 ← 场景图、调查员立绘等运行时资源
 ├── scripts/                ← 文档生成脚本
 ├── src/
 │   ├── app/                ← App 编排与屏幕状态
@@ -953,7 +953,7 @@ AI代理：服务端统一调用（隐藏密钥）
 <tr><td>P0</td><td>AI DM 核心 Prompt + 防注入</td><td>已实现并持续迭代</td><td>JSON 契约、格式校验/修复重试、容错度、骰子权威、冲突处理</td></tr>
 <tr><td>P0</td><td>D100 检定</td><td>已实现</td><td>前端骰子权威，数值规则集中在 <code>gameRules.ts</code>，含 <code>幸运</code> 冲突仲裁</td></tr>
 <tr><td>P0</td><td>剧情标记 / 线索 / 场景</td><td>已实现基础版</td><td>5 个场景、6 个 NPC 条目、8 个线索物品</td></tr>
-<tr><td>P0</td><td>自动化 smoke tests</td><td>已实现</td><td>覆盖标题页、选角、主界面、无 API Key、存档/读档、非法存档、大失败优先</td></tr>
+<tr><td>P0</td><td>自动化 smoke tests</td><td>已实现</td><td>覆盖标题页、选角立绘/完整属性、主界面、无 API Key、存档/读档、非法存档、大失败优先</td></tr>
 <tr><td>P1</td><td>本地同屏多人</td><td>已实现基础版</td><td>1-4 名预设调查员，Together/Split 两种探索方式</td></tr>
 <tr><td>P1</td><td>存档 / 读档 / 存档管理</td><td>已实现</td><td><code>trpg-saves-v2</code> 最近存档、存档列表、指定载入和删除</td></tr>
 <tr><td>P2</td><td>5 步自定义角色创建</td><td>Backlog</td><td>保留骰点、技能分配、导出设计</td></tr>

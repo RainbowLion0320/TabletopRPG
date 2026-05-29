@@ -4,10 +4,6 @@ import sceneS02 from '../../assets/scenes/scene_s02.svg';
 import sceneS03 from '../../assets/scenes/scene_s03.svg';
 import sceneS04 from '../../assets/scenes/scene_s04.svg';
 import sceneS05 from '../../assets/scenes/scene_s05.svg';
-import npcBartender from '../../assets/npcs/npc_bartender.png';
-import npcEric from '../../assets/npcs/npc_eric.png';
-import npcIsabella from '../../assets/npcs/npc_isabella.png';
-import npcMontreal from '../../assets/npcs/npc_montreal.png';
 
 export const storyData: StoryData = {
   title: '雾中消逝',
@@ -59,42 +55,36 @@ export const storyData: StoryData = {
       role: '委托人',
       attitude: '友好',
       hp: 10,
-      portrait: npcIsabella,
       notes: '父亲7月10日失踪，提供初始任务。'
     },
     '洛夫·蒙特利尔': {
       role: '警察局长',
       attitude: '警惕',
       hp: 13,
-      portrait: npcMontreal,
       notes: '语言类技能对其默认失败，心理学降为困难难度。见过他后，调查员晚上去贝尔街会触发暴徒。'
     },
     '埃里克·摩勒': {
       role: '失踪者',
       attitude: '未知',
       hp: 10,
-      portrait: npcEric,
       notes: '毒品运输商，被绑架于扶桑花号。'
     },
     '老赫特之家酒保': {
       role: '酒吧老板',
       attitude: '中立',
       hp: 10,
-      portrait: npcBartender,
       notes: '老赫特酒吧的酒保，可能知道一些关于“老鼠”的信息。'
     },
     '深潜者（混种）': {
       role: '神话生物',
       attitude: '敌对',
       hp: 11,
-      portrait: npcEric,
       notes: '可使用咒术召唤浓雾，遭遇真容可能触发 SAN 检定。'
     },
     '深潜者×4': {
       role: '敌方群体',
       attitude: '敌对',
       hp: 44,
-      portrait: npcEric,
       notes: '扶桑花号启动倒计时：6-7轮战斗后逃脱。'
     }
   },

@@ -31,7 +31,7 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
           <h3>当前 NPC</h3>
           {npc ? (
             <div className="npc-mini">
-              <img src={npc.portrait} alt="" />
+              {npc.portrait ? <img src={npc.portrait} alt="" /> : null}
               <div>
                 <strong>{state.activeNpcName}</strong>
                 <span>{npc.role} · {npc.attitude}</span>

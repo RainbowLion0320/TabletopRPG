@@ -162,21 +162,31 @@ button {
 
 .preset-grid-modern {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
   max-width: 1320px;
   margin: 0 auto;
 }
 
 .preset-card-modern {
-  min-height: 300px;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(150px, 0.42fr) minmax(0, 1fr);
+  min-height: 460px;
   text-align: left;
   border: 1px solid var(--line-soft);
   border-radius: 8px;
   background: rgba(20, 18, 15, 0.86);
   color: var(--text);
-  padding: 22px;
+  padding: 0;
+  overflow: hidden;
   cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.preset-card-modern:hover {
+  transform: translateY(-2px);
+  border-color: rgba(216,189,122,0.5);
 }
 
 .preset-card-modern.selected {
@@ -185,13 +195,40 @@ button {
 }
 
 .preset-select-mark {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  border: 1px solid rgba(216,189,122,0.42);
+  border-radius: 999px;
+  background: rgba(8,7,6,0.74);
   color: var(--gold);
   font-size: 12px;
+  padding: 5px 10px;
+}
+
+.preset-portrait-frame {
+  min-height: 100%;
+  border-right: 1px solid var(--line-soft);
+  background: rgba(0,0,0,0.2);
+}
+
+.preset-portrait-frame img {
+  width: 100%;
+  height: 100%;
+  min-height: 460px;
+  display: block;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.preset-card-content {
+  padding: 22px;
 }
 
 .preset-card-modern strong {
   display: block;
-  margin-top: 28px;
+  margin: 0;
   color: var(--gold);
   font-size: 24px;
 }
@@ -199,27 +236,81 @@ button {
 .preset-card-modern small {
   display: block;
   color: var(--quiet);
-  margin: 8px 0 18px;
+  margin: 8px 0 14px;
 }
 
 .preset-card-modern p {
   color: var(--muted);
   line-height: 1.7;
+  margin: 0 0 16px;
 }
 
-.preset-stats {
+.preset-vitals {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.preset-vitals span,
+.preset-attrs span {
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.035);
+  padding: 7px 8px;
+}
+
+.preset-vitals b,
+.preset-attrs b {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.preset-vitals em,
+.preset-attrs em {
+  display: block;
+  color: var(--text);
+  font-size: 16px;
+  font-style: normal;
+  margin-top: 4px;
+}
+
+.preset-attrs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.preset-skill-list {
   display: flex;
-  gap: 10px;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.preset-skill-list span {
+  border: 1px solid rgba(216,189,122,0.22);
+  border-radius: 999px;
+  color: var(--quiet);
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+.preset-background-notes {
+  display: grid;
+  gap: 6px;
+  margin-top: 16px;
   color: var(--muted);
   font-size: 12px;
-  margin-top: 24px;
-  flex-wrap: wrap;
+  line-height: 1.5;
 }
 
-.preset-stats span {
-  border: 1px solid var(--line-soft);
-  border-radius: 999px;
-  padding: 4px 9px;
+.preset-background-notes span {
+  border-left: 2px solid rgba(216,189,122,0.32);
+  padding-left: 8px;
 }
 
 .game-screen {
@@ -582,12 +673,26 @@ button {
   height: 72px;
   border: 1px solid var(--line-soft);
   border-radius: 5px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(0,0,0,0.22)), url('../../assets/npcs/npc_montreal.png') center top / cover;
+  background: rgba(255,255,255,0.04);
+  overflow: hidden;
 }
 
-.avatar-1 { background-image: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(0,0,0,0.22)), url('../../assets/npcs/npc_isabella.png'); }
-.avatar-2 { background-image: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(0,0,0,0.22)), url('../../assets/npcs/npc_eric.png'); }
-.avatar-3 { background-image: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(0,0,0,0.22)), url('../../assets/npcs/npc_bartender.png'); }
+.party-avatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.party-avatar span {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: var(--gold);
+  font-size: 20px;
+}
 
 .party-meta strong, .party-meta small {
   display: block;
@@ -911,6 +1016,17 @@ button {
 @media (max-width: 760px) {
   .setup-header { flex-direction: column; align-items: stretch; }
   .preset-grid-modern { grid-template-columns: 1fr; }
+  .preset-card-modern { grid-template-columns: 1fr; }
+  .preset-portrait-frame {
+    min-height: 280px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .preset-portrait-frame img {
+    height: 280px;
+    min-height: 280px;
+  }
+  .preset-vitals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .game-top { padding: 18px; }
   .brand-title { font-size: 30px; }
   .menu-button { min-width: 104px; height: 44px; }

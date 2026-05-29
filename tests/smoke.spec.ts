@@ -26,6 +26,25 @@ test('new game reaches the main game screen with preset investigators', async ({
   await expect(page.getByText('伊莎贝拉·摩勒').first()).toBeVisible();
 });
 
+test('investigator setup shows portraits and full attribute blocks', async ({ page }) => {
+  await gotoClean(page);
+  await page.getByRole('button', { name: /开始游戏/ }).click();
+
+  await expect(page.getByRole('heading', { name: '选择调查员' })).toBeVisible();
+  await expect(page.locator('.preset-card-modern img')).toHaveCount(4);
+  const firstCard = page.locator('.preset-card-modern').first();
+  const attrBlock = firstCard.locator('.preset-attrs');
+  for (const attr of ['STR', 'CON', 'SIZ', 'DEX', 'APP', 'INT', 'POW', 'EDU', 'Luck']) {
+    await expect(attrBlock.getByText(attr, { exact: true })).toBeVisible();
+  }
+  const vitals = firstCard.locator('.preset-vitals');
+  await expect(vitals.getByText('HP', { exact: true })).toBeVisible();
+  await expect(vitals.getByText('12', { exact: true })).toHaveCount(2);
+  await expect(vitals.getByText('MP', { exact: true })).toBeVisible();
+  await expect(vitals.getByText('SAN', { exact: true })).toBeVisible();
+  await expect(vitals.getByText('60', { exact: true })).toHaveCount(1);
+});
+
 test('submitting an action without an API key opens AI settings instead of crashing', async ({ page }) => {
   await startNewGame(page);
 

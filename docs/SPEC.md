@@ -256,6 +256,7 @@ The project uses Playwright for core smoke coverage.
 Current smoke coverage:
 
 - Title screen -> preset investigator setup -> main game screen.
+- Investigator setup shows four portraits and full attribute blocks.
 - Submitting actions without an API key opens AI settings instead of crashing.
 - Saving a game enables "continue latest save" from the title screen.
 - Save Manager can list, load, and delete explicit save slots.
