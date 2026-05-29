@@ -565,11 +565,12 @@ button {
 
 .narrative-panel {
   position: absolute;
-  left: 50%;
-  bottom: 360px;
+  left: 292px;
+  right: 34px;
+  bottom: 250px;
   z-index: 16;
-  transform: translateX(-50%);
-  width: min(70vw, 1360px);
+  transform: none;
+  width: auto;
   max-height: 260px;
   overflow-y: auto;
   border: 1px solid var(--line);
@@ -610,11 +611,12 @@ button {
 
 .action-dock {
   position: absolute;
-  left: 50%;
-  bottom: 150px;
+  left: 292px;
+  right: 34px;
+  bottom: 24px;
   z-index: 17;
-  transform: translateX(-50%);
-  width: min(70vw, 1360px);
+  transform: none;
+  width: auto;
   min-height: 128px;
   max-height: 220px;
   overflow-y: auto;
@@ -744,14 +746,16 @@ button {
 .party-strip-react {
   position: absolute;
   left: 26px;
-  bottom: 34px;
+  top: auto;
+  bottom: 24px;
   z-index: 18;
-  width: max-content;
-  max-width: min(48vw, 930px);
-  min-height: 92px;
+  width: 226px;
+  height: auto;
+  max-height: calc(100dvh - 136px);
   display: flex;
+  flex-direction: column;
   gap: 14px;
-  overflow-x: auto;
+  overflow-y: auto;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(14,12,10,0.78);
@@ -760,7 +764,7 @@ button {
 }
 
 .party-card {
-  flex: 0 0 196px;
+  flex: 0 0 auto;
   display: grid;
   grid-template-columns: 56px 1fr;
   gap: 10px;
@@ -1112,16 +1116,18 @@ button {
   }
   .preset-background-notes { grid-template-columns: 1fr; }
   .narrative-panel, .action-dock {
-    left: 22px;
+    left: 238px;
     right: 22px;
     width: auto;
     transform: none;
   }
   .party-strip-react {
-    left: 22px;
-    right: 22px;
-    width: auto;
+    left: 18px;
+    right: auto;
+    top: auto;
     bottom: 24px;
+    width: 196px;
+    max-height: calc(100dvh - 124px);
   }
 }
 
@@ -1151,11 +1157,17 @@ button {
   .menu-button { min-width: 104px; height: 44px; }
   .party-strip-react { display: none; }
   .narrative-panel {
+    left: 22px;
+    right: 22px;
     bottom: 264px;
     max-height: 300px;
     padding: 18px;
   }
-  .action-dock { bottom: 14px; }
+  .action-dock {
+    left: 22px;
+    right: 22px;
+    bottom: 14px;
+  }
   .action-row { grid-template-columns: 1fr; gap: 6px; }
   .dock-footer { align-items: stretch; }
   .primary-action { width: 100%; }

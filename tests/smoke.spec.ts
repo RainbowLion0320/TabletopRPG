@@ -24,6 +24,38 @@ test('new game reaches the main game screen with preset investigators', async ({
   await expect(page.getByPlaceholder('亨利·格雷 想要做什么...')).toBeVisible();
   await expect(page.getByPlaceholder('艾达·华莱士 想要做什么...')).toBeVisible();
   await expect(page.getByText('伊莎贝拉·摩勒').first()).toBeVisible();
+
+  const gameLayout = await page.locator('.game-screen').evaluate((screen) => {
+    const viewportHeight = window.innerHeight;
+    const party = screen.querySelector('.party-strip-react')?.getBoundingClientRect();
+    const partyCards = Array.from(screen.querySelectorAll('.party-card')).slice(0, 2);
+    const [firstPartyCard, secondPartyCard] = partyCards.map((card) => card.getBoundingClientRect());
+    const narrative = screen.querySelector('.narrative-panel')?.getBoundingClientRect();
+    const actionDock = screen.querySelector('.action-dock')?.getBoundingClientRect();
+    return {
+      actionDockBottomGap: Math.round(viewportHeight - (actionDock?.bottom ?? 0)),
+      actionDockLeft: Math.round(actionDock?.left ?? 0),
+      firstPartyCardLeft: Math.round(firstPartyCard?.left ?? 0),
+      firstPartyCardTop: Math.round(firstPartyCard?.top ?? 0),
+      narrativeBottom: Math.round(narrative?.bottom ?? 0),
+      narrativeLeft: Math.round(narrative?.left ?? 0),
+      actionDockTop: Math.round(actionDock?.top ?? 0),
+      partyBottomGap: Math.round(viewportHeight - (party?.bottom ?? 0)),
+      partyWidth: Math.round(party?.width ?? 0),
+      partyHeight: Math.round(party?.height ?? 0),
+      secondPartyCardLeft: Math.round(secondPartyCard?.left ?? 0),
+      secondPartyCardTop: Math.round(secondPartyCard?.top ?? 0)
+    };
+  });
+  expect(gameLayout.partyHeight).toBeGreaterThan(160);
+  expect(gameLayout.partyHeight).toBeLessThanOrEqual(320);
+  expect(gameLayout.partyBottomGap).toBeLessThanOrEqual(36);
+  expect(Math.abs(gameLayout.secondPartyCardLeft - gameLayout.firstPartyCardLeft)).toBeLessThanOrEqual(4);
+  expect(gameLayout.secondPartyCardTop).toBeGreaterThan(gameLayout.firstPartyCardTop + 64);
+  expect(gameLayout.actionDockBottomGap).toBeLessThanOrEqual(36);
+  expect(gameLayout.narrativeBottom).toBeLessThanOrEqual(gameLayout.actionDockTop + 24);
+  expect(gameLayout.narrativeLeft).toBeGreaterThan(gameLayout.firstPartyCardLeft + gameLayout.partyWidth + 12);
+  expect(gameLayout.actionDockLeft).toBeGreaterThan(gameLayout.firstPartyCardLeft + gameLayout.partyWidth + 12);
 });
 
 test('investigator setup shows portraits and full attribute blocks', async ({ page }) => {
