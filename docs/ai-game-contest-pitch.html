@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Game Contest Pitch · 雾中消逝 AI 跑团</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --ink: #080907;
+      --ink-2: #11130f;
+      --paper: #e8dfcb;
+      --muted: rgba(232, 223, 203, 0.68);
+      --quiet: rgba(232, 223, 203, 0.46);
+      --line: rgba(232, 223, 203, 0.18);
+      --gold: #d6b55f;
+      --red: #b94a3f;
+      --green: #5d8a70;
+      --cobalt: #4a7c8e;
+      --panel: rgba(17, 19, 15, 0.76);
+      --panel-strong: rgba(12, 13, 10, 0.92);
+      --shadow: 0 28px 90px rgba(0, 0, 0, 0.52);
+      color: var(--paper);
+      background: var(--ink);
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100%;
+      overflow: hidden;
+      background: var(--ink);
+    }
+
+    body {
+      min-height: 100dvh;
+    }
+
+    button {
+      font: inherit;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .deck {
+      position: relative;
+      width: 100vw;
+      height: 100dvh;
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(232, 223, 203, 0.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(232, 223, 203, 0.035) 1px, transparent 1px),
+        var(--ink);
+      background-size: 88px 88px;
+    }
+
+    .deck::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.02), rgba(255,255,255,0.02) 1px, transparent 1px, transparent 5px),
+        linear-gradient(90deg, rgba(0,0,0,0.5), transparent 24%, transparent 76%, rgba(0,0,0,0.52));
+      mix-blend-mode: screen;
+      opacity: 0.42;
+      z-index: 30;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: 28px;
+      padding: 58px 84px 92px;
+      overflow: auto;
+      opacity: 0;
+      transform: translateX(54px);
+      pointer-events: none;
+      transition: opacity 280ms ease, transform 280ms ease;
+    }
+
+    .slide.active {
+      opacity: 1;
+      transform: translateX(0);
+      pointer-events: auto;
+      z-index: 2;
+    }
+
+    .slide.previous {
+      transform: translateX(-54px);
+    }
+
+    .slide.full {
+      display: block;
+      padding: 0;
+    }
+
+    .hero-art {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: saturate(0.72) contrast(1.04) brightness(0.6);
+    }
+
+    .hero-shade {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, rgba(4,5,4,0.92), rgba(4,5,4,0.62) 40%, rgba(4,5,4,0.18) 72%, rgba(4,5,4,0.76)),
+        linear-gradient(180deg, rgba(4,5,4,0.08), rgba(4,5,4,0.72));
+    }
+
+    .hero-copy {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      align-content: end;
+      min-height: 100%;
+      width: min(1020px, calc(100vw - 168px));
+      padding: 74px 0 112px 84px;
+    }
+
+    .kicker {
+      margin: 0 0 18px;
+      color: var(--gold);
+      font-size: 14px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      max-width: 880px;
+      color: var(--paper);
+      font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
+      font-size: 76px;
+      font-weight: 500;
+      line-height: 1.02;
+      letter-spacing: 0;
+      text-shadow: 0 20px 70px rgba(0,0,0,0.62);
+    }
+
+    .hero-subtitle {
+      max-width: 720px;
+      margin-top: 26px;
+      color: var(--muted);
+      font-size: 22px;
+      line-height: 1.65;
+    }
+
+    .hero-badges,
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 34px;
+    }
+
+    .badge,
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 0 13px;
+      color: var(--muted);
+      background: rgba(7,8,6,0.42);
+      backdrop-filter: blur(12px);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .badge.strong,
+    .tag.strong {
+      border-color: rgba(214, 181, 95, 0.48);
+      color: var(--gold);
+      background: rgba(214, 181, 95, 0.1);
+    }
+
+    .slide-head {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 28px;
+      align-items: end;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 22px;
+    }
+
+    .slide-number {
+      color: var(--quiet);
+      font-family: Georgia, serif;
+      font-size: 42px;
+      line-height: 1;
+    }
+
+    .slide-title {
+      display: grid;
+      gap: 12px;
+    }
+
+    .slide-title h2 {
+      color: var(--paper);
+      font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
+      font-size: 46px;
+      font-weight: 500;
+      line-height: 1.12;
+    }
+
+    .slide-title p {
+      max-width: 900px;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.7;
+    }
+
+    .content-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 18px;
+      min-height: 0;
+      align-content: stretch;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      overflow: hidden;
+    }
+
+    .panel.pad {
+      padding: 26px;
+    }
+
+    .span-3 { grid-column: span 3; }
+    .span-4 { grid-column: span 4; }
+    .span-5 { grid-column: span 5; }
+    .span-6 { grid-column: span 6; }
+    .span-7 { grid-column: span 7; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: 1 / -1; }
+
+    .label {
+      color: var(--gold);
+      font-size: 12px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .big-stat {
+      display: grid;
+      gap: 10px;
+      align-content: start;
+      min-height: 178px;
+    }
+
+    .big-stat strong {
+      color: var(--paper);
+      font-family: Georgia, "Noto Serif SC", serif;
+      font-size: 54px;
+      font-weight: 500;
+      line-height: 1;
+    }
+
+    .big-stat p,
+    .copy p,
+    .source-list p {
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    .copy {
+      display: grid;
+      gap: 16px;
+    }
+
+    .feature-list,
+    .source-list,
+    .roadmap,
+    .commerce-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .feature-item {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+      border-top: 1px solid var(--line);
+      padding-top: 14px;
+    }
+
+    .feature-item:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border: 1px solid rgba(214, 181, 95, 0.44);
+      border-radius: 999px;
+      color: var(--gold);
+      font-size: 14px;
+      background: rgba(214, 181, 95, 0.08);
+    }
+
+    .feature-item strong,
+    .mini-card strong,
+    .roadmap strong,
+    .commerce-list strong,
+    .team-card strong {
+      display: block;
+      color: var(--paper);
+      font-size: 18px;
+      line-height: 1.35;
+    }
+
+    .feature-item span,
+    .mini-card span,
+    .roadmap span,
+    .commerce-list span,
+    .team-card span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .image-panel {
+      position: relative;
+      min-height: 100%;
+      overflow: hidden;
+    }
+
+    .image-panel img {
+      width: 100%;
+      height: 100%;
+      min-height: 360px;
+      object-fit: cover;
+      filter: saturate(0.78) brightness(0.76);
+    }
+
+    .image-panel.contain img {
+      object-fit: contain;
+      padding: 22px;
+      background:
+        linear-gradient(135deg, rgba(214,181,95,0.08), transparent 42%),
+        rgba(7,8,6,0.62);
+    }
+
+    .image-caption {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 18px;
+      border: 1px solid rgba(232,223,203,0.16);
+      border-radius: 8px;
+      padding: 14px;
+      color: var(--paper);
+      background: rgba(7,8,6,0.68);
+      backdrop-filter: blur(14px);
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .flow-step {
+      position: relative;
+      display: grid;
+      align-content: start;
+      min-height: 212px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      background: rgba(7,8,6,0.54);
+    }
+
+    .flow-step::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: -10px;
+      width: 10px;
+      height: 1px;
+      background: rgba(214,181,95,0.5);
+    }
+
+    .flow-step:last-child::after {
+      display: none;
+    }
+
+    .flow-step b {
+      color: var(--gold);
+      font-family: Georgia, serif;
+      font-size: 34px;
+      font-weight: 500;
+    }
+
+    .flow-step strong {
+      margin-top: 18px;
+      color: var(--paper);
+      font-size: 18px;
+    }
+
+    .flow-step span {
+      margin-top: 10px;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .architecture {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .arch-column {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      background: rgba(7,8,6,0.48);
+    }
+
+    .arch-column h3 {
+      color: var(--gold);
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .arch-column ul,
+    .commerce-list ul {
+      margin: 14px 0 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .arch-column li,
+    .commerce-list li {
+      position: relative;
+      padding-left: 18px;
+    }
+
+    .arch-column li::before,
+    .commerce-list li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.72em;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .team-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .team-card {
+      min-height: 252px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      background: rgba(7,8,6,0.56);
+    }
+
+    .team-card img {
+      width: 76px;
+      height: 76px;
+      object-fit: cover;
+      object-position: top center;
+      border: 1px solid rgba(214,181,95,0.34);
+      border-radius: 8px;
+      margin-bottom: 16px;
+      background: rgba(232,223,203,0.06);
+    }
+
+    .team-card small {
+      display: inline-flex;
+      min-height: 26px;
+      align-items: center;
+      color: var(--gold);
+      font-size: 12px;
+      letter-spacing: 1px;
+    }
+
+    .roadmap-item,
+    .commerce-item,
+    .mini-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      background: rgba(7,8,6,0.52);
+    }
+
+    .roadmap-item {
+      display: grid;
+      grid-template-columns: 108px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .phase {
+      display: grid;
+      place-items: center;
+      min-height: 56px;
+      border: 1px solid rgba(214,181,95,0.38);
+      border-radius: 8px;
+      color: var(--gold);
+      background: rgba(214,181,95,0.08);
+      font-family: Georgia, serif;
+      font-size: 18px;
+    }
+
+    .commerce-item {
+      min-height: 156px;
+    }
+
+    .accent-red {
+      border-color: rgba(185,74,63,0.44);
+    }
+
+    .accent-green {
+      border-color: rgba(93,138,112,0.54);
+    }
+
+    .accent-blue {
+      border-color: rgba(74,124,142,0.54);
+    }
+
+    .quote-panel {
+      display: grid;
+      align-content: center;
+      gap: 20px;
+      min-height: 100%;
+      padding: 34px;
+      background:
+        linear-gradient(135deg, rgba(185,74,63,0.16), transparent 38%),
+        linear-gradient(315deg, rgba(93,138,112,0.18), transparent 42%),
+        rgba(7,8,6,0.58);
+    }
+
+    .quote-panel blockquote {
+      margin: 0;
+      color: var(--paper);
+      font-family: Georgia, "Noto Serif SC", serif;
+      font-size: 38px;
+      line-height: 1.34;
+    }
+
+    .quote-panel p {
+      color: var(--muted);
+      line-height: 1.75;
+      font-size: 17px;
+    }
+
+    .source-list a {
+      color: var(--gold);
+      border-bottom: 1px solid rgba(214,181,95,0.36);
+    }
+
+    .footer-ui {
+      position: absolute;
+      left: 28px;
+      right: 28px;
+      bottom: 24px;
+      z-index: 60;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      pointer-events: none;
+    }
+
+    .counter,
+    .controls,
+    .dots {
+      pointer-events: auto;
+    }
+
+    .counter {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 7px;
+      color: var(--paper);
+      font-family: Georgia, serif;
+      min-width: 78px;
+    }
+
+    .counter strong {
+      font-size: 28px;
+      font-weight: 500;
+    }
+
+    .counter span {
+      color: var(--quiet);
+    }
+
+    .dots {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .dot {
+      width: 22px;
+      height: 4px;
+      border: 0;
+      border-radius: 999px;
+      padding: 0;
+      background: rgba(232,223,203,0.18);
+      cursor: pointer;
+    }
+
+    .dot.active {
+      width: 42px;
+      background: var(--gold);
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-button {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(7,8,6,0.64);
+      color: var(--paper);
+      cursor: pointer;
+      backdrop-filter: blur(14px);
+      transition: border-color 180ms ease, color 180ms ease, transform 180ms ease;
+    }
+
+    .nav-button:hover {
+      border-color: rgba(214,181,95,0.62);
+      color: var(--gold);
+    }
+
+    .nav-button:active {
+      transform: translateY(1px);
+    }
+
+    .progress {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 70;
+      height: 4px;
+      background: rgba(232,223,203,0.12);
+    }
+
+    .progress span {
+      display: block;
+      width: 0;
+      height: 100%;
+      background: linear-gradient(90deg, var(--gold), var(--green), var(--red));
+      transition: width 240ms ease;
+    }
+
+    @media (max-width: 1180px) {
+      .slide {
+        padding: 44px 42px 86px;
+      }
+
+      .hero-copy {
+        width: min(900px, calc(100vw - 84px));
+        padding-left: 42px;
+      }
+
+      h1 {
+        font-size: 58px;
+      }
+
+      .slide-title h2 {
+        font-size: 38px;
+      }
+
+      .content-grid {
+        gap: 14px;
+      }
+
+      .span-3,
+      .span-4,
+      .span-5,
+      .span-6 {
+        grid-column: span 6;
+      }
+
+      .span-7,
+      .span-8 {
+        grid-column: 1 / -1;
+      }
+
+      .flow {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .flow-step::after {
+        display: none;
+      }
+
+      .team-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      html,
+      body {
+        overflow: auto;
+      }
+
+      .deck {
+        min-height: 100dvh;
+        height: auto;
+        overflow: visible;
+      }
+
+      .slide,
+      .slide.full {
+        position: relative;
+        inset: auto;
+        min-height: 100dvh;
+        opacity: 1;
+        transform: none;
+        pointer-events: auto;
+        display: none;
+        padding: 28px 18px 104px;
+      }
+
+      .slide.active {
+        display: grid;
+      }
+
+      .slide.full.active {
+        display: block;
+        padding: 0;
+      }
+
+      .hero-copy {
+        width: auto;
+        padding: 88px 18px 128px;
+      }
+
+      h1 {
+        font-size: 44px;
+      }
+
+      .hero-subtitle {
+        font-size: 17px;
+      }
+
+      .slide-head {
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+
+      .slide-number {
+        font-size: 30px;
+      }
+
+      .slide-title h2 {
+        font-size: 30px;
+      }
+
+      .slide-title p,
+      .big-stat p,
+      .copy p,
+      .source-list p {
+        font-size: 15px;
+      }
+
+      .content-grid,
+      .architecture,
+      .flow,
+      .team-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .span-3,
+      .span-4,
+      .span-5,
+      .span-6,
+      .span-7,
+      .span-8,
+      .span-12 {
+        grid-column: 1 / -1;
+      }
+
+      .image-panel img {
+        min-height: 260px;
+      }
+
+      .roadmap-item {
+        grid-template-columns: 1fr;
+      }
+
+      .quote-panel blockquote {
+        font-size: 28px;
+      }
+
+      .footer-ui {
+        left: 14px;
+        right: 14px;
+        bottom: 18px;
+        grid-template-columns: auto auto;
+      }
+
+      .dots {
+        display: none;
+      }
+    }
+
+    @media print {
+      html,
+      body {
+        overflow: visible;
+      }
+
+      .deck {
+        height: auto;
+        overflow: visible;
+      }
+
+      .slide,
+      .slide.full {
+        position: relative;
+        display: grid;
+        opacity: 1;
+        transform: none;
+        page-break-after: always;
+        min-height: 100vh;
+      }
+
+      .footer-ui,
+      .progress {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="deck" data-deck>
+    <section class="slide full active" data-slide="hero">
+      <img class="hero-art" src="../assets/scenes/scene_main_fog_london.gif" alt="雾夜伦敦场景">
+      <div class="hero-shade"></div>
+      <div class="hero-copy">
+        <p class="kicker">Company AI Game Contest · Phase 1 Demo</p>
+        <h1>雾中消逝 AI 跑团</h1>
+        <p class="hero-subtitle">一个由 AI 担任 DM 的 Web 跑团游戏 Demo。玩家不需要等待专职 KP，就能在浏览器里完成调查、对话、检定、线索推进和存档。</p>
+        <div class="hero-badges">
+          <span class="badge strong">Demo 阶段</span>
+          <span class="badge">4 人团队</span>
+          <span class="badge">Vite + React + TypeScript</span>
+          <span class="badge">COC 风格 D100 检定</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide="why-now">
+      <header class="slide-head">
+        <div class="slide-title">
+          <p class="kicker">Problem</p>
+          <h2>跑团好玩，但开局成本太高</h2>
+          <p>TRPG 的乐趣来自自由行动和共同叙事，门槛也来自主持人、规则、剧本、组织成本。我们的 Demo 聚焦把“开一局”的成本压低。</p>
+        </div>
+        <div class="slide-number">02</div>
+      </header>
+      <div class="content-grid">
+        <article class="panel pad span-4 big-stat">
+          <span class="label">Pain Point 01</span>
+          <strong>缺 KP</strong>
+          <p>没有熟练主持人时，剧本难以启动。AI DM 可以承担叙事、NPC、线索提示和节奏推进。</p>
+        </article>
+        <article class="panel pad span-4 big-stat">
+          <span class="label">Pain Point 02</span>
+          <strong>规则重</strong>
+          <p>骰子、技能、状态、线索需要被可靠记录。前端规则层负责 D100 裁定，降低玩家心智负担。</p>
+        </article>
+        <article class="panel pad span-4 big-stat">
+          <span class="label">Pain Point 03</span>
+          <strong>内容难复用</strong>
+          <p>传统跑团内容依赖人工主持经验。结构化模组让剧本、NPC、线索和状态可以持续复用。</p>
+        </article>
+        <article class="panel pad span-12 source-list">
+          <p>市场旁证：Google Cloud 2025 游戏开发者研究提到生成式 AI 正被用于更动态的世界、NPC 和工作流；GDC 2025 调研同时提示行业对 AI 质量、IP、监管风险存在担忧。这意味着机会在于“可控 AI 游戏体验”，而不是单纯堆 AI 概念。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="slide" data-slide="solution">
+      <header class="slide-head">
+        <div class="slide-title">
+          <p class="kicker">Solution</p>
+          <h2>AI 负责叙事，系统负责规则</h2>
+          <p>我们把 AI 放在 DM 位，但不把所有权交给 AI。玩家自由输入行动，AI 解释世界，前端保留骰子和状态权威。</p>
+        </div>
+        <div class="slide-number">03</div>
+      </header>
+      <div class="content-grid">
+        <article class="panel pad span-7">
+          <div class="feature-list">
+            <div class="feature-item">
+              <span class="mark">AI</span>
+              <div>
+                <strong>AI DM 主持调查</strong>
+                <span>根据当前场景、NPC、线索和玩家行动生成叙事，并给出下一步选择建议。</span>
+              </div>
+            </div>
+            <div class="feature-item">
+              <span class="mark">D100</span>
+              <div>
+                <strong>前端骰子权威</strong>
+                <span>AI 只能请求检定，不能改写骰子结果。成功、失败、大失败都由系统裁定。</span>
+              </div>
+            </div>
+            <div class="feature-item">
+              <span class="mark">1-4</span>
+              <div>
+                <strong>本地同屏多人</strong>
+                <span>当前支持 1-4 名预设调查员，一起行动或分头探索，适合比赛现场演示。</span>
+              </div>
+            </div>
+            <div class="feature-item">
+              <span class="mark">JSON</span>
+              <div>
+                <strong>结构化状态更新</strong>
+                <span>线索、HP、SAN、场景、NPC 和行动日志被写入状态，支撑存档和后续扩展。</span>
+              </div>
+            </div>
+          </div>
+        </article>
+        <aside class="panel image-panel span-5">
+          <img src="../assets/scenes/scene_s04.svg" alt="卡森其药店场景概念图">
+          <div class="image-caption">首发模组《雾中消逝》：1920 年伦敦雾夜调查。</div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="slide" data-slide="demo-status">
+      <header class="slide-head">
+        <div class="slide-title">
+          <p class="kicker">Demo Status</p>
+          <h2>一阶段已有可运行核心闭环</h2>
+          <p>当前不是概念稿，而是 Vite/React 单页 Demo。核心流程已能从标题页进入游戏、提交行动、触发 AI 设置、保存和继续。</p>
+        </div>
+        <div class="slide-number">04</div>
+      </header>
+      <div class="content-grid">
+        <article class="panel pad span-3 big-stat">
+          <span class="label">Scenes</span>
+          <strong>5</strong>
+          <p>摩勒住宅、警局、酒吧、药店、泰晤士港。</p>
+        </article>
+        <article class="panel pad span-3 big-stat">
+          <span class="label">NPC</span>
+          <strong>6</strong>
+          <p>委托人、失踪者、关键警长、敌对角色等。</p>
+        </article>
+        <article class="panel pad span-3 big-stat">
+          <span class="label">Clues</span>
+          <strong>8</strong>
+          <p>便笺、照片、名片、小册子、地图笔记等。</p>
+        </article>
+        <article class="panel pad span-3 big-stat">
+          <span class="label">Tests</span>
+          <strong>Smoke</strong>
+          <p>覆盖标题、选角、主界面、无 Key、存档、非法存档和大失败规则。</p>
+        </article>
+        <article class="panel image-panel span-12">
+          <img src="../assets/scenes/scene_s01.svg" alt="摩勒住宅场景">
+          <div class="image-caption">Demo 演示重点：从“选择调查员”到“AI DM 推动雾夜调查”的完整一局体验。</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="slide" data-slide="core-loop">
+      <header class="slide-head">
+        <div class="slide-title">
+          <p class="kicker">Core Loop</p>
+          <h2>把跑团拆成稳定的产品循环</h2>
+          <p>玩家说想做什么，AI 判断世界如何响应，规则系统给出确定结果，再把新信息沉淀成下一轮上下文。</p>
+        </div>
+        <div class="slide-number">05</div>
+      </header>
+      <div class="content-grid">
+        <article class="panel pad span-12">
+          <div class="flow">
+            <div class="flow-step">
+              <b>01</b>
+              <strong>选择调查员</strong>
+              <span>1-4 名预设角色快速开局。</span>
+            </div>
+            <div class="flow-step">
+              <b>02</b>
+              <strong>输入行动</strong>
+              <span>一起行动或分头探索。</span>
+            </div>
+            <div class="flow-step">
+              <b>03</b>
+              <strong>AI DM 叙事</strong>
+              <span>生成 NPC 反应、线索、风险和建议。</span>
+            </div>
+            <div class="flow-step">
+              <b>04</b>
+              <strong>D100 检定</strong>
+              <span>前端裁定成功等级和大失败。</span>
+            </div>
+            <div class="flow-step">
+              <b>05</b>
+              <strong>状态沉淀</strong>
+              <span>线索、场景、日志、存档进入下一轮。</span>
+            </div>
+          </div>
+        </article>
+        <article class="panel pad span-6 copy">
+          <span class="label">Player Value</span>
+          <p>玩家获得的是“像有人主持一样”的叙事响应，但不需要临时找 KP、查规则或整理线索。</p>
+        </article>
+        <article class="panel pad span-6 copy">
+          <span class="label">Team Value</span>
+          <p>团队可以快速迭代玩法、提示词、模组数据和 UI，不需要在一阶段搭后端重系统。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="slide" data-slide="product-edge">
+      <header class="slide-head">
+        <div class="slide-title">
+          <p class="kicker">Differentiation</p>
+          <h2>不是聊天机器人，是有规则边界的游戏</h2>
+          <p>AI 跑团的关键不是“能说很多话”，而是“能在自由输入里保持游戏成立”。</p>
+        </div>
+        <div class="slide-number">06</div>
+      </header>
+      <div class="content-grid">
+        <article class="panel pad span-4 mini-card accent-green">
+          <span class="label">Rule Authority</span>
+          <strong>骰子权威在前端</strong>
+          <span>AI 不重掷、不改判、不把失败叙述成成功。规则可信，玩家才敢自由行动。</span>
+        </article>
+        <article class="panel pad span-4 mini-card accent-red">
+          <span class="label">Prompt Contract</span>
+          <strong>JSON 契约与兜底解析</strong>
+          <span>把叙事、检定、状态更新和选项拆开，降低 AI 输出不稳定对体验的影响。</span>
+        </article>
+        <article class="panel pad span-4 mini-card accent-blue">
+          <span class="label">Module Data</span>
+          <strong>模组内容可结构化</strong>
+          <span>场景、NPC、线索、结局都可以继续扩展，未来能走向多模组和编辑器。</span>
+        </article>
+        <article class="panel pad span-6 mini-card">
+          <span class="label">Demo Fit</span>
+          <strong>适合比赛现场演示</strong>
+          <span>本地浏览器运行，横屏视觉强，玩法闭环清晰，评委可以快速理解 AI 在游戏中的真实职责。</span>
+        </article>
+        <article class="panel pad span-6 mini-card">
+          <span class="label">Expandable</span>
+          <strong>后续能自然扩展</strong>
+          <span>局域网多人、语音、BGM、角色创建、模组导入和创作者工具都能沿当前状态模型演进。</span>
+        </article>
+      </div>
+    </section>
+
+    <section class="slide" data-slide="architecture">
+      <header class="slide-head">
+        <div class="slide-title">
+          <p class="kicker">Tech</p>
+          <h2>轻量架构，优先把体验跑通</h2>
+          <p>一阶段采用前端单页应用，快速完成 Demo 闭环。公开部署前再补后端 AI 代理和账号能力。</p>
+        </div>
+        <div class="slide-number">07</div>
+      </header>
+      <div class="content-grid">
+        <article class="panel pad span-8">
+          <div class="architecture">
+            <div class="arch-column">
+              <h3>体验层</h3>
+              <ul>
+                <li>React 18 + TypeScript</li>
+                <li>标题页、选角页、横屏主界面</li>
+                <li>场景图、NPC、行动栏、资料抽屉</li>
+              </ul>
+            </div>
+            <div class="arch-column">
+              <h3>规则层</h3>
+              <ul>
+                <li>useReducer 管理 GameState</li>
+                <li>D100 技能检定</li>
+                <li>存档恢复统一 hydrate</li>
+              </ul>
+            </div>
+            <div class="arch-column">
+              <h3>AI 层</h3>
+              <ul>
+                <li>OpenAI / Anthropic / MiMo / Custom</li>
+                <li>结构化 AI DM 响应</li>
+                <li>异常输出兜底解析</li>
+              </ul>
+            </div>
+          </div>
+        </article>
+        <aside class="panel image-panel contain span-4">
+          <img src="../assets/npcs/npc_montreal.png" alt="NPC 立绘">
+          <div class="image-caption">视觉资产已按场景和 NPC 分类，为展示和后续替换留出路径。</div>
+        </aside>
+        <article class="panel pad span-12 source-list">
+          <p>当前风险也很清楚：浏览器直调 API Key 只适合本地 Demo。若要公开上线，需要服务端代理、额度控制、内容审核和日志观察。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="slide" data-slide="team">
+      <header class="slide-head">
+        <div class="slide-title">
+          <p class="kicker">Team</p>
+          <h2>4 人小队，覆盖技术、策划、规则、美术</h2>
+          <p>团队规模小，但职责完整。Demo 阶段的目标不是铺大功能，而是把核心闭环做扎实。</p>
+        </div>
+        <div class="slide-number">08</div>
+      </header>
+      <div class="content-grid">
+        <article class="panel pad span-12">
+          <div class="team-grid">
+            <div class="team-card">
+              <img src="../assets/npcs/npc_eric.png" alt="技术架构头像占位">
+              <small>技术架构</small>
+              <strong>Robert</strong>
+              <span>仓库管理、基础架构、环境配置、部署上线、PR review。</span>
+            </div>
+            <div class="team-card">
+              <img src="../assets/npcs/npc_montreal.png" alt="开发策划头像占位">
+              <small>开发 / 策划</small>
+              <strong>唐龙翔</strong>
+              <span>前端主力开发、世界观与剧情框架、提示词编写。</span>
+            </div>
+            <div class="team-card">
+              <img src="../assets/npcs/npc_bartender.png" alt="玩法策划头像占位">
+              <small>玩法策划</small>
+              <strong>刘晓</strong>
+              <span>TRPG 规则设计、剧本内容、AI 提示词工程。</span>
+            </div>
+            <div class="team-card">
+              <img src="../assets/npcs/npc_isabella.png" alt="美术头像占位">
+              <small>美术</small>
+              <strong>茉莉</strong>
+              <span>UI 风格定调、角色头像、场景插图、界面视觉资产。</span>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="slide" data-slide="roadmap">
+      <header class="slide-head">
+        <div class="slide-title">
+          <p class="kicker">Roadmap</p>
+          <h2>从比赛 Demo 到可持续内容产品</h2>
+          <p>路线按风险分层推进：先证明 AI 跑团核心体验，再补多人和内容生产能力。</p>
+        </div>
+        <div class="slide-number">09</div>
+      </header>
+      <div class="content-grid">
+        <article class="panel pad span-12 roadmap">
+          <div class="roadmap-item">
+            <div class="phase">Phase 1</div>
+            <div>
+              <strong>比赛 Demo：单机同屏 + AI DM + 首个模组</strong>
+              <span>目标是完成可演示闭环，证明 AI 可以作为游戏主持人，而不是简单问答助手。</span>
+            </div>
+          </div>
+          <div class="roadmap-item">
+            <div class="phase">Phase 2</div>
+            <div>
+              <strong>多人体验：局域网房间 + 服务端 AI 代理</strong>
+              <span>解决多设备协作、密钥安全、状态同步和现场活动场景。</span>
+            </div>
+          </div>
+          <div class="roadmap-item">
+            <div class="phase">Phase 3</div>
+            <div>
+              <strong>内容扩展：模组导入 + 角色创建 + 音画增强</strong>
+              <span>让剧本生产和玩法扩展成为产品能力，而不是单个 Demo 的一次性内容。</span>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="slide" data-slide="prospect">
+      <header class="slide-head">
+        <div class="slide-title">
+          <p class="kicker">Prospect</p>
+          <h2>项目前景：AI 原生叙事游戏入口</h2>
+          <p>这个方向的价值在于把长文本生成、规则系统和多人娱乐合在一起，形成传统剧本杀、桌游和互动小说之间的新形态。</p>
+        </div>
+        <div class="slide-number">10</div>
+      </header>
+      <div class="content-grid">
+        <article class="panel pad span-4 mini-card accent-green">
+          <span class="label">Content Leverage</span>
+          <strong>一个系统，多套剧本</strong>
+          <span>当 AI DM、检定、存档和模组格式稳定后，新剧本的边际成本会明显下降。</span>
+        </article>
+        <article class="panel pad span-4 mini-card accent-blue">
+          <span class="label">Social Play</span>
+          <strong>适合轻社交和活动场景</strong>
+          <span>同屏 Demo 可以扩展到团建、直播互动、语音房间、朋友聚会和桌游店活动。</span>
+        </article>
+        <article class="panel pad span-4 mini-card accent-red">
+          <span class="label">Creator Economy</span>
+          <strong>长期可做创作者生态</strong>
+          <span>模组编辑器、提示词模板、视觉资产和分成机制可以让内容供给不只依赖内部团队。</span>
+        </article>
+        <article class="panel pad span-12 source-list">
+          <p>外部趋势给我们的启发：AI 游戏方向有真实采用度，但也伴随 IP、质量和安全争议。我们的策略是先做“规则可信、内容可控、场景清晰”的垂直玩法。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="slide" data-slide="commercialization">
+      <header class="slide-head">
+        <div class="slide-title">
+          <p class="kicker">Business</p>
+          <h2>商业化方案：先卖体验，再卖内容和工具</h2>
+          <p>Demo 阶段不急着做大平台。商业化应从最容易验证付费意愿的场景开始。</p>
+        </div>
+        <div class="slide-number">11</div>
+      </header>
+      <div class="content-grid">
+        <article class="panel pad span-4 commerce-item accent-green">
+          <span class="label">B2C</span>
+          <strong>剧本包 + 会员订阅</strong>
+          <span>基础版免费试玩，付费解锁完整模组、角色包、结局线、音画增强和云存档。</span>
+        </article>
+        <article class="panel pad span-4 commerce-item accent-blue">
+          <span class="label">B2B</span>
+          <strong>团建活动 + 展会 Demo</strong>
+          <span>把 60-90 分钟轻量跑团包装成公司活动、校园活动、品牌互动和线下桌游店体验。</span>
+        </article>
+        <article class="panel pad span-4 commerce-item accent-red">
+          <span class="label">Creator</span>
+          <strong>模组编辑器 + 分成</strong>
+          <span>提供模组模板、AI DM 测试工具、素材规范和上架分成，形成长期内容供给。</span>
+        </article>
+        <article class="panel pad span-6 commerce-list">
+          <strong>短期验证路径</strong>
+          <ul>
+            <li>比赛 Demo 证明核心体验和演示张力。</li>
+            <li>内部活动或小范围玩家测试验证留存和复玩。</li>
+            <li>推出 1-2 个付费模组验证内容付费。</li>
+          </ul>
+        </article>
+        <article class="panel pad span-6 commerce-list">
+          <strong>关键经营指标</strong>
+          <ul>
+            <li>开局转化率：从标题页到第一轮行动。</li>
+            <li>完局率：从 S01 推进到结局。</li>
+            <li>复玩率：不同角色、不同结局、不同模组。</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="slide" data-slide="closing">
+      <header class="slide-head">
+        <div class="slide-title">
+          <p class="kicker">Closing</p>
+          <h2>一阶段目标：让评委看到“AI 确实在做游戏”</h2>
+          <p>我们不把 AI 当噱头，而是把它放进清晰的游戏职责里：主持、叙事、响应自由行动，同时被规则系统约束。</p>
+        </div>
+        <div class="slide-number">12</div>
+      </header>
+      <div class="content-grid">
+        <article class="panel quote-panel span-7">
+          <blockquote>用 AI 把跑团门槛降到一局游戏的距离。</blockquote>
+          <p>Demo 的胜负点不是功能数量，而是现场能不能让人理解：没有 KP 的情况下，AI 也能让玩家进入一场可控、可保存、可继续扩展的调查。</p>
+        </article>
+        <article class="panel pad span-5 source-list">
+          <span class="label">Sources</span>
+          <p><a href="https://www.prnewswire.com/news-releases/90-of-games-developers-already-using-ai-in-workflows-according-to-new-google-cloud-research-302531363.html" target="_blank" rel="noreferrer">Google Cloud / Harris Poll 2025 game developer research</a></p>
+          <p><a href="https://www.businesswire.com/news/home/20250121745145/en/The-2025-Game-Industry-Survey-Reveals-Increasing-Impact-Of-Layoffs-Concerns-With-The-Usage-Of-Generative-AI-Funding-Challenges-and-More" target="_blank" rel="noreferrer">GDC 2025 State of the Game Industry survey release</a></p>
+          <div class="tag-row">
+            <span class="tag strong">AI DM</span>
+            <span class="tag">D100</span>
+            <span class="tag">Web Demo</span>
+            <span class="tag">商业化可扩展</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <footer class="footer-ui" aria-label="演示控制">
+      <div class="counter">
+        <strong data-current-slide>01</strong>
+        <span>/ 12</span>
+      </div>
+      <div class="dots" data-dots aria-label="页面指示器"></div>
+      <div class="controls">
+        <button class="nav-button" data-action="prev" aria-label="上一页" title="上一页">‹</button>
+        <button class="nav-button" data-action="next" aria-label="下一页" title="下一页">›</button>
+        <button class="nav-button" data-action="print" aria-label="打印" title="打印">⎙</button>
+      </div>
+    </footer>
+    <div class="progress" aria-hidden="true"><span data-progress></span></div>
+  </main>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll('[data-slide]'));
+    const dotsHost = document.querySelector('[data-dots]');
+    const currentLabel = document.querySelector('[data-current-slide]');
+    const progress = document.querySelector('[data-progress]');
+    let current = 0;
+
+    slides.forEach((slide, index) => {
+      const dot = document.createElement('button');
+      dot.className = 'dot';
+      dot.type = 'button';
+      dot.setAttribute('aria-label', `跳转到第 ${index + 1} 页`);
+      dot.addEventListener('click', () => show(index));
+      dotsHost.appendChild(dot);
+    });
+
+    const dots = Array.from(document.querySelectorAll('.dot'));
+
+    function formatNumber(value) {
+      return String(value + 1).padStart(2, '0');
+    }
+
+    function show(index) {
+      const next = Math.max(0, Math.min(slides.length - 1, index));
+      slides.forEach((slide, slideIndex) => {
+        slide.classList.toggle('active', slideIndex === next);
+        slide.classList.toggle('previous', slideIndex < next);
+        slide.setAttribute('aria-hidden', slideIndex === next ? 'false' : 'true');
+      });
+      dots.forEach((dot, dotIndex) => {
+        dot.classList.toggle('active', dotIndex === next);
+      });
+      current = next;
+      currentLabel.textContent = formatNumber(current);
+      progress.style.width = `${((current + 1) / slides.length) * 100}%`;
+      history.replaceState(null, '', `#${slides[current].dataset.slide}`);
+    }
+
+    function move(direction) {
+      show(current + direction);
+    }
+
+    document.querySelector('[data-action="prev"]').addEventListener('click', () => move(-1));
+    document.querySelector('[data-action="next"]').addEventListener('click', () => move(1));
+    document.querySelector('[data-action="print"]').addEventListener('click', () => window.print());
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowRight' || event.key === 'PageDown' || event.key === ' ') {
+        event.preventDefault();
+        move(1);
+      }
+      if (event.key === 'ArrowLeft' || event.key === 'PageUp') {
+        event.preventDefault();
+        move(-1);
+      }
+      if (event.key === 'Home') {
+        event.preventDefault();
+        show(0);
+      }
+      if (event.key === 'End') {
+        event.preventDefault();
+        show(slides.length - 1);
+      }
+    });
+
+    function showFromHash() {
+      const hash = decodeURIComponent(location.hash.replace('#', ''));
+      const index = slides.findIndex((slide) => slide.dataset.slide === hash);
+      if (index >= 0) {
+        show(index);
+      }
+    }
+
+    const initialHash = decodeURIComponent(location.hash.replace('#', ''));
+    const initialIndex = slides.findIndex((slide) => slide.dataset.slide === initialHash);
+    show(initialIndex >= 0 ? initialIndex : 0);
+    window.addEventListener('hashchange', showFromHash);
+  </script>
+</body>
+</html>
