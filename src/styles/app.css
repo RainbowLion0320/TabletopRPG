@@ -229,13 +229,13 @@ button {
 
 .preset-card-content {
   display: grid;
-  grid-template-columns: minmax(260px, 0.82fr) minmax(500px, 1.18fr);
+  grid-template-columns: minmax(230px, 0.7fr) 58px minmax(500px, 1.3fr);
   grid-template-areas:
-    "name vitals"
-    "meta attrs"
-    "desc attrs"
-    "notes skills";
-  gap: 8px 18px;
+    "name vitals attrs"
+    "meta vitals attrs"
+    "desc vitals attrs"
+    "notes vitals skills";
+  gap: 8px 9px;
   padding: 18px 78px 18px 20px;
   align-items: start;
 }
@@ -266,8 +266,10 @@ button {
 .preset-vitals {
   grid-area: vitals;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: 1fr;
+  grid-template-rows: repeat(4, minmax(0, 1fr));
   gap: 6px;
+  align-self: stretch;
 }
 
 .preset-vitals span,
@@ -276,6 +278,11 @@ button {
   border-radius: 6px;
   background: rgba(255,255,255,0.035);
   padding: 6px 7px;
+}
+
+.preset-vitals span,
+.preset-attrs span {
+  text-align: center;
 }
 
 .preset-vitals b,
@@ -322,7 +329,7 @@ button {
 .preset-background-notes {
   grid-area: notes;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 6px;
   margin-top: 2px;
   color: var(--muted);

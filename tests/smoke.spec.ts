@@ -60,7 +60,31 @@ test('investigator setup shows portraits and full attribute blocks', async ({ pa
   for (const attr of ['STR', 'CON', 'SIZ', 'DEX', 'APP', 'INT', 'POW', 'EDU', 'Luck']) {
     await expect(attrBlock.getByText(attr, { exact: true })).toBeVisible();
   }
+  const firstAttrTextAlign = await attrBlock.locator('span').first().evaluate((element) => getComputedStyle(element).textAlign);
+  expect(firstAttrTextAlign).toBe('center');
+  const backgroundNoteTops = await firstCard.locator('.preset-background-notes span').evaluateAll((items) =>
+    items.map((item) => Math.round(item.getBoundingClientRect().top))
+  );
+  expect(backgroundNoteTops.length).toBe(3);
+  expect(new Set(backgroundNoteTops).size).toBe(3);
   const vitals = firstCard.locator('.preset-vitals');
+  const statLayout = await firstCard.evaluate((card) => {
+    const vitalsRect = card.querySelector('.preset-vitals')?.getBoundingClientRect();
+    const attrRect = card.querySelector('.preset-attrs')?.getBoundingClientRect();
+    const descRect = card.querySelector('p')?.getBoundingClientRect();
+    const vitalTops = Array.from(card.querySelectorAll('.preset-vitals span')).map((item) =>
+      Math.round(item.getBoundingClientRect().top)
+    );
+    return {
+      gapFromTextToStats: Math.round((vitalsRect?.left ?? 0) - (descRect?.right ?? 0)),
+      vitalLeft: Math.round(vitalsRect?.left ?? 0),
+      attrLeft: Math.round(attrRect?.left ?? 0),
+      vitalTops
+    };
+  });
+  expect(statLayout.gapFromTextToStats).toBeLessThanOrEqual(10);
+  expect(statLayout.vitalLeft).toBeLessThan(statLayout.attrLeft);
+  expect(new Set(statLayout.vitalTops).size).toBe(4);
   await expect(vitals.getByText('HP', { exact: true })).toBeVisible();
   await expect(vitals.getByText('12', { exact: true })).toHaveCount(2);
   await expect(vitals.getByText('MP', { exact: true })).toBeVisible();
