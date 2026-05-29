@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { ArrowLeft, Check } from 'lucide-react';
+import { useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import { ArrowLeft, Check, ChevronDown } from 'lucide-react';
 import { deriveInvestigatorStats } from '../../data/gameRules';
 import { createInvestigatorFromPreset, presets } from '../../data/presets';
 import type { Investigator } from '../../types/game';
@@ -21,8 +21,11 @@ const attrRows = [
   ['Luck', '幸运']
 ] as const;
 
+const otherAttrRows = attrRows.filter(([key]) => key !== 'Luck');
+
 export function CharacterSetup({ onBack, onStart }: CharacterSetupProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>(() => presets.slice(0, 2).map((item) => item.id));
+  const [expandedAttrIds, setExpandedAttrIds] = useState<string[]>([]);
   const selectedPlayers = useMemo(
     () => presets.filter((preset) => selectedIds.includes(preset.id)).map(createInvestigatorFromPreset),
     [selectedIds]
@@ -34,6 +37,23 @@ export function CharacterSetup({ onBack, onStart }: CharacterSetupProps) {
       if (current.length >= 4) return current;
       return [...current, id];
     });
+  }
+
+  function toggleAttrs(event: MouseEvent<HTMLButtonElement>, id: string) {
+    event.stopPropagation();
+    setExpandedAttrIds((current) => {
+      if (current.includes(id)) return current.filter((item) => item !== id);
+      return [...current, id];
+    });
+  }
+
+  function handleCardKeyDown(event: KeyboardEvent<HTMLElement>, id: string) {
+    const target = event.target as HTMLElement;
+    if (target.closest('button')) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      toggle(id);
+    }
   }
 
   return (
@@ -56,13 +76,18 @@ export function CharacterSetup({ onBack, onStart }: CharacterSetupProps) {
       <div className="preset-grid-modern">
         {presets.map((preset) => {
           const selected = selectedIds.includes(preset.id);
+          const attrsExpanded = expandedAttrIds.includes(preset.id);
           const stats = deriveInvestigatorStats(preset.attrs);
           const skillEntries = Object.entries(preset.skills);
           return (
-            <button
+            <article
               key={preset.id}
               className={`preset-card-modern ${selected ? 'selected' : ''}`}
               onClick={() => toggle(preset.id)}
+              onKeyDown={(event) => handleCardKeyDown(event, preset.id)}
+              role="button"
+              tabIndex={0}
+              aria-pressed={selected}
             >
               <span className="preset-select-mark">{selected ? '已选' : '选择'}</span>
               <div className="preset-portrait-frame">
@@ -80,8 +105,24 @@ export function CharacterSetup({ onBack, onStart }: CharacterSetupProps) {
                   <span><b>Luck</b><em>{stats.luck}</em></span>
                 </div>
 
-                <div className="preset-attrs" aria-label={`${preset.name}完整属性`}>
-                  {attrRows.map(([key, label]) => (
+                <button
+                  className={`preset-attrs-toggle ${attrsExpanded ? 'expanded' : ''}`}
+                  type="button"
+                  aria-controls={`${preset.id}-other-attrs`}
+                  aria-expanded={attrsExpanded}
+                  onClick={(event) => toggleAttrs(event, preset.id)}
+                >
+                  <ChevronDown size={15} />
+                  其他属性
+                </button>
+
+                <div
+                  className="preset-attrs"
+                  id={`${preset.id}-other-attrs`}
+                  aria-label={`${preset.name}完整属性`}
+                  hidden={!attrsExpanded}
+                >
+                  {otherAttrRows.map(([key, label]) => (
                     <span key={key} title={label}>
                       <b>{key}</b>
                       <em>{preset.attrs[key]}</em>
@@ -101,7 +142,7 @@ export function CharacterSetup({ onBack, onStart }: CharacterSetupProps) {
                   <span>{preset.background.trait}</span>
                 </div>
               </div>
-            </button>
+            </article>
           );
         })}
       </div>
