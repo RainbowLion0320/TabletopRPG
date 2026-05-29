@@ -34,7 +34,7 @@ src/
 ├── components/
 │   ├── setup/           # Title and investigator selection
 │   └── game/            # Main game screen controls and panels
-├── data/                # Story, skills, jobs, preset investigators
+├── data/                # Rules config, story, skills, jobs, preset investigators
 ├── services/            # AI, dice, storage
 ├── state/               # Reducer, state hydration, AI response normalization
 ├── styles/              # Global CSS
@@ -82,7 +82,33 @@ type Screen = 'title' | 'setup' | 'game';
 
 The reducer is in `src/state/gameReducer.ts`. External or persisted state must pass through `hydrateGameState()` before rendering.
 
-## 6. Storage Contract
+## 6. Rules And Numeric Config
+
+`src/data/gameRules.ts` is the single source for core numeric rules. UI, preset creation, save hydration, and dice checks should reference helpers from this file instead of duplicating formulas.
+
+| Rule Area | Source |
+| --- | --- |
+| Default attributes | `gameRules.defaultAttributes` |
+| Derived HP/MP/SAN/Luck | `deriveInvestigatorStats(attrs)` |
+| Skill base values such as `EDU` and `DEX×2` | `resolveSkillBase(base, attrs)` |
+| Unknown skill fallback | `gameRules.skills.unknownSkillTotal` |
+| Difficulty thresholds | `getDifficultyThreshold(skillTotal, difficulty)` |
+| D100 fumble range | `gameRules.dice.fumbleMin` and `isFumbleRoll(roll)` |
+
+Current formulas:
+
+| Value | Formula |
+| --- | --- |
+| HP | `floor((CON + SIZ) / 10)`, minimum 1 |
+| MP | `floor(POW / 5)`, minimum 0 |
+| SAN | `POW`, minimum 0 |
+| Luck | `Luck` |
+| 普通 | `skillTotal / 1` |
+| 困难 | `floor(skillTotal / 2)` |
+| 极难 | `floor(skillTotal / 5)` |
+| 大失败 | D100 roll `>= 96` |
+
+## 7. Storage Contract
 
 | Key | Status | Purpose |
 | --- | --- | --- |
@@ -91,7 +117,7 @@ The reducer is in `src/state/gameReducer.ts`. External or persisted state must p
 
 Current UI loads the latest valid save from the title/menu shortcuts. Save Manager lists valid slots, loads a selected slot, and deletes a selected slot.
 
-## 7. AI DM Contract
+## 8. AI DM Contract
 
 ### Providers
 
@@ -174,9 +200,9 @@ Irreversible story-breaking acts, such as killing a key NPC or destroying key ev
 - `newItems` accepts item ids and known item names.
 - Difficulty text containing `极` -> `极难`, containing `困` -> `困难`, otherwise `普通`.
 
-## 8. Dice Contract
+## 9. Dice Contract
 
-The frontend owns dice authority. The AI DM may request a check and narrate the outcome, but it must never ignore, reroll, override, or reinterpret the frontend dice result as the opposite outcome.
+The frontend owns dice authority. The AI DM may request a check and narrate the outcome, but it must never ignore, reroll, override, or reinterpret the frontend dice result as the opposite outcome. Numeric thresholds come from `src/data/gameRules.ts`.
 
 | Result | Rule |
 | --- | --- |
@@ -197,7 +223,7 @@ Dice authority rules:
 - Plot continuity must be handled through consequence paths or new independent checks, not by invalidating a rolled result.
 - Player requests to edit, ignore, or override a dice result are invalid inputs for the AI DM.
 
-## 9. Story Data Contract
+## 10. Story Data Contract
 
 `src/data/storyData.ts` contains one bundled module:
 
@@ -211,14 +237,14 @@ Dice authority rules:
 
 Story data also includes 6 NPC entries and 8 item entries. Assets are imported directly by Vite from `assets/`.
 
-## 10. Known Technical Limits
+## 11. Known Technical Limits
 
 - AI calls happen in the browser, so user-entered API keys remain local but are exposed to the browser runtime.
 - Automated coverage is currently smoke-level only: `tests/smoke.spec.ts` covers core navigation, no-key AI guard, save/continue, save manager load/delete, invalid save filtering, and D100 fumble priority.
 - No server-side state, multiplayer synchronization, or API proxy exists.
 - `docs/GDD.html` is a static documentation mirror, not an application entry.
 
-## 11. Smoke Test Contract
+## 12. Smoke Test Contract
 
 The project uses Playwright for core smoke coverage.
 
@@ -235,3 +261,4 @@ Current smoke coverage:
 - Save Manager can list, load, and delete explicit save slots.
 - Invalid save payloads are ignored on the title screen.
 - D100 rolls `96-100` are fumbles before success thresholds.
+- Rules config tests verify derived stats, skill base formulas, difficulty thresholds, and fumble range stay centralized.

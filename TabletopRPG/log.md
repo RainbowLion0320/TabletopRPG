@@ -94,3 +94,10 @@
 - 首次格式无效时自动向同一 Provider 发起一次修复重试；第二次仍无效则拦截原始输出。
 - 新增 Playwright 回归测试，覆盖坏 JSON 不会作为 DM 叙事展示。
 - 同步 PRD / SPEC / GDD / Wiki 中的 AI 输出稳定性描述。
+
+## [2026-05-29] refactor | 游戏数值规则配置集中化
+
+- 新增 `src/data/gameRules.ts`，集中 HP/MP/SAN、技能基础值、难度阈值、未知技能兜底和大失败阈值。
+- 角色生成、存档水合、选角 UI 和骰子服务改为引用统一规则配置。
+- 新增 Playwright 规则配置测试，防止数值公式再次分散。
+- 同步 PRD / SPEC / GDD / Wiki 中的数值事实源说明。

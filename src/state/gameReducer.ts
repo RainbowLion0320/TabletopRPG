@@ -1,6 +1,7 @@
 import type { AiResponse, Attributes, CheckRequest, DiceResult, GameState, Investigator, NarrativeMessage, SceneId, SkillValue, StoryItem } from '../types/game';
 import { storyData } from '../data/storyData';
 import { allSkills } from '../data/skills';
+import { deriveInvestigatorStats, gameRules, resolveSkillBase } from '../data/gameRules';
 
 export type GameAction =
   | { type: 'start'; players: Investigator[] }
@@ -46,17 +47,7 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-const defaultAttrs: Attributes = {
-  STR: 50,
-  CON: 50,
-  SIZ: 50,
-  DEX: 50,
-  APP: 50,
-  INT: 50,
-  POW: 50,
-  EDU: 50,
-  Luck: 50
-};
+const defaultAttrs: Attributes = gameRules.defaultAttributes;
 
 function normalizeAttrs(value: unknown): Attributes {
   const source = isRecord(value) ? value : {};
@@ -71,12 +62,6 @@ function normalizeAttrs(value: unknown): Attributes {
     EDU: numberValue(source.EDU, defaultAttrs.EDU),
     Luck: numberValue(source.Luck, defaultAttrs.Luck)
   };
-}
-
-function baseSkillValue(base: number | 'EDU' | 'DEX×2', attrs: Attributes) {
-  if (base === 'EDU') return attrs.EDU;
-  if (base === 'DEX×2') return attrs.DEX * 2;
-  return base;
 }
 
 function normalizeSkillValue(value: unknown, fallbackBase: number): SkillValue {
@@ -94,7 +79,7 @@ function normalizeSkills(value: unknown, attrs: Attributes) {
   const skills: Record<string, SkillValue> = {};
 
   allSkills.forEach((skill) => {
-    const base = baseSkillValue(skill.base, attrs);
+    const base = resolveSkillBase(skill.base, attrs);
     skills[skill.name] = normalizeSkillValue(source[skill.name], base);
   });
 
@@ -111,9 +96,10 @@ function normalizeInvestigator(value: unknown, index: number): Investigator | nu
   if (!isRecord(value)) return null;
 
   const attrs = normalizeAttrs(value.attrs);
-  const hp = Math.max(1, Math.floor(numberValue(value.hp, Math.floor((attrs.CON + attrs.SIZ) / 10))));
-  const mp = Math.max(0, Math.floor(numberValue(value.mp, Math.floor(attrs.POW / 5))));
-  const san = Math.max(0, Math.floor(numberValue(value.san, attrs.POW)));
+  const derived = deriveInvestigatorStats(attrs);
+  const hp = Math.max(gameRules.derivedStats.hp.min, Math.floor(numberValue(value.hp, derived.hp)));
+  const mp = Math.max(gameRules.derivedStats.mp.min, Math.floor(numberValue(value.mp, derived.mp)));
+  const san = Math.max(gameRules.derivedStats.san.min, Math.floor(numberValue(value.san, derived.san)));
   const name = stringValue(value.name, `调查员${index + 1}`);
   const idValue = stringValue(value.id, `player-${index + 1}`);
 
@@ -129,7 +115,7 @@ function normalizeInvestigator(value: unknown, index: number): Investigator | nu
     hp,
     mp,
     san,
-    luck: numberValue(value.luck, attrs.Luck),
+    luck: numberValue(value.luck, derived.luck),
     currentHp: clamp(Math.floor(numberValue(value.currentHp, hp)), 0, hp),
     currentMp: clamp(Math.floor(numberValue(value.currentMp, mp)), 0, mp),
     currentSan: clamp(Math.floor(numberValue(value.currentSan, san)), 0, san),

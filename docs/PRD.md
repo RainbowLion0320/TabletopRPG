@@ -86,6 +86,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 | AI response | Malformed model output is retried once and never displayed as DM narrative |
 | AI response | Invalid scene names, unknown NPCs, string numeric deltas, and clue names are normalized or ignored safely after format validation |
 | Dice | 96-100 is treated as fumble before success levels |
+| Rules config | HP/MP/SAN, skill bases, difficulty thresholds, unknown skill fallback, and fumble range come from a centralized rules config |
 | Saves | Latest save is visible on title screen after saving and returning home |
 | Saves | Save manager lists valid slots, loads a selected slot, and deletes a selected slot |
 | Saves | Invalid save payloads are ignored instead of crashing the title or game screen |
@@ -97,6 +98,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 | --- | --- |
 | App state and screen flow | `src/app/App.tsx` |
 | Game state reducer and hydration | `src/state/gameReducer.ts` |
+| Rules and numeric config | `src/data/gameRules.ts` |
 | AI DM prompt and provider calls | `src/services/aiDm.ts` |
 | Dice checks | `src/services/dice.ts` |
 | Save/load/API config | `src/services/storage.ts` |
@@ -105,6 +107,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 | Skills/jobs | `src/data/skills.ts` |
 | Smoke tests | `tests/smoke.spec.ts` |
 | AI response format tests | `tests/ai-dm.spec.ts` |
+| Rules config tests | `tests/rules-config.spec.ts` |
 
 ## 7. Open Product Backlog
 

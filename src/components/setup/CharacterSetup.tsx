@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ArrowLeft, Check } from 'lucide-react';
+import { deriveInvestigatorStats } from '../../data/gameRules';
 import { createInvestigatorFromPreset, presets } from '../../data/presets';
 import type { Investigator } from '../../types/game';
 
@@ -43,6 +44,7 @@ export function CharacterSetup({ onBack, onStart }: CharacterSetupProps) {
       <div className="preset-grid-modern">
         {presets.map((preset) => {
           const selected = selectedIds.includes(preset.id);
+          const stats = deriveInvestigatorStats(preset.attrs);
           return (
             <button
               key={preset.id}
@@ -54,9 +56,9 @@ export function CharacterSetup({ onBack, onStart }: CharacterSetupProps) {
               <small>{preset.role}</small>
               <p>{preset.desc}</p>
               <div className="preset-stats">
-                <span>HP {Math.floor((preset.attrs.CON + preset.attrs.SIZ) / 10)}</span>
-                <span>SAN {preset.attrs.POW}</span>
-                <span>Luck {preset.attrs.Luck}</span>
+                <span>HP {stats.hp}</span>
+                <span>SAN {stats.san}</span>
+                <span>Luck {stats.luck}</span>
               </div>
             </button>
           );

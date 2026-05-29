@@ -1,4 +1,5 @@
-import type { Attributes, Investigator, PresetInvestigator, SkillValue } from '../types/game';
+import type { Investigator, PresetInvestigator, SkillValue } from '../types/game';
+import { deriveInvestigatorStats, resolveSkillBase } from './gameRules';
 import { allSkills, jobSkillMap, jobs } from './skills';
 
 export const presets: PresetInvestigator[] = [
@@ -76,25 +77,17 @@ export const presets: PresetInvestigator[] = [
   }
 ];
 
-function baseSkillValue(base: number | 'EDU' | 'DEX×2', attrs: Attributes) {
-  if (base === 'EDU') return attrs.EDU;
-  if (base === 'DEX×2') return attrs.DEX * 2;
-  return base;
-}
-
 export function createInvestigatorFromPreset(preset: PresetInvestigator): Investigator {
   const job = jobs.find((item) => item.id === preset.job);
   const jobSkills = new Set(jobSkillMap[preset.job] ?? []);
   const skills = Object.fromEntries(
     allSkills.map((skill): [string, SkillValue] => {
-      const base = baseSkillValue(skill.base, preset.attrs);
+      const base = resolveSkillBase(skill.base, preset.attrs);
       const total = preset.skills[skill.name] ?? base;
       return [skill.name, { base, added: Math.max(0, total - base), isJob: jobSkills.has(skill.name) }];
     })
   );
-
-  const hp = Math.floor((preset.attrs.CON + preset.attrs.SIZ) / 10);
-  const mp = Math.floor(preset.attrs.POW / 5);
+  const derived = deriveInvestigatorStats(preset.attrs);
 
   return {
     id: preset.id,
@@ -105,13 +98,13 @@ export function createInvestigatorFromPreset(preset: PresetInvestigator): Invest
     job: job?.name ?? preset.job,
     role: preset.role,
     attrs: preset.attrs,
-    hp,
-    mp,
-    san: preset.attrs.POW,
-    luck: preset.attrs.Luck,
-    currentHp: hp,
-    currentMp: mp,
-    currentSan: preset.attrs.POW,
+    hp: derived.hp,
+    mp: derived.mp,
+    san: derived.san,
+    luck: derived.luck,
+    currentHp: derived.hp,
+    currentMp: derived.mp,
+    currentSan: derived.san,
     skills,
     background: preset.background
   };

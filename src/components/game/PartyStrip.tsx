@@ -9,7 +9,7 @@ export function PartyStrip({ state }: PartyStripProps) {
     <section className="party-strip-react">
       {state.players.map((player, index) => {
         const hpPct = Math.round((player.currentHp / player.hp) * 100);
-        const sanPct = Math.round((player.currentSan / player.attrs.POW) * 100);
+        const sanPct = Math.round((player.currentSan / player.san) * 100);
         return (
           <article className="party-card" key={player.id}>
             <div className={`party-avatar avatar-${index}`} />
@@ -24,7 +24,7 @@ export function PartyStrip({ state }: PartyStripProps) {
               <div className="mini-bar-row">
                 <span>SAN</span>
                 <div><i className="san" style={{ width: `${sanPct}%` }} /></div>
-                <em>{player.currentSan}/{player.attrs.POW}</em>
+                <em>{player.currentSan}/{player.san}</em>
               </div>
             </div>
           </article>

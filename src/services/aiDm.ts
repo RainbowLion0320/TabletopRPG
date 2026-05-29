@@ -20,7 +20,7 @@ function compactPlayers(state: GameState) {
     job: player.job,
     attrs: player.attrs,
     hp: `${player.currentHp}/${player.hp}`,
-    san: `${player.currentSan}/${player.attrs.POW}`,
+    san: `${player.currentSan}/${player.san}`,
     skills: Object.fromEntries(
       Object.entries(player.skills).map(([name, value]) => [name, value.base + value.added])
     ),

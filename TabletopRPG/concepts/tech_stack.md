@@ -30,7 +30,7 @@ src/
 ├── components/
 │   ├── setup/           # 标题页、预设调查员选择
 │   └── game/            # 游戏主界面组件
-├── data/                # 剧本、技能、职业、预设调查员
+├── data/                # 规则配置、剧本、技能、职业、预设调查员
 ├── services/            # AI、骰子、存档/API 配置
 ├── state/               # reducer、存档水合、AI 响应归一化
 ├── styles/              # 全局样式
@@ -47,6 +47,19 @@ src/
 
 > 当前代码已实现最近存档读取、存档列表、指定载入和删除；导入/导出仍在 backlog。
 
+## 数值规则配置
+
+核心数值规则集中在 `src/data/gameRules.ts`：
+
+- 默认属性。
+- HP/MP/SAN/Luck 派生规则。
+- `EDU`、`DEX×2` 等技能基础值解析。
+- 未知技能兜底值。
+- 普通/困难/极难难度阈值。
+- D100 大失败阈值。
+
+预设角色生成、存档水合、选角 UI 和骰子服务都应引用该配置，不应在组件或服务中重复写公式。
+
 ## AI 调用
 
 - Anthropic：`https://api.anthropic.com/v1/messages`，默认 `claude-3-5-sonnet-latest`
@@ -57,6 +70,7 @@ src/
 ## 关键约束
 
 - API Key 由用户在 UI 中输入并保存在本地浏览器，不能硬编码进仓库。
+- 游戏数值公式优先进入 `src/data/gameRules.ts`，避免 UI、服务和 reducer 各自硬编码。
 - AI 响应进入 reducer 前必须通过 JSON 契约校验；格式无效时修复重试一次，仍无效则拦截。
 - 存档或已验证 AI 响应进入 UI 前必须经过归一化，避免非法引用破坏主流程。
 - 核心流程修改后应运行 `npm run test:smoke`。

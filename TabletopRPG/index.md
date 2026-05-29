@@ -23,7 +23,7 @@ updated: 2026-05-29
 |------|------|------|
 | [团队成员](entities/team.md) | 团队成员分工与资源交付职责 | ✅ |
 | [AI DM 系统](entities/ai_dm.md) | AI DM Provider、提示词、响应格式校验、检定流程 | ✅ 已实现 |
-| [角色系统](entities/character_system.md) | 当前预设调查员选择、职业/技能数据结构 | ✅ 已实现（预设选择） |
+| [角色系统](entities/character_system.md) | 当前预设调查员选择、职业/技能数据结构、派生数值规则 | ✅ 已实现（预设选择） |
 | [存档系统](entities/save_system.md) | `trpg-saves-v2`、API 配置 | ✅ 已实现（最近存档、列表、删除） |
 
 ## 概念页（concepts/）
@@ -32,7 +32,7 @@ updated: 2026-05-29
 |------|------|------|
 | [核心玩法循环](concepts/core_loop.md) | title/setup/game 状态机，行动 -> AI -> 检定循环 | ✅ 已实现 |
 | [提示词工程](concepts/prompt_engineering.md) | 当前内嵌提示词结构与外部化计划 | ✅ |
-| [技术选型](concepts/tech_stack.md) | React/Vite/TypeScript、多 Provider、localStorage | ✅ |
+| [技术选型](concepts/tech_stack.md) | React/Vite/TypeScript、多 Provider、localStorage、数值规则配置 | ✅ |
 
 ## 决策记录（decisions/）
 

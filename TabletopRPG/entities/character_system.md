@@ -4,7 +4,7 @@ title: 角色系统
 tags: [character, coc, game-system]
 sources: [project_plan.md, ../../docs/PRD.md]
 created: 2026-05-18
-updated: 2026-05-27
+updated: 2026-05-29
 ---
 
 # 角色系统
@@ -60,6 +60,8 @@ updated: 2026-05-27
 | 幸运 | Luck |
 
 派生属性：
+
+当前派生属性由 `src/data/gameRules.ts` 的 `deriveInvestigatorStats(attrs)` 统一计算，选角 UI、预设角色生成和存档恢复不得重复写公式。
 
 | 属性 | 计算公式 |
 |------|----------|
