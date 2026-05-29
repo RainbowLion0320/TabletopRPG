@@ -96,7 +96,11 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 
 | Product Area | Code Source |
 | --- | --- |
-| App state and screen flow | `src/app/App.tsx` |
+| App shell and screen flow | `src/app/App.tsx` |
+| Main game UI composition | `src/app/GameScreen.tsx` |
+| Runtime game flow controller | `src/app/useGameController.ts` |
+| Save-slot UI state | `src/app/useSaveSlots.ts` |
+| Player action flow helpers | `src/app/gameFlow.ts` |
 | Game state reducer and hydration | `src/state/gameReducer.ts` |
 | Rules and numeric config | `src/data/gameRules.ts` |
 | AI DM prompt and provider calls | `src/services/aiDm.ts` |

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { ApiConfig } from '../../types/game';
 import { readApiConfig } from '../../services/storage';
+import type { ApiConfig } from '../../types/game';
 
 interface ApiConfigModalProps {
   open: boolean;
@@ -71,3 +71,4 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
     </div>
   );
 }
+

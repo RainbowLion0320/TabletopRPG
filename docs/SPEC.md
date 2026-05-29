@@ -30,10 +30,11 @@ npm run test:smoke
 
 ```text
 src/
-├── app/                 # App orchestration and screen state
+├── app/                 # App shell, game screen composition, game controller hook
 ├── components/
 │   ├── setup/           # Title and investigator selection
-│   └── game/            # Main game screen controls and panels
+│   ├── game/            # Main game screen controls and panels
+│   └── shared/          # Cross-screen UI such as API settings
 ├── data/                # Rules config, story, skills, jobs, preset investigators
 ├── services/            # AI, dice, storage
 ├── state/               # Reducer, state hydration, AI response normalization
@@ -55,6 +56,17 @@ type Screen = 'title' | 'setup' | 'game';
 | `title` | New game, continue latest save, AI settings |
 | `setup` | Select 1-4 preset investigators |
 | `game` | Scene, narrative, action dock, party strip, info drawer, menu |
+
+`src/app` is split by responsibility:
+
+| Module | Responsibility |
+| --- | --- |
+| `App.tsx` | Top-level `title` / `setup` / `game` screen switching |
+| `GameScreen.tsx` | Main game UI composition and component wiring |
+| `useGameController.ts` | Runtime game flow: saves, AI DM calls, dice handling, action submission, modal state |
+| `gameFlow.ts` | Pure helpers for player action payloads, dice-result messages, and suggestion targeting |
+| `useSaveSlots.ts` | Save-slot state and localStorage save/delete/refresh orchestration |
+| `useToast.ts` | Short-lived toast state |
 
 ## 5. Game State
 
