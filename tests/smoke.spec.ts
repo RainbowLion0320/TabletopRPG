@@ -33,6 +33,12 @@ test('investigator setup shows portraits and full attribute blocks', async ({ pa
   await expect(page.getByRole('heading', { name: '选择调查员' })).toBeVisible();
   await expect(page.locator('.preset-card-modern img')).toHaveCount(4);
   const firstCard = page.locator('.preset-card-modern').first();
+  const portraitRatio = await firstCard.locator('.preset-portrait-frame').evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.width / rect.height;
+  });
+  expect(portraitRatio).toBeGreaterThan(0.78);
+  expect(portraitRatio).toBeLessThan(0.82);
   const attrBlock = firstCard.locator('.preset-attrs');
   for (const attr of ['STR', 'CON', 'SIZ', 'DEX', 'APP', 'INT', 'POW', 'EDU', 'Luck']) {
     await expect(attrBlock.getByText(attr, { exact: true })).toBeVisible();
@@ -43,6 +49,25 @@ test('investigator setup shows portraits and full attribute blocks', async ({ pa
   await expect(vitals.getByText('MP', { exact: true })).toBeVisible();
   await expect(vitals.getByText('SAN', { exact: true })).toBeVisible();
   await expect(vitals.getByText('60', { exact: true })).toHaveCount(1);
+});
+
+test('investigator setup scrolls vertically on narrow screens', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 700 });
+  await gotoClean(page);
+  await page.getByRole('button', { name: /开始游戏/ }).click();
+
+  const setupScreen = page.locator('.setup-screen');
+  await expect(setupScreen).toBeVisible();
+  const metrics = await setupScreen.evaluate((element) => ({
+    clientHeight: element.clientHeight,
+    scrollHeight: element.scrollHeight
+  }));
+  expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
+
+  await setupScreen.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await expect.poll(() => setupScreen.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 });
 
 test('submitting an action without an API key opens AI settings instead of crashing', async ({ page }) => {
