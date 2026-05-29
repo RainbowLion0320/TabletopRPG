@@ -4,14 +4,14 @@ title: 存档系统
 tags: [save, storage, localStorage]
 sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-18
-updated: 2026-05-27
+updated: 2026-05-29
 ---
 
 # 存档系统
 
 ## 概述
 
-当前存档系统基于 browser localStorage。UI 支持保存当前游戏、读取最近有效存档、标题页继续游戏。
+当前存档系统基于 browser localStorage。UI 支持保存当前游戏、读取最近有效存档、标题页继续游戏、存档列表、指定载入和删除单个存档。
 
 ## localStorage Key 分配
 
@@ -49,22 +49,23 @@ interface SaveSlot {
 ### 读档
 - 标题页“继续游戏”读取最新有效存档。
 - 游戏菜单“读取存档”也读取最新有效存档。
+- 游戏菜单“存档管理”打开存档列表，可指定载入任一有效存档。
 - 读取 `trpg-saves-v2`，按时间倒序去重。
+
+### 删除
+- 存档管理弹窗提供“删除存档”。
+- 删除后重读 `trpg-saves-v2`，空列表显示“暂无存档”。
 
 ### API 配置
 - `trpg-api` 保存 provider、apiKey、endpoint、model。
 
 ## 当前限制
 
-- UI 不提供存档列表。
-- UI 不提供删除单个存档。
 - 存档依赖浏览器 localStorage，换浏览器/清缓存会丢失。
 - localStorage 容量通常约 5MB，长对话仍需注意。
 
 ## Backlog
 
-- 存档列表弹窗。
-- 删除存档 UI。
 - 存档导入/导出。
 - 长期部署时考虑服务端存储或文件下载。
 

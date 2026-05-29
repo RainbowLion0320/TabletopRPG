@@ -1,7 +1,7 @@
 # TabletopRPG PRD
 
 > Version: v0.4
-> Updated: 2026-05-27  
+> Updated: 2026-05-29
 > Product baseline: Vite + React + TypeScript MVP
 
 ## 1. Product Positioning
@@ -29,7 +29,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 - Strict JSON-oriented AI response contract with fallback parsing.
 - D100 skill check flow handled by the frontend.
 - State updates for HP, SAN, flags, scene change, clues, active NPC, and suggested actions.
-- localStorage saves with latest-save load through `trpg-saves-v2`.
+- localStorage saves with latest-save load and save manager list/load/delete through `trpg-saves-v2`.
 - Built-in story data for "雾中消逝": 5 scenes, 6 NPC entries, 8 clue items.
 - Automated smoke tests for the title/setup/game flow, no-key AI settings guard, save/continue, invalid saves, and D100 fumble priority.
 
@@ -38,7 +38,6 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 - Custom investigator creation UI.
 - Online or LAN multiplayer.
 - Full combat initiative, weapon damage, ammunition, or SAN madness automation.
-- Save slot list UI and save deletion UI.
 - Audio/BGM/SFX.
 - Backend API proxy or account system.
 - Multi-module import/editing.
@@ -85,6 +84,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 | AI response | Invalid scene names, unknown NPCs, string numeric deltas, and clue names are normalized or ignored safely |
 | Dice | 96-100 is treated as fumble before success levels |
 | Saves | Latest save is visible on title screen after saving and returning home |
+| Saves | Save manager lists valid slots, loads a selected slot, and deletes a selected slot |
 | Saves | Invalid save payloads are ignored instead of crashing the title or game screen |
 | Smoke tests | `npm run test:smoke` passes the automated core-flow suite |
 
@@ -104,7 +104,6 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 
 ## 7. Open Product Backlog
 
-- Add save slot list and delete UI when the product needs explicit slot management.
 - Add custom investigator creation only after preset flow stays stable.
 - Move API calls behind a backend proxy before public deployment with shared keys.
 - Externalize prompt variants from code into `/prompts` after prompt iteration begins.

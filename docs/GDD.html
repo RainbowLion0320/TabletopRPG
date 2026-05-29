@@ -235,7 +235,7 @@ footer {
 <main>
   <div class="content">
 <header class="doc-header"><h1>《雾中消逝》AI跑团 游戏设计文档 (GDD)</h1><p class="doc-subtitle">Full GDD mirror - Source: docs/GDD.md - Updated 2026-05-27</p></header>
-<blockquote><p>设计版本：v0.4 | 原始基线：2026-05-15</p><p>实现对齐补充：2026-05-27</p><p>规则体系：COC 第7版 | 首发模组：《雾中消逝》| 作者：舒爾茲上尉</p></blockquote>
+<blockquote><p>设计版本：v0.4 | 原始基线：2026-05-15</p><p>实现对齐补充：2026-05-29</p><p>规则体系：COC 第7版 | 首发模组：《雾中消逝》| 作者：舒爾茲上尉</p></blockquote>
 <hr>
 <h2 id="s0">0. 当前实现状态（2026-05-27 对齐补充）</h2>
 <blockquote><p>本文是完整 GDD，包含当前已实现内容、未开发模块、后续设计目标和细节规则。</p><p>当前可运行产品的产品范围见 <code>docs/PRD.md</code>，技术契约见 <code>docs/SPEC.md</code>。未实现模块不删除，统一按 backlog / 待开发处理。</p></blockquote>
@@ -250,7 +250,7 @@ footer {
 <tr><td>探索模式</td><td>一起行动 / 分头探索</td></tr>
 <tr><td>AI DM</td><td>OpenAI / Anthropic / MiMo / 自定义端点，严格 JSON 输出 + 兜底解析</td></tr>
 <tr><td>检定</td><td>前端 D100，AI 只请求检定并根据结果继续叙事</td></tr>
-<tr><td>存档</td><td><code>trpg-saves-v2</code> 存档槽位，最多保留 12 条</td></tr>
+<tr><td>存档</td><td><code>trpg-saves-v2</code> 存档槽位，最多保留 12 条，支持最近存档、列表载入和删除</td></tr>
 <tr><td>剧本数据</td><td>5 个场景、6 个 NPC 条目、8 个线索物品</td></tr>
 </tbody></table></div>
 <h3 id="s0-2">0.2 当前未实现但保留为设计目标</h3>
@@ -946,7 +946,7 @@ AI代理：服务端统一调用（隐藏密钥）
 <tr><td>P0</td><td>剧情标记 / 线索 / 场景</td><td>已实现基础版</td><td>5 个场景、6 个 NPC 条目、8 个线索物品</td></tr>
 <tr><td>P0</td><td>自动化 smoke tests</td><td>已实现</td><td>覆盖标题页、选角、主界面、无 API Key、存档/读档、非法存档、大失败优先</td></tr>
 <tr><td>P1</td><td>本地同屏多人</td><td>已实现基础版</td><td>1-4 名预设调查员，Together/Split 两种探索方式</td></tr>
-<tr><td>P1</td><td>存档 / 读档</td><td>已实现</td><td><code>trpg-saves-v2</code> 最近存档与存档槽位</td></tr>
+<tr><td>P1</td><td>存档 / 读档 / 存档管理</td><td>已实现</td><td><code>trpg-saves-v2</code> 最近存档、存档列表、指定载入和删除</td></tr>
 <tr><td>P2</td><td>5 步自定义角色创建</td><td>Backlog</td><td>保留骰点、技能分配、导出设计</td></tr>
 <tr><td>P2</td><td>完整战斗轮序 / 伤害 / SAN 疯狂</td><td>Backlog</td><td>规则保留，当前 MVP 未自动化</td></tr>
 <tr><td>P3</td><td>骰子动画 / 音效 / BGM</td><td>Backlog</td><td>当前只有基础检定卡和静态反馈</td></tr>
@@ -978,7 +978,7 @@ AI代理：服务端统一调用（隐藏密钥）
 <li><strong>游戏正式名称</strong>——暂定“《雾中消逝》AI跑团”。</li>
 </ol>
 <hr>
-<p><em>GDD v0.4 | 2026-05-27 | 基于当前代码、PRD、SPEC 和保留设计目标整理</em> <em>剧本原作：舒爾茲上尉（790086893@qq.com）</em></p>
+<p><em>GDD v0.4 | 2026-05-29 | 基于当前代码、PRD、SPEC 和保留设计目标整理</em> <em>剧本原作：舒爾茲上尉（790086893@qq.com）</em></p>
 
     <footer>GDD HTML mirror - Source: docs/GDD.md - Updated 2026-05-27</footer>
   </div>

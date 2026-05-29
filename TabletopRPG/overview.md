@@ -4,7 +4,7 @@ title: 项目全局综述
 tags: [overview, project, aligned]
 sources: [project_plan.md, ../../docs/PRD.md, ../../docs/SPEC.md, ../../docs/GDD.md]
 created: 2026-05-14
-updated: 2026-05-27
+updated: 2026-05-29
 ---
 
 # AI 跑团游戏 · 项目全局综述
@@ -33,14 +33,13 @@ updated: 2026-05-27
 - Together / Split 两种探索模式。
 - AI 推荐行动建议。
 - 资料抽屉：当前 NPC、已获线索、行动日志。
-- localStorage 存档：当前 key 为 `trpg-saves-v2`。
+- localStorage 存档：当前 key 为 `trpg-saves-v2`，支持最近存档、列表载入和删除。
 - 首个剧本模块「雾中消逝」：5 个场景、6 个 NPC 条目、8 个线索物品。
 - Playwright smoke tests：覆盖标题页、选角、主界面、无 API Key、存档/读档、非法存档和 D100 大失败优先规则。
 
 ## 当前未实现/不在 MVP 范围
 
 - 自定义 5 步角色创建 UI。
-- 存档列表弹窗、删除存档 UI。
 - 完整战斗轮序、伤害骰、弹药、SAN 疯狂自动化。
 - 音效/BGM。
 - 局域网/在线多人。

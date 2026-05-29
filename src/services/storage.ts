@@ -69,6 +69,12 @@ export function saveGameState(gameState: GameState) {
   return slot;
 }
 
+export function deleteSave(id: number) {
+  const saves = readSaves().filter((slot) => slot.id !== id);
+  localStorage.setItem(SAVE_KEY, JSON.stringify(saves));
+  return saves;
+}
+
 export function readApiConfig(): ApiConfig | null {
   try {
     const cfg = JSON.parse(localStorage.getItem(API_KEY) || 'null') as ApiConfig | null;

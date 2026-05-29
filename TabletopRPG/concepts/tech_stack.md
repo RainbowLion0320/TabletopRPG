@@ -4,7 +4,7 @@ title: 技术选型
 tags: [tech, architecture, decision, react, vite]
 sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-14
-updated: 2026-05-27
+updated: 2026-05-29
 ---
 
 # 技术选型
@@ -45,7 +45,7 @@ src/
 | `trpg-saves-v2` | 当前 | 新版存档槽位数组，最多 12 条 |
 | `trpg-api` | 当前 | API 配置（provider、apiKey、endpoint、model） |
 
-> 当前代码只实现最近存档读取；存档列表、删除、导入/导出仍在 backlog。
+> 当前代码已实现最近存档读取、存档列表、指定载入和删除；导入/导出仍在 backlog。
 
 ## AI 调用
 

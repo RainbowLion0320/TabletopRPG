@@ -813,6 +813,67 @@ button {
   margin-top: 22px;
 }
 
+.save-manager-card {
+  width: min(720px, calc(100vw - 32px));
+}
+
+.save-list {
+  display: grid;
+  gap: 10px;
+  max-height: min(52vh, 420px);
+  margin-top: 18px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.save-slot-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: rgba(0,0,0,0.24);
+  padding: 14px;
+}
+
+.save-slot-card strong,
+.save-slot-card span,
+.save-slot-card small {
+  display: block;
+}
+
+.save-slot-card strong {
+  color: var(--gold);
+  font-weight: 500;
+}
+
+.save-slot-card span {
+  margin-top: 5px;
+  color: var(--text);
+}
+
+.save-slot-card small {
+  margin-top: 5px;
+  color: var(--muted);
+}
+
+.save-slot-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.primary-btn.compact,
+.ghost-btn.compact {
+  min-height: 36px;
+  padding: 0 12px;
+}
+
+.ghost-btn.danger {
+  border-color: rgba(190,84,84,0.45);
+  color: #e19a9a;
+}
+
 .toast {
   position: absolute;
   left: 50%;

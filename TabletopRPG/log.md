@@ -80,3 +80,10 @@
 - 新增 Playwright smoke tests，覆盖标题页、预设选角、主界面、无 API Key 防崩溃、保存/继续、非法存档过滤和 D100 大失败优先规则。
 - 新增 `npm run test:smoke` 命令。
 - 同步 PRD / SPEC / GDD / Wiki，将自动化 smoke tests 从开放 P0 移入已实现质量护栏。
+
+## [2026-05-29] update | P1 存档管理落地
+
+- 新增存档管理弹窗，支持列出有效存档、指定载入和删除单个本地存档。
+- 新增 `deleteSave()` 存档服务函数。
+- 扩展 Playwright smoke tests 覆盖存档管理载入/删除流程。
+- 同步 PRD / SPEC / GDD / Wiki，将“存档列表与删除 UI”从 backlog 移入已实现范围。

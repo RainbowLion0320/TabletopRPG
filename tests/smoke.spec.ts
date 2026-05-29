@@ -56,6 +56,34 @@ test('saving a game enables continuing the latest save from the title screen', a
   await expect(page.getByText('等待所有玩家输入行动...')).toBeVisible();
 });
 
+test('save manager can load and delete explicit save slots', async ({ page }) => {
+  await startNewGame(page);
+
+  await page.getByRole('button', { name: /菜单/ }).click();
+  await page.getByRole('button', { name: /保存游戏/ }).click();
+  await expect(page.getByText('已保存')).toBeVisible();
+
+  await page.getByRole('button', { name: /菜单/ }).click();
+  await page.getByRole('button', { name: '分头探索' }).click();
+  await expect(page.getByText('分头探索将单独结算当前调查员。')).toBeVisible();
+
+  await page.getByRole('button', { name: /菜单/ }).click();
+  await page.getByRole('button', { name: /存档管理/ }).click();
+  const saveManager = page.getByRole('dialog', { name: '存档管理' });
+  await expect(saveManager).toBeVisible();
+  await expect(saveManager.getByText('摩勒住宅')).toBeVisible();
+  await expect(saveManager.getByText('亨利·格雷、艾达·华莱士')).toBeVisible();
+
+  await page.getByRole('button', { name: /载入存档/ }).click();
+  await expect(page.getByText('等待所有玩家输入行动...')).toBeVisible();
+  await expect(page.getByText('已载入存档')).toBeVisible();
+
+  await page.getByRole('button', { name: /菜单/ }).click();
+  await page.getByRole('button', { name: /存档管理/ }).click();
+  await page.getByRole('button', { name: /删除存档/ }).click();
+  await expect(page.getByRole('dialog', { name: '存档管理' }).getByText('暂无存档')).toBeVisible();
+});
+
 test('invalid save payloads are ignored on the title screen', async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.clear();

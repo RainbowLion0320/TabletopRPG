@@ -5,6 +5,7 @@ import { GameMenu } from '../components/game/GameMenu';
 import { InfoDrawer } from '../components/game/InfoDrawer';
 import { NarrativePanel } from '../components/game/NarrativePanel';
 import { PartyStrip } from '../components/game/PartyStrip';
+import { SaveManagerModal } from '../components/game/SaveManagerModal';
 import { SceneStage } from '../components/game/SceneStage';
 import { TopBar } from '../components/game/TopBar';
 import { CharacterSetup } from '../components/setup/CharacterSetup';
@@ -12,7 +13,7 @@ import { TitleScreen } from '../components/setup/TitleScreen';
 import { storyData } from '../data/storyData';
 import { callAiDm, type PlayerAction } from '../services/aiDm';
 import { prepareCheck, rollD100 } from '../services/dice';
-import { readApiConfig, readSaves, saveGameState, writeApiConfig } from '../services/storage';
+import { deleteSave, readApiConfig, readSaves, saveGameState, writeApiConfig } from '../services/storage';
 import { createInitialGameState, gameReducer } from '../state/gameReducer';
 import type { ApiConfig, GameState, Investigator, SceneId } from '../types/game';
 
@@ -25,6 +26,7 @@ export function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [apiOpen, setApiOpen] = useState(false);
+  const [saveManagerOpen, setSaveManagerOpen] = useState(false);
   const [toast, setToast] = useState('');
   const toastTimer = useRef<number | null>(null);
 
@@ -68,6 +70,26 @@ export function App() {
     dispatch({ type: 'restore', state: latest.gameState });
     setMenuOpen(false);
     notify('已载入最近存档');
+  }
+
+  function openSaveManager() {
+    refreshSaves();
+    setMenuOpen(false);
+    setSaveManagerOpen(true);
+  }
+
+  function loadSaveSlot(save: GameState) {
+    dispatch({ type: 'restore', state: save });
+    setSaveManagerOpen(false);
+    setMenuOpen(false);
+    setScreen('game');
+    refreshSaves();
+    notify('已载入存档');
+  }
+
+  function deleteSaveSlot(id: number) {
+    setSaves(deleteSave(id));
+    notify('已删除存档');
   }
 
   function submitAction() {
@@ -176,6 +198,7 @@ export function App() {
           setScreen('title');
         }}
         onLoad={loadCurrentLatest}
+        onManageSaves={openSaveManager}
         onModeChange={(mode) => {
           dispatch({ type: 'setExploreMode', mode });
           setMenuOpen(false);
@@ -186,6 +209,13 @@ export function App() {
         }}
         onRestart={() => setScreen('setup')}
         onSave={saveCurrentGame}
+      />
+      <SaveManagerModal
+        open={saveManagerOpen}
+        saves={saves}
+        onClose={() => setSaveManagerOpen(false)}
+        onDelete={deleteSaveSlot}
+        onLoad={(save) => loadSaveSlot(save.gameState)}
       />
       <InfoDrawer open={drawerOpen} state={state} onClose={() => setDrawerOpen(false)} onOpen={() => setDrawerOpen(true)} />
       <NarrativePanel state={state} />

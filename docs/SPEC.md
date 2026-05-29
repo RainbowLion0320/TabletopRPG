@@ -1,7 +1,7 @@
 # TabletopRPG Technical Spec
 
 > Version: v0.4
-> Updated: 2026-05-27  
+> Updated: 2026-05-29
 > Scope: current React/Vite implementation
 
 ## 1. Runtime Stack
@@ -86,10 +86,10 @@ The reducer is in `src/state/gameReducer.ts`. External or persisted state must p
 
 | Key | Status | Purpose |
 | --- | --- | --- |
-| `trpg-saves-v2` | current | Save slots, capped at 12 |
+| `trpg-saves-v2` | current | Save slots, capped at 12, list/load/delete through Save Manager |
 | `trpg-api` | current | Provider, API key, endpoint, model |
 
-Current UI loads the latest valid save. Explicit save-slot deletion is not implemented in the service layer or UI.
+Current UI loads the latest valid save from the title/menu shortcuts. Save Manager lists valid slots, loads a selected slot, and deletes a selected slot.
 
 ## 7. AI DM Contract
 
@@ -205,7 +205,7 @@ Story data also includes 6 NPC entries and 8 item entries. Assets are imported d
 ## 10. Known Technical Limits
 
 - AI calls happen in the browser, so user-entered API keys remain local but are exposed to the browser runtime.
-- Automated coverage is currently smoke-level only: `tests/smoke.spec.ts` covers core navigation, no-key AI guard, save/continue, invalid save filtering, and D100 fumble priority.
+- Automated coverage is currently smoke-level only: `tests/smoke.spec.ts` covers core navigation, no-key AI guard, save/continue, save manager load/delete, invalid save filtering, and D100 fumble priority.
 - No server-side state, multiplayer synchronization, or API proxy exists.
 - `docs/GDD.html` is a static documentation mirror, not an application entry.
 
@@ -223,5 +223,6 @@ Current smoke coverage:
 - Title screen -> preset investigator setup -> main game screen.
 - Submitting actions without an API key opens AI settings instead of crashing.
 - Saving a game enables "continue latest save" from the title screen.
+- Save Manager can list, load, and delete explicit save slots.
 - Invalid save payloads are ignored on the title screen.
 - D100 rolls `96-100` are fumbles before success thresholds.

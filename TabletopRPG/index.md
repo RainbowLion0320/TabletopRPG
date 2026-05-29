@@ -4,7 +4,7 @@ title: Wiki 内容目录
 tags: [index, aligned]
 sources: [../../docs/PRD.md, ../../docs/SPEC.md, ../../docs/GDD.md]
 created: 2026-05-14
-updated: 2026-05-27
+updated: 2026-05-29
 ---
 
 # TabletopRPG Wiki · 内容目录
@@ -24,7 +24,7 @@ updated: 2026-05-27
 | [团队成员](entities/team.md) | 团队成员分工与资源交付职责 | ✅ |
 | [AI DM 系统](entities/ai_dm.md) | AI DM Provider、提示词、响应格式、检定流程 | ✅ 已实现 |
 | [角色系统](entities/character_system.md) | 当前预设调查员选择、职业/技能数据结构 | ✅ 已实现（预设选择） |
-| [存档系统](entities/save_system.md) | `trpg-saves-v2`、API 配置 | ✅ 已实现（最新存档读写） |
+| [存档系统](entities/save_system.md) | `trpg-saves-v2`、API 配置 | ✅ 已实现（最近存档、列表、删除） |
 
 ## 概念页（concepts/）
 
