@@ -118,7 +118,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function collectJsonCandidates(raw: string) {
-  const cleaned = raw.trim();
+  // Reasoning models (e.g. MiMo v2.5-pro, deepseek-r1) often emit a hidden
+  // <think>...</think> or <reasoning>...</reasoning> block before the actual
+  // answer. Strip those so the JSON-finder can locate the real payload.
+  const stripped = raw
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
+    .replace(/<analysis>[\s\S]*?<\/analysis>/gi, '');
+  const cleaned = stripped.trim();
   const candidates: string[] = [];
   for (const match of cleaned.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)) {
     if (match[1]?.trim()) candidates.push(match[1].trim());
@@ -233,7 +240,7 @@ async function requestAiDmRaw(config: ApiConfig, state: GameState, history: Game
       },
       body: JSON.stringify({
         model: config.model || 'claude-3-5-sonnet-latest',
-        max_tokens: 1024,
+        max_tokens: 4096,
         system: buildSystemPrompt(state),
         messages: history
       })
@@ -255,7 +262,11 @@ async function requestAiDmRaw(config: ApiConfig, state: GameState, history: Game
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1024,
+      // 4 玩家同轮 + scenes/items/npcs 满包输入下，1024 会被截断导致 JSON 不闭合。
+      max_tokens: 4096,
+      // 强制 OpenAI 兼容接口返回合法 JSON，避免 markdown 或推理文本混入。
+      // 个别上游不支持该参数，多余字段一般会被必略，不会报错。
+      response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: buildSystemPrompt(state) },
         ...history
@@ -293,6 +304,11 @@ export async function callAiDm(config: ApiConfig, state: GameState, actions: Pla
       return { raw, response: parseAiResponse(raw), userMessage };
     } catch (error) {
       if (!(error instanceof AiResponseFormatError)) throw error;
+      // 把原始输出打到控制台，方便调试。生产环境下会被 tree-shaking 去掉。
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.warn(`[aiDm] format validation failed (attempt ${attempt + 1}):`, error.message, '\nRAW:\n', raw);
+      }
       if (attempt === 1) {
         throw new AiResponseFormatError('AI 连续返回无效格式，已拦截原始输出。请重试本轮行动或调整模型。');
       }
