@@ -236,6 +236,44 @@ export interface ProspectiveIntent {
   createdTurn: number;
 }
 
+// ---------- Episodic Retrieval：长尾事件召回层 ----------
+
+export type EpisodicMemorySource = 'episode' | 'event' | 'fact' | 'summary';
+export type EpisodicMemoryVisibility = 'player_safe' | 'dm';
+
+/**
+ * 长尾事件记忆：面向 RAG/召回的片段。它不是权威状态，只是 Narrator 的参考上下文。
+ * 权威信息仍以 GameState flags / clues / pendingConsequences / atomicFacts 为准。
+ */
+export interface EpisodicMemoryRecord {
+  /** 全局唯一 id；推荐 `em_<turn>_<hash>` */
+  id: string;
+  /** 片段所属回合 */
+  turn: number;
+  /** 片段发生场景；缺省时视为跨场景 */
+  sceneId?: SceneId;
+  /** 可直接注入 prompt 的短文本，建议 80-300 字 */
+  text: string;
+  /** 片段涉及玩家名 */
+  playerNames: string[];
+  /** 片段涉及 NPC 名 / 物品 id / 'world' 等实体 */
+  entityIds: string[];
+  /** 检索辅助标签，例如 promise / clue / stance_toward */
+  tags: string[];
+  /** 来源类型 */
+  source: EpisodicMemorySource;
+  /** 可见性；dm 片段只给 DM prompt，不直接展示给玩家 */
+  visibility: EpisodicMemoryVisibility;
+  /** 重要度 0..5，用于检索排序 */
+  importance: number;
+}
+
+export interface RetrievedEpisodicMemory {
+  record: EpisodicMemoryRecord;
+  score: number;
+  reasons: string[];
+}
+
 export interface GameState {
   players: Investigator[];
   exploreMode: ExploreMode;
@@ -271,6 +309,8 @@ export interface GameState {
   npcMindModels?: Record<string, NpcMindModel>;
   /** L6 前瞻意图队列（最多 30 条，按 ttl 衰减），phase 9 起持久化 */
   prospectiveIntents?: ProspectiveIntent[];
+  /** 长尾事件召回片段（最多 300 条），非权威状态，仅供 prompt 召回 */
+  episodicMemory?: EpisodicMemoryRecord[];
 }
 
 export interface AiResponse {
@@ -305,6 +345,6 @@ export interface SaveSlot {
   scene: string;
   players: string;
   gameState: GameState;
-  /** 存档格式版本；v4 起新增 atomicFacts / npcMindModels / prospectiveIntents。 */
-  version?: 1 | 2 | 3 | 4;
+  /** 存档格式版本；v5 起新增 episodicMemory。 */
+  version?: 1 | 2 | 3 | 4 | 5;
 }

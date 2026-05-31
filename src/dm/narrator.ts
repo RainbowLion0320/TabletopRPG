@@ -194,6 +194,17 @@ function formatWorkingMemory(wm: DmContext['dynamic']['workingMemory']): string 
   return lines.join('\n');
 }
 
+function formatRetrievedMemories(memories: DmContext['dynamic']['retrievedMemories']): string {
+  if (!memories.length) return '（无）';
+  return memories
+    .map((item) => {
+      const scene = item.record.sceneId ? ` ${item.record.sceneId}` : '';
+      const entities = item.record.entityIds.length ? `｜实体：${item.record.entityIds.join('、')}` : '';
+      return `- [t${item.record.turn}${scene} score=${item.score.toFixed(1)}] ${item.record.text}${entities}`;
+    })
+    .join('\n');
+}
+
 export function buildNarratorSystemPrompt(ctx: DmContext): string {
   const sections = [
     NARRATOR_SYSTEM_PROMPT_HEAD,
@@ -212,7 +223,8 @@ export function buildNarratorSystemPrompt(ctx: DmContext): string {
     }`,
     `# 已发现线索\n${ctx.dynamic.knownClueNames.join('、') || '（无）'}`,
     `# 调查员卡\n${formatPlayers(ctx.dynamic)}`,
-    `# 工作记忆\n${formatWorkingMemory(ctx.dynamic.workingMemory)}`
+    `# 工作记忆\n${formatWorkingMemory(ctx.dynamic.workingMemory)}`,
+    `# 相关历史片段\n${formatRetrievedMemories(ctx.dynamic.retrievedMemories)}`
   ];
   if (ctx.summary?.trim()) {
     sections.push(`# 长期记忆总结\n${ctx.summary.trim()}`);

@@ -1,4 +1,4 @@
-import type { AiResponse, AtomicFact, Attributes, CheckRequest, DiceResult, FactPredicate, GameState, Investigator, NarrativeMessage, NpcMindModel, PersistedDMEvent, PersistedPendingConsequence, ProspectiveIntent, SceneId, SkillValue, StoryItem } from '../types/game';
+import type { AiResponse, AtomicFact, Attributes, CheckRequest, DiceResult, EpisodicMemoryRecord, EpisodicMemorySource, EpisodicMemoryVisibility, FactPredicate, GameState, Investigator, NarrativeMessage, NpcMindModel, PersistedDMEvent, PersistedPendingConsequence, ProspectiveIntent, SceneId, SkillValue, StoryItem } from '../types/game';
 import { storyData } from '../data/storyData';
 import { allSkills } from '../data/skills';
 import { deriveInvestigatorStats, gameRules, resolveSkillBase } from '../data/gameRules';
@@ -25,6 +25,7 @@ export type GameAction =
   | { type: 'appendFacts'; facts: AtomicFact[] }
   | { type: 'updateNpcMindModel'; npcId: string; partial: Partial<NpcMindModel> }
   | { type: 'addProspectiveIntents'; intents: ProspectiveIntent[] }
+  | { type: 'appendEpisodicMemory'; records: EpisodicMemoryRecord[] }
   | { type: 'consumeProspectiveIntent'; id: string }
   | { type: 'decayProspectiveIntents' };
 
@@ -380,6 +381,13 @@ const FACT_PREDICATES: ReadonlySet<FactPredicate> = new Set<FactPredicate>([
 ]);
 const FACT_CAP = 500;
 const INTENT_CAP = 30;
+const EPISODIC_MEMORY_CAP = 300;
+const EPISODIC_SOURCES: ReadonlySet<EpisodicMemorySource> = new Set([
+  'episode', 'event', 'fact', 'summary'
+]);
+const EPISODIC_VISIBILITIES: ReadonlySet<EpisodicMemoryVisibility> = new Set([
+  'player_safe', 'dm'
+]);
 
 function isFactPredicate(value: unknown): value is FactPredicate {
   return typeof value === 'string' && FACT_PREDICATES.has(value as FactPredicate);
@@ -495,6 +503,60 @@ function normalizeProspectiveIntents(value: unknown): ProspectiveIntent[] {
   return out.slice(-INTENT_CAP);
 }
 
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of value) {
+    const text = stringValue(item);
+    if (!text || seen.has(text)) continue;
+    seen.add(text);
+    out.push(text);
+  }
+  return out;
+}
+
+function normalizeEpisodicMemoryRecord(value: unknown): EpisodicMemoryRecord | null {
+  if (!isRecord(value)) return null;
+  const idVal = stringValue(value.id);
+  const text = stringValue(value.text);
+  if (!idVal || !text) return null;
+  const turn = Math.max(0, Math.floor(numberValue(value.turn, 0)));
+  const sceneId = stringValue(value.sceneId);
+  const source = EPISODIC_SOURCES.has(value.source as EpisodicMemorySource)
+    ? value.source as EpisodicMemorySource
+    : 'episode';
+  const visibility = EPISODIC_VISIBILITIES.has(value.visibility as EpisodicMemoryVisibility)
+    ? value.visibility as EpisodicMemoryVisibility
+    : 'dm';
+  const record: EpisodicMemoryRecord = {
+    id: idVal,
+    turn,
+    text,
+    playerNames: normalizeStringArray(value.playerNames),
+    entityIds: normalizeStringArray(value.entityIds),
+    tags: normalizeStringArray(value.tags).slice(0, 12),
+    source,
+    visibility,
+    importance: clamp(numberValue(value.importance, 1), 0, 5)
+  };
+  if (sceneId in storyData.scenes) record.sceneId = sceneId as SceneId;
+  return record;
+}
+
+function normalizeEpisodicMemory(value: unknown): EpisodicMemoryRecord[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const out: EpisodicMemoryRecord[] = [];
+  for (const item of value) {
+    const record = normalizeEpisodicMemoryRecord(item);
+    if (!record || seen.has(record.id)) continue;
+    seen.add(record.id);
+    out.push(record);
+  }
+  return out.slice(-EPISODIC_MEMORY_CAP);
+}
+
 function mergeStanceFactsIntoMindModels(
   prevModels: Record<string, NpcMindModel>,
   facts: readonly AtomicFact[],
@@ -599,7 +661,8 @@ export function createInitialGameState(players: Investigator[]): GameState {
     pendingConsequences: [],
     atomicFacts: [],
     npcMindModels: {},
-    prospectiveIntents: []
+    prospectiveIntents: [],
+    episodicMemory: []
   };
 }
 
@@ -641,7 +704,8 @@ export function hydrateGameState(value: unknown): GameState {
     pendingConsequences: normalizePendingConsequences(source.pendingConsequences),
     atomicFacts: normalizeAtomicFacts(source.atomicFacts),
     npcMindModels: normalizeNpcMindModels(source.npcMindModels),
-    prospectiveIntents: normalizeProspectiveIntents(source.prospectiveIntents)
+    prospectiveIntents: normalizeProspectiveIntents(source.prospectiveIntents),
+    episodicMemory: normalizeEpisodicMemory(source.episodicMemory)
   };
 }
 
@@ -833,6 +897,19 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if (!incoming.length) return state;
       const next = [...prev, ...incoming].slice(-INTENT_CAP);
       return { ...state, prospectiveIntents: next };
+    }
+    case 'appendEpisodicMemory': {
+      if (!action.records.length) return state;
+      const prev = state.episodicMemory ?? [];
+      const seen = new Set(prev.map((record) => record.id));
+      const incoming: EpisodicMemoryRecord[] = [];
+      for (const record of action.records) {
+        if (!record || !record.id || !record.text || seen.has(record.id)) continue;
+        seen.add(record.id);
+        incoming.push(record);
+      }
+      if (!incoming.length) return state;
+      return { ...state, episodicMemory: [...prev, ...incoming].slice(-EPISODIC_MEMORY_CAP) };
     }
     case 'consumeProspectiveIntent': {
       const prev = state.prospectiveIntents ?? [];

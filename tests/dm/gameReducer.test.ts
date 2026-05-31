@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { gameReducer, hydrateGameState } from '../../src/state/gameReducer';
-import type { AiResponse, AtomicFact, PersistedDMEvent, ProspectiveIntent } from '../../src/types/game';
+import type { AiResponse, AtomicFact, EpisodicMemoryRecord, PersistedDMEvent, ProspectiveIntent } from '../../src/types/game';
 import { makeInvestigator, makeState } from './fixtures';
 
 describe('gameReducer applyAiResponse pendingConsequences merge', () => {
@@ -292,5 +292,67 @@ describe('gameReducer cognitive memory actions', () => {
     const next = gameReducer(decayed, { type: 'addProspectiveIntents', intents: incoming });
 
     expect(next.prospectiveIntents).toEqual(incoming);
+  });
+});
+
+describe('gameReducer episodic memory actions', () => {
+  function episode(id: string, turn: number): EpisodicMemoryRecord {
+    return {
+      id,
+      turn,
+      sceneId: 'S01',
+      text: `episode ${id}`,
+      playerNames: ['亨利'],
+      entityIds: ['伊莎贝拉·摩勒'],
+      tags: ['test'],
+      source: 'episode',
+      visibility: 'dm',
+      importance: 1
+    };
+  }
+
+  it('hydrates episodicMemory and drops malformed entries', () => {
+    const hydrated = hydrateGameState({
+      players: [
+        {
+          id: 'p1',
+          name: '亨利',
+          attrs: {},
+          hp: 12,
+          mp: 12,
+          san: 60,
+          luck: 50,
+          currentHp: 12,
+          currentMp: 12,
+          currentSan: 60,
+          skills: {}
+        }
+      ],
+      currentScene: 'S01',
+      flags: {},
+      conversationHistory: [],
+      episodicMemory: [
+        episode('em_1', 1),
+        episode('em_1', 2),
+        { id: 'bad', turn: 2, playerNames: [] }
+      ]
+    });
+
+    expect(hydrated.episodicMemory?.map((m) => m.id)).toEqual(['em_1']);
+  });
+
+  it('appends episodic memory, deduplicates by id, and caps at 300 records', () => {
+    const state = makeState();
+    state.episodicMemory = Array.from({ length: 299 }, (_, i) => episode(`em_${i}`, i));
+
+    const next = gameReducer(state, {
+      type: 'appendEpisodicMemory',
+      records: [episode('em_298', 298), episode('em_new_a', 300), episode('em_new_b', 301)]
+    });
+
+    expect(next.episodicMemory).toHaveLength(300);
+    expect(next.episodicMemory?.[0].id).toBe('em_1');
+    expect(next.episodicMemory?.at(-2)?.id).toBe('em_new_a');
+    expect(next.episodicMemory?.at(-1)?.id).toBe('em_new_b');
   });
 });

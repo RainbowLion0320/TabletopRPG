@@ -174,4 +174,36 @@ describe('contextBuilder', () => {
       'i_world'
     ]);
   });
+
+  it('carries retrieved episodic memories into the DM context', () => {
+    const state = makeState({ currentScene: 'S01' });
+    const ctx = buildDmContext(
+      state,
+      kb,
+      { mode: 'together' },
+      {
+        retrievedMemories: [
+          {
+            score: 4.2,
+            reasons: ['entity'],
+            record: {
+              id: 'em_1',
+              turn: 1,
+              sceneId: 'S01',
+              text: '伊莎贝拉曾答应交出父亲的私人信件。',
+              playerNames: ['亨利'],
+              entityIds: ['伊莎贝拉·摩勒'],
+              tags: ['承诺'],
+              source: 'episode',
+              visibility: 'dm',
+              importance: 2
+            }
+          }
+        ]
+      }
+    );
+
+    expect(ctx.dynamic.retrievedMemories).toHaveLength(1);
+    expect(ctx.dynamic.retrievedMemories[0].record.text).toContain('私人信件');
+  });
 });

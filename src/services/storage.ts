@@ -30,7 +30,8 @@ function normalizeSaveSlot(value: unknown): SaveSlot | null {
     ? value.savedAt
     : new Date(id).toLocaleString('zh-CN');
 
-  const version: 1 | 2 | 3 | 4 =
+  const version: 1 | 2 | 3 | 4 | 5 =
+    value.version === 5 ? 5 :
     value.version === 4 ? 4 :
     value.version === 3 ? 3 :
     value.version === 2 ? 2 : 1;
@@ -70,7 +71,7 @@ export function saveGameState(gameState: GameState) {
     scene: storyData.scenes[normalizedState.currentScene].name,
     players: normalizedState.players.map((player) => player.name).join('、'),
     gameState: normalizedState,
-    version: 4
+    version: 5
   };
   localStorage.setItem(SAVE_KEY, JSON.stringify([slot, ...saves.filter((save) => save.id !== slot.id)].slice(0, MAX_SAVES)));
   return slot;

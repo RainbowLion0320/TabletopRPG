@@ -16,6 +16,7 @@ import type {
   Investigator,
   NpcMindModel,
   ProspectiveIntent,
+  RetrievedEpisodicMemory,
   SceneId
 } from '../types/game';
 import type {
@@ -81,6 +82,8 @@ export interface DmContextDynamic {
   knownClueNames: string[];
   /** 本轮使用的 working memory 快照 */
   workingMemory: WorkingMemory;
+  /** RAG/长尾召回片段；非权威事实，仅供 Narrator 参考 */
+  retrievedMemories: RetrievedEpisodicMemory[];
   /** 主要被检定者的完整玩家卡；其它玩家精简卡 */
   spotlightPlayer: PlayerCardFull | null;
   otherPlayers: PlayerCardLite[];
@@ -248,6 +251,8 @@ export interface BuildDmContextOptions {
   summary?: string;
   /** 自定义历史窗口大小（轮数 × 2 条消息） */
   recentTurnWindow?: number;
+  /** 本轮召回的 episodic memory 片段 */
+  retrievedMemories?: RetrievedEpisodicMemory[];
 }
 
 /**
@@ -312,6 +317,7 @@ export function buildDmContext(
       playerLocations: buildPlayerLocations(state, kb),
       knownClueNames: state.clues.map((clue) => clue.name),
       workingMemory: wmWithIntents,
+      retrievedMemories: options.retrievedMemories ?? [],
       spotlightPlayer: spotlight,
       otherPlayers: others
     },

@@ -129,6 +129,7 @@ export function useGameController() {
         factsToAppend,
         mindUpdates,
         prospectiveIntentsToAdd,
+        episodicMemoriesToAdd,
         decayIntents
       } = await runDmTurn(config, { state, actions });
       if (memoryUpdate) {
@@ -163,6 +164,9 @@ export function useGameController() {
       }
       if (prospectiveIntentsToAdd && prospectiveIntentsToAdd.length) {
         dispatch({ type: 'addProspectiveIntents', intents: prospectiveIntentsToAdd });
+      }
+      if (episodicMemoriesToAdd && episodicMemoriesToAdd.length) {
+        dispatch({ type: 'appendEpisodicMemory', records: episodicMemoriesToAdd });
       }
     } catch (error) {
       dispatch({ type: 'setThinking', value: false });

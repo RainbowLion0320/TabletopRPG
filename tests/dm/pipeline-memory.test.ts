@@ -215,4 +215,88 @@ describe('runDmTurn cognitive memory outputs', () => {
       })
     ]);
   });
+
+  it('injects retrieved episodic memories and returns a new episode record', async () => {
+    const systemPrompts: string[] = [];
+    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      const body = bodyFrom(init);
+      const system = systemText(body);
+      systemPrompts.push(system);
+      if (system.includes('事实抽取助手')) {
+        return jsonResponse({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  facts: [
+                    {
+                      actor: '伊莎贝拉·摩勒',
+                      predicate: 'knowledge',
+                      value: '愿意交出父亲信件'
+                    }
+                  ]
+                })
+              }
+            }
+          ]
+        });
+      }
+      if (system.includes('COC 第七版 AI DM Agent')) {
+        return jsonResponse({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  narrative: '伊莎贝拉记起先前的承诺，取出父亲的私人信件。',
+                  activeNpc: '伊莎贝拉·摩勒',
+                  nextPrompt: '信件摊在桌上。',
+                  playerChoices: ['阅读信件']
+                }),
+                tool_calls: []
+              }
+            }
+          ]
+        });
+      }
+      throw new Error(`unexpected prompt: ${system.slice(0, 80)}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' })],
+      currentScene: 'S01'
+    });
+    state.episodicMemory = [
+      {
+        id: 'em_prev',
+        turn: 1,
+        sceneId: 'S01',
+        text: '伊莎贝拉曾答应亨利，只要他继续帮助寻找父亲，就会交出父亲的私人信件。',
+        playerNames: ['亨利'],
+        entityIds: ['伊莎贝拉·摩勒'],
+        tags: ['承诺'],
+        source: 'episode',
+        visibility: 'dm',
+        importance: 3
+      }
+    ];
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [{ player: '亨利', action: '我提醒伊莎贝拉上次答应过交出信件。' }]
+    });
+
+    const narratorPrompt = systemPrompts.find((prompt) => prompt.includes('COC 第七版 AI DM Agent')) ?? '';
+    expect(narratorPrompt).toContain('相关历史片段');
+    expect(narratorPrompt).toContain('交出父亲的私人信件');
+    expect(output.episodicMemoriesToAdd).toEqual([
+      expect.objectContaining({
+        turn: 1,
+        sceneId: 'S01',
+        source: 'episode',
+        visibility: 'dm'
+      })
+    ]);
+    expect(output.episodicMemoriesToAdd?.[0].text).toContain('伊莎贝拉记起先前的承诺');
+  });
 });

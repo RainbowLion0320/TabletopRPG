@@ -190,6 +190,8 @@ export interface DmTurnOutput {
   }>;
   /** Phase 9：System2 合成出的新增前瞻意图（已分配 id 与 ttl） */
   prospectiveIntentsToAdd?: import('../types/game').ProspectiveIntent[];
+  /** 长尾事件召回层：本轮完成后追加的 episodic memory 片段 */
+  episodicMemoriesToAdd?: import('../types/game').EpisodicMemoryRecord[];
   /** Phase 9：本轮是否需要执行 ttl 衰减（每轮 true） */
   decayIntents?: boolean;
 }
@@ -216,6 +218,12 @@ export interface MemoryEngineOptions {
   defaultIntentTtl?: number;
   /** ContextBuilder 注入近 N 条 fact 给 narrator（默认 6） */
   contextRecentFactWindow?: number;
+  /** 是否启用本地 episodic retrieval（默认 true） */
+  enableEpisodicRetrieval?: boolean;
+  /** 每轮注入的 episodic memory 上限（默认 5） */
+  episodicRetrievalLimit?: number;
+  /** episodicMemory 最大条数（默认 300） */
+  episodicMemoryCap?: number;
 }
 
 /** 全局默认值；运行时可被 ApiConfig / 环境变量覆盖 */
@@ -225,5 +233,8 @@ export const DEFAULT_MEMORY_OPTIONS: Required<MemoryEngineOptions> = {
   factCap: 500,
   intentCap: 30,
   defaultIntentTtl: 6,
-  contextRecentFactWindow: 6
+  contextRecentFactWindow: 6,
+  enableEpisodicRetrieval: true,
+  episodicRetrievalLimit: 5,
+  episodicMemoryCap: 300
 };

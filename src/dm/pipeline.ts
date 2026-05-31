@@ -29,6 +29,12 @@ import { maybeConsolidateMemory, SUMMARIZE_TRIGGER_PAIRS } from './summarizer';
 import { classifyIntent } from './intentClassifier';
 import { extractFactsFromTurn } from './memory/factExtractor';
 import { synthesizeSystem2 } from './memory/system2Synthesizer';
+import {
+  buildEpisodicMemoryQuery,
+  buildEpisodicMemoryRecord,
+  searchEpisodicMemory,
+  shouldRetrieveEpisodicMemory
+} from './memory/episodicMemory';
 import { pushTrace } from './debugTrace';
 import { DEFAULT_MEMORY_OPTIONS } from './types';
 import type { DmTurnInput, DmTurnOutput } from './types';
@@ -78,6 +84,16 @@ function collectRecentNpcCandidates(
   return Array.from(out).slice(0, 12);
 }
 
+function collectRetrievalEntityIds(
+  state: GameState,
+  kb: ReturnType<typeof getActiveKnowledgeBase>
+): string[] {
+  const out = new Set<string>();
+  if (state.activeNpcName) out.add(state.activeNpcName);
+  kb.scenes[state.currentScene]?.public.npcs.forEach((name) => out.add(name));
+  return Array.from(out);
+}
+
 export async function runDmTurn(
   config: ApiConfig,
   input: DmTurnInput
@@ -87,6 +103,18 @@ export async function runDmTurn(
 
   // 0) 意图分类（规则版）
   const intent = classifyIntent(input.actions);
+  const retrievedMemories = DEFAULT_MEMORY_OPTIONS.enableEpisodicRetrieval
+    && shouldRetrieveEpisodicMemory(intent.intentKind, input.actions)
+    ? searchEpisodicMemory(input.state.episodicMemory ?? [], {
+        query: buildEpisodicMemoryQuery(input.actions),
+        sceneId: input.state.currentScene,
+        entityIds: collectRetrievalEntityIds(input.state, kb),
+        playerNames: input.actions.map((a) => a.player),
+        maxTurnExclusive: currentTurn + 1,
+        limit: DEFAULT_MEMORY_OPTIONS.episodicRetrievalLimit,
+        includeDmOnly: true
+      })
+    : [];
 
   // 1) 入口检查：是否需要合并旧轮为总结
   let memoryUpdate: DmTurnOutput['memoryUpdate'];
@@ -156,7 +184,7 @@ export async function runDmTurn(
       checkPlayer: pickSpotlightPlayer(input.actions),
       relevantSkills: intent.relevantSkills
     },
-    { summary: effectiveSummary }
+    { summary: effectiveSummary, retrievedMemories }
   );
 
   const history = effectiveHistory
@@ -262,6 +290,16 @@ export async function runDmTurn(
     ...(resolved.mindUpdates ?? [])
   ];
 
+  const episode = buildEpisodicMemoryRecord({
+    turn: ctx.dynamic.workingMemory.turnCount + 1,
+    sceneId: input.state.currentScene,
+    actions: input.actions,
+    narrative: resolved.legacyResponse.narrative ?? narrator.narrative,
+    events: resolved.events ?? [],
+    facts: factsToAppend ?? [],
+    activeNpcName: resolved.legacyResponse.activeNpc ?? narrator.activeNpc ?? input.state.activeNpcName
+  });
+
   // 6) DEV 追踪：让右下角 DmDebugDrawer 看到这一轮经过的所有阶段
   if (import.meta.env.DEV) {
     pushTrace({
@@ -296,6 +334,7 @@ export async function runDmTurn(
     factsToAppend,
     mindUpdates: mindUpdates.length ? mindUpdates : undefined,
     prospectiveIntentsToAdd: s2Intents,
+    episodicMemoriesToAdd: episode ? [episode] : undefined,
     decayIntents: true
   };
 }
