@@ -180,10 +180,4 @@ export interface DmTurnOutput {
 }
 
 // ---------- Feature Flag ----------
-
-export type DmEngineVersion = 'v1' | 'v2';
-
-export function getDmEngineVersion(): DmEngineVersion {
-  const raw = (import.meta.env.VITE_DM_ENGINE || '').trim().toLowerCase();
-  return raw === 'v2' ? 'v2' : 'v1';
-}
+// （phase 6 已移除：v2 是唯一管线）

@@ -13,7 +13,6 @@ import { persistApiConfig, readApiConfig } from '../services/storage';
 import { createInitialGameState, gameReducer } from '../state/gameReducer';
 import type { ApiConfig, GameState, Investigator, SceneId } from '../types/game';
 import { runDmTurn } from '../dm/pipeline';
-import { getDmEngineVersion } from '../dm/types';
 
 export function useGameController() {
   const { notify, toast } = useToast();
@@ -121,8 +120,7 @@ export function useGameController() {
     }
     try {
       dispatch({ type: 'setThinking', value: true });
-      const version = getDmEngineVersion();
-      const { raw, legacyResponse, memoryUpdate } = await runDmTurn(version, config, { state, actions });
+      const { raw, legacyResponse, memoryUpdate } = await runDmTurn(config, { state, actions });
       if (memoryUpdate) {
         dispatch({
           type: 'consolidateMemory',
@@ -132,7 +130,7 @@ export function useGameController() {
         });
       }
       if (!legacyResponse) {
-        // v2 管线仍在建设中；phase 4 会提供 events 返回
+        // 接线异常：pipeline 未返回可用响应
         throw new Error('DM 引擎未返回可用响应');
       }
       const prepared = legacyResponse.check

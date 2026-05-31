@@ -1,10 +1,9 @@
 /**
- * 旧 StoryData 视图 - 由新知识库的"公开面"投影生成。
+ * 旧 StoryData 视图 - 由新知识库的“公开面”投影生成。
  *
  * 此文件存在的唯一目的是兼容旧消费者：
  * - UI 组件（SceneStage / ActionDock / clue 列表）读取 desc / name
  * - 旧 reducer 依赖 storyData.items 等映射查找
- * - 旧 v1 aiDm.buildSystemPrompt 在 phase 4 之前仍要 JSON.stringify 它
  *
  * 注意：这里输出的 desc / notes 不再含 KP 内幕。
  * KP 视角的真相统一通过新的 KnowledgeBase + secrets 解锁机制提供给 v2 Narrator。

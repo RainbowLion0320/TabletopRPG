@@ -195,4 +195,6 @@ export interface SaveSlot {
   scene: string;
   players: string;
   gameState: GameState;
+  /** 存档格式版本；phase 6 起新存档走 v2。缺失或 1 则为旧存档。 */
+  version?: 1 | 2;
 }
