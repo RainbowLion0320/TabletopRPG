@@ -121,7 +121,16 @@ export function useGameController() {
     }
     try {
       dispatch({ type: 'setThinking', value: true });
-      const { raw, legacyResponse, events, memoryUpdate } = await runDmTurn(config, { state, actions });
+      const {
+        raw,
+        legacyResponse,
+        events,
+        memoryUpdate,
+        factsToAppend,
+        mindUpdates,
+        prospectiveIntentsToAdd,
+        decayIntents
+      } = await runDmTurn(config, { state, actions });
       if (memoryUpdate) {
         dispatch({
           type: 'consolidateMemory',
@@ -129,6 +138,9 @@ export function useGameController() {
           summarizedUntilIndex: memoryUpdate.summarizedUntilIndex,
           remainingHistory: memoryUpdate.remainingHistory
         });
+      }
+      if (decayIntents) {
+        dispatch({ type: 'decayProspectiveIntents' });
       }
       if (!legacyResponse) {
         // 接线异常：pipeline 未返回可用响应
@@ -140,6 +152,17 @@ export function useGameController() {
       dispatch({ type: 'applyAiResponse', response: prepared, raw });
       if (events && events.length) {
         dispatch({ type: 'appendEvents', events });
+      }
+      if (factsToAppend && factsToAppend.length) {
+        dispatch({ type: 'appendFacts', facts: factsToAppend });
+      }
+      if (mindUpdates && mindUpdates.length) {
+        for (const update of mindUpdates) {
+          dispatch({ type: 'updateNpcMindModel', npcId: update.npcId, partial: update.partial });
+        }
+      }
+      if (prospectiveIntentsToAdd && prospectiveIntentsToAdd.length) {
+        dispatch({ type: 'addProspectiveIntents', intents: prospectiveIntentsToAdd });
       }
     } catch (error) {
       dispatch({ type: 'setThinking', value: false });
@@ -255,4 +278,3 @@ export function useGameController() {
 }
 
 export type GameController = ReturnType<typeof useGameController>;
-

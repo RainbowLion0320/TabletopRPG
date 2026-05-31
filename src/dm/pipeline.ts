@@ -11,7 +11,7 @@
  * - 工具不可用时由 Narrator 自动降级到带 schema 的 json_object 响应。
  */
 
-import type { ApiConfig, SceneId } from '../types/game';
+import type { ApiConfig, GameState, NpcMindModel, ProspectiveIntent, SceneId } from '../types/game';
 import type { PlayerAction } from '../services/aiDm';
 import { buildDmContext } from './contextBuilder';
 import {
@@ -25,9 +25,12 @@ import {
 import { callNarrator } from './narrator';
 import { allowedTools, validateToolCalls } from './director';
 import { resolveDmTurn } from './stateResolver';
-import { maybeConsolidateMemory } from './summarizer';
+import { maybeConsolidateMemory, SUMMARIZE_TRIGGER_PAIRS } from './summarizer';
 import { classifyIntent } from './intentClassifier';
+import { extractFactsFromTurn } from './memory/factExtractor';
+import { synthesizeSystem2 } from './memory/system2Synthesizer';
 import { pushTrace } from './debugTrace';
+import { DEFAULT_MEMORY_OPTIONS } from './types';
 import type { DmTurnInput, DmTurnOutput } from './types';
 
 const RECENT_TURN_WINDOW_PAIRS = 8; // 8 对 user/assistant = 16 条消息
@@ -37,11 +40,50 @@ function pickSpotlightPlayer(actions: PlayerAction[]): string | null {
   return null;
 }
 
+function getCompletedTurnCount(state: GameState): number {
+  return state.conversationHistory.filter((turn) => turn.role === 'user').length;
+}
+
+function getCurrentTurn(state: GameState): number {
+  return getCompletedTurnCount(state) + 1;
+}
+
+function getUnsummarizedPairCount(state: GameState): number {
+  const summarizedUntil = state.summarizedUntilIndex ?? 0;
+  const unsummarizedLen = Math.max(0, state.conversationHistory.length - summarizedUntil);
+  return Math.floor(unsummarizedLen / 2);
+}
+
+function shouldRunSystem2(state: GameState): boolean {
+  if (!DEFAULT_MEMORY_OPTIONS.enableSystem2) return false;
+  return getUnsummarizedPairCount(state) >= SUMMARIZE_TRIGGER_PAIRS;
+}
+
+function collectRecentNpcCandidates(
+  state: GameState,
+  kb: ReturnType<typeof getActiveKnowledgeBase>
+): string[] {
+  const out = new Set<string>();
+  const add = (name: string | null | undefined) => {
+    if (name && kb.npcs[name]) out.add(name);
+  };
+
+  add(state.activeNpcName);
+  kb.scenes[state.currentScene]?.public.npcs.forEach(add);
+  for (const fact of (state.atomicFacts ?? []).slice(-60)) {
+    add(fact.actor);
+    add(fact.target);
+  }
+  for (const npcId of Object.keys(state.npcMindModels ?? {})) add(npcId);
+  return Array.from(out).slice(0, 12);
+}
+
 export async function runDmTurn(
   config: ApiConfig,
   input: DmTurnInput
 ): Promise<DmTurnOutput> {
   const kb = getActiveKnowledgeBase();
+  const currentTurn = getCurrentTurn(input.state);
 
   // 0) 意图分类（规则版）
   const intent = classifyIntent(input.actions);
@@ -64,6 +106,44 @@ export async function runDmTurn(
         '[pipeline] memory consolidation failed (continuing without):',
         err instanceof Error ? err.message : err
       );
+    }
+  }
+
+  // 1b) System2 异步合成：与 summarizer 同频触发，串行调用
+  let s2MindUpdates: Array<{ npcId: string; partial: Partial<NpcMindModel> }> | undefined;
+  let s2Intents: ProspectiveIntent[] | undefined;
+  let s2Triggered = false;
+  let s2Error: string | undefined;
+  if (shouldRunSystem2(input.state)) {
+    s2Triggered = true;
+    try {
+      const result = await synthesizeSystem2(config, {
+        turn: currentTurn,
+        recentFacts: (input.state.atomicFacts ?? []).slice(-60),
+        existingMindModels: input.state.npcMindModels ?? {},
+        npcCandidates: collectRecentNpcCandidates(input.state, kb),
+        playerNames: input.state.players.map((p) => p.name),
+        summary: effectiveSummary,
+        defaultIntentTtl: DEFAULT_MEMORY_OPTIONS.defaultIntentTtl
+      });
+      if (result.mindModelUpdates.length) {
+        s2MindUpdates = result.mindModelUpdates.map((u) => ({
+          npcId: u.npcId,
+          partial: {
+            coreMotivation: u.coreMotivation,
+            currentStance: u.currentStance,
+            ...(u.playerExceptions ? { playerExceptions: u.playerExceptions } : {}),
+            lastUpdatedTurn: currentTurn
+          }
+        }));
+      }
+      if (result.prospectiveIntents.length) s2Intents = result.prospectiveIntents;
+    } catch (err) {
+      s2Error = err instanceof Error ? err.message : String(err);
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.warn('[pipeline] system2 synthesis failed (keeping old mind models):', s2Error);
+      }
     }
   }
 
@@ -163,6 +243,25 @@ export async function runDmTurn(
     pendingBefore: input.state.pendingConsequences ?? []
   });
 
+  // 5b) System1 同步事实抽取：主叙事完成后记录本轮新增/变化事实。
+  let factsToAppend: DmTurnOutput['factsToAppend'];
+  if (DEFAULT_MEMORY_OPTIONS.enableSystem1) {
+    const extracted = await extractFactsFromTurn(config, {
+      turn: ctx.dynamic.workingMemory.turnCount + 1,
+      narrative: resolved.legacyResponse.narrative ?? narrator.narrative,
+      playerActions: input.actions.map((a) => ({ player: a.player, action: a.action })),
+      inScopeNpcs: ctx.dynamic.workingMemory.inScopeNpcIds,
+      playerNames: input.state.players.map((p) => p.name),
+      existingFacts: input.state.atomicFacts ?? []
+    });
+    if (extracted.length) factsToAppend = extracted;
+  }
+
+  const mindUpdates = [
+    ...(s2MindUpdates ?? []),
+    ...(resolved.mindUpdates ?? [])
+  ];
+
   // 6) DEV 追踪：让右下角 DmDebugDrawer 看到这一轮经过的所有阶段
   if (import.meta.env.DEV) {
     pushTrace({
@@ -178,7 +277,14 @@ export async function runDmTurn(
       rejectedCalls: directorResult.rejected,
       memoryUpdate: memoryUpdate
         ? { summary: memoryUpdate.summary, summarizedUntilIndex: memoryUpdate.summarizedUntilIndex }
-        : undefined
+        : undefined,
+      s1ExtractedFacts: factsToAppend,
+      s2Synthesized: {
+        triggered: s2Triggered,
+        ...(s2Error ? { error: s2Error } : {}),
+        ...(s2MindUpdates ? { mindUpdates: s2MindUpdates } : {}),
+        ...(s2Intents ? { intents: s2Intents } : {})
+      }
     });
   }
 
@@ -186,6 +292,10 @@ export async function runDmTurn(
     raw: narrator.raw,
     legacyResponse: resolved.legacyResponse,
     events: resolved.events,
-    memoryUpdate
+    memoryUpdate,
+    factsToAppend,
+    mindUpdates: mindUpdates.length ? mindUpdates : undefined,
+    prospectiveIntentsToAdd: s2Intents,
+    decayIntents: true
   };
 }

@@ -9,10 +9,13 @@
  */
 
 import type {
+  AtomicFact,
   ConversationTurn,
   ExploreMode,
   GameState,
   Investigator,
+  NpcMindModel,
+  ProspectiveIntent,
   SceneId
 } from '../types/game';
 import type {
@@ -31,6 +34,7 @@ import {
 } from './knowledgeBase';
 import type { KnowledgeBase, ScenarioRule, WorkingMemory } from './types';
 import { deriveWorkingMemory } from './workingMemory';
+import { getStanceChain } from './memory/evolutionChain';
 
 // ---------- 上下文契约 ----------
 
@@ -67,8 +71,8 @@ export interface DmContextStatic {
 export interface DmContextDynamic {
   currentScene: SceneSnapshot;
   reachableScenes: Array<{ id: SceneId; name: string }>;
-  /** 当前场景在场（已解锁公开面 + 已解锁 secrets） */
-  npcs: NpcSnapshot[];
+  /** 当前场景在场（已解锁公开面 + 已解锁 secrets + 可选 mind 信息） */
+  npcs: NpcSnapshotWithMind[];
   /** 仅当前场景关联的物品；已发现物品在前 */
   items: ItemSnapshot[];
   /** 玩家定位 name → 场景名（脱敏） */
@@ -80,6 +84,19 @@ export interface DmContextDynamic {
   /** 主要被检定者的完整玩家卡；其它玩家精简卡 */
   spotlightPlayer: PlayerCardFull | null;
   otherPlayers: PlayerCardLite[];
+}
+
+/**
+ * NpcSnapshot 的 P9 增强：附加 NPC 心智模型 + 近期事实 + stance 演化链。
+ * 仅当 NPC 在场（inScope）时才会被注入，避免 token 浪费。
+ */
+export interface NpcSnapshotWithMind extends NpcSnapshot {
+  /** L5 心智模型；可能不存在（system2 尚未为该 NPC 合成） */
+  mindModel?: NpcMindModel;
+  /** 近 N 条该 NPC 相关 atomic facts（按时间倒序，最多 3 条） */
+  recentFacts?: AtomicFact[];
+  /** stance_toward 演化链（按时间升序） */
+  stanceChain?: AtomicFact[];
 }
 
 export interface DmContext {
@@ -94,6 +111,8 @@ export interface DmContext {
 // ---------- 工具函数 ----------
 
 const RECENT_TURN_WINDOW = 16;
+const NPC_RECENT_FACTS_TOP = 3;
+const NPC_STANCE_CHAIN_MAX = 4;
 
 function toLitePlayerCard(p: Investigator): PlayerCardLite {
   return {
@@ -166,6 +185,52 @@ function buildSceneNpcs(
   return out;
 }
 
+/**
+ * 给在场 NPC 附加 P9 认知信息（mindModel + recentFacts + stanceChain）。
+ * 仅在 npcMindModels / atomicFacts 存在时生效；不存在时返回原 snapshot 列表。
+ */
+function enrichNpcsWithMind(
+  npcs: NpcSnapshot[],
+  state: GameState
+): NpcSnapshotWithMind[] {
+  const facts = state.atomicFacts ?? [];
+  const mindModels = state.npcMindModels ?? {};
+  if (!facts.length && !Object.keys(mindModels).length) return npcs;
+  return npcs.map((snap) => {
+    const npcId = snap.public.name;
+    const enhanced: NpcSnapshotWithMind = { ...snap };
+    const model = mindModels[npcId];
+    if (model) enhanced.mindModel = model;
+
+    if (facts.length) {
+      const recent = facts
+        .filter((f) => f.actor === npcId)
+        .slice(-NPC_RECENT_FACTS_TOP);
+      if (recent.length) {
+        // 时间倒序（最新在前）
+        enhanced.recentFacts = [...recent].reverse();
+      }
+      const stance = getStanceChain(facts, npcId).slice(-NPC_STANCE_CHAIN_MAX);
+      if (stance.length) enhanced.stanceChain = stance;
+    }
+    return enhanced;
+  });
+}
+
+/**
+ * 过滤当前在场 NPC 相关、ttl > 0 的前瞻意图。
+ * 'world' owner 始终保留（视为全局意图）。
+ */
+function filterInScopeIntents(
+  state: GameState,
+  inScopeNpcIds: ReadonlyArray<string>
+): ProspectiveIntent[] {
+  const intents = state.prospectiveIntents ?? [];
+  if (!intents.length) return [];
+  const inScope = new Set(inScopeNpcIds);
+  return intents.filter((i) => i.ttl > 0 && (i.owner === 'world' || inScope.has(i.owner)));
+}
+
 function buildReachableScenes(
   kb: KnowledgeBase,
   sceneId: SceneId
@@ -225,6 +290,13 @@ export function buildDmContext(
       ? options.summary
       : state.longTermMemorySummary ?? '';
 
+  const baseNpcs = buildSceneNpcs(kb, state.currentScene, state.activeNpcName, revealed);
+  const enrichedNpcs = enrichNpcsWithMind(baseNpcs, state);
+  const inScopeIntents = filterInScopeIntents(state, wm.inScopeNpcIds);
+  const wmWithIntents: WorkingMemory = inScopeIntents.length
+    ? { ...wm, prospectiveIntents: inScopeIntents }
+    : wm;
+
   return {
     static: {
       scenarioId: kb.scenarioId,
@@ -235,11 +307,11 @@ export function buildDmContext(
     dynamic: {
       currentScene,
       reachableScenes: buildReachableScenes(kb, state.currentScene),
-      npcs: buildSceneNpcs(kb, state.currentScene, state.activeNpcName, revealed),
+      npcs: enrichedNpcs,
       items: buildSceneItems(kb, state.currentScene, ctx, revealed),
       playerLocations: buildPlayerLocations(state, kb),
       knownClueNames: state.clues.map((clue) => clue.name),
-      workingMemory: wm,
+      workingMemory: wmWithIntents,
       spotlightPlayer: spotlight,
       otherPlayers: others
     },

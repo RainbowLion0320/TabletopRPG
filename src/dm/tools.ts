@@ -166,6 +166,29 @@ export const DM_TOOLS: OpenAiTool[] = [
         additionalProperties: false
       }
     }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_npc_mind',
+      description:
+        '仅在 NPC 心智发生明显变化、且在本轮叙事里有明确依据时调用：更新某 NPC 的动机 / 对调查者的整体立场 / 玩家特例。不允许凭空制造；默认 system2 会定期自动合成，仅在需要立即刷新时使用。',
+      parameters: {
+        type: 'object',
+        properties: {
+          npcId: { type: 'string', description: 'NPC 全名，必须在 KB.npcs 中存在' },
+          coreMotivation: { type: 'string', description: '一句话核心动机（可选）' },
+          currentStance: { type: 'string', description: '对调查者整体的当前立场（可选）' },
+          playerExceptions: {
+            type: 'object',
+            description: '玩家名 → 不同于整体立场的描述（可选；不传则保留原有）',
+            additionalProperties: { type: 'string' }
+          }
+        },
+        required: ['npcId'],
+        additionalProperties: false
+      }
+    }
   }
 ];
 
@@ -183,7 +206,8 @@ const TOOL_NAME_SET = new Set<DmToolName>([
   'reveal_secret',
   'lookup_entity',
   'propose_scene_change',
-  'schedule_consequence'
+  'schedule_consequence',
+  'update_npc_mind'
 ]);
 
 /**
@@ -248,6 +272,8 @@ export function validateToolCallShape(call: DmToolCall): ToolValidationResult {
       return validateProposeSceneChange(call.arguments);
     case 'schedule_consequence':
       return validateScheduleConsequence(call.arguments);
+    case 'update_npc_mind':
+      return validateUpdateNpcMind(call.arguments);
     default:
       return { ok: false, reason: `未知工具：${(call as { name: string }).name}` };
   }
@@ -339,6 +365,34 @@ function validateScheduleConsequence(args: Record<string, unknown>): ToolValidat
   const turns = args.remainingTurns;
   if (typeof turns !== 'number' || !Number.isInteger(turns) || turns < 1 || turns > 10) {
     return { ok: false, reason: 'remainingTurns 必须是 1–10 的整数' };
+  }
+  return { ok: true };
+}
+
+function validateUpdateNpcMind(args: Record<string, unknown>): ToolValidationResult {
+  if (!isString(args.npcId)) return { ok: false, reason: 'npcId 必须是非空字符串' };
+  const hasMotivation = args.coreMotivation !== undefined;
+  const hasStance = args.currentStance !== undefined;
+  const hasExceptions = args.playerExceptions !== undefined;
+  if (hasMotivation && typeof args.coreMotivation !== 'string') {
+    return { ok: false, reason: 'coreMotivation 必须是字符串' };
+  }
+  if (hasStance && typeof args.currentStance !== 'string') {
+    return { ok: false, reason: 'currentStance 必须是字符串' };
+  }
+  if (hasExceptions) {
+    const ex = args.playerExceptions;
+    if (typeof ex !== 'object' || ex === null || Array.isArray(ex)) {
+      return { ok: false, reason: 'playerExceptions 必须是对象' };
+    }
+    for (const [, v] of Object.entries(ex as Record<string, unknown>)) {
+      if (typeof v !== 'string') {
+        return { ok: false, reason: 'playerExceptions 的值必须是字符串' };
+      }
+    }
+  }
+  if (!hasMotivation && !hasStance && !hasExceptions) {
+    return { ok: false, reason: '至少提供 coreMotivation/currentStance/playerExceptions 中一项' };
   }
   return { ok: true };
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { gameReducer, hydrateGameState } from '../../src/state/gameReducer';
-import type { AiResponse, PersistedDMEvent } from '../../src/types/game';
+import type { AiResponse, AtomicFact, PersistedDMEvent, ProspectiveIntent } from '../../src/types/game';
 import { makeInvestigator, makeState } from './fixtures';
 
 describe('gameReducer applyAiResponse pendingConsequences merge', () => {
@@ -173,5 +173,124 @@ describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
     const hydrated = hydrateGameState(stateLikeV3);
     expect(hydrated.pendingConsequences).toHaveLength(1);
     expect(hydrated.pendingConsequences![0].id).toBe('good');
+  });
+
+  it('hydrates npcMindModels using the map key as the canonical npcId', () => {
+    const hydrated = hydrateGameState({
+      players: [
+        {
+          id: 'p1',
+          name: '亨利',
+          attrs: {},
+          hp: 12,
+          mp: 12,
+          san: 60,
+          luck: 50,
+          currentHp: 12,
+          currentMp: 12,
+          currentSan: 60,
+          skills: {}
+        }
+      ],
+      currentScene: 'S01',
+      flags: {},
+      conversationHistory: [],
+      npcMindModels: {
+        '伊莎贝拉·摩勒': {
+          npcId: '错误嵌套值',
+          coreMotivation: '找回父亲',
+          currentStance: '谨慎合作',
+          stanceHistoryFactIds: ['f_1_0'],
+          lastUpdatedTurn: 1
+        }
+      }
+    });
+
+    expect(hydrated.npcMindModels?.['伊莎贝拉·摩勒'].npcId).toBe('伊莎贝拉·摩勒');
+  });
+});
+
+describe('gameReducer cognitive memory actions', () => {
+  it('deduplicates appended facts and links stance facts into NPC history', () => {
+    const state = makeState();
+    state.atomicFacts = [
+      {
+        id: 'f_1_0',
+        turn: 1,
+        actor: '伊莎贝拉·摩勒',
+        predicate: 'stance_toward',
+        target: '亨利',
+        value: '警惕',
+        source: 'system1'
+      }
+    ];
+    state.npcMindModels = {
+      '伊莎贝拉·摩勒': {
+        npcId: '伊莎贝拉·摩勒',
+        coreMotivation: '寻找父亲',
+        currentStance: '谨慎合作',
+        stanceHistoryFactIds: ['f_1_0'],
+        lastUpdatedTurn: 1
+      }
+    };
+    const incoming: AtomicFact[] = [
+      state.atomicFacts[0],
+      {
+        id: 'f_2_0',
+        turn: 2,
+        actor: '伊莎贝拉·摩勒',
+        predicate: 'stance_toward',
+        target: '亨利',
+        value: '信任',
+        supersedes: 'f_1_0',
+        source: 'system1'
+      },
+      {
+        id: 'f_2_1',
+        turn: 2,
+        actor: '伊莎贝拉·摩勒',
+        predicate: 'knowledge',
+        value: '知道父亲书房异常',
+        source: 'system1'
+      }
+    ];
+
+    const next = gameReducer(state, { type: 'appendFacts', facts: incoming });
+
+    expect(next.atomicFacts?.map((f) => f.id)).toEqual(['f_1_0', 'f_2_0', 'f_2_1']);
+    expect(next.npcMindModels?.['伊莎贝拉·摩勒'].stanceHistoryFactIds).toEqual([
+      'f_1_0',
+      'f_2_0'
+    ]);
+    expect(next.npcMindModels?.['伊莎贝拉·摩勒'].lastUpdatedTurn).toBe(2);
+  });
+
+  it('adds and decays prospective intents without decaying newly added ones first', () => {
+    const state = makeState();
+    state.prospectiveIntents = [
+      {
+        id: 'i_old',
+        owner: 'world',
+        predictedAction: '雾气变浓',
+        triggerCondition: '下一轮',
+        ttl: 1,
+        createdTurn: 1
+      }
+    ];
+    const incoming: ProspectiveIntent[] = [
+      {
+        id: 'i_new',
+        owner: '伊莎贝拉·摩勒',
+        predictedAction: '主动交出信件',
+        triggerCondition: '调查员继续追问',
+        ttl: 6,
+        createdTurn: 2
+      }
+    ];
+
+    const decayed = gameReducer(state, { type: 'decayProspectiveIntents' });
+    const next = gameReducer(decayed, { type: 'addProspectiveIntents', intents: incoming });
+
+    expect(next.prospectiveIntents).toEqual(incoming);
   });
 });

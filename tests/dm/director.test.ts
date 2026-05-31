@@ -51,6 +51,18 @@ describe('director.allowedTools', () => {
     const t4 = allowedTools(ctx(), { intent: intent({ intentKind: 'social' }), mode: 'together' });
     expect(t4).not.toContain('propose_scene_change');
   });
+
+  it('grants update_npc_mind only for interaction-heavy intents', () => {
+    const social = allowedTools(ctx(), { intent: intent({ intentKind: 'social' }), mode: 'together' });
+    const research = allowedTools(ctx(), { intent: intent({ intentKind: 'research' }), mode: 'together' });
+    const combat = allowedTools(ctx(), { intent: intent({ intentKind: 'combat' }), mode: 'together' });
+    const observe = allowedTools(ctx(), { intent: intent({ intentKind: 'observe' }), mode: 'together' });
+
+    expect(social).toContain('update_npc_mind');
+    expect(research).toContain('update_npc_mind');
+    expect(combat).toContain('update_npc_mind');
+    expect(observe).not.toContain('update_npc_mind');
+  });
 });
 
 describe('director.validateToolCalls', () => {
@@ -203,5 +215,48 @@ describe('director.validateToolCalls', () => {
     const result = validateToolCalls(calls, ctx());
     expect(result.accepted).toEqual([]);
     expect(result.rejected[0].reason).toMatch(/NPC 不存在/);
+  });
+
+  it('accepts update_npc_mind for known NPC and known player exceptions', () => {
+    const calls: DmToolCall[] = [
+      {
+        name: 'update_npc_mind',
+        arguments: {
+          npcId: '伊莎贝拉·摩勒',
+          currentStance: '信任亨利但仍害怕',
+          playerExceptions: { 亨利: '更愿意交谈' }
+        }
+      }
+    ];
+    const result = validateToolCalls(calls, ctx(), ['update_npc_mind']);
+    expect(result.accepted).toHaveLength(1);
+    expect(result.rejected).toEqual([]);
+  });
+
+  it('rejects update_npc_mind for unknown NPC or unknown player exception', () => {
+    const badNpc = validateToolCalls(
+      [{ name: 'update_npc_mind', arguments: { npcId: '不存在', currentStance: 'x' } }],
+      ctx(),
+      ['update_npc_mind']
+    );
+    expect(badNpc.accepted).toEqual([]);
+    expect(badNpc.rejected[0].reason).toMatch(/未在 KB/);
+
+    const badPlayer = validateToolCalls(
+      [
+        {
+          name: 'update_npc_mind',
+          arguments: {
+            npcId: '伊莎贝拉·摩勒',
+            currentStance: 'x',
+            playerExceptions: { 不存在的玩家: 'x' }
+          }
+        }
+      ],
+      ctx(),
+      ['update_npc_mind']
+    );
+    expect(badPlayer.accepted).toEqual([]);
+    expect(badPlayer.rejected[0].reason).toMatch(/不在玩家阵营/);
   });
 });

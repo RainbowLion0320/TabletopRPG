@@ -98,6 +98,8 @@ export interface WorkingMemory {
   pendingConsequences: PendingConsequence[];
   /** NPC 中期状态：好感、警觉度等数值；不暴露给玩家 UI，但喂给 Narrator */
   npcStates: Record<string, NpcRuntimeState>;
+  /** Phase 9：在场 NPC 当前可见的前瞻意图（owner 在场 + ttl>0） */
+  prospectiveIntents?: import('../types/game').ProspectiveIntent[];
 }
 
 export interface PendingConsequence {
@@ -147,7 +149,8 @@ export type DmToolName =
   | 'reveal_secret'
   | 'lookup_entity'
   | 'propose_scene_change'
-  | 'schedule_consequence';
+  | 'schedule_consequence'
+  | 'update_npc_mind';
 
 export interface DmToolCall {
   name: DmToolName;
@@ -178,7 +181,49 @@ export interface DmTurnOutput {
     summarizedUntilIndex: number;
     remainingHistory: import('../types/game').ConversationTurn[];
   };
+  /** Phase 9：System1 抽出待写入的 atomic facts（已设置 supersedes 链） */
+  factsToAppend?: import('../types/game').AtomicFact[];
+  /** Phase 9：Narrator 工具调用 + System2 合成产生的 NPC 心智增量 */
+  mindUpdates?: Array<{
+    npcId: string;
+    partial: Partial<import('../types/game').NpcMindModel>;
+  }>;
+  /** Phase 9：System2 合成出的新增前瞻意图（已分配 id 与 ttl） */
+  prospectiveIntentsToAdd?: import('../types/game').ProspectiveIntent[];
+  /** Phase 9：本轮是否需要执行 ttl 衰减（每轮 true） */
+  decayIntents?: boolean;
 }
 
 // ---------- Feature Flag ----------
 // （phase 6 已移除：v2 是唯一管线）
+
+// ---------- Phase 9：认知记忆层（L2 / L5 / L6） ----------
+
+/**
+ * 记忆引擎参数。便于在 pipeline / contextBuilder 之间共享上限和开关。
+ * 默认值由各模块负责，但同一处常量集中维护。
+ */
+export interface MemoryEngineOptions {
+  /** 是否启用 System1 同步事实抽取（默认 true）；关闭时跳过每轮 LLM 调用 */
+  enableSystem1?: boolean;
+  /** 是否启用 System2 异步合成（默认 true）；关闭时不更新 mindModel / intent */
+  enableSystem2?: boolean;
+  /** atomicFacts 最大条数（默认 500） */
+  factCap?: number;
+  /** prospectiveIntents 最大条数（默认 30） */
+  intentCap?: number;
+  /** 单条 prospectiveIntent 默认 ttl（默认 6 轮） */
+  defaultIntentTtl?: number;
+  /** ContextBuilder 注入近 N 条 fact 给 narrator（默认 6） */
+  contextRecentFactWindow?: number;
+}
+
+/** 全局默认值；运行时可被 ApiConfig / 环境变量覆盖 */
+export const DEFAULT_MEMORY_OPTIONS: Required<MemoryEngineOptions> = {
+  enableSystem1: true,
+  enableSystem2: true,
+  factCap: 500,
+  intentCap: 30,
+  defaultIntentTtl: 6,
+  contextRecentFactWindow: 6
+};

@@ -53,6 +53,8 @@ const BASELINE_TOOLS: DmToolName[] = [
  * - propose_scene_change 仅在 together 模式 且 本轮意图为 move/combat 时允许：
  *     · split 模式下场景由玩家在 UI 里逐个选择，AI 不应主动推动；
  *     · together 模式下只有玩家明说"走/跟/逃/追"时才合理切场。
+ * - update_npc_mind 仅在 social/info 或 combat 意图时允许（需要与 NPC 互动）；
+ *     其他场景下不暴露该工具，避免 Narrator 越位调用。
  */
 export function allowedTools(
   _ctx: DirectorContext,
@@ -64,6 +66,10 @@ export function allowedTools(
     (options.intent.intentKind === 'move' || options.intent.intentKind === 'combat')
   ) {
     allowed.push('propose_scene_change');
+  }
+  const intentKind = options.intent.intentKind;
+  if (intentKind === 'social' || intentKind === 'research' || intentKind === 'combat') {
+    allowed.push('update_npc_mind');
   }
   return allowed;
 }
@@ -126,6 +132,8 @@ function validateSemantics(call: DmToolCall, ctx: DirectorContext): SemanticResu
       return validateLookup(call, ctx);
     case 'schedule_consequence':
       return { ok: true };
+    case 'update_npc_mind':
+      return validateMindUpdate(call, ctx);
     default:
       return { ok: false, reason: `未知工具：${call.name as string}` };
   }
@@ -213,6 +221,23 @@ function validateStateUpdate(call: DmToolCall, ctx: DirectorContext): SemanticRe
           ok: false,
           reason: `sceneChange ${args.sceneChange} 不邻接当前 ${ctx.state.currentScene}`
         };
+      }
+    }
+  }
+  return { ok: true };
+}
+
+function validateMindUpdate(call: DmToolCall, ctx: DirectorContext): SemanticResult {
+  const npcId = String(call.arguments.npcId ?? '');
+  if (!ctx.kb.npcs[npcId]) {
+    return { ok: false, reason: `update_npc_mind.npcId 未在 KB 中：${npcId}` };
+  }
+  const exceptions = call.arguments.playerExceptions;
+  if (exceptions && typeof exceptions === 'object' && !Array.isArray(exceptions)) {
+    for (const playerName of Object.keys(exceptions as Record<string, unknown>)) {
+      const exists = ctx.state.players.some((p) => p.name === playerName);
+      if (!exists) {
+        return { ok: false, reason: `playerExceptions.${playerName} 不在玩家阵营` };
       }
     }
   }

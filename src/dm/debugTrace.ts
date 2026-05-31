@@ -7,6 +7,7 @@
 
 import type { DmContext } from './contextBuilder';
 import type { DmToolCall } from './types';
+import type { AtomicFact, ProspectiveIntent, NpcMindModel } from '../types/game';
 
 export interface DmTraceRejection {
   call: DmToolCall;
@@ -35,6 +36,15 @@ export interface DmTrace {
   rejectedCalls: DmTraceRejection[];
   /** 本轮是否触发了长期记忆压缩 */
   memoryUpdate?: { summary: string; summarizedUntilIndex: number };
+  /** Phase 9：System1 本轮抽出的 facts（与写入 reducer 一致） */
+  s1ExtractedFacts?: AtomicFact[];
+  /** Phase 9：System2 本轮合成结果；null 表示未触发，error 表示报错 */
+  s2Synthesized?: {
+    triggered: boolean;
+    error?: string;
+    mindUpdates?: Array<{ npcId: string; partial: Partial<NpcMindModel> }>;
+    intents?: ProspectiveIntent[];
+  };
 }
 
 const MAX_TRACES = 20;

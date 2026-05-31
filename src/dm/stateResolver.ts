@@ -9,7 +9,7 @@
  *   在下一轮把该 secret 视为已解锁
  */
 
-import type { AiResponse, CheckRequest, PersistedPendingConsequence, SceneId } from '../types/game';
+import type { AiResponse, CheckRequest, NpcMindModel, PersistedPendingConsequence, SceneId } from '../types/game';
 import type { NarratorOutput } from './narrator';
 import type { DMEvent, DmToolCall } from './types';
 
@@ -25,6 +25,8 @@ export interface ResolveInput {
 export interface ResolveOutput {
   legacyResponse: AiResponse;
   events: DMEvent[];
+  /** Phase 9：Narrator 调用 update_npc_mind 产生的增量心智更新，交由 controller dispatch */
+  mindUpdates?: Array<{ npcId: string; partial: Partial<NpcMindModel> }>;
 }
 
 interface MutableStateUpdate {
@@ -68,6 +70,7 @@ export function resolveDmTurn(input: ResolveInput): ResolveOutput {
   let check: CheckRequest | null = null;
   const scheduledConsequences: PersistedPendingConsequence[] = [];
   const triggeredConsequenceIds: string[] = [];
+  const mindUpdates: Array<{ npcId: string; partial: Partial<NpcMindModel> }> = [];
 
   for (const call of acceptedCalls) {
     switch (call.name) {
@@ -182,6 +185,48 @@ export function resolveDmTurn(input: ResolveInput): ResolveOutput {
         });
         break;
       }
+      case 'update_npc_mind': {
+        const args = call.arguments as Record<string, unknown>;
+        const npcId = String(args.npcId);
+        const partial: Partial<NpcMindModel> = {
+          lastUpdatedTurn: turn
+        };
+        if (typeof args.coreMotivation === 'string') {
+          partial.coreMotivation = args.coreMotivation;
+        }
+        if (typeof args.currentStance === 'string') {
+          partial.currentStance = args.currentStance;
+        }
+        if (
+          args.playerExceptions && typeof args.playerExceptions === 'object'
+          && !Array.isArray(args.playerExceptions)
+        ) {
+          const ex: Record<string, string> = {};
+          for (const [k, v] of Object.entries(args.playerExceptions as Record<string, unknown>)) {
+            if (typeof v === 'string' && v.trim()) ex[k] = v.trim();
+          }
+          if (Object.keys(ex).length) partial.playerExceptions = ex;
+        }
+        // 同一轮同 npcId 多次调用时以后一次为准（覆盖 partial）
+        const dup = mindUpdates.findIndex((m) => m.npcId === npcId);
+        if (dup >= 0) {
+          mindUpdates[dup] = { npcId, partial: { ...mindUpdates[dup].partial, ...partial } };
+        } else {
+          mindUpdates.push({ npcId, partial });
+        }
+        events.push({
+          id: genEventId(turn, 'mind'),
+          turn,
+          kind: 'mind_update',
+          description: `刷新 ${npcId} 心智${
+            partial.coreMotivation ? `：动机=${partial.coreMotivation}` : ''
+          }${
+            partial.currentStance ? `；立场=${partial.currentStance}` : ''
+          }`,
+          toolName: call.name
+        });
+        break;
+      }
       default:
         break;
     }
@@ -228,7 +273,7 @@ export function resolveDmTurn(input: ResolveInput): ResolveOutput {
     playerChoices: narrator.playerChoices ?? []
   };
 
-  return { legacyResponse, events };
+  return { legacyResponse, events, mindUpdates: mindUpdates.length ? mindUpdates : undefined };
 }
 
 function summarizeStateUpdate(args: Record<string, unknown>): string {

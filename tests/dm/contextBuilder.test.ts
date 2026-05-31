@@ -92,4 +92,86 @@ describe('contextBuilder', () => {
     expect(ctx.dynamic.workingMemory.pendingConsequences[0].id).toBe('thugs');
     expect(ctx.dynamic.workingMemory.pendingConsequences[0].remainingTurns).toBe(2);
   });
+
+  it('enriches in-scope NPCs with mind data and scoped prospective intents', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' })],
+      currentScene: 'S01'
+    });
+    state.atomicFacts = [
+      {
+        id: 'f_1_0',
+        turn: 1,
+        actor: '伊莎贝拉·摩勒',
+        predicate: 'stance_toward',
+        target: '亨利',
+        value: '警惕',
+        source: 'system1'
+      },
+      {
+        id: 'f_2_0',
+        turn: 2,
+        actor: '伊莎贝拉·摩勒',
+        predicate: 'stance_toward',
+        target: '亨利',
+        value: '信任',
+        supersedes: 'f_1_0',
+        source: 'system1'
+      }
+    ];
+    state.npcMindModels = {
+      '伊莎贝拉·摩勒': {
+        npcId: '伊莎贝拉·摩勒',
+        coreMotivation: '找回父亲',
+        currentStance: '愿意有限合作',
+        stanceHistoryFactIds: ['f_1_0', 'f_2_0'],
+        lastUpdatedTurn: 2
+      }
+    };
+    state.prospectiveIntents = [
+      {
+        id: 'i_scope',
+        owner: '伊莎贝拉·摩勒',
+        predictedAction: '递出父亲信件',
+        triggerCondition: '调查员继续安抚',
+        ttl: 3,
+        createdTurn: 2
+      },
+      {
+        id: 'i_world',
+        owner: 'world',
+        predictedAction: '窗外雾声加重',
+        triggerCondition: '下一次停顿',
+        ttl: 1,
+        createdTurn: 2
+      },
+      {
+        id: 'i_other',
+        owner: '洛夫·蒙特利尔',
+        predictedAction: '派人盯梢',
+        triggerCondition: '调查员离开警局',
+        ttl: 3,
+        createdTurn: 2
+      },
+      {
+        id: 'i_expired',
+        owner: '伊莎贝拉·摩勒',
+        predictedAction: '过期意图',
+        triggerCondition: '不会触发',
+        ttl: 0,
+        createdTurn: 1
+      }
+    ];
+
+    const ctx = buildDmContext(state, kb, { mode: 'together' });
+    const isabella = ctx.dynamic.npcs.find((n) => n.public.name === '伊莎贝拉·摩勒');
+
+    expect(isabella?.mindModel?.coreMotivation).toBe('找回父亲');
+    expect(isabella?.recentFacts?.map((f) => f.id)).toEqual(['f_2_0', 'f_1_0']);
+    expect(isabella?.stanceChain?.map((f) => f.value)).toEqual(['警惕', '信任']);
+    expect(ctx.dynamic.workingMemory.prospectiveIntents?.map((i) => i.id).sort()).toEqual([
+      'i_scope',
+      'i_world'
+    ]);
+  });
 });

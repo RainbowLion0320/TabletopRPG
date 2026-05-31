@@ -1,4 +1,4 @@
-import type { AiResponse, Attributes, CheckRequest, DiceResult, GameState, Investigator, NarrativeMessage, PersistedDMEvent, PersistedPendingConsequence, SceneId, SkillValue, StoryItem } from '../types/game';
+import type { AiResponse, AtomicFact, Attributes, CheckRequest, DiceResult, FactPredicate, GameState, Investigator, NarrativeMessage, NpcMindModel, PersistedDMEvent, PersistedPendingConsequence, ProspectiveIntent, SceneId, SkillValue, StoryItem } from '../types/game';
 import { storyData } from '../data/storyData';
 import { allSkills } from '../data/skills';
 import { deriveInvestigatorStats, gameRules, resolveSkillBase } from '../data/gameRules';
@@ -21,7 +21,12 @@ export type GameAction =
   | { type: 'setSuggestions'; suggestions: string[] }
   | { type: 'addLog'; text: string }
   | { type: 'appendEvents'; events: PersistedDMEvent[] }
-  | { type: 'consolidateMemory'; summary: string; summarizedUntilIndex: number; remainingHistory: GameState['conversationHistory'] };
+  | { type: 'consolidateMemory'; summary: string; summarizedUntilIndex: number; remainingHistory: GameState['conversationHistory'] }
+  | { type: 'appendFacts'; facts: AtomicFact[] }
+  | { type: 'updateNpcMindModel'; npcId: string; partial: Partial<NpcMindModel> }
+  | { type: 'addProspectiveIntents'; intents: ProspectiveIntent[] }
+  | { type: 'consumeProspectiveIntent'; id: string }
+  | { type: 'decayProspectiveIntents' };
 
 const initialMessage = `${storyData.era}。\n\n雨夜的伦敦裹在浓雾之中，煤气灯的光晕在水汽里渗散开来。你们站在纽伦上街101号的门廊下，手中握着伊莎贝拉·摩勒小姐的求助信。\n\n信中写道：「我父亲埃里克·摩勒于三日前失踪，警察局毫无进展。若您能找到他，必有重谢。」`;
 
@@ -368,6 +373,167 @@ function normalizeScheduledConsequences(value: unknown): PersistedPendingConsequ
   return out;
 }
 
+// ---------- Phase 9：认知记忆层 normalizers ----------
+
+const FACT_PREDICATES: ReadonlySet<FactPredicate> = new Set<FactPredicate>([
+  'stance_toward', 'goal', 'knowledge', 'capability', 'state', 'relationship'
+]);
+const FACT_CAP = 500;
+const INTENT_CAP = 30;
+
+function isFactPredicate(value: unknown): value is FactPredicate {
+  return typeof value === 'string' && FACT_PREDICATES.has(value as FactPredicate);
+}
+
+function normalizeAtomicFact(value: unknown): AtomicFact | null {
+  if (!isRecord(value)) return null;
+  const idVal = stringValue(value.id);
+  const actor = stringValue(value.actor);
+  const factValue = stringValue(value.value);
+  if (!idVal || !actor || !factValue || !isFactPredicate(value.predicate)) return null;
+  const turn = Math.max(0, Math.floor(numberValue(value.turn, 0)));
+  const source: AtomicFact['source'] = value.source === 'system2' ? 'system2' : 'system1';
+  const fact: AtomicFact = {
+    id: idVal,
+    turn,
+    actor,
+    predicate: value.predicate,
+    value: factValue,
+    source
+  };
+  const target = stringValue(value.target);
+  if (target) fact.target = target;
+  const supersedes = stringValue(value.supersedes);
+  if (supersedes) fact.supersedes = supersedes;
+  return fact;
+}
+
+function normalizeAtomicFacts(value: unknown): AtomicFact[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const out: AtomicFact[] = [];
+  for (const item of value) {
+    const fact = normalizeAtomicFact(item);
+    if (!fact || seen.has(fact.id)) continue;
+    seen.add(fact.id);
+    out.push(fact);
+  }
+  return out.slice(-FACT_CAP);
+}
+
+function normalizeNpcMindModel(value: unknown): NpcMindModel | null {
+  if (!isRecord(value)) return null;
+  const npcId = stringValue(value.npcId);
+  if (!npcId) return null;
+  const stanceHistory = Array.isArray(value.stanceHistoryFactIds)
+    ? value.stanceHistoryFactIds.flatMap((entry) => {
+        const text = stringValue(entry);
+        return text ? [text] : [];
+      })
+    : [];
+  const exceptionsSrc = isRecord(value.playerExceptions) ? value.playerExceptions : null;
+  const exceptions = exceptionsSrc
+    ? Object.fromEntries(
+        Object.entries(exceptionsSrc).flatMap(([k, v]) => {
+          const text = typeof v === 'string' ? v.trim() : '';
+          return k && text ? [[k, text] as const] : [];
+        })
+      )
+    : undefined;
+  const model: NpcMindModel = {
+    npcId,
+    coreMotivation: stringValue(value.coreMotivation),
+    currentStance: stringValue(value.currentStance),
+    stanceHistoryFactIds: stanceHistory,
+    lastUpdatedTurn: Math.max(0, Math.floor(numberValue(value.lastUpdatedTurn, 0)))
+  };
+  if (exceptions && Object.keys(exceptions).length) {
+    model.playerExceptions = exceptions;
+  }
+  return model;
+}
+
+function normalizeNpcMindModels(value: unknown): Record<string, NpcMindModel> {
+  if (!isRecord(value)) return {};
+  const out: Record<string, NpcMindModel> = {};
+  for (const [key, raw] of Object.entries(value)) {
+    const model = normalizeNpcMindModel(raw);
+    if (!model) continue;
+    // 以记录 key 为主（与 GameState 索引一致），同时容忍旧存档嵌套 npcId 错误
+    out[key] = { ...model, npcId: key };
+  }
+  return out;
+}
+
+function normalizeProspectiveIntent(value: unknown): ProspectiveIntent | null {
+  if (!isRecord(value)) return null;
+  const idVal = stringValue(value.id);
+  const owner = stringValue(value.owner);
+  const predicted = stringValue(value.predictedAction);
+  const trigger = stringValue(value.triggerCondition);
+  if (!idVal || !owner || !predicted || !trigger) return null;
+  return {
+    id: idVal,
+    owner,
+    predictedAction: predicted,
+    triggerCondition: trigger,
+    ttl: clamp(Math.floor(numberValue(value.ttl, 0)), 0, 50),
+    createdTurn: Math.max(0, Math.floor(numberValue(value.createdTurn, 0)))
+  };
+}
+
+function normalizeProspectiveIntents(value: unknown): ProspectiveIntent[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const out: ProspectiveIntent[] = [];
+  for (const item of value) {
+    const intent = normalizeProspectiveIntent(item);
+    if (!intent || seen.has(intent.id)) continue;
+    seen.add(intent.id);
+    out.push(intent);
+  }
+  return out.slice(-INTENT_CAP);
+}
+
+function mergeStanceFactsIntoMindModels(
+  prevModels: Record<string, NpcMindModel>,
+  facts: readonly AtomicFact[],
+  retainedFactIds: ReadonlySet<string>
+): Record<string, NpcMindModel> {
+  let nextModels = prevModels;
+  const ensureMutable = () => {
+    if (nextModels === prevModels) nextModels = { ...prevModels };
+  };
+
+  for (const fact of facts) {
+    if (fact.predicate !== 'stance_toward') continue;
+    if (!storyData.npcs[fact.actor]) continue;
+    if (!retainedFactIds.has(fact.id)) continue;
+
+    const existing = nextModels[fact.actor];
+    const previousHistory = existing?.stanceHistoryFactIds ?? [];
+    const prunedHistory = previousHistory.filter((idVal) => retainedFactIds.has(idVal));
+    const stanceHistoryFactIds = prunedHistory.includes(fact.id)
+      ? prunedHistory
+      : [...prunedHistory, fact.id];
+
+    ensureMutable();
+    const merged: NpcMindModel = {
+      npcId: fact.actor,
+      coreMotivation: existing?.coreMotivation ?? '',
+      currentStance: existing?.currentStance ?? '',
+      stanceHistoryFactIds,
+      lastUpdatedTurn: Math.max(existing?.lastUpdatedTurn ?? 0, fact.turn)
+    };
+    if (existing?.playerExceptions && Object.keys(existing.playerExceptions).length) {
+      merged.playerExceptions = { ...existing.playerExceptions };
+    }
+    nextModels[fact.actor] = merged;
+  }
+
+  return nextModels;
+}
+
 function normalizeTriggeredIds(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   const out: string[] = [];
@@ -430,7 +596,10 @@ export function createInitialGameState(players: Investigator[]): GameState {
     longTermMemorySummary: '',
     summarizedUntilIndex: 0,
     eventLog: [],
-    pendingConsequences: []
+    pendingConsequences: [],
+    atomicFacts: [],
+    npcMindModels: {},
+    prospectiveIntents: []
   };
 }
 
@@ -469,7 +638,10 @@ export function hydrateGameState(value: unknown): GameState {
       typeof source.longTermMemorySummary === 'string' ? source.longTermMemorySummary : '',
     summarizedUntilIndex: Math.max(0, Math.floor(numberValue(source.summarizedUntilIndex, 0))),
     eventLog: normalizeEventLog(source.eventLog),
-    pendingConsequences: normalizePendingConsequences(source.pendingConsequences)
+    pendingConsequences: normalizePendingConsequences(source.pendingConsequences),
+    atomicFacts: normalizeAtomicFacts(source.atomicFacts),
+    npcMindModels: normalizeNpcMindModels(source.npcMindModels),
+    prospectiveIntents: normalizeProspectiveIntents(source.prospectiveIntents)
   };
 }
 
@@ -609,6 +781,75 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         summarizedUntilIndex: action.summarizedUntilIndex,
         conversationHistory: action.remainingHistory
       };
+    }
+    case 'appendFacts': {
+      if (!action.facts.length) return state;
+      const prev = state.atomicFacts ?? [];
+      const seen = new Set(prev.map((f) => f.id));
+      const incoming: AtomicFact[] = [];
+      for (const fact of action.facts) {
+        if (!fact || !fact.id || seen.has(fact.id)) continue;
+        seen.add(fact.id);
+        incoming.push(fact);
+      }
+      if (!incoming.length) return state;
+      const next = [...prev, ...incoming].slice(-FACT_CAP);
+      const retainedFactIds = new Set(next.map((f) => f.id));
+      const npcMindModels = mergeStanceFactsIntoMindModels(
+        state.npcMindModels ?? {},
+        incoming,
+        retainedFactIds
+      );
+      return { ...state, atomicFacts: next, npcMindModels };
+    }
+    case 'updateNpcMindModel': {
+      const prev = state.npcMindModels ?? {};
+      const existing = prev[action.npcId];
+      const merged: NpcMindModel = {
+        npcId: action.npcId,
+        coreMotivation: action.partial.coreMotivation ?? existing?.coreMotivation ?? '',
+        currentStance: action.partial.currentStance ?? existing?.currentStance ?? '',
+        stanceHistoryFactIds:
+          action.partial.stanceHistoryFactIds ?? existing?.stanceHistoryFactIds ?? [],
+        lastUpdatedTurn:
+          action.partial.lastUpdatedTurn ?? existing?.lastUpdatedTurn ?? 0
+      };
+      const exceptions = action.partial.playerExceptions ?? existing?.playerExceptions;
+      if (exceptions && Object.keys(exceptions).length) {
+        merged.playerExceptions = { ...exceptions };
+      }
+      return { ...state, npcMindModels: { ...prev, [action.npcId]: merged } };
+    }
+    case 'addProspectiveIntents': {
+      if (!action.intents.length) return state;
+      const prev = state.prospectiveIntents ?? [];
+      const seen = new Set(prev.map((intent) => intent.id));
+      const incoming: ProspectiveIntent[] = [];
+      for (const intent of action.intents) {
+        if (!intent || !intent.id || seen.has(intent.id)) continue;
+        seen.add(intent.id);
+        incoming.push(intent);
+      }
+      if (!incoming.length) return state;
+      const next = [...prev, ...incoming].slice(-INTENT_CAP);
+      return { ...state, prospectiveIntents: next };
+    }
+    case 'consumeProspectiveIntent': {
+      const prev = state.prospectiveIntents ?? [];
+      const next = prev.filter((intent) => intent.id !== action.id);
+      if (next.length === prev.length) return state;
+      return { ...state, prospectiveIntents: next };
+    }
+    case 'decayProspectiveIntents': {
+      const prev = state.prospectiveIntents ?? [];
+      if (!prev.length) return state;
+      const next = prev
+        .map((intent) => ({ ...intent, ttl: intent.ttl - 1 }))
+        .filter((intent) => intent.ttl > 0);
+      if (next.length === prev.length && next.every((n, i) => n.ttl === prev[i].ttl)) {
+        return state;
+      }
+      return { ...state, prospectiveIntents: next };
     }
     default:
       return state;

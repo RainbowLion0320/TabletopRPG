@@ -161,6 +161,81 @@ export interface PersistedPendingConsequence {
   scheduledAtTurn: number;
 }
 
+// ---------- Phase 9：认知记忆层（L2 / L5 / L6） ----------
+
+/**
+ * Atomic Fact 谓词集合。
+ * 借鉴 Hy-Memory L2 的 SPO 三元组思想，针对跑团领域裁剪。
+ */
+export type FactPredicate =
+  | 'stance_toward'   // 对某人/物的态度
+  | 'goal'            // 目标 / 动机
+  | 'knowledge'       // 知道某事
+  | 'capability'      // 能力
+  | 'state'           // 状态（受伤/疲惫/醉）
+  | 'relationship';   // 与他人关系
+
+/**
+ * L2 原子事实：actor + predicate + (target?) + value 构成 SPO 结构，
+ * 通过 supersedes 指针组成因果演化链（旧事实 -> 新事实）。
+ */
+export interface AtomicFact {
+  /** 全局唯一 id；推荐 `f_<turn>_<idx>` */
+  id: string;
+  /** 创建时的回合号 */
+  turn: number;
+  /** 事实主体：NPC name / player id / 'world'（全局） */
+  actor: string;
+  predicate: FactPredicate;
+  /** stance_toward / relationship 的对象；其他谓词可省略 */
+  target?: string;
+  /** 简短中文描述：例「敌意」「想保护女儿」「醉酒」 */
+  value: string;
+  /** 旧 fact id；命中合并时由 factExtractor 设置，构成因果链 */
+  supersedes?: string;
+  /** 抽取来源：system1（同步抽取）/ system2（异步合成） */
+  source: 'system1' | 'system2';
+}
+
+/**
+ * L5 NPC 心智模型：per-NPC 单视图 + 玩家特例标记。
+ * coreMotivation / currentStance 由 system2 异步合成；stanceHistoryFactIds 指向 L2 链。
+ */
+export interface NpcMindModel {
+  /** NPC name（与 KB.npcs 主键一致） */
+  npcId: string;
+  /** 一句话核心动机，例：「不让秘密曝光」 */
+  coreMotivation: string;
+  /** 对调查者整体的当前态度，例：「保持距离，警惕但合作」 */
+  currentStance: string;
+  /** 玩家特例：仅当 NPC 对某玩家明显不同时填入；key = player name */
+  playerExceptions?: Record<string, string>;
+  /** stance 演化路径，按时间顺序的 AtomicFact id 列表 */
+  stanceHistoryFactIds: string[];
+  /** 上次更新的回合号 */
+  lastUpdatedTurn: number;
+}
+
+/**
+ * L6 前瞻意图：NPC 对未来行为的预测，每轮 ttl-1，0 时移除。
+ * 与 PersistedPendingConsequence 的差别：consequence 是 KP 已定的剧情，intent 是
+ * NPC 自主推断，narrator 可参考但不强制兑现。
+ */
+export interface ProspectiveIntent {
+  /** 全局唯一 id；推荐 `i_<turn>_<idx>` */
+  id: string;
+  /** 行动主体：NPC name 或 'world' */
+  owner: string;
+  /** 自然语言预测：「Eric 在下次会面时会主动提及报纸」 */
+  predictedAction: string;
+  /** 触发条件描述（自然语言，不强制执行）：「玩家再次见到 Eric」 */
+  triggerCondition: string;
+  /** 剩余轮数；每轮 -1，0 时被移除 */
+  ttl: number;
+  /** 创建时的回合号 */
+  createdTurn: number;
+}
+
 export interface GameState {
   players: Investigator[];
   exploreMode: ExploreMode;
@@ -190,6 +265,12 @@ export interface GameState {
   eventLog?: PersistedDMEvent[];
   /** 未结算后果队列，每轮 -1 直到为 0 触发；phase 8 起持久化 */
   pendingConsequences?: PersistedPendingConsequence[];
+  /** L2 原子事实链（最多 500 条），phase 9 起持久化 */
+  atomicFacts?: AtomicFact[];
+  /** L5 NPC 心智模型（按 npcId 索引），phase 9 起持久化 */
+  npcMindModels?: Record<string, NpcMindModel>;
+  /** L6 前瞻意图队列（最多 30 条，按 ttl 衰减），phase 9 起持久化 */
+  prospectiveIntents?: ProspectiveIntent[];
 }
 
 export interface AiResponse {
@@ -224,6 +305,6 @@ export interface SaveSlot {
   scene: string;
   players: string;
   gameState: GameState;
-  /** 存档格式版本；v3 起新增 eventLog / pendingConsequences。 */
-  version?: 1 | 2 | 3;
+  /** 存档格式版本；v4 起新增 atomicFacts / npcMindModels / prospectiveIntents。 */
+  version?: 1 | 2 | 3 | 4;
 }
