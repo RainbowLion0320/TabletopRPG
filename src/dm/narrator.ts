@@ -11,11 +11,11 @@
  * 只做"把 context 翻译成 prompt"和"把响应翻译成结构化数据"。
  */
 
-import type { ApiConfig } from '../types/game';
+import type { ApiConfig, ExploreMode } from '../types/game';
 import type { PlayerAction } from '../services/aiDm';
 import type { DmContext } from './contextBuilder';
 import { DM_TOOLS, parseToolCalls } from './tools';
-import type { DmToolCall } from './types';
+import type { DmToolCall, DmToolName } from './types';
 
 // ---------- 输出契约 ----------
 
@@ -271,6 +271,8 @@ function shapeNarratorJson(raw: string): {
 interface NarratorRequestOptions {
   /** 是否启用 function calling（默认 true，失败时由 callNarrator 自动重试 false） */
   useFunctionCalling?: boolean;
+  /** 本轮允许的工具数组（已过滤）；不传则默认 DM_TOOLS 全集 */
+  tools?: typeof DM_TOOLS;
 }
 
 async function readJsonResponse(response: Response) {
@@ -291,12 +293,28 @@ interface OpenAiChatMessage {
 interface RawNarratorPayload {
   raw: string;
   rawToolCalls: unknown;
+  /** 完整的 assistant message（供下一轮作为 history 追加发送） */
+  assistantMessage: OpenAiAssistantMessage;
 }
+
+interface OpenAiAssistantMessage {
+  role: 'assistant';
+  content: string | null;
+  tool_calls?: unknown;
+}
+
+interface OpenAiToolMessage {
+  role: 'tool';
+  tool_call_id: string;
+  content: string;
+}
+
+type OpenAiAnyMessage = OpenAiChatMessage | OpenAiAssistantMessage | OpenAiToolMessage;
 
 async function requestNarrator(
   config: ApiConfig,
   systemPrompt: string,
-  history: OpenAiChatMessage[],
+  history: OpenAiAnyMessage[],
   options: NarratorRequestOptions
 ): Promise<RawNarratorPayload> {
   const useFnCall = options.useFunctionCalling !== false;
@@ -320,7 +338,12 @@ async function requestNarrator(
     });
     const data = await readJsonResponse(response);
     if (!response.ok || data.error) throw new Error(data.error?.message ?? `HTTP ${response.status}`);
-    return { raw: data.content?.[0]?.text || '', rawToolCalls: null };
+    const text: string = data.content?.[0]?.text || '';
+    return {
+      raw: text,
+      rawToolCalls: null,
+      assistantMessage: { role: 'assistant', content: text }
+    };
   }
 
   const endpoint = (config.provider === 'mimo'
@@ -338,7 +361,7 @@ async function requestNarrator(
     messages: [{ role: 'system', content: systemPrompt }, ...history]
   };
   if (useFnCall) {
-    body.tools = DM_TOOLS;
+    body.tools = options.tools ?? DM_TOOLS;
     body.tool_choice = 'auto';
   } else {
     body.response_format = { type: 'json_object' };
@@ -357,7 +380,17 @@ async function requestNarrator(
   const message = data.choices?.[0]?.message ?? {};
   const content: string = message.content || '';
   const rawToolCalls = message.tool_calls ?? null;
-  return { raw: content, rawToolCalls };
+  return {
+    raw: content,
+    rawToolCalls,
+    assistantMessage: {
+      role: 'assistant',
+      content: content || null,
+      ...(Array.isArray(rawToolCalls) && rawToolCalls.length > 0
+        ? { tool_calls: rawToolCalls }
+        : {})
+    }
+  };
 }
 
 // ---------- 主入口 ----------
@@ -365,9 +398,60 @@ async function requestNarrator(
 export interface CallNarratorInput {
   ctx: DmContext;
   actions: PlayerAction[];
-  mode: 'together' | 'split';
+  mode: ExploreMode;
   /** 此前轮次的 conversationHistory（已经过窗口截断） */
   history: OpenAiChatMessage[];
+  /** 本轮允许的工具名集（来自 Director.allowedTools）；不传则使用全集 */
+  allowedToolNames?: DmToolName[];
+  /**
+   * lookup_entity 的解析器（pipeline 注入）：传入 (kind, id) 返回脱敏后的
+   * 可读文本；返回空字符串表示 "KB 中不存在该实体"。
+   * 不传则 lookup_entity 仅校验形态，模型在同一轮拿不到查询结果。
+   */
+  lookupResolver?: (kind: string, id: string) => string;
+}
+
+/** Narrator 内部 lookup 循环的最大轮数（不含最后一轮最终响应）。 */
+const MAX_LOOKUP_ROUNDS = 2;
+
+function filterToolsByAllowed(
+  allowed: DmToolName[] | undefined
+): typeof DM_TOOLS {
+  if (!allowed) return DM_TOOLS;
+  const set = new Set(allowed);
+  return DM_TOOLS.filter((t) => set.has(t.function.name));
+}
+
+function isLookupOnlyResponse(raw: string, calls: DmToolCall[]): boolean {
+  if (calls.length === 0) return false;
+  if (!calls.every((c) => c.name === 'lookup_entity')) return false;
+  // 若同时还产出了可解析的 narrative，则不需要再走一轮。
+  try {
+    const shaped = shapeNarratorJson(raw);
+    if (shaped.narrative.trim()) return false;
+  } catch {
+    /* JSON 不可解析，表示模型还没出最终响应 */
+  }
+  return true;
+}
+
+function buildLookupResultMessage(
+  call: DmToolCall,
+  resolver: (kind: string, id: string) => string
+): OpenAiToolMessage {
+  const kind = String(call.arguments.kind ?? '');
+  const id = String(call.arguments.id ?? '');
+  let content: string;
+  try {
+    content = resolver(kind, id) || `（KB 中未找到 ${kind}:${id}）`;
+  } catch (err) {
+    content = `（lookup 失败：${err instanceof Error ? err.message : String(err)}）`;
+  }
+  return {
+    role: 'tool',
+    tool_call_id: call.callId ?? `lookup-${kind}-${id}`,
+    content
+  };
 }
 
 export async function callNarrator(
@@ -376,34 +460,61 @@ export async function callNarrator(
 ): Promise<NarratorOutput> {
   const systemPrompt = buildNarratorSystemPrompt(input.ctx);
   const userMessage = buildNarratorUserMessage(input.actions, input.mode);
-  const history: OpenAiChatMessage[] = [...input.history, { role: 'user', content: userMessage }];
+  const tools = filterToolsByAllowed(input.allowedToolNames);
 
-  // 优先 function calling；任何一阶段失败都尝试 JSON 兜底再试一次。
+  // 首轮 history：history + user
+  const messages: OpenAiAnyMessage[] = [
+    ...input.history,
+    { role: 'user', content: userMessage }
+  ];
+
+  // function calling 主路径（Anthropic 默认走 JSON、仅最后一轮）
   let useFnCall = config.provider !== 'anthropic';
+  let lookupRoundsUsed = 0;
+
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const { raw, rawToolCalls } = await requestNarrator(config, systemPrompt, history, {
-      useFunctionCalling: useFnCall
-    });
     try {
-      const shaped = shapeNarratorJson(raw);
-      const toolCalls = parseToolCalls(rawToolCalls);
-      return {
-        raw,
-        narrative: shaped.narrative,
-        activeNpc: shaped.activeNpc,
-        nextPrompt: shaped.nextPrompt,
-        playerChoices: shaped.playerChoices,
-        toolCalls,
-        usedFunctionCalling: useFnCall && Array.isArray(rawToolCalls) && rawToolCalls.length > 0
-      };
+      while (true) {
+        const payload = await requestNarrator(config, systemPrompt, messages, {
+          useFunctionCalling: useFnCall,
+          tools
+        });
+        const parsedCalls = parseToolCalls(payload.rawToolCalls);
+
+        // 检查是否仅 lookup_entity 且未产出 narrative：有 resolver 且轮数未超限则回填后重试。
+        if (
+          input.lookupResolver &&
+          lookupRoundsUsed < MAX_LOOKUP_ROUNDS &&
+          isLookupOnlyResponse(payload.raw, parsedCalls)
+        ) {
+          messages.push(payload.assistantMessage);
+          for (const call of parsedCalls) {
+            messages.push(buildLookupResultMessage(call, input.lookupResolver));
+          }
+          lookupRoundsUsed += 1;
+          continue;
+        }
+
+        // 最终响应：解析 JSON 成型
+        const shaped = shapeNarratorJson(payload.raw);
+        return {
+          raw: payload.raw,
+          narrative: shaped.narrative,
+          activeNpc: shaped.activeNpc,
+          nextPrompt: shaped.nextPrompt,
+          playerChoices: shaped.playerChoices,
+          // lookup_entity 已被回填不返还给上层，避免被 Resolver 误记为疑似事件。
+          toolCalls: parsedCalls.filter((c) => c.name !== 'lookup_entity'),
+          usedFunctionCalling:
+            useFnCall && Array.isArray(payload.rawToolCalls) && payload.rawToolCalls.length > 0
+        };
+      }
     } catch (err) {
       if (import.meta.env.DEV) {
         // eslint-disable-next-line no-console
         console.warn(
           `[narrator] parse failed (attempt ${attempt + 1}, fnCall=${useFnCall}):`,
-          err instanceof Error ? err.message : err,
-          '\nRAW:\n',
-          raw
+          err instanceof Error ? err.message : err
         );
       }
       if (attempt === 1) {
@@ -411,8 +522,13 @@ export async function callNarrator(
           ? err
           : new NarratorError('Narrator 连续返回无效格式');
       }
-      // 第二次重试切到 JSON-only 兜底
+      // 第二次重试切到 JSON-only 兜底；同时重置 lookup 轮数。
       useFnCall = false;
+      lookupRoundsUsed = 0;
+      // 重置话柄到首轮 user（丢弃上一次部分走过的 lookup 循环中间态）。
+      messages.length = 0;
+      messages.push(...input.history);
+      messages.push({ role: 'user', content: userMessage });
     }
   }
 

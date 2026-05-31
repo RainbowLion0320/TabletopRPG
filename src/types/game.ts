@@ -140,6 +140,27 @@ export interface ConversationTurn {
   content: string;
 }
 
+export interface PersistedDMEvent {
+  id: string;
+  turn: number;
+  /** 事件分类：scene_change / check / state_update / secret_reveal / consequence / narrative / lookup / schedule */
+  kind: string;
+  description: string;
+  /** 触发该事件的工具调用名（若有） */
+  toolName?: string;
+}
+
+export interface PersistedPendingConsequence {
+  id: string;
+  description: string;
+  /** 还剩多少轮触发；0 表示本轮触发 */
+  remainingTurns: number;
+  /** 触发后的事件描述 */
+  triggerEvent: string;
+  /** 创建时的回合号 */
+  scheduledAtTurn: number;
+}
+
 export interface GameState {
   players: Investigator[];
   exploreMode: ExploreMode;
@@ -165,6 +186,10 @@ export interface GameState {
   longTermMemorySummary?: string;
   /** 已被总结进 summary 的 conversationHistory 上界（下标，不含） */
   summarizedUntilIndex?: number;
+  /** DM 事件时间线（最多 200 条），phase 8 起持久化 */
+  eventLog?: PersistedDMEvent[];
+  /** 未结算后果队列，每轮 -1 直到为 0 触发；phase 8 起持久化 */
+  pendingConsequences?: PersistedPendingConsequence[];
 }
 
 export interface AiResponse {
@@ -177,6 +202,10 @@ export interface AiResponse {
     flags?: Record<string, unknown>;
     newItems?: string[];
     sceneChange?: SceneId | null;
+    /** 本轮新调度的后果（仅 phase 8+ 管线使用） */
+    scheduledConsequences?: PersistedPendingConsequence[];
+    /** 本轮被触发的 pending id（仅 phase 8+ 管线使用） */
+    triggeredConsequenceIds?: string[];
   };
   nextPrompt?: string;
   playerChoices?: string[];
@@ -195,6 +224,6 @@ export interface SaveSlot {
   scene: string;
   players: string;
   gameState: GameState;
-  /** 存档格式版本；phase 6 起新存档走 v2。缺失或 1 则为旧存档。 */
-  version?: 1 | 2;
+  /** 存档格式版本；v3 起新增 eventLog / pendingConsequences。 */
+  version?: 1 | 2 | 3;
 }

@@ -9,7 +9,7 @@
  *   在下一轮把该 secret 视为已解锁
  */
 
-import type { AiResponse, CheckRequest, SceneId } from '../types/game';
+import type { AiResponse, CheckRequest, PersistedPendingConsequence, SceneId } from '../types/game';
 import type { NarratorOutput } from './narrator';
 import type { DMEvent, DmToolCall } from './types';
 
@@ -18,6 +18,8 @@ export interface ResolveInput {
   acceptedCalls: DmToolCall[];
   /** 当前回合号（来自 WorkingMemory） */
   turn: number;
+  /** 本轮开始前的 pendingConsequences 快照（未衰减），可选 */
+  pendingBefore?: PersistedPendingConsequence[];
 }
 
 export interface ResolveOutput {
@@ -60,10 +62,12 @@ function genEventId(turn: number, kind: string): string {
 }
 
 export function resolveDmTurn(input: ResolveInput): ResolveOutput {
-  const { narrator, acceptedCalls, turn } = input;
+  const { narrator, acceptedCalls, turn, pendingBefore } = input;
   const stateUpdate = emptyStateUpdate();
   const events: DMEvent[] = [];
   let check: CheckRequest | null = null;
+  const scheduledConsequences: PersistedPendingConsequence[] = [];
+  const triggeredConsequenceIds: string[] = [];
 
   for (const call of acceptedCalls) {
     switch (call.name) {
@@ -140,8 +144,7 @@ export function resolveDmTurn(input: ResolveInput): ResolveOutput {
         break;
       }
       case 'lookup_entity': {
-        // 当前架构是单轮调用，无法把 lookup 结果回填给同一次 LLM；
-        // 仅记录事件以便下次 Director 收窄。Phase 4+ 可加 tool-call loop。
+        // 仅记录事件；Narrator 内部已由 tool-call loop 回填过一轮。
         events.push({
           id: genEventId(turn, 'lookup'),
           turn,
@@ -151,8 +154,54 @@ export function resolveDmTurn(input: ResolveInput): ResolveOutput {
         });
         break;
       }
+      case 'schedule_consequence': {
+        const args = call.arguments as Record<string, unknown>;
+        const id = String(args.id);
+        const description = String(args.description);
+        const triggerEvent = String(args.triggerEvent);
+        const remainingTurns = Math.max(
+          1,
+          Math.min(10, Math.floor(Number(args.remainingTurns) || 1))
+        );
+        // 同 id 覆盖：先移除本轮已有同 id
+        const dupIdx = scheduledConsequences.findIndex((p) => p.id === id);
+        if (dupIdx >= 0) scheduledConsequences.splice(dupIdx, 1);
+        scheduledConsequences.push({
+          id,
+          description,
+          remainingTurns,
+          triggerEvent,
+          scheduledAtTurn: turn
+        });
+        events.push({
+          id: genEventId(turn, 'schedule'),
+          turn,
+          kind: 'schedule',
+          description: `调度后果 ${id}：${description}（T-${remainingTurns}）`,
+          toolName: call.name
+        });
+        break;
+      }
       default:
         break;
+    }
+  }
+
+  // 处理现有 pendingConsequences：衰减一轮，<=0 的计为本轮触发。
+  // 仅输出 triggered id；reducer 负责在存档中迁移 / 移除。
+  if (pendingBefore && pendingBefore.length) {
+    for (const item of pendingBefore) {
+      const next = item.remainingTurns - 1;
+      if (next <= 0) {
+        triggeredConsequenceIds.push(item.id);
+        events.push({
+          id: genEventId(turn, 'cons'),
+          turn,
+          kind: 'consequence',
+          description: `后果触发：${item.triggerEvent}`,
+          toolName: 'schedule_consequence'
+        });
+      }
     }
   }
 
@@ -170,7 +219,11 @@ export function resolveDmTurn(input: ResolveInput): ResolveOutput {
     narrative: narrator.narrative,
     activeNpc: narrator.activeNpc,
     check,
-    stateUpdate,
+    stateUpdate: {
+      ...stateUpdate,
+      scheduledConsequences,
+      triggeredConsequenceIds
+    },
     nextPrompt: narrator.nextPrompt || '',
     playerChoices: narrator.playerChoices ?? []
   };

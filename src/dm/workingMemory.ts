@@ -7,7 +7,7 @@
  */
 
 import type { GameState, SceneId } from '../types/game';
-import type { KnowledgeBase, NpcRuntimeState, WorkingMemory } from './types';
+import type { KnowledgeBase, NpcRuntimeState, PendingConsequence, WorkingMemory } from './types';
 import { computeRevealedSecretIds, deriveRevealContext } from './knowledgeBase';
 
 /**
@@ -60,9 +60,19 @@ export function deriveWorkingMemory(state: GameState, kb: KnowledgeBase): Workin
     revealedSecrets: Array.from(revealed),
     inScopeNpcIds: Array.from(inScopeNpcIds),
     inScopeItemIds: Array.from(inScopeItemIds),
-    pendingConsequences: [],
+    pendingConsequences: derivePendingConsequences(state),
     npcStates: deriveNpcStates(state, kb)
   };
+}
+
+function derivePendingConsequences(state: GameState): PendingConsequence[] {
+  const list = state.pendingConsequences ?? [];
+  return list.map((p) => ({
+    id: p.id,
+    description: p.description,
+    remainingTurns: p.remainingTurns,
+    triggerEvent: p.triggerEvent
+  }));
 }
 
 /**

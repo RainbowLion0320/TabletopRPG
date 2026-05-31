@@ -11,8 +11,9 @@
  *   · request_check.player 必须是当前玩家阵营成员
  */
 
-import type { GameState, SceneId } from '../types/game';
+import type { ExploreMode, GameState, SceneId } from '../types/game';
 import { getReachableScenes } from './knowledgeBase';
+import type { ClassifiedIntent } from './intentClassifier';
 import type { KnowledgeBase, DmToolCall, DmToolName } from './types';
 import { validateToolCallShape } from './tools';
 
@@ -31,33 +32,65 @@ export interface DirectorContext {
   kb: KnowledgeBase;
 }
 
-const ALL_TOOL_NAMES: DmToolName[] = [
+export interface AllowedToolsOptions {
+  intent: ClassifiedIntent;
+  mode: ExploreMode;
+}
+
+const BASELINE_TOOLS: DmToolName[] = [
   'request_check',
   'propose_state_update',
   'reveal_secret',
   'lookup_entity',
-  'propose_scene_change'
+  'schedule_consequence'
 ];
 
 /**
  * 计算本轮允许使用的工具集。
- * 当前阶段：全部允许；保留接口便于后续按 intent / mode 收窄。
+ *
+ * 规则：
+ * - request_check / propose_state_update / reveal_secret / lookup_entity 始终可用；
+ * - propose_scene_change 仅在 together 模式 且 本轮意图为 move/combat 时允许：
+ *     · split 模式下场景由玩家在 UI 里逐个选择，AI 不应主动推动；
+ *     · together 模式下只有玩家明说"走/跟/逃/追"时才合理切场。
  */
-export function allowedTools(_ctx: DirectorContext): DmToolName[] {
-  return [...ALL_TOOL_NAMES];
+export function allowedTools(
+  _ctx: DirectorContext,
+  options: AllowedToolsOptions
+): DmToolName[] {
+  const allowed: DmToolName[] = [...BASELINE_TOOLS];
+  if (
+    options.mode === 'together' &&
+    (options.intent.intentKind === 'move' || options.intent.intentKind === 'combat')
+  ) {
+    allowed.push('propose_scene_change');
+  }
+  return allowed;
 }
 
 /**
  * 出口护栏：逐个语义校验 tool_calls。
+ *
+ * @param calls Narrator 原始调用
+ * @param ctx   设计上下文
+ * @param allowed 本轮允许的工具名集（来自 allowedTools）；不传则放行 BASELINE + propose_scene_change
  */
 export function validateToolCalls(
   calls: DmToolCall[],
-  ctx: DirectorContext
+  ctx: DirectorContext,
+  allowed?: DmToolName[]
 ): DirectorResult {
+  const allowedSet = new Set<DmToolName>(
+    allowed ?? [...BASELINE_TOOLS, 'propose_scene_change']
+  );
   const accepted: DmToolCall[] = [];
   const rejected: DirectorRejection[] = [];
 
   for (const call of calls) {
+    if (!allowedSet.has(call.name)) {
+      rejected.push({ call, reason: `工具 ${call.name} 本轮不在允许集` });
+      continue;
+    }
     const shape = validateToolCallShape(call);
     if (!shape.ok) {
       rejected.push({ call, reason: shape.reason ?? '形态校验失败' });
@@ -91,6 +124,8 @@ function validateSemantics(call: DmToolCall, ctx: DirectorContext): SemanticResu
       return validateSceneChange(call, ctx);
     case 'lookup_entity':
       return validateLookup(call, ctx);
+    case 'schedule_consequence':
+      return { ok: true };
     default:
       return { ok: false, reason: `未知工具：${call.name as string}` };
   }

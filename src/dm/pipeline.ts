@@ -11,14 +11,22 @@
  * - 工具不可用时由 Narrator 自动降级到带 schema 的 json_object 响应。
  */
 
-import type { ApiConfig } from '../types/game';
+import type { ApiConfig, SceneId } from '../types/game';
 import type { PlayerAction } from '../services/aiDm';
 import { buildDmContext } from './contextBuilder';
-import { getActiveKnowledgeBase } from './knowledgeBase';
+import {
+  computeRevealedSecretIds,
+  deriveRevealContext,
+  getActiveKnowledgeBase,
+  getItemSnapshot,
+  getNpcSnapshot,
+  getSceneSnapshot
+} from './knowledgeBase';
 import { callNarrator } from './narrator';
-import { validateToolCalls } from './director';
+import { allowedTools, validateToolCalls } from './director';
 import { resolveDmTurn } from './stateResolver';
 import { maybeConsolidateMemory } from './summarizer';
+import { classifyIntent } from './intentClassifier';
 import { pushTrace } from './debugTrace';
 import type { DmTurnInput, DmTurnOutput } from './types';
 
@@ -34,6 +42,9 @@ export async function runDmTurn(
   input: DmTurnInput
 ): Promise<DmTurnOutput> {
   const kb = getActiveKnowledgeBase();
+
+  // 0) 意图分类（规则版）
+  const intent = classifyIntent(input.actions);
 
   // 1) 入口检查：是否需要合并旧轮为总结
   let memoryUpdate: DmTurnOutput['memoryUpdate'];
@@ -63,7 +74,7 @@ export async function runDmTurn(
     {
       mode: input.state.exploreMode,
       checkPlayer: pickSpotlightPlayer(input.actions),
-      relevantSkills: [] // 后续可由 intent classifier 推断
+      relevantSkills: intent.relevantSkills
     },
     { summary: effectiveSummary }
   );
@@ -72,16 +83,69 @@ export async function runDmTurn(
     .slice(-RECENT_TURN_WINDOW_PAIRS * 2)
     .map((turn) => ({ role: turn.role, content: turn.content }));
 
-  // 3) 调主 LLM
+  // 3) 计算本轮允许工具集 + lookup 解析器，调主 LLM
+  const directorCtx = { state: input.state, kb };
+  const allowed = allowedTools(directorCtx, { intent, mode: input.state.exploreMode });
+  const revealCtx = deriveRevealContext(input.state);
+  const revealedSet = computeRevealedSecretIds(kb, revealCtx);
+
+  const lookupResolver = (kind: string, id: string): string => {
+    if (kind === 'scene') {
+      const snap = getSceneSnapshot(kb, id as SceneId, revealedSet);
+      if (!snap) return '';
+      const lines = [
+        `场景 ${snap.public.id} 「${snap.public.name}」`,
+        `公开描述：${snap.public.desc}`,
+        `常驻 NPC：${snap.public.npcs.join('、') || '（无）'}`,
+        `可调查物品 id：${snap.public.items.join('、') || '（无）'}`
+      ];
+      if (snap.knownSecrets.length) {
+        lines.push('已解锁 KP 内幕：');
+        snap.knownSecrets.forEach((s) => lines.push(`  · ${s}`));
+      }
+      return lines.join('\n');
+    }
+    if (kind === 'npc') {
+      const snap = getNpcSnapshot(kb, id, revealedSet);
+      if (!snap) return '';
+      const lines = [
+        `${snap.public.name}（${snap.public.role}，态度：${snap.public.attitude}，HP：${snap.public.hp}）`,
+        `外观：${snap.public.appearance}`
+      ];
+      if (snap.knownSecrets.length) {
+        lines.push('已知内幕：');
+        snap.knownSecrets.forEach((s) => lines.push(`  · ${s}`));
+      }
+      return lines.join('\n');
+    }
+    if (kind === 'item') {
+      const snap = getItemSnapshot(kb, id, revealedSet);
+      if (!snap) return '';
+      const lines = [
+        `${snap.public.id} 「${snap.public.name}」`,
+        `所在场景：${snap.public.scene}`,
+        `外观：${snap.public.appearance}`
+      ];
+      if (snap.knownSecrets.length) {
+        lines.push('已知内幕：');
+        snap.knownSecrets.forEach((s) => lines.push(`  · ${s}`));
+      }
+      return lines.join('\n');
+    }
+    return '';
+  };
+
   const narrator = await callNarrator(config, {
     ctx,
     actions: input.actions,
     mode: input.state.exploreMode,
-    history
+    history,
+    allowedToolNames: allowed,
+    lookupResolver
   });
 
-  // 4) 出口护栏：逐个语义校验工具调用
-  const directorResult = validateToolCalls(narrator.toolCalls, { state: input.state, kb });
+  // 4) 出口护栏：逐个语义校验工具调用，同时检查是否越出 allowed 集
+  const directorResult = validateToolCalls(narrator.toolCalls, directorCtx, allowed);
 
   if (import.meta.env.DEV && directorResult.rejected.length) {
     // eslint-disable-next-line no-console
@@ -95,7 +159,8 @@ export async function runDmTurn(
   const resolved = resolveDmTurn({
     narrator,
     acceptedCalls: directorResult.accepted,
-    turn: ctx.dynamic.workingMemory.turnCount + 1
+    turn: ctx.dynamic.workingMemory.turnCount + 1,
+    pendingBefore: input.state.pendingConsequences ?? []
   });
 
   // 6) DEV 追踪：让右下角 DmDebugDrawer 看到这一轮经过的所有阶段

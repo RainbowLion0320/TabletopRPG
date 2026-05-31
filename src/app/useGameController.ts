@@ -120,7 +120,7 @@ export function useGameController() {
     }
     try {
       dispatch({ type: 'setThinking', value: true });
-      const { raw, legacyResponse, memoryUpdate } = await runDmTurn(config, { state, actions });
+      const { raw, legacyResponse, events, memoryUpdate } = await runDmTurn(config, { state, actions });
       if (memoryUpdate) {
         dispatch({
           type: 'consolidateMemory',
@@ -137,6 +137,9 @@ export function useGameController() {
         ? { ...legacyResponse, check: prepareCheck(legacyResponse.check, state.players) }
         : legacyResponse;
       dispatch({ type: 'applyAiResponse', response: prepared, raw });
+      if (events && events.length) {
+        dispatch({ type: 'appendEvents', events });
+      }
     } catch (error) {
       dispatch({ type: 'setThinking', value: false });
       const prefix = error instanceof AiResponseFormatError ? 'AI DM 返回格式无效' : 'AI DM 连接失败';

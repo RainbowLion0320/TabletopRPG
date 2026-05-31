@@ -146,7 +146,8 @@ export type DmToolName =
   | 'propose_state_update'
   | 'reveal_secret'
   | 'lookup_entity'
-  | 'propose_scene_change';
+  | 'propose_scene_change'
+  | 'schedule_consequence';
 
 export interface DmToolCall {
   name: DmToolName;

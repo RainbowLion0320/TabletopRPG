@@ -144,6 +144,28 @@ export const DM_TOOLS: OpenAiTool[] = [
         additionalProperties: false
       }
     }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'schedule_consequence',
+      description:
+        '注册一个延迟触发的后果（例如“3 轮后暴徒赶到”）。每个调用产生一条 pending 项，每轮 remainingTurns 自动 -1，为 0 时会被 Narrator 在下一轮上下文看到。',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: '唯一标识（同 id 重复提交会被覆盖）' },
+          description: { type: 'string', description: 'KP 视角的后果描述' },
+          remainingTurns: {
+            type: 'integer',
+            description: '剩余轮数（1-10）'
+          },
+          triggerEvent: { type: 'string', description: '触发时的事件描述，清晰一句话' }
+        },
+        required: ['id', 'description', 'remainingTurns', 'triggerEvent'],
+        additionalProperties: false
+      }
+    }
   }
 ];
 
@@ -160,7 +182,8 @@ const TOOL_NAME_SET = new Set<DmToolName>([
   'propose_state_update',
   'reveal_secret',
   'lookup_entity',
-  'propose_scene_change'
+  'propose_scene_change',
+  'schedule_consequence'
 ]);
 
 /**
@@ -223,6 +246,8 @@ export function validateToolCallShape(call: DmToolCall): ToolValidationResult {
       return validateLookupEntity(call.arguments);
     case 'propose_scene_change':
       return validateProposeSceneChange(call.arguments);
+    case 'schedule_consequence':
+      return validateScheduleConsequence(call.arguments);
     default:
       return { ok: false, reason: `未知工具：${(call as { name: string }).name}` };
   }
@@ -303,6 +328,17 @@ function validateProposeSceneChange(args: Record<string, unknown>): ToolValidati
   }
   if (args.reason !== undefined && typeof args.reason !== 'string') {
     return { ok: false, reason: 'reason 必须是字符串' };
+  }
+  return { ok: true };
+}
+
+function validateScheduleConsequence(args: Record<string, unknown>): ToolValidationResult {
+  if (!isString(args.id)) return { ok: false, reason: 'id 必须是非空字符串' };
+  if (!isString(args.description)) return { ok: false, reason: 'description 必须是非空字符串' };
+  if (!isString(args.triggerEvent)) return { ok: false, reason: 'triggerEvent 必须是非空字符串' };
+  const turns = args.remainingTurns;
+  if (typeof turns !== 'number' || !Number.isInteger(turns) || turns < 1 || turns > 10) {
+    return { ok: false, reason: 'remainingTurns 必须是 1–10 的整数' };
   }
   return { ok: true };
 }

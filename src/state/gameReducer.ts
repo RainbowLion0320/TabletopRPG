@@ -1,4 +1,4 @@
-import type { AiResponse, Attributes, CheckRequest, DiceResult, GameState, Investigator, NarrativeMessage, SceneId, SkillValue, StoryItem } from '../types/game';
+import type { AiResponse, Attributes, CheckRequest, DiceResult, GameState, Investigator, NarrativeMessage, PersistedDMEvent, PersistedPendingConsequence, SceneId, SkillValue, StoryItem } from '../types/game';
 import { storyData } from '../data/storyData';
 import { allSkills } from '../data/skills';
 import { deriveInvestigatorStats, gameRules, resolveSkillBase } from '../data/gameRules';
@@ -20,6 +20,7 @@ export type GameAction =
   | { type: 'applyDiceResult'; result: DiceResult }
   | { type: 'setSuggestions'; suggestions: string[] }
   | { type: 'addLog'; text: string }
+  | { type: 'appendEvents'; events: PersistedDMEvent[] }
   | { type: 'consolidateMemory'; summary: string; summarizedUntilIndex: number; remainingHistory: GameState['conversationHistory'] };
 
 const initialMessage = `${storyData.era}。\n\n雨夜的伦敦裹在浓雾之中，煤气灯的光晕在水汽里渗散开来。你们站在纽伦上街101号的门廊下，手中握着伊莎贝拉·摩勒小姐的求助信。\n\n信中写道：「我父亲埃里克·摩勒于三日前失踪，警察局毫无进展。若您能找到他，必有重谢。」`;
@@ -301,6 +302,82 @@ function resolveActiveNpcName(response: AiResponse, currentScene: SceneId, previ
   return previous && storyData.npcs[previous] ? previous : storyData.scenes[currentScene].npcs[0] ?? null;
 }
 
+function normalizeEventLog(value: unknown): PersistedDMEvent[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!isRecord(item)) return [];
+    const idVal = stringValue(item.id);
+    const turn = numberValue(item.turn, 0);
+    const kind = stringValue(item.kind);
+    const desc = typeof item.description === 'string' ? item.description : '';
+    if (!idVal || !kind || !desc) return [];
+    return [{
+      id: idVal,
+      turn: Math.max(0, Math.floor(turn)),
+      kind,
+      description: desc,
+      toolName: typeof item.toolName === 'string' ? item.toolName : undefined
+    }];
+  }).slice(-200);
+}
+
+function normalizePendingConsequences(value: unknown): PersistedPendingConsequence[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const out: PersistedPendingConsequence[] = [];
+  for (const item of value) {
+    if (!isRecord(item)) continue;
+    const idVal = stringValue(item.id);
+    if (!idVal || seen.has(idVal)) continue;
+    const description = typeof item.description === 'string' ? item.description : '';
+    const triggerEvent = typeof item.triggerEvent === 'string' ? item.triggerEvent : '';
+    const remaining = numberValue(item.remainingTurns, Number.NaN);
+    const scheduledAt = numberValue(item.scheduledAtTurn, 0);
+    if (!description || !triggerEvent || !Number.isFinite(remaining)) continue;
+    seen.add(idVal);
+    out.push({
+      id: idVal,
+      description,
+      triggerEvent,
+      remainingTurns: clamp(Math.floor(remaining), 0, 50),
+      scheduledAtTurn: Math.max(0, Math.floor(scheduledAt))
+    });
+  }
+  return out;
+}
+
+function normalizeScheduledConsequences(value: unknown): PersistedPendingConsequence[] {
+  if (!Array.isArray(value)) return [];
+  const out: PersistedPendingConsequence[] = [];
+  for (const item of value) {
+    if (!isRecord(item)) continue;
+    const idVal = stringValue(item.id);
+    const description = typeof item.description === 'string' ? item.description : '';
+    const triggerEvent = typeof item.triggerEvent === 'string' ? item.triggerEvent : '';
+    const remaining = numberValue(item.remainingTurns, Number.NaN);
+    const scheduledAt = numberValue(item.scheduledAtTurn, 0);
+    if (!idVal || !description || !triggerEvent || !Number.isFinite(remaining)) continue;
+    out.push({
+      id: idVal,
+      description,
+      triggerEvent,
+      remainingTurns: clamp(Math.floor(remaining), 0, 50),
+      scheduledAtTurn: Math.max(0, Math.floor(scheduledAt))
+    });
+  }
+  return out;
+}
+
+function normalizeTriggeredIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const out: string[] = [];
+  for (const item of value) {
+    const text = stringValue(item);
+    if (text) out.push(text);
+  }
+  return out;
+}
+
 function normalizeAiResponse(value: AiResponse, state: GameState): AiResponse {
   const response = isRecord(value) ? value : {};
   const stateUpdate = isRecord(response.stateUpdate) ? response.stateUpdate : {};
@@ -316,7 +393,9 @@ function normalizeAiResponse(value: AiResponse, state: GameState): AiResponse {
       san: normalizeStatUpdate(stateUpdate.san),
       flags: isRecord(stateUpdate.flags) ? stateUpdate.flags : {},
       newItems: normalizeNewItems(stateUpdate.newItems),
-      sceneChange
+      sceneChange,
+      scheduledConsequences: normalizeScheduledConsequences(stateUpdate.scheduledConsequences),
+      triggeredConsequenceIds: normalizeTriggeredIds(stateUpdate.triggeredConsequenceIds)
     },
     nextPrompt: typeof response.nextPrompt === 'string' ? response.nextPrompt : undefined,
     playerChoices: normalizeStringList(response.playerChoices, state.suggestions)
@@ -349,7 +428,9 @@ export function createInitialGameState(players: Investigator[]): GameState {
     suggestions: ['侦查周围', '询问伊莎贝拉', '检查书房'],
     isThinking: false,
     longTermMemorySummary: '',
-    summarizedUntilIndex: 0
+    summarizedUntilIndex: 0,
+    eventLog: [],
+    pendingConsequences: []
   };
 }
 
@@ -386,7 +467,9 @@ export function hydrateGameState(value: unknown): GameState {
     isThinking: false,
     longTermMemorySummary:
       typeof source.longTermMemorySummary === 'string' ? source.longTermMemorySummary : '',
-    summarizedUntilIndex: Math.max(0, Math.floor(numberValue(source.summarizedUntilIndex, 0)))
+    summarizedUntilIndex: Math.max(0, Math.floor(numberValue(source.summarizedUntilIndex, 0))),
+    eventLog: normalizeEventLog(source.eventLog),
+    pendingConsequences: normalizePendingConsequences(source.pendingConsequences)
   };
 }
 
@@ -471,6 +554,26 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const response = normalizeAiResponse(action.response, state);
       const sceneChange = response.stateUpdate?.sceneChange ?? null;
       const currentScene = sceneChange ?? state.currentScene;
+
+      // 后果队列维护：
+      // 1) 本轮被触发的 id 从现有 pending 中移除
+      // 2) 其余 pending 衰减一轮（仅当 AI 返回了 triggeredConsequenceIds 才衰减，避免重复）
+      // 3) 本轮新调度的 追加到末尾（同 id 覆盖）
+      const triggeredIds = new Set(response.stateUpdate?.triggeredConsequenceIds ?? []);
+      const scheduledNew = response.stateUpdate?.scheduledConsequences ?? [];
+      const prevPending = state.pendingConsequences ?? [];
+      const decayed: PersistedPendingConsequence[] = [];
+      for (const item of prevPending) {
+        if (triggeredIds.has(item.id)) continue;
+        decayed.push({ ...item, remainingTurns: Math.max(0, item.remainingTurns - 1) });
+      }
+      const merged = [...decayed];
+      for (const fresh of scheduledNew) {
+        const idx = merged.findIndex((p) => p.id === fresh.id);
+        if (idx >= 0) merged[idx] = fresh;
+        else merged.push(fresh);
+      }
+
       let nextState: GameState = {
         ...state,
         players: updatePlayerStats(state.players, response),
@@ -482,7 +585,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         suggestions: response.playerChoices ?? state.suggestions,
         conversationHistory: [...state.conversationHistory, { role: 'assistant' as const, content: action.raw }],
         isThinking: false,
-        currentActorIndex: 0
+        currentActorIndex: 0,
+        pendingConsequences: merged
       };
       if (response.narrative) {
         nextState = addMessage(nextState, { type: 'dm', text: response.narrative, npcName: response.activeNpc ?? null });
@@ -491,6 +595,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         nextState = addMessage(nextState, { type: 'system', text: response.nextPrompt });
       }
       return addLog(nextState, response.narrative?.slice(0, 60) || 'AI DM 响应');
+    }
+    case 'appendEvents': {
+      if (!action.events.length) return state;
+      const prev = state.eventLog ?? [];
+      const next = [...prev, ...action.events].slice(-200);
+      return { ...state, eventLog: next };
     }
     case 'consolidateMemory': {
       return {
