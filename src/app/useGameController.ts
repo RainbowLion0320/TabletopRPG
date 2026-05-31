@@ -22,6 +22,7 @@ export function useGameController() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [apiOpen, setApiOpen] = useState(false);
   const [saveManagerOpen, setSaveManagerOpen] = useState(false);
+  const [journalOpen, setJournalOpen] = useState(false);
 
   function startGame(players: Investigator[]) {
     dispatch({ type: 'start', players });
@@ -190,6 +191,15 @@ export function useGameController() {
     setMenuOpen(false);
   }
 
+  function openJournal() {
+    setJournalOpen(true);
+    setMenuOpen(false);
+  }
+
+  function closeJournal() {
+    setJournalOpen(false);
+  }
+
   function setExploreMode(mode: GameState['exploreMode']) {
     dispatch({ type: 'setExploreMode', mode });
     setMenuOpen(false);
@@ -210,14 +220,17 @@ export function useGameController() {
   return {
     apiOpen,
     applySuggestion,
+    closeJournal,
     deleteSaveSlot: saveSlots.deleteSaveSlot,
     drawerOpen,
     handleRoll,
+    journalOpen,
     loadCurrentLatest,
     loadLatest,
     loadSaveSlot,
     menuOpen,
     openApiSettings,
+    openJournal,
     openSaveManager,
     refreshSaves: saveSlots.refreshSaves,
     restartSetup,

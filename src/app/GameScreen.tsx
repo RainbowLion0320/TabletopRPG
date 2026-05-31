@@ -1,5 +1,6 @@
 import { ActionDock } from '../components/game/ActionDock';
 import { DmDebugDrawer } from '../components/game/DmDebugDrawer';
+import { DmJournalModal } from '../components/game/DmJournalModal';
 import { GameMenu } from '../components/game/GameMenu';
 import { InfoDrawer } from '../components/game/InfoDrawer';
 import { NarrativePanel } from '../components/game/NarrativePanel';
@@ -42,6 +43,7 @@ export function GameScreen({ controller, onHome, onRestart }: GameScreenProps) {
         onManageSaves={controller.openSaveManager}
         onModeChange={controller.setExploreMode}
         onOpenApi={controller.openApiSettings}
+        onOpenJournal={controller.openJournal}
         onRestart={handleRestart}
         onSave={controller.saveCurrentGame}
       />
@@ -51,6 +53,11 @@ export function GameScreen({ controller, onHome, onRestart }: GameScreenProps) {
         onClose={() => controller.setSaveManagerOpen(false)}
         onDelete={controller.deleteSaveSlot}
         onLoad={(save) => controller.loadSaveSlot(save.gameState)}
+      />
+      <DmJournalModal
+        open={controller.journalOpen}
+        state={state}
+        onClose={controller.closeJournal}
       />
       <InfoDrawer
         open={controller.drawerOpen}

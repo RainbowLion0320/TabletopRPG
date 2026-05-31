@@ -1053,6 +1053,100 @@ button {
   width: min(720px, calc(100vw - 32px));
 }
 
+.dm-journal-card {
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  overflow: auto;
+}
+
+.dm-journal-section {
+  margin-top: 18px;
+}
+
+.dm-journal-section h3 {
+  color: var(--gold);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  margin: 0 0 10px;
+  border-bottom: 1px solid var(--line-soft);
+  padding-bottom: 6px;
+}
+
+.dm-journal-summary {
+  color: var(--text);
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.dm-journal-pending {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.dm-journal-pending li {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 6px 12px;
+  align-items: baseline;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: rgba(0,0,0,0.24);
+  padding: 10px 12px;
+}
+
+.dm-journal-pending strong {
+  color: var(--gold);
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.dm-journal-pending span {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dm-journal-pending small {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.dm-journal-events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.dm-journal-events li {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+  border-bottom: 1px solid var(--line-soft);
+  padding: 6px 0;
+}
+
+.dm-journal-event-meta {
+  color: var(--gold);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.dm-journal-event-desc {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .save-list {
   display: grid;
   gap: 10px;
@@ -1097,109 +1191,6 @@ button {
 .save-slot-actions {
   display: flex;
   gap: 8px;
-}
-
-.primary-btn.compact,
-.ghost-btn.compact {
-  min-height: 36px;
-  padding: 0 12px;
-}
-
-.ghost-btn.danger {
-  border-color: rgba(190,84,84,0.45);
-  color: #e19a9a;
-}
-
-.toast {
-  position: absolute;
-  left: 50%;
-  bottom: 22px;
-  z-index: 120;
-  transform: translateX(-50%);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--panel-strong);
-  color: var(--gold);
-  padding: 9px 18px;
-}
-
-::-webkit-scrollbar { width: 7px; height: 7px; }
-::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); }
-::-webkit-scrollbar-thumb { background: rgba(216,189,122,0.28); border-radius: 999px; }
-
-@media (max-width: 1100px) {
-  body { overflow: auto; }
-  .preset-grid-modern { grid-template-columns: 1fr; }
-  .preset-card-modern { grid-template-columns: clamp(136px, 20vw, 164px) minmax(0, 1fr); }
-  .preset-card-content {
-    grid-template-columns: minmax(0, 1fr) minmax(140px, 0.58fr);
-    grid-template-areas:
-      "name name"
-      "meta meta"
-      "desc desc"
-      "notes notes"
-      "vitals vitals"
-      "toggle toggle"
-      ". .";
-    padding-right: 70px;
-  }
-  .preset-background-notes { grid-template-columns: 1fr; }
-  .narrative-panel, .action-dock {
-    left: 238px;
-    right: 22px;
-    width: auto;
-    transform: none;
-  }
-  .party-strip-react {
-    left: 18px;
-    right: auto;
-    top: auto;
-    bottom: 24px;
-    width: 196px;
-    max-height: calc(100dvh - 124px);
-  }
-}
-
-@media (max-width: 760px) {
-  .setup-header { flex-direction: column; align-items: stretch; }
-  .preset-card-modern { grid-template-columns: 1fr; }
-  .preset-portrait-frame {
-    border-right: 0;
-    border-bottom: 1px solid var(--line-soft);
-  }
-  .preset-card-content {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "name"
-      "meta"
-      "desc"
-      "notes"
-      "vitals"
-      "toggle"
-      ".";
-    padding: 16px;
-  }
-  .preset-vitals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .preset-attrs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .game-top { padding: 18px; }
-  .brand-title { font-size: 30px; }
-  .menu-button { min-width: 104px; height: 44px; }
-  .party-strip-react { display: none; }
-  .narrative-panel {
-    left: 22px;
-    right: 22px;
-    bottom: 264px;
-    max-height: 300px;
-    padding: 18px;
-  }
-  .action-dock {
-    left: 22px;
-    right: 22px;
-    bottom: 14px;
-  }
-  .action-row { grid-template-columns: 1fr; gap: 6px; }
-  .dock-footer { align-items: stretch; }
-  .primary-action { width: 100%; }
 }
 
 /* ---------- DmDebugDrawer (DEV only) ---------- */
@@ -1390,4 +1381,107 @@ button {
 
 .dm-debug-pad {
   padding: 8px;
+}
+
+.primary-btn.compact,
+.ghost-btn.compact {
+  min-height: 36px;
+  padding: 0 12px;
+}
+
+.ghost-btn.danger {
+  border-color: rgba(190,84,84,0.45);
+  color: #e19a9a;
+}
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  z-index: 120;
+  transform: translateX(-50%);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-strong);
+  color: var(--gold);
+  padding: 9px 18px;
+}
+
+::-webkit-scrollbar { width: 7px; height: 7px; }
+::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); }
+::-webkit-scrollbar-thumb { background: rgba(216,189,122,0.28); border-radius: 999px; }
+
+@media (max-width: 1100px) {
+  body { overflow: auto; }
+  .preset-grid-modern { grid-template-columns: 1fr; }
+  .preset-card-modern { grid-template-columns: clamp(136px, 20vw, 164px) minmax(0, 1fr); }
+  .preset-card-content {
+    grid-template-columns: minmax(0, 1fr) minmax(140px, 0.58fr);
+    grid-template-areas:
+      "name name"
+      "meta meta"
+      "desc desc"
+      "notes notes"
+      "vitals vitals"
+      "toggle toggle"
+      ". .";
+    padding-right: 70px;
+  }
+  .preset-background-notes { grid-template-columns: 1fr; }
+  .narrative-panel, .action-dock {
+    left: 238px;
+    right: 22px;
+    width: auto;
+    transform: none;
+  }
+  .party-strip-react {
+    left: 18px;
+    right: auto;
+    top: auto;
+    bottom: 24px;
+    width: 196px;
+    max-height: calc(100dvh - 124px);
+  }
+}
+
+@media (max-width: 760px) {
+  .setup-header { flex-direction: column; align-items: stretch; }
+  .preset-card-modern { grid-template-columns: 1fr; }
+  .preset-portrait-frame {
+    border-right: 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .preset-card-content {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "name"
+      "meta"
+      "desc"
+      "notes"
+      "vitals"
+      "toggle"
+      ".";
+    padding: 16px;
+  }
+  .preset-vitals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .preset-attrs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .game-top { padding: 18px; }
+  .brand-title { font-size: 30px; }
+  .menu-button { min-width: 104px; height: 44px; }
+  .party-strip-react { display: none; }
+  .narrative-panel {
+    left: 22px;
+    right: 22px;
+    bottom: 264px;
+    max-height: 300px;
+    padding: 18px;
+  }
+  .action-dock {
+    left: 22px;
+    right: 22px;
+    bottom: 14px;
+  }
+  .action-row { grid-template-columns: 1fr; gap: 6px; }
+  .dock-footer { align-items: stretch; }
+  .primary-action { width: 100%; }
 }
