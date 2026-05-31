@@ -1,0 +1,95 @@
+import { describe, expect, it } from 'vitest';
+import { buildDmContext } from '../../src/dm/contextBuilder';
+import { wuzhongxiaoshi } from '../../src/data/scenarios/wuzhongxiaoshi';
+import type { ConversationTurn } from '../../src/types/game';
+import { makeInvestigator, makeState } from './fixtures';
+
+const kb = wuzhongxiaoshi;
+
+describe('contextBuilder', () => {
+  it('puts the spotlight on the checkPlayer with full skill view', () => {
+    const henry = makeInvestigator(
+      { name: '亨利' },
+      { 侦查: 75, 聆听: 65, 心理学: 70 }
+    );
+    const ada = makeInvestigator({ name: '艾达' }, { 急救: 80 });
+    const state = makeState({ players: [henry, ada], currentScene: 'S01' });
+
+    const ctx = buildDmContext(state, kb, {
+      mode: 'together',
+      checkPlayer: '亨利',
+      relevantSkills: ['侦查', '聆听']
+    });
+
+    expect(ctx.dynamic.spotlightPlayer).not.toBeNull();
+    expect(ctx.dynamic.spotlightPlayer!.name).toBe('亨利');
+    // Only the requested relevantSkills are exposed (with totals)
+    expect(Object.keys(ctx.dynamic.spotlightPlayer!.relevantSkills).sort()).toEqual(['侦查', '聆听']);
+    expect(ctx.dynamic.spotlightPlayer!.relevantSkills['侦查']).toBe(75);
+    expect(ctx.dynamic.spotlightPlayer!.relevantSkills['聆听']).toBe(65);
+
+    // Other player(s) appear in lite form (no attrs / no skills)
+    expect(ctx.dynamic.otherPlayers).toHaveLength(1);
+    expect(ctx.dynamic.otherPlayers[0].name).toBe('艾达');
+    expect((ctx.dynamic.otherPlayers[0] as unknown as Record<string, unknown>).attrs).toBeUndefined();
+  });
+
+  it('falls back to no spotlight when checkPlayer is unset', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' }), makeInvestigator({ name: '艾达' })]
+    });
+    const ctx = buildDmContext(state, kb, { mode: 'together' });
+    expect(ctx.dynamic.spotlightPlayer).toBeNull();
+    expect(ctx.dynamic.otherPlayers).toHaveLength(2);
+  });
+
+  it('truncates conversation history to recentTurnWindow', () => {
+    const history: ConversationTurn[] = Array.from({ length: 30 }, (_, i) => ({
+      role: i % 2 === 0 ? 'user' : 'assistant',
+      content: `turn-${i}`
+    }));
+    const state = makeState({ conversationHistory: history });
+    const ctx = buildDmContext(state, kb, { mode: 'together' }, { recentTurnWindow: 6 });
+    expect(ctx.recentTurns).toHaveLength(6);
+    expect(ctx.recentTurns[0].content).toBe('turn-24');
+    expect(ctx.recentTurns[5].content).toBe('turn-29');
+  });
+
+  it('includes scene snapshot, reachable scenes, and player locations', () => {
+    const state = makeState({ currentScene: 'S01' });
+    const ctx = buildDmContext(state, kb, { mode: 'together' });
+    expect(ctx.dynamic.currentScene.public.id).toBe('S01');
+    expect(ctx.dynamic.reachableScenes.map((s) => s.id).sort()).toEqual(['S02', 'S03', 'S04']);
+    // single default fixture player should be located in S01
+    const playerName = state.players[0].name;
+    expect(ctx.dynamic.playerLocations[playerName]).toBe('摩勒住宅');
+  });
+
+  it('exposes summary from state when not overridden', () => {
+    const state = makeState();
+    state.longTermMemorySummary = 'previous summary';
+    const ctx = buildDmContext(state, kb, { mode: 'together' });
+    expect(ctx.summary).toBe('previous summary');
+
+    const ctxOverride = buildDmContext(state, kb, { mode: 'together' }, { summary: 'override' });
+    expect(ctxOverride.summary).toBe('override');
+  });
+
+  it('working memory contains pendingConsequences derived from state', () => {
+    const state = makeState({
+      pendingConsequences: [
+        {
+          id: 'thugs',
+          description: '暴徒赶到',
+          remainingTurns: 2,
+          triggerEvent: '伏击',
+          scheduledAtTurn: 1
+        }
+      ]
+    });
+    const ctx = buildDmContext(state, kb, { mode: 'together' });
+    expect(ctx.dynamic.workingMemory.pendingConsequences).toHaveLength(1);
+    expect(ctx.dynamic.workingMemory.pendingConsequences[0].id).toBe('thugs');
+    expect(ctx.dynamic.workingMemory.pendingConsequences[0].remainingTurns).toBe(2);
+  });
+});

@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, type Plugin } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -104,5 +104,12 @@ export default defineConfig({
   build: {
     target: 'es2020',
     sourcemap: true
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./tests/setup.ts'],
+    include: ['tests/**/*.test.ts', 'tests/**/*.test.tsx'],
+    exclude: ['tests/smoke/**', 'node_modules', 'dist']
   }
 });
