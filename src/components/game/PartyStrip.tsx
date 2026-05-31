@@ -21,7 +21,6 @@ export function PartyStrip({ state }: PartyStripProps) {
             <div className="party-meta">
               <strong>
                 {player.name}
-                {isActiveActor ? <em className="actor-badge">轮到</em> : null}
                 {hasActed ? <em className="actor-badge done">✓</em> : null}
               </strong>
               <small>{player.job}</small>
