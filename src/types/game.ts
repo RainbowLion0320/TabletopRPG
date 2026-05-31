@@ -161,6 +161,10 @@ export interface GameState {
   messages: NarrativeMessage[];
   suggestions: string[];
   isThinking: boolean;
+  /** 长期记忆总结，由 summarizer 维护；phase 5 起启用 */
+  longTermMemorySummary?: string;
+  /** 已被总结进 summary 的 conversationHistory 上界（下标，不含） */
+  summarizedUntilIndex?: number;
 }
 
 export interface AiResponse {

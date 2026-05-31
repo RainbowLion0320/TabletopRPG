@@ -19,7 +19,8 @@ export type GameAction =
   | { type: 'setPendingCheck'; check: CheckRequest | null }
   | { type: 'applyDiceResult'; result: DiceResult }
   | { type: 'setSuggestions'; suggestions: string[] }
-  | { type: 'addLog'; text: string };
+  | { type: 'addLog'; text: string }
+  | { type: 'consolidateMemory'; summary: string; summarizedUntilIndex: number; remainingHistory: GameState['conversationHistory'] };
 
 const initialMessage = `${storyData.era}。\n\n雨夜的伦敦裹在浓雾之中，煤气灯的光晕在水汽里渗散开来。你们站在纽伦上街101号的门廊下，手中握着伊莎贝拉·摩勒小姐的求助信。\n\n信中写道：「我父亲埃里克·摩勒于三日前失踪，警察局毫无进展。若您能找到他，必有重谢。」`;
 
@@ -171,7 +172,7 @@ function normalizeConversationHistory(value: unknown): GameState['conversationHi
       item.role === 'assistant' ? 'assistant' : item.role === 'user' ? 'user' : null;
     const content = typeof item.content === 'string' ? item.content : '';
     return role && content ? [{ role, content }] : [];
-  }).slice(-32);
+  });
 }
 
 function narrativeFromHistoryContent(content: string) {
@@ -346,7 +347,9 @@ export function createInitialGameState(players: Investigator[]): GameState {
     conversationHistory: [],
     messages: [{ id: id(), type: 'dm', text: initialMessage, npcName: null }],
     suggestions: ['侦查周围', '询问伊莎贝拉', '检查书房'],
-    isThinking: false
+    isThinking: false,
+    longTermMemorySummary: '',
+    summarizedUntilIndex: 0
   };
 }
 
@@ -380,7 +383,10 @@ export function hydrateGameState(value: unknown): GameState {
     conversationHistory: history,
     messages: normalizeMessages(source.messages, history, players, base.messages),
     suggestions: normalizeStringList(source.suggestions, base.suggestions),
-    isThinking: false
+    isThinking: false,
+    longTermMemorySummary:
+      typeof source.longTermMemorySummary === 'string' ? source.longTermMemorySummary : '',
+    summarizedUntilIndex: Math.max(0, Math.floor(numberValue(source.summarizedUntilIndex, 0)))
   };
 }
 
@@ -449,7 +455,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case 'appendMessage':
       return addMessage(state, action.message);
     case 'appendHistory':
-      return { ...state, conversationHistory: [...state.conversationHistory, { role: action.role, content: action.content }].slice(-32) };
+      return { ...state, conversationHistory: [...state.conversationHistory, { role: action.role, content: action.content }] };
     case 'setPendingCheck':
       return { ...state, pendingCheck: action.check };
     case 'setSuggestions':
@@ -474,7 +480,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         activeNpcName: resolveActiveNpcName(response, currentScene, state.activeNpcName),
         pendingCheck: response.check ?? null,
         suggestions: response.playerChoices ?? state.suggestions,
-        conversationHistory: [...state.conversationHistory, { role: 'assistant' as const, content: action.raw }].slice(-32),
+        conversationHistory: [...state.conversationHistory, { role: 'assistant' as const, content: action.raw }],
         isThinking: false,
         currentActorIndex: 0
       };
@@ -485,6 +491,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         nextState = addMessage(nextState, { type: 'system', text: response.nextPrompt });
       }
       return addLog(nextState, response.narrative?.slice(0, 60) || 'AI DM 响应');
+    }
+    case 'consolidateMemory': {
+      return {
+        ...state,
+        longTermMemorySummary: action.summary,
+        summarizedUntilIndex: action.summarizedUntilIndex,
+        conversationHistory: action.remainingHistory
+      };
     }
     default:
       return state;

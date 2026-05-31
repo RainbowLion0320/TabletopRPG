@@ -171,6 +171,12 @@ export interface DmTurnOutput {
   legacyResponse?: import('../types/game').AiResponse;
   /** 新契约下的事件序列；v2 启用时使用 */
   events?: DMEvent[];
+  /** 本轮产生的长期记忆更新；controller 应优先 dispatch consolidateMemory */
+  memoryUpdate?: {
+    summary: string;
+    summarizedUntilIndex: number;
+    remainingHistory: import('../types/game').ConversationTurn[];
+  };
 }
 
 // ---------- Feature Flag ----------

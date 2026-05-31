@@ -15,6 +15,7 @@ import { getActiveKnowledgeBase } from './knowledgeBase';
 import { callNarrator, NarratorError } from './narrator';
 import { validateToolCalls } from './director';
 import { resolveDmTurn } from './stateResolver';
+import { maybeConsolidateMemory } from './summarizer';
 import type { DmEngineVersion, DmTurnInput, DmTurnOutput } from './types';
 
 const RECENT_TURN_WINDOW_PAIRS = 8; // 8 对 user/assistant = 16 条消息
@@ -26,13 +27,35 @@ async function runV1(config: ApiConfig, input: DmTurnInput): Promise<DmTurnOutpu
 
 async function runV2(config: ApiConfig, input: DmTurnInput): Promise<DmTurnOutput> {
   const kb = getActiveKnowledgeBase();
+
+  // 1) 走口检查：是否需要合并旧轮为总结
+  let memoryUpdate: DmTurnOutput['memoryUpdate'];
+  let effectiveSummary = input.state.longTermMemorySummary ?? '';
+  let effectiveHistory = input.state.conversationHistory;
+  try {
+    const consolidation = await maybeConsolidateMemory(config, input.state);
+    if (consolidation) {
+      memoryUpdate = consolidation;
+      effectiveSummary = consolidation.summary;
+      effectiveHistory = consolidation.remainingHistory;
+    }
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[pipeline-v2] memory consolidation failed (continuing without):',
+        err instanceof Error ? err.message : err
+      );
+    }
+  }
+
   const ctx = buildDmContext(input.state, kb, {
     mode: input.state.exploreMode,
     checkPlayer: pickSpotlightPlayer(input.actions),
     relevantSkills: [] // phase 4+: intentClassifier 推断
-  });
+  }, { summary: effectiveSummary });
 
-  const history = input.state.conversationHistory
+  const history = effectiveHistory
     .slice(-RECENT_TURN_WINDOW_PAIRS * 2)
     .map((turn) => ({ role: turn.role, content: turn.content }));
 
@@ -62,7 +85,8 @@ async function runV2(config: ApiConfig, input: DmTurnInput): Promise<DmTurnOutpu
   return {
     raw: narrator.raw,
     legacyResponse: resolved.legacyResponse,
-    events: resolved.events
+    events: resolved.events,
+    memoryUpdate
   };
 }
 

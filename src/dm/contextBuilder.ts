@@ -220,6 +220,11 @@ export function buildDmContext(
   const recentTurns =
     window > 0 ? state.conversationHistory.slice(-window) : state.conversationHistory.slice();
 
+  const summary =
+    typeof options.summary === 'string'
+      ? options.summary
+      : state.longTermMemorySummary ?? '';
+
   return {
     static: {
       scenarioId: kb.scenarioId,
@@ -239,6 +244,6 @@ export function buildDmContext(
       otherPlayers: others
     },
     recentTurns,
-    summary: options.summary ?? ''
+    summary
   };
 }

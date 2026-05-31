@@ -122,7 +122,15 @@ export function useGameController() {
     try {
       dispatch({ type: 'setThinking', value: true });
       const version = getDmEngineVersion();
-      const { raw, legacyResponse } = await runDmTurn(version, config, { state, actions });
+      const { raw, legacyResponse, memoryUpdate } = await runDmTurn(version, config, { state, actions });
+      if (memoryUpdate) {
+        dispatch({
+          type: 'consolidateMemory',
+          summary: memoryUpdate.summary,
+          summarizedUntilIndex: memoryUpdate.summarizedUntilIndex,
+          remainingHistory: memoryUpdate.remainingHistory
+        });
+      }
       if (!legacyResponse) {
         // v2 管线仍在建设中；phase 4 会提供 events 返回
         throw new Error('DM 引擎未返回可用响应');
