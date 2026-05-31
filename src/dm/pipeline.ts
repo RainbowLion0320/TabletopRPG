@@ -19,6 +19,7 @@ import { callNarrator } from './narrator';
 import { validateToolCalls } from './director';
 import { resolveDmTurn } from './stateResolver';
 import { maybeConsolidateMemory } from './summarizer';
+import { pushTrace } from './debugTrace';
 import type { DmTurnInput, DmTurnOutput } from './types';
 
 const RECENT_TURN_WINDOW_PAIRS = 8; // 8 对 user/assistant = 16 条消息
@@ -96,6 +97,25 @@ export async function runDmTurn(
     acceptedCalls: directorResult.accepted,
     turn: ctx.dynamic.workingMemory.turnCount + 1
   });
+
+  // 6) DEV 追踪：让右下角 DmDebugDrawer 看到这一轮经过的所有阶段
+  if (import.meta.env.DEV) {
+    pushTrace({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      timestamp: Date.now(),
+      turn: ctx.dynamic.workingMemory.turnCount + 1,
+      actions: input.actions.map((a) => ({ player: a.player, action: a.action, scene: a.scene })),
+      ctx,
+      narratorRaw: narrator.raw,
+      usedFunctionCalling: narrator.usedFunctionCalling,
+      toolCalls: narrator.toolCalls,
+      acceptedCalls: directorResult.accepted,
+      rejectedCalls: directorResult.rejected,
+      memoryUpdate: memoryUpdate
+        ? { summary: memoryUpdate.summary, summarizedUntilIndex: memoryUpdate.summarizedUntilIndex }
+        : undefined
+    });
+  }
 
   return {
     raw: narrator.raw,

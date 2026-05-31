@@ -1,4 +1,5 @@
 import { ActionDock } from '../components/game/ActionDock';
+import { DmDebugDrawer } from '../components/game/DmDebugDrawer';
 import { GameMenu } from '../components/game/GameMenu';
 import { InfoDrawer } from '../components/game/InfoDrawer';
 import { NarrativePanel } from '../components/game/NarrativePanel';
@@ -70,6 +71,7 @@ export function GameScreen({ controller, onHome, onRestart }: GameScreenProps) {
       <PartyStrip state={state} />
       <ApiConfigModal open={controller.apiOpen} onClose={() => controller.setApiOpen(false)} onSave={controller.saveApi} />
       {controller.toast ? <div className="toast">{controller.toast}</div> : null}
+      <DmDebugDrawer />
     </main>
   );
 }
