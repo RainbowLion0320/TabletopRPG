@@ -7,11 +7,13 @@ import {
 } from './gameFlow';
 import { useSaveSlots } from './useSaveSlots';
 import { useToast } from './useToast';
-import { AiResponseFormatError, buildUserMessage, callAiDm, type PlayerAction } from '../services/aiDm';
+import { AiResponseFormatError, buildUserMessage, type PlayerAction } from '../services/aiDm';
 import { prepareCheck, rollD100 } from '../services/dice';
 import { persistApiConfig, readApiConfig } from '../services/storage';
 import { createInitialGameState, gameReducer } from '../state/gameReducer';
 import type { ApiConfig, GameState, Investigator, SceneId } from '../types/game';
+import { runDmTurn } from '../dm/pipeline';
+import { getDmEngineVersion } from '../dm/types';
 
 export function useGameController() {
   const { notify, toast } = useToast();
@@ -119,8 +121,15 @@ export function useGameController() {
     }
     try {
       dispatch({ type: 'setThinking', value: true });
-      const { raw, response } = await callAiDm(config, state, actions);
-      const prepared = response.check ? { ...response, check: prepareCheck(response.check, state.players) } : response;
+      const version = getDmEngineVersion();
+      const { raw, legacyResponse } = await runDmTurn(version, config, { state, actions });
+      if (!legacyResponse) {
+        // v2 管线仍在建设中；phase 4 会提供 events 返回
+        throw new Error('DM 引擎未返回可用响应');
+      }
+      const prepared = legacyResponse.check
+        ? { ...legacyResponse, check: prepareCheck(legacyResponse.check, state.players) }
+        : legacyResponse;
       dispatch({ type: 'applyAiResponse', response: prepared, raw });
     } catch (error) {
       dispatch({ type: 'setThinking', value: false });

@@ -9,6 +9,8 @@ interface ImportMetaEnv {
   readonly VITE_AI_MODEL?: string;
   /** 自定义端点，仅 provider=custom 时生效 */
   readonly VITE_AI_ENDPOINT?: string;
+  /** DM 引擎版本：v1=旧单次调用 / v2=新 Agent 管线（默认 v1，逐步切换） */
+  readonly VITE_DM_ENGINE?: 'v1' | 'v2';
 }
 
 interface ImportMeta {
