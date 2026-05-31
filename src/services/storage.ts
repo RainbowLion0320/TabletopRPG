@@ -75,16 +75,68 @@ export function deleteSave(id: number) {
   return saves;
 }
 
+/**
+ * Build an API config from build-time env vars (VITE_AI_*). These come from the
+ * developer's shell environment (or .env.local) and provide a default so the game
+ * does not require manual configuration on every launch. localStorage still wins
+ * when the user explicitly saves a config in the UI.
+ *
+ * Required for non-empty config: VITE_AI_API_KEY.
+ * Optional: VITE_AI_PROVIDER (default 'mimo'), VITE_AI_MODEL, VITE_AI_ENDPOINT.
+ */
+export function getEnvDefaultApiConfig(): ApiConfig {
+  const env = import.meta.env;
+  const rawProvider = (env.VITE_AI_PROVIDER ?? 'mimo').toLowerCase();
+  const provider: ApiConfig['provider'] =
+    rawProvider === 'openai' || rawProvider === 'anthropic' || rawProvider === 'custom'
+      ? rawProvider
+      : 'mimo';
+  return {
+    provider,
+    apiKey: env.VITE_AI_API_KEY ?? '',
+    endpoint: env.VITE_AI_ENDPOINT ?? '',
+    model: env.VITE_AI_MODEL ?? ''
+  };
+}
+
 export function readApiConfig(): ApiConfig | null {
   try {
     const cfg = JSON.parse(localStorage.getItem(API_KEY) || 'null') as ApiConfig | null;
-    if (!cfg) return null;
-    return cfg.apiKey ? cfg : null;
+    if (cfg && cfg.apiKey) return cfg;
   } catch {
-    return null;
+    // fall through to env defaults
   }
+  const envCfg = getEnvDefaultApiConfig();
+  return envCfg.apiKey ? envCfg : null;
 }
 
 export function writeApiConfig(config: ApiConfig) {
   localStorage.setItem(API_KEY, JSON.stringify(config));
+}
+
+/**
+ * Persist a config in three layers:
+ *   1. Browser localStorage (synchronous, survives reloads in this browser).
+ *   2. `.env.local` via the Vite dev-server middleware (`/__api_config`)
+ *      — cross-browser, cross-machine-restart, since Vite reloads env vars on
+ *      next boot. Silently no-ops in production builds.
+ *
+ * Returns true when the env-write succeeded (or was skipped in prod), false
+ * when the dev middleware was reachable but rejected the payload.
+ */
+export async function persistApiConfig(config: ApiConfig): Promise<boolean> {
+  writeApiConfig(config);
+  if (!import.meta.env.DEV) return true;
+  try {
+    const response = await fetch('/__api_config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config)
+    });
+    return response.ok;
+  } catch {
+    // Dev server unreachable (e.g. running from a static preview). localStorage
+    // already persisted the config, so we still consider this a soft success.
+    return false;
+  }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { readApiConfig } from '../../services/storage';
+import { getEnvDefaultApiConfig, readApiConfig } from '../../services/storage';
 import type { ApiConfig } from '../../types/game';
 
 interface ApiConfigModalProps {
@@ -9,11 +9,13 @@ interface ApiConfigModalProps {
 }
 
 export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
-  const [config, setConfig] = useState<ApiConfig>({ provider: 'openai', apiKey: '', endpoint: '', model: 'gpt-4o' });
+  const [config, setConfig] = useState<ApiConfig>(() => readApiConfig() ?? getEnvDefaultApiConfig());
 
   useEffect(() => {
     if (open) {
-      setConfig(readApiConfig() ?? { provider: 'openai', apiKey: '', endpoint: '', model: 'gpt-4o' });
+      // Prefer saved config, otherwise pre-fill from VITE_AI_* env vars so the user
+      // can see what defaults will be applied without re-entering them every time.
+      setConfig(readApiConfig() ?? getEnvDefaultApiConfig());
     }
   }, [open]);
 
@@ -23,7 +25,7 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
     <div className="modal-backdrop">
       <div className="modal-card">
         <h2>AI DM 配置</h2>
-        <p>API Key 仅保存在本地浏览器。正式多人版建议迁移到服务端代理。</p>
+        <p>保存后会同时写入本地浏览器与项目根目录的 <code>.env.local</code>（已 gitignore），下次启动自动生效。</p>
         <label>
           提供商
           <select
@@ -32,8 +34,8 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
           >
             <option value="openai">OpenAI</option>
             <option value="anthropic">Anthropic</option>
-            <option value="mimo">小米 MiMo</option>
-            <option value="custom">自定义端点</option>
+            <option value="mimo">小米 MiMo Token Plan（OpenAI 兼容）</option>
+            <option value="custom">自定义 OpenAI 兼容端点</option>
           </select>
         </label>
         <label>
@@ -53,12 +55,14 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
             onChange={(event) => setConfig((current) => ({ ...current, model: event.target.value }))}
           />
         </label>
-        {config.provider === 'custom' ? (
+        {config.provider === 'custom' || config.provider === 'mimo' ? (
           <label>
-            端点
+            端点 (Base URL)
             <input
               value={config.endpoint ?? ''}
-              placeholder="https://api.example.com/v1"
+              placeholder={config.provider === 'mimo'
+                ? 'https://token-plan-cn.xiaomimimo.com/v1'
+                : 'https://api.example.com/v1'}
               onChange={(event) => setConfig((current) => ({ ...current, endpoint: event.target.value }))}
             />
           </label>

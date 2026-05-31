@@ -15,13 +15,22 @@ AI 驱动的横屏网页跑团游戏。当前项目已经迁移为 Vite + React 
 
 ## 快速开始
 
-最简单方式：双击项目根目录的 `start-game.bat`。脚本会检查依赖并自动打开浏览器。
+最简单方式（按系统选择）：
+
+- Windows：双击项目根目录的 `start-game.bat`
+- macOS：双击项目根目录的 `start-game.command`（首次使用如被 Gatekeeper 拦截，可在「系统设置 → 隐私与安全性」中允许，或在终端执行 `chmod +x start-game.command` 后再次双击）
+- Linux：在终端执行 `bash scripts/start-game.sh`
+
+脚本会检查依赖并自动打开浏览器。
 
 命令行方式：
 
 ```bash
 npm install
+# Windows
 npm start
+# macOS / Linux
+npm run start:game
 ```
 
 构建生产版本：
@@ -36,6 +45,60 @@ npm run build
 npx playwright install chromium
 npm run test:smoke
 ```
+
+## AI API 配置（推荐：本地环境变量）
+
+为了避免每次启动都要在界面里手动填 API Key，推荐把密钥放在**本地 shell 环境变量**里，游戏启动时会自动读取作为默认值。密钥不会写入仓库（`.env*` 已在 `.gitignore` 中）。
+
+### macOS / Linux（zsh / bash）
+
+在 `~/.zshrc`（或 `~/.bashrc`）里追加：
+
+```bash
+# 小米 MiMo Token Plan（默认 provider）
+export VITE_AI_PROVIDER="mimo"
+export VITE_AI_API_KEY="<你的 MiMo Key>"
+# 可选：覆盖默认模型
+# export VITE_AI_MODEL="mimo-v2.5"
+```
+
+保存后执行 `source ~/.zshrc`，再运行 `npm run start:game` 即可。
+
+### Windows（PowerShell）
+
+```powershell
+[Environment]::SetEnvironmentVariable("VITE_AI_PROVIDER", "mimo", "User")
+[Environment]::SetEnvironmentVariable("VITE_AI_API_KEY", "<你的 MiMo Key>", "User")
+```
+
+新开一个终端使变量生效，再 `npm start`。
+
+### 备选：项目内 `.env.local`（仍不会进 git）
+
+如果不想改 shell 配置，也可以在项目根目录新建 `.env.local`：
+
+```env
+VITE_AI_PROVIDER=mimo
+VITE_AI_API_KEY=<你的 MiMo Key>
+```
+
+该文件已被 `.gitignore` 忽略，不会被提交。
+
+### 优先级
+
+1. UI 设置面板里手动保存的配置（写入浏览器 `localStorage`）—— 最高优先
+2. `VITE_AI_*` 环境变量（构建/启动时注入）
+3. 都没有时，启动会弹出配置面板
+
+支持的环境变量：
+
+| 变量 | 必填 | 说明 |
+| --- | --- | --- |
+| `VITE_AI_API_KEY` | ✅ | API Key |
+| `VITE_AI_PROVIDER` | 可选 | `openai` / `anthropic` / `mimo` / `custom`，默认 `mimo` |
+| `VITE_AI_MODEL` | 可选 | 模型名，缺省由 provider 决定 |
+| `VITE_AI_ENDPOINT` | 可选 | 仅 `provider=custom` 时使用 |
+
 
 ## 目录结构
 

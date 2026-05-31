@@ -244,9 +244,9 @@ async function requestAiDmRaw(config: ApiConfig, state: GameState, history: Game
   }
 
   const endpoint = (config.provider === 'mimo'
-    ? 'https://token-plan-cn.xiaomimimo.com/v1'
+    ? (config.endpoint || 'https://token-plan-cn.xiaomimimo.com/v1')
     : config.endpoint || 'https://api.openai.com/v1').replace(/\/+$/, '');
-  const model = config.provider === 'mimo' ? (config.model || 'mimo-v2.5') : (config.model || 'gpt-4o');
+  const model = config.provider === 'mimo' ? (config.model || 'mimo-v2.5-pro') : (config.model || 'gpt-4o');
   const response = await fetch(`${endpoint}/chat/completions`, {
     method: 'POST',
     headers: {

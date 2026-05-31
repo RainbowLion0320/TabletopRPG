@@ -144,6 +144,11 @@ export interface GameState {
   players: Investigator[];
   exploreMode: ExploreMode;
   currentSplitPlayer: number;
+  /**
+   * In together mode, the index of the player whose action input is currently visible.
+   * Players act sequentially; advances on "下一位" and resets to 0 after submission.
+   */
+  currentActorIndex: number;
   playerLocations: Record<string, SceneId>;
   declarations: Record<string, string>;
   pendingCheck: CheckRequest | null;

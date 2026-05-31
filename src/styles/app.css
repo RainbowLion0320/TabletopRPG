@@ -698,6 +698,35 @@ button {
   margin-top: 10px;
 }
 
+/* Party card highlight states tied to the current turn. */
+.party-card.active {
+  outline: 1px solid var(--gold);
+  border-radius: 6px;
+  background: rgba(216, 189, 122, 0.08);
+}
+
+.party-card.acted {
+  opacity: 0.78;
+}
+
+.actor-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-style: normal;
+  border-radius: 999px;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  background: rgba(216, 189, 122, 0.12);
+}
+
+.actor-badge.done {
+  color: var(--muted);
+  border-color: var(--line-soft);
+  background: transparent;
+}
+
 .primary-action, .secondary-action {
   display: inline-flex;
   align-items: center;

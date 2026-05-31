@@ -9,7 +9,7 @@ import { useSaveSlots } from './useSaveSlots';
 import { useToast } from './useToast';
 import { AiResponseFormatError, buildUserMessage, callAiDm, type PlayerAction } from '../services/aiDm';
 import { prepareCheck, rollD100 } from '../services/dice';
-import { readApiConfig, writeApiConfig } from '../services/storage';
+import { persistApiConfig, readApiConfig } from '../services/storage';
 import { createInitialGameState, gameReducer } from '../state/gameReducer';
 import type { ApiConfig, GameState, Investigator, SceneId } from '../types/game';
 
@@ -65,8 +65,36 @@ export function useGameController() {
 
   function submitAction() {
     if (!state.players.length) return;
-    const actions = buildPlayerActions(state);
 
+    if (state.exploreMode === 'together') {
+      // Sequential turn-taking: each player acts one at a time. The DM is only
+      // invoked after every party member has submitted their action.
+      const actor = state.players[state.currentActorIndex];
+      if (!actor) return;
+      const declaration = state.declarations[actor.id]?.trim();
+      if (!declaration) return;
+
+      dispatch({
+        type: 'appendMessage',
+        message: { type: 'player', text: declaration, playerName: actor.name }
+      });
+
+      const isLast = state.currentActorIndex >= state.players.length - 1;
+      if (!isLast) {
+        dispatch({ type: 'advanceActor' });
+        return;
+      }
+
+      // Last actor: aggregate all declarations and run the DM round.
+      const actions = buildPlayerActions(state);
+      dispatch({ type: 'appendHistory', role: 'user', content: buildUserMessage(actions, state.exploreMode) });
+      dispatch({ type: 'clearDeclarations' });
+      runAi(actions);
+      return;
+    }
+
+    // Split mode: original single-actor flow (one action -> immediate DM).
+    const actions = buildPlayerActions(state);
     actions.forEach((action) => {
       dispatch({
         type: 'appendMessage',
@@ -122,9 +150,12 @@ export function useGameController() {
   }
 
   function saveApi(config: ApiConfig) {
-    writeApiConfig(config);
     setApiOpen(false);
-    notify('AI 设置已保存');
+    void persistApiConfig(config).then((envWritten) => {
+      notify(envWritten
+        ? 'AI 设置已保存并写入 .env.local，下次启动自动生效'
+        : 'AI 设置已保存至本地浏览器（环境变量未同步）');
+    });
   }
 
   function returnHome() {

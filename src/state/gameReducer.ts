@@ -12,6 +12,7 @@ export type GameAction =
   | { type: 'setPlayerScene'; playerIndex: number; sceneId: SceneId }
   | { type: 'setDeclaration'; playerId: string; text: string }
   | { type: 'clearDeclarations' }
+  | { type: 'advanceActor' }
   | { type: 'appendMessage'; message: Omit<NarrativeMessage, 'id'> }
   | { type: 'appendHistory'; role: 'user' | 'assistant'; content: string }
   | { type: 'applyAiResponse'; response: AiResponse; raw: string }
@@ -333,6 +334,7 @@ export function createInitialGameState(players: Investigator[]): GameState {
     players,
     exploreMode: 'together',
     currentSplitPlayer: 0,
+    currentActorIndex: 0,
     playerLocations: locations,
     declarations: {},
     pendingCheck: null,
@@ -363,6 +365,9 @@ export function hydrateGameState(value: unknown): GameState {
     exploreMode: source.exploreMode === 'split' ? 'split' : 'together',
     currentSplitPlayer: players.length
       ? clamp(Math.floor(numberValue(source.currentSplitPlayer, 0)), 0, players.length - 1)
+      : 0,
+    currentActorIndex: players.length
+      ? clamp(Math.floor(numberValue(source.currentActorIndex, 0)), 0, players.length - 1)
       : 0,
     playerLocations: normalizePlayerLocations(source.playerLocations, players, currentScene),
     declarations: normalizeDeclarations(source.declarations, players),
@@ -433,7 +438,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case 'setDeclaration':
       return { ...state, declarations: { ...state.declarations, [action.playerId]: action.text } };
     case 'clearDeclarations':
-      return { ...state, declarations: {} };
+      return { ...state, declarations: {}, currentActorIndex: 0 };
+    case 'advanceActor':
+      return {
+        ...state,
+        currentActorIndex: state.players.length
+          ? clamp(state.currentActorIndex + 1, 0, state.players.length - 1)
+          : 0
+      };
     case 'appendMessage':
       return addMessage(state, action.message);
     case 'appendHistory':
@@ -463,7 +475,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         pendingCheck: response.check ?? null,
         suggestions: response.playerChoices ?? state.suggestions,
         conversationHistory: [...state.conversationHistory, { role: 'assistant' as const, content: action.raw }].slice(-32),
-        isThinking: false
+        isThinking: false,
+        currentActorIndex: 0
       };
       if (response.narrative) {
         nextState = addMessage(nextState, { type: 'dm', text: response.narrative, npcName: response.activeNpc ?? null });

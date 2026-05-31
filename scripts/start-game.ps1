@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $root
-$url = "http://127.0.0.1:5173"
+$url = "http://127.0.0.1:5273"
 
 function Test-GameServer {
   try {

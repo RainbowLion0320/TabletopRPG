@@ -21,10 +21,23 @@ export function ActionDock({
   onSuggestion,
   state
 }: ActionDockProps) {
+  const splitActor = state.players[state.currentSplitPlayer] ?? state.players[0];
+  const togetherActor = state.players[state.currentActorIndex] ?? state.players[0];
+  const togetherIsLast = state.currentActorIndex >= state.players.length - 1;
+
   const allFilled = state.exploreMode === 'split'
-    ? Boolean(state.declarations[state.players[state.currentSplitPlayer]?.id])
-    : state.players.every((player) => state.declarations[player.id]?.trim());
-  const activePlayer = state.players[state.currentSplitPlayer] ?? state.players[0];
+    ? Boolean(state.declarations[splitActor?.id ?? '']?.trim())
+    : Boolean(state.declarations[togetherActor?.id ?? '']?.trim());
+
+  const submitLabel = state.exploreMode === 'together'
+    ? (togetherIsLast ? '提交本轮' : '下一位')
+    : '提交本轮行动';
+
+  const footerHint = state.exploreMode === 'together'
+    ? (togetherIsLast
+        ? '所有调查员已完成声明，提交后由 DM 统一推演本轮。'
+        : `等待 ${togetherActor?.name ?? '当前调查员'} 输入行动...`)
+    : '分头探索将单独结算当前调查员。';
 
   return (
     <section className="action-dock">
@@ -67,7 +80,7 @@ export function ActionDock({
           <div className="scene-chips">
             {sceneList.map((scene) => (
               <button
-                className={state.playerLocations[activePlayer.id] === scene.id ? 'active' : ''}
+                className={state.playerLocations[splitActor.id] === scene.id ? 'active' : ''}
                 key={scene.id}
                 onClick={() => onSplitSceneChange(state.currentSplitPlayer, scene.id)}
               >
@@ -80,33 +93,40 @@ export function ActionDock({
 
       <div className="action-input-grid">
         {state.exploreMode === 'together' ? (
-          state.players.map((player) => (
-            <label className="action-row" key={player.id}>
-              <span>{player.name}</span>
+          togetherActor ? (
+            <label className="action-row">
+              <span>{togetherActor.name}</span>
               <input
-                value={state.declarations[player.id] ?? ''}
-                placeholder={`${player.name} 想要做什么...`}
-                onChange={(event) => onDeclarationChange(player.id, event.target.value)}
+                autoFocus
+                value={state.declarations[togetherActor.id] ?? ''}
+                placeholder={`${togetherActor.name} 想要做什么...`}
+                onChange={(event) => onDeclarationChange(togetherActor.id, event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && allFilled && !state.isThinking) {
+                    event.preventDefault();
+                    onSubmit();
+                  }
+                }}
               />
             </label>
-          ))
+          ) : null
         ) : (
           <label className="action-row">
-            <span>{activePlayer.name}</span>
+            <span>{splitActor.name}</span>
             <input
-              value={state.declarations[activePlayer.id] ?? ''}
-              placeholder={`${activePlayer.name} 在 ${storyData.scenes[state.playerLocations[activePlayer.id] ?? 'S01'].name} 做什么...`}
-              onChange={(event) => onDeclarationChange(activePlayer.id, event.target.value)}
+              value={state.declarations[splitActor.id] ?? ''}
+              placeholder={`${splitActor.name} 在 ${storyData.scenes[state.playerLocations[splitActor.id] ?? 'S01'].name} 做什么...`}
+              onChange={(event) => onDeclarationChange(splitActor.id, event.target.value)}
             />
           </label>
         )}
       </div>
 
       <div className="dock-footer">
-        <span>{state.exploreMode === 'together' ? '等待所有玩家输入行动...' : '分头探索将单独结算当前调查员。'}</span>
+        <span>{footerHint}</span>
         <button className="primary-action" disabled={!allFilled || state.isThinking} onClick={onSubmit}>
           <Send size={18} />
-          提交本轮行动
+          {submitLabel}
         </button>
       </div>
     </section>

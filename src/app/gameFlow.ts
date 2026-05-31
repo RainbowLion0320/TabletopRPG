@@ -38,6 +38,7 @@ export function findSuggestionTargetPlayerId(state: GameState) {
   if (state.exploreMode === 'split') {
     return state.players[state.currentSplitPlayer]?.id ?? null;
   }
-  return state.players.find((player) => !state.declarations[player.id])?.id ?? null;
+  // Together mode: suggestions go to the actor whose turn it currently is.
+  return state.players[state.currentActorIndex]?.id ?? null;
 }
 
