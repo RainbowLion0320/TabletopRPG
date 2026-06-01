@@ -15,9 +15,8 @@ export function TopBar({ state, onToggleMenu }: TopBarProps) {
         <div className="brand-title">雾中消逝</div>
         <div className="brand-scene">{scene.name}</div>
       </div>
-      <button className="menu-button" onClick={onToggleMenu}>
-        <Menu size={22} />
-        菜单
+      <button className="menu-button" onClick={onToggleMenu} title="菜单">
+        <Menu size={18} />
       </button>
     </header>
   );

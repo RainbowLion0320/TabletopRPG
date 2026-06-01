@@ -4,11 +4,11 @@
  * public.desc 必须是玩家初次到达即可观察到的客观描述，禁止包含模组答案。
  */
 
-import sceneMain from '../../../../assets/scenes/scene_main_fog_london.gif';
-import sceneS02 from '../../../../assets/scenes/scene_s02.svg';
-import sceneS03 from '../../../../assets/scenes/scene_s03.svg';
-import sceneS04 from '../../../../assets/scenes/scene_s04.svg';
-import sceneS05 from '../../../../assets/scenes/scene_s05.svg';
+import sceneS01 from '../../../../assets/scenes/客厅.png';
+import sceneS02 from '../../../../assets/scenes/警局.png';
+import sceneS03 from '../../../../assets/scenes/酒吧.png';
+import sceneS04 from '../../../../assets/scenes/药店.png';
+import sceneS05 from '../../../../assets/scenes/码头.png';
 import type { LayeredEntity, ScenePublic } from '../../../dm/types';
 import type { SceneId } from '../../../types/game';
 
@@ -18,7 +18,7 @@ export const scenes: Record<SceneId, LayeredEntity<ScenePublic>> = {
       id: 'S01',
       name: '摩勒住宅',
       desc: '纽伦上街101-102号，维多利亚式别墅。委托人伊莎贝拉·摩勒小姐在此等候。',
-      image: sceneMain,
+      image: sceneS01,
       npcs: ['伊莎贝拉·摩勒'],
       items: ['I01', 'I02', 'I03', 'I04', 'I05', 'I06']
     }

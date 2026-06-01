@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>时间节点 × 游戏大盘指标 交叉分析方案</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #181b24;
+    --surface2: #1e222d;
+    --border: #2a2f3e;
+    --text: #e4e6ed;
+    --text2: #9ca3b4;
+    --accent: #6c5ce7;
+    --accent2: #a29bfe;
+    --green: #00cec9;
+    --orange: #fdcb6e;
+    --red: #ff6b6b;
+    --blue: #74b9ff;
+    --pink: #fd79a8;
+    --gradient1: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
+    --gradient2: linear-gradient(135deg, #00cec9 0%, #55efc4 100%);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+  /* ── Hero ── */
+  .hero {
+    position: relative;
+    padding: 80px 0 60px;
+    text-align: center;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(ellipse at 50% 30%, rgba(108,92,231,.15) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-block;
+    padding: 6px 18px;
+    border-radius: 20px;
+    background: rgba(108,92,231,.15);
+    color: var(--accent2);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .5px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(108,92,231,.3);
+  }
+  .hero h1 {
+    font-size: 42px;
+    font-weight: 800;
+    background: var(--gradient1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+    line-height: 1.2;
+  }
+  .hero p {
+    font-size: 18px;
+    color: var(--text2);
+    max-width: 700px;
+    margin: 0 auto;
+  }
+  .hero .pilot {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 24px;
+    padding: 10px 24px;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-size: 14px;
+    color: var(--text2);
+  }
+  .hero .pilot strong { color: var(--green); }
+
+  /* ── Section ── */
+  .section { padding: 60px 0; }
+  .section + .section { border-top: 1px solid var(--border); }
+  .section-label {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .section-desc {
+    color: var(--text2);
+    font-size: 15px;
+    margin-bottom: 32px;
+    max-width: 800px;
+  }
+
+  /* ── Data Dependency Cards ── */
+  .dep-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+  }
+  .dep-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    transition: transform .2s, border-color .2s;
+  }
+  .dep-card:hover { transform: translateY(-4px); border-color: var(--accent); }
+  .dep-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    margin-bottom: 16px;
+  }
+  .dep-card h3 { font-size: 16px; margin-bottom: 8px; }
+  .dep-card p { font-size: 13px; color: var(--text2); line-height: 1.6; }
+  .dep-card .source-tag {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    background: rgba(108,92,231,.12);
+    color: var(--accent2);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  /* ── Integration Plan ── */
+  .plan-steps {
+    display: flex;
+    gap: 24px;
+    position: relative;
+  }
+  .plan-steps::before {
+    content: '';
+    position: absolute;
+    top: 32px; left: 32px; right: 32px;
+    height: 2px;
+    background: var(--border);
+  }
+  .plan-step {
+    flex: 1;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+  }
+  .plan-step .step-num {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 2px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; font-weight: 800;
+    color: var(--accent2);
+    margin: 0 auto 16px;
+  }
+  .plan-step h3 { font-size: 16px; margin-bottom: 6px; }
+  .plan-step p { font-size: 13px; color: var(--text2); max-width: 300px; margin: 0 auto; }
+  .plan-step .tag {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .tag-mvp { background: rgba(0,206,201,.15); color: var(--green); }
+  .tag-formal { background: rgba(108,92,231,.15); color: var(--accent2); }
+
+  /* ── Capability Sections ── */
+  .cap-section { margin-bottom: 64px; }
+  .cap-section:last-child { margin-bottom: 0; }
+  .cap-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .cap-num {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 800;
+    flex-shrink: 0;
+  }
+  .cap-header h3 { font-size: 20px; margin-bottom: 4px; }
+  .cap-header p { font-size: 14px; color: var(--text2); }
+
+  /* ── Q&A Card ── */
+  .qa-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .qa-prompt {
+    padding: 20px 24px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .qa-prompt-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: rgba(108,92,231,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .qa-prompt-text { font-size: 14px; color: var(--text); font-style: italic; }
+  .qa-response { padding: 24px; }
+  .qa-response-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--green);
+    margin-bottom: 16px;
+  }
+  .qa-chart-wrap {
+    background: var(--bg);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    position: relative;
+    height: 320px;
+  }
+  .qa-chart-wrap canvas { width: 100% !important; height: 100% !important; }
+  .insight-block {
+    background: rgba(108,92,231,.06);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+  }
+  .insight-block h4 {
+    font-size: 14px;
+    color: var(--accent2);
+    margin-bottom: 6px;
+  }
+  .insight-block p, .insight-block li {
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.7;
+  }
+  .insight-block ul { padding-left: 18px; }
+  .insight-block li { margin-bottom: 4px; }
+  .suggestion-box {
+    background: rgba(0,206,201,.06);
+    border-left: 3px solid var(--green);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 20px;
+  }
+  .suggestion-box h4 { font-size: 14px; color: var(--green); margin-bottom: 4px; }
+  .suggestion-box p { font-size: 13px; color: var(--text2); }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .hero h1 { font-size: 28px; }
+    .plan-steps { flex-direction: column; }
+    .plan-steps::before { display: none; }
+    .qa-chart-wrap { height: 260px; }
+  }
+
+  /* ── Nav ── */
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 32px;
+    margin-bottom: 40px;
+  }
+  .toc h3 { font-size: 14px; color: var(--text2); margin-bottom: 12px; }
+  .toc-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .toc-list a {
+    padding: 6px 14px;
+    border-radius: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    text-decoration: none;
+    font-size: 13px;
+    transition: background .2s, border-color .2s;
+  }
+  .toc-list a:hover { background: rgba(108,92,231,.1); border-color: var(--accent); }
+
+  /* ── Footer ── */
+  .footer {
+    padding: 40px 0;
+    text-align: center;
+    color: var(--text2);
+    font-size: 13px;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ HERO ═══════════════════ -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-badge">📋 ANALYTICS PROPOSAL</div>
+    <h1>时间节点 × 游戏大盘指标<br>交叉分析方案</h1>
+    <p>实现重要时间节点（版更、重点节假日、游戏活动）与游戏大盘指标的交叉分析，赋能精细化运营决策</p>
+    <div class="pilot">
+      🎮 试点游戏：<strong>PNS</strong>
+      <span style="color:var(--text2);margin:0 4px">|</span>
+      <span style="font-size:12px">中世纪医院(数数) & RO世界(礼包未接入) 待后续支持</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ TOC ═══════════════════ -->
+<section class="container">
+  <div class="toc">
+    <h3>📑 目录导航</h3>
+    <div class="toc-list">
+      <a href="#data">依赖数据</a>
+      <a href="#plan">接入方案</a>
+      <a href="#cap1">季节性运营复盘</a>
+      <a href="#cap2">商业化与礼包分析</a>
+      <a href="#cap3">活动配置与时区优化</a>
+      <a href="#cap4">玩家分层与本地化</a>
+      <a href="#cap5">异常排查与归因</a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ DATA DEPENDENCY ═══════════════════ -->
+<section class="section container" id="data">
+  <div class="section-label">Data Dependencies</div>
+  <h2 class="section-title">依赖数据</h2>
+  <p class="section-desc">交叉分析所需四类核心数据源及其字段与获取方式</p>
+  <div class="dep-grid">
+    <div class="dep-card">
+      <div class="dep-icon" style="background:rgba(108,92,231,.15)">🚀</div>
+      <h3>版本更新节点</h3>
+      <p>版本号、更新时间、更新内容标签</p>
+      <p style="margin-top:8px;font-size:12px;color:var(--orange)">⚠️ 暂无现成数据源</p>
+      <span class="source-tag">方案1：运营填写在线表（过渡）</span><br>
+      <span class="source-tag">方案2：研发接口回传天机（长期）</span>
+    </div>
+    <div class="dep-card">
+      <div class="dep-icon" style="background:rgba(0,206,201,.15)">🎄</div>
+      <h3>海外重要节假日</h3>
+      <p>节日名称、日期、地区、重要性等级</p>
+      <span class="source-tag">日历</span>
+    </div>
+    <div class="dep-card">
+      <div class="dep-icon" style="background:rgba(253,203,110,.15)">🎁</div>
+      <h3>活动配置信息</h3>
+      <p>活动名称 · 活动类型 · 开始/结束时间 · 涉及礼包名称 · 涉及礼包ID</p>
+      <span class="source-tag">commercial_activities</span><br>
+      <span class="source-tag">ods_file_upload_analyze</span>
+    </div>
+    <div class="dep-card">
+      <div class="dep-icon" style="background:rgba(255,107,107,.15)">💰</div>
+      <h3>礼包购买数据</h3>
+      <p>礼包ID · 购买方式 · 购买数量 · 购买金额 · 购买用户ID</p>
+      <span class="source-tag">union_gift_logs</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ INTEGRATION PLAN ═══════════════════ -->
+<section class="section container" id="plan">
+  <div class="section-label">Integration Plan</div>
+  <h2 class="section-title">接入方案</h2>
+  <p class="section-desc">两阶段渐进式接入，MVP快速验证后转为正式数据管道</p>
+  <div class="plan-steps">
+    <div class="plan-step">
+      <div class="step-num">1</div>
+      <h3>MVP 阶段</h3>
+      <p>将关联SQL写入MCP（CHATBI三阶段产品）系统提示词，有权限用户可快速试用该能力</p>
+      <span class="tag tag-mvp">快速验证</span>
+    </div>
+    <div class="plan-step">
+      <div class="step-num">2</div>
+      <h3>正式接入</h3>
+      <p>依赖数据做成数据表接入天机，通过天机进行权限管控，接入天机AI助手供一线运营使用</p>
+      <span class="tag tag-formal">规模化推广</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ CAPABILITIES ═══════════════════ -->
+<section class="section container">
+
+  <div class="section-label">Analytical Capabilities</div>
+  <h2 class="section-title">接入后可实现的分析能力</h2>
+  <p class="section-desc">5大分析场景，覆盖从运营复盘到异常归因的全链路</p>
+
+  <!-- ────── Cap 1: 季节性运营复盘 ────── -->
+  <div class="cap-section" id="cap1">
+    <div class="cap-header">
+      <div class="cap-num" style="background:rgba(108,92,231,.15);color:var(--accent2)">1</div>
+      <div>
+        <h3>季节性运营复盘</h3>
+        <p>大盘波动 × 游戏内归因</p>
+      </div>
+    </div>
+
+    <!-- Q1 -->
+    <div class="qa-card">
+      <div class="qa-prompt">
+        <div class="qa-prompt-icon">💬</div>
+        <div class="qa-prompt-text">"上周流水环比增长22%，主要是哪个海外节日活动（如Winter Holiday）贡献的？请把限时礼包收入和常驻礼包收入拆分给我看。"</div>
+      </div>
+      <div class="qa-response">
+        <div class="qa-response-label">📊 堆叠面积图（按天）+ 结论摘要</div>
+        <div class="qa-chart-wrap"><canvas id="chart1a"></canvas></div>
+        <div class="insight-block">
+          <h4>核心结论</h4>
+          <p>+22%增长几乎完全由"Winter Holiday（冬日假期）"限时礼包组和第12天登录日历驱动，常驻礼包持平。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q2 -->
+    <div class="qa-card">
+      <div class="qa-prompt">
+        <div class="qa-prompt-icon">💬</div>
+        <div class="qa-prompt-text">"对比'黑色星期五（Black Friday）'和'万圣节（Halloween）'活动，哪个ROI更高？分别带来了多少北美（NA）和欧洲（EU）的新付费用户？"</div>
+      </div>
+      <div class="qa-response">
+        <div class="qa-response-label">📊 对比条形图 + 双轴折线图</div>
+        <div class="qa-chart-wrap"><canvas id="chart1b"></canvas></div>
+        <div class="insight-block">
+          <h4>ROI对比</h4>
+          <p>黑五活动成本$8万，收入$45万；万圣节成本$5万，收入$22万。</p>
+          <h4 style="margin-top:10px">区域表现</h4>
+          <ul>
+            <li><strong>北美（NA）：</strong>黑五活动的新付费用户转化率高达15%（万圣节为8%），说明北美用户对"折扣/Deal"敏感度极高。</li>
+            <li><strong>欧洲（EU）：</strong>万圣节主题的装饰类礼包在德法地区表现优于黑五，说明审美/题材偏好大于价格偏好。</li>
+          </ul>
+        </div>
+        <div class="suggestion-box">
+          <h4>💡 建议</h4>
+          <p>明年黑五侧重北美投放，万圣节侧重欧盟投放。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ────── Cap 2: 商业化与礼包分析 ────── -->
+  <div class="cap-section" id="cap2">
+    <div class="cap-header">
+      <div class="cap-num" style="background:rgba(0,206,201,.15);color:var(--green)">2</div>
+      <div>
+        <h3>商业化与礼包分析</h3>
+        <p>精细化运营</p>
+      </div>
+    </div>
+
+    <!-- Q1 -->
+    <div class="qa-card">
+      <div class="qa-prompt">
+        <div class="qa-prompt-icon">💬</div>
+        <div class="qa-prompt-text">"分析一下'Battle Pass（战斗通行证）'里各个等级的礼包购买率，有没有哪个档位在欧美玩家中卖得特别差？"</div>
+      </div>
+      <div class="qa-response">
+        <div class="qa-response-label">📊 漏斗图 + 热力图</div>
+        <div class="qa-chart-wrap"><canvas id="chart2a"></canvas></div>
+        <div class="insight-block">
+          <h4>⚠️ 异常点</h4>
+          <p>第35级的"$19.99 Special Offer（特惠包）"购买率仅3%（其他均在12%以上）。</p>
+          <h4 style="margin-top:10px">归因分析</h4>
+          <ul>
+            <li><strong>解锁难度：</strong>该等级所需的活跃度（XPR）过高，导致大部分F2P玩家在达到前流失。</li>
+            <li><strong>价值感知：</strong>奖励道具（如普通装备碎片）与$4.99的基础通行证奖励重合度达70%。</li>
+          </ul>
+        </div>
+        <div class="suggestion-box">
+          <h4>💡 建议</h4>
+          <p>针对欧美玩家偏好，将该档位奖励替换为"独家皮肤（Exclusive Skin）"或"无属性装饰"。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q2 -->
+    <div class="qa-card">
+      <div class="qa-prompt">
+        <div class="qa-prompt-icon">💬</div>
+        <div class="qa-prompt-text">"查看近7天所有$99.99档位的礼包购买分布，主要集中在哪个时区的几点钟？"</div>
+      </div>
+      <div class="qa-response">
+        <div class="qa-response-label">📊 24小时分布直方图（按GMT时区）</div>
+        <div class="qa-chart-wrap"><canvas id="chart2b"></canvas></div>
+        <div class="insight-block">
+          <h4>分布特征</h4>
+          <ul>
+            <li><strong>NA West（美西）：</strong>高峰在 PST 19:00 - 21:00（下班后休闲时间）。</li>
+            <li><strong>EU Central（欧中）：</strong>高峰在 CET 20:00 - 22:00。</li>
+            <li><strong>异常点：</strong>几乎没有凌晨购买记录。</li>
+          </ul>
+        </div>
+        <div class="suggestion-box">
+          <h4>💡 建议</h4>
+          <p>推送（Push Notification）和商店刷新应避开当地工作时段（09:00-17:00），集中在晚间20:00左右触达。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q3 -->
+    <div class="qa-card">
+      <div class="qa-prompt">
+        <div class="qa-prompt-icon">💬</div>
+        <div class="qa-prompt-text">"分析'Cyber Monday（网络星期一）'的礼包销售数据，有没有出现和'黑色星期五'礼包内容的重叠浪费？"</div>
+      </div>
+      <div class="qa-response">
+        <div class="qa-response-label">📊 散点图（价格 vs 销量）+ 韦恩图（受众重叠）</div>
+        <div class="qa-chart-wrap"><canvas id="chart2c"></canvas></div>
+        <div class="insight-block">
+          <h4>发现</h4>
+          <ul>
+            <li><strong>受众重叠：</strong>购买了黑五"$29.99 Mega Pack"的用户中，有60%在网一再次购买了"$24.99 Super Pack"，但这两个礼包的道具内容重叠度高达85%。</li>
+            <li><strong>边际效应：</strong>网一的ARPU虽然高，但实际上是同一批大R在"扫货"，并未带来新用户。</li>
+          </ul>
+        </div>
+        <div class="suggestion-box">
+          <h4>💡 建议</h4>
+          <p>明年网一应推出"消耗品/资源类"礼包，而非与黑五雷同的"稀有道具类"礼包，以覆盖不同类型的付费需求。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ────── Cap 3: 活动配置与时区优化 ────── -->
+  <div class="cap-section" id="cap3">
+    <div class="cap-header">
+      <div class="cap-num" style="background:rgba(253,203,110,.15);color:var(--orange)">3</div>
+      <div>
+        <h3>活动配置与时区优化</h3>
+        <p>全球同服时段策略</p>
+      </div>
+    </div>
+
+    <!-- Q1 -->
+    <div class="qa-card">
+      <div class="qa-prompt">
+        <div class="qa-prompt-icon">💬</div>
+        <div class="qa-prompt-text">"上周六'Twitch直播联动活动'开启时，NA和EU的参与率和付费情况如何？有没有因为时差导致EU参与度低？"</div>
+      </div>
+      <div class="qa-response">
+        <div class="qa-response-label">📊 时间轴热力图（叠加时区标记）</div>
+        <div class="qa-chart-wrap"><canvas id="chart3a"></canvas></div>
+        <div class="insight-block">
+          <h4>冲突检测</h4>
+          <ul>
+            <li><strong>NA（北美）：</strong>活动开启时间为当地时间周六下午，参与率峰值45%，付费率12%。</li>
+            <li><strong>EU（欧洲）：</strong>活动开启时间为当地时间凌晨02:00，参与率仅8%，且多为挂机脚本。</li>
+          </ul>
+          <p style="margin-top:8px"><strong>结论：</strong>单一固定时间点不适合全球同服。</p>
+        </div>
+        <div class="suggestion-box">
+          <h4>💡 建议</h4>
+          <p>改为"持续48小时的窗口期"或"按地区分批开启"。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q2 -->
+    <div class="qa-card">
+      <div class="qa-prompt">
+        <div class="qa-prompt-icon">💬</div>
+        <div class="qa-prompt-text">"分析'Summer Sale（夏日促销）'期间，周末和周中的付费意愿差异，结合欧美玩家的活跃时段给出下次上架建议。"</div>
+      </div>
+      <div class="qa-response">
+        <div class="qa-response-label">📊 雷达图（周几 vs 付费强度）</div>
+        <div class="qa-chart-wrap"><canvas id="chart3b"></canvas></div>
+        <div class="insight-block">
+          <h4>结论</h4>
+          <ul>
+            <li><strong>周五晚 - 周日：</strong>付费总额最高，适合上架高单价礼包（$49.99+）。</li>
+            <li><strong>周二 - 周三：</strong>虽然总额低，但ARPPU（单用户付费额）最高，适合推超大额礼包（$99.99 VIP礼包）。</li>
+            <li><strong>周四：</strong>数据最差，建议作为"空窗期"进行版本预热，不上新礼包。</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ────── Cap 4: 玩家分层与本地化洞察 ────── -->
+  <div class="cap-section" id="cap4">
+    <div class="cap-header">
+      <div class="cap-num" style="background:rgba(116,185,255,.15);color:var(--blue)">4</div>
+      <div>
+        <h3>玩家分层与本地化洞察</h3>
+        <p>精细化用户画像驱动运营</p>
+      </div>
+    </div>
+
+    <!-- Q1 -->
+    <div class="qa-card">
+      <div class="qa-prompt">
+        <div class="qa-prompt-icon">💬</div>
+        <div class="qa-prompt-text">"那些只买'No Ads（去广告）'包的欧美玩家，他们对'Season Pass（赛季通行证）'的接受度如何？最近'Easter Event（复活节活动）'他们买礼包了吗？"</div>
+      </div>
+      <div class="qa-response">
+        <div class="qa-response-label">📊 用户画像标签云 + 转化漏斗</div>
+        <div class="qa-chart-wrap"><canvas id="chart4a"></canvas></div>
+        <div class="insight-block">
+          <h4>特征画像</h4>
+          <ul>
+            <li><strong>人群属性：</strong>这部分玩家多为Casual Gamers（休闲玩家），日均在线&lt;30分钟，反感打断体验。</li>
+            <li><strong>转化数据：</strong>在复活节活动中，该群体对"$0.99 复活节彩蛋装饰"的购买率为15%，但对"$9.99 资源加速包"的购买率为0。</li>
+          </ul>
+        </div>
+        <div class="suggestion-box">
+          <h4>💡 策略</h4>
+          <p>对这类用户推送"纯外观/便利性"礼包，绝对避免推送"数值/战力"礼包。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q2 -->
+    <div class="qa-card">
+      <div class="qa-prompt">
+        <div class="qa-prompt-icon">💬</div>
+        <div class="qa-prompt-text">"分析新注册玩家在'St. Patrick's Day（圣帕特里克节）'首次接触付费的情况，7日留存是多少？"</div>
+      </div>
+      <div class="qa-response">
+        <div class="qa-response-label">📊 生存曲线（Kaplan-Meier）</div>
+        <div class="qa-chart-wrap"><canvas id="chart4b"></canvas></div>
+        <div class="insight-block">
+          <h4>数据</h4>
+          <p>在节日当天首次付费的玩家，7日留存为<strong style="color:var(--green)">58%</strong>；非节日首次付费玩家为42%。</p>
+          <h4 style="margin-top:10px">洞察</h4>
+          <p>节日氛围降低了付费心理门槛，且节日赠送的社交属性道具（如绿色帽子/舞蹈）增加了玩家的社交粘性，从而提升了留存。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ────── Cap 5: 异常排查与归因 ────── -->
+  <div class="cap-section" id="cap5">
+    <div class="cap-header">
+      <div class="cap-num" style="background:rgba(255,107,107,.15);color:var(--red)">5</div>
+      <div>
+        <h3>异常排查与归因</h3>
+        <p>Debug — 快速定位根因</p>
+      </div>
+    </div>
+
+    <!-- Q1 -->
+    <div class="qa-card">
+      <div class="qa-prompt">
+        <div class="qa-prompt-icon">💬</div>
+        <div class="qa-prompt-text">"昨晚 NA 区流水突然掉了15%，是因为'Valentine's Day（情人节）'活动结束了，还是某个$99.99礼包售罄了？"</div>
+      </div>
+      <div class="qa-response">
+        <div class="qa-response-label">📊 时序折线图（叠加事件标记 Event Marker）</div>
+        <div class="qa-chart-wrap"><canvas id="chart5a"></canvas></div>
+        <div class="insight-block">
+          <h4>🔍 根因定位</h4>
+          <ul>
+            <li><strong>时间点：</strong>21:05 PST，"$99.99 Ultimate Valentine Pack"库存耗尽。</li>
+            <li><strong>影响：</strong>随后的30分钟内，流水出现断崖式下跌，且后台显示大量"Purchase Failed（支付失败）"日志。</li>
+          </ul>
+        </div>
+        <div class="suggestion-box">
+          <h4>💡 建议</h4>
+          <p>该礼包购买者均为大R，建议立即补货并向这批用户发送"补货补偿邮件"。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q2 -->
+    <div class="qa-card">
+      <div class="qa-prompt">
+        <div class="qa-prompt-icon">💬</div>
+        <div class="qa-prompt-text">"为什么今天的'New User Conversion（新用户转化）'涨了，但总流水没变？"</div>
+      </div>
+      <div class="qa-response">
+        <div class="qa-response-label">📊 堆叠条形图</div>
+        <div class="qa-chart-wrap"><canvas id="chart5b"></canvas></div>
+        <div class="insight-block">
+          <h4>解释</h4>
+          <ul>
+            <li><strong>增量：</strong>新增了大量购买"$0.99 Starter Pack（新手包）"的用户（数量+40%）。</li>
+            <li><strong>减量：</strong>原本购买"$99.99 Pack"的老用户在本期未消费（金额-12%）。</li>
+          </ul>
+          <p style="margin-top:8px"><strong>结论：</strong>这是典型的"低单价冲量"掩盖了"高净值用户流失"。需立即检查老用户专属礼包（LTV Pack）是否到期或未续费。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<!-- ═══════════════════ FOOTER ═══════════════════ -->
+<footer class="footer">
+  <div class="container">
+    <p>时间节点 × 游戏大盘指标 交叉分析方案 · 试点：PNS · 数据源：天机 / MCP / CHATBI</p>
+  </div>
+</footer>
+
+<!-- ═══════════════════ CHARTS ═══════════════════ -->
+<script>
+const COLORS = {
+  accent: '#6c5ce7', accent2: '#a29bfe',
+  green: '#00cec9', orange: '#fdcb6e',
+  red: '#ff6b6b', blue: '#74b9ff',
+  pink: '#fd79a8', teal: '#55efc4',
+  gray: '#636e72',
+  bg: '#0f1117', surface: '#181b24',
+};
+
+const defaultScales = (yTitle) => ({
+  x: { grid: { color: 'rgba(255,255,255,.06)' }, ticks: { color: '#9ca3b4', font: { size: 11 } } },
+  y: { grid: { color: 'rgba(255,255,255,.06)' }, ticks: { color: '#9ca3b4', font: { size: 11 } }, title: { display: !!yTitle, text: yTitle || '', color: '#9ca3b4' } },
+});
+
+const defaultPlugins = {
+  legend: { labels: { color: '#e4e6ed', font: { size: 12 }, padding: 16, usePointStyle: true } },
+  tooltip: { backgroundColor: '#1e222d', titleColor: '#e4e6ed', bodyColor: '#9ca3b4', borderColor: '#2a2f3e', borderWidth: 1, padding: 12, cornerRadius: 8 },
+};
+
+// ── Chart 1a: 堆叠面积图 ──
+new Chart(document.getElementById('chart1a'), {
+  type: 'line',
+  data: {
+    labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+    datasets: [
+      { label: '限时礼包', data: [120,135,128,140,210,280,250], backgroundColor: 'rgba(108,92,231,.3)', borderColor: COLORS.accent, fill: true, tension: .4 },
+      { label: '常驻礼包', data: [90,88,92,87,95,98,91], backgroundColor: 'rgba(0,206,201,.2)', borderColor: COLORS.green, fill: true, tension: .4 },
+      { label: '登录日历', data: [20,22,25,30,38,45,42], backgroundColor: 'rgba(253,203,110,.2)', borderColor: COLORS.orange, fill: true, tension: .4 },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: defaultScales('收入 ($K)'),
+    plugins: defaultPlugins,
+  }
+});
+
+// ── Chart 1b: 对比条形图 ──
+new Chart(document.getElementById('chart1b'), {
+  type: 'bar',
+  data: {
+    labels: ['成本', '收入', '新付费用户(NA)', '新付费用户(EU)'],
+    datasets: [
+      { label: 'Black Friday', data: [80, 450, 1500, 800], backgroundColor: COLORS.accent, borderRadius: 6 },
+      { label: 'Halloween', data: [50, 220, 640, 1100], backgroundColor: COLORS.orange, borderRadius: 6 },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: defaultScales(''),
+    plugins: defaultPlugins,
+  }
+});
+
+// ── Chart 2a: 漏斗图（水平条形） ──
+new Chart(document.getElementById('chart2a'), {
+  type: 'bar',
+  data: {
+    labels: ['Lv5 $4.99','Lv10 $9.99','Lv15 $9.99','Lv20 $14.99','Lv25 $14.99','Lv30 $19.99','Lv35 $19.99','Lv40 $29.99'],
+    datasets: [{
+      label: '购买率 (%)',
+      data: [18,16,15,14,13,12,3,12],
+      backgroundColor: [COLORS.green,COLORS.green,COLORS.green,COLORS.green,COLORS.green,COLORS.green,COLORS.red,COLORS.green],
+      borderRadius: 6,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      x: { grid: { color: 'rgba(255,255,255,.06)' }, ticks: { color: '#9ca3b4' }, max: 20 },
+      y: { grid: { display: false }, ticks: { color: '#e4e6ed', font: { size: 11 } } },
+    },
+    plugins: defaultPlugins,
+  }
+});
+
+// ── Chart 2b: 24小时分布直方图 ──
+const hours = Array.from({length:24}, (_,i) => `${String(i).padStart(2,'0')}:00`);
+const naData = [1,0,0,0,0,1,3,5,8,12,15,14,13,11,10,9,11,14,18,22,25,20,12,5];
+const euData = [2,1,0,0,0,0,1,3,6,10,13,14,12,11,10,9,10,13,17,22,24,18,10,4];
+new Chart(document.getElementById('chart2b'), {
+  type: 'bar',
+  data: {
+    labels: hours,
+    datasets: [
+      { label: 'NA West (PST)', data: naData, backgroundColor: 'rgba(108,92,231,.7)', borderRadius: 3 },
+      { label: 'EU Central (CET)', data: euData, backgroundColor: 'rgba(0,206,201,.7)', borderRadius: 3 },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: defaultScales('购买次数'),
+    plugins: defaultPlugins,
+  }
+});
+
+// ── Chart 2c: 散点图（价格 vs 销量） ──
+new Chart(document.getElementById('chart2c'), {
+  type: 'scatter',
+  data: {
+    datasets: [
+      {
+        label: 'Black Friday 礼包',
+        data: [{x:4.99,y:3200},{x:9.99,y:2100},{x:19.99,y:1500},{x:29.99,y:1800},{x:49.99,y:600},{x:99.99,y:200}],
+        backgroundColor: COLORS.accent, pointRadius: 8, pointHoverRadius: 12,
+      },
+      {
+        label: 'Cyber Monday 礼包',
+        data: [{x:4.99,y:2800},{x:9.99,y:1800},{x:19.99,y:1200},{x:24.99,y:1100},{x:49.99,y:500},{x:99.99,y:180}],
+        backgroundColor: COLORS.pink, pointRadius: 8, pointHoverRadius: 12,
+      },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      x: { grid: { color: 'rgba(255,255,255,.06)' }, ticks: { color: '#9ca3b4', callback: v => '$'+v }, title: { display: true, text: '价格 ($)', color: '#9ca3b4' } },
+      y: { grid: { color: 'rgba(255,255,255,.06)' }, ticks: { color: '#9ca3b4' }, title: { display: true, text: '销量', color: '#9ca3b4' } },
+    },
+    plugins: defaultPlugins,
+  }
+});
+
+// ── Chart 3a: 时间轴热力图 ──
+new Chart(document.getElementById('chart3a'), {
+  type: 'bar',
+  data: {
+    labels: ['10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00','23:00','00:00','01:00','02:00','03:00'],
+    datasets: [
+      { label: 'NA 参与率 (%)', data: [5,8,15,25,35,45,40,30,20,15,10,8,5,3,2,1,0,0], backgroundColor: 'rgba(108,92,231,.7)', borderRadius: 3 },
+      { label: 'EU 参与率 (%)', data: [2,1,1,2,3,5,8,12,18,25,30,22,15,10,8,5,3,1], backgroundColor: 'rgba(0,206,201,.7)', borderRadius: 3 },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: defaultScales('参与率 (%)'),
+    plugins: {
+      ...defaultPlugins,
+      annotation: {
+        annotations: {
+          euMidnight: { type: 'label', xValue: '02:00', yValue: 40, content: 'EU 凌晨', color: COLORS.red, font: { size: 12, weight: 'bold' } },
+        }
+      }
+    },
+  }
+});
+
+// ── Chart 3b: 雷达图 ──
+new Chart(document.getElementById('chart3b'), {
+  type: 'radar',
+  data: {
+    labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+    datasets: [
+      { label: '付费总额 ($K)', data: [65,70,68,40,110,130,120], borderColor: COLORS.accent, backgroundColor: 'rgba(108,92,231,.15)', pointBackgroundColor: COLORS.accent },
+      { label: 'ARPPU ($)', data: [18,28,26,14,22,20,19], borderColor: COLORS.green, backgroundColor: 'rgba(0,206,201,.1)', pointBackgroundColor: COLORS.green },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      r: { grid: { color: 'rgba(255,255,255,.1)' }, angleLines: { color: 'rgba(255,255,255,.1)' }, ticks: { color: '#9ca3b4', backdropColor: 'transparent' }, pointLabels: { color: '#e4e6ed', font: { size: 13 } } }
+    },
+    plugins: defaultPlugins,
+  }
+});
+
+// ── Chart 4a: 转化漏斗 ──
+new Chart(document.getElementById('chart4a'), {
+  type: 'bar',
+  data: {
+    labels: ['去广告包用户基数','浏览赛季通行证','点击查看详情','加入购物车','完成购买'],
+    datasets: [
+      { label: '用户数', data: [10000, 4200, 1800, 600, 150], backgroundColor: [COLORS.accent, COLORS.accent2, COLORS.blue, COLORS.orange, COLORS.green], borderRadius: 6 },
+    ]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      x: { grid: { color: 'rgba(255,255,255,.06)' }, ticks: { color: '#9ca3b4' } },
+      y: { grid: { display: false }, ticks: { color: '#e4e6ed', font: { size: 11 } } },
+    },
+    plugins: {...defaultPlugins, legend: { display: false }},
+  }
+});
+
+// ── Chart 4b: Kaplan-Meier 生存曲线 ──
+const days = ['D0','D1','D2','D3','D4','D5','D6','D7','D8','D9','D10','D14','D21','D30'];
+new Chart(document.getElementById('chart4b'), {
+  type: 'line',
+  data: {
+    labels: days,
+    datasets: [
+      { label: '节日首付 (St. Patrick\'s Day)', data: [100,92,86,80,75,70,65,58,54,50,47,40,32,25], borderColor: COLORS.green, backgroundColor: 'rgba(0,206,201,.1)', fill: true, tension: .3, pointRadius: 4 },
+      { label: '非节日首付', data: [100,85,76,68,62,56,50,42,38,34,31,26,20,14], borderColor: COLORS.red, backgroundColor: 'rgba(255,107,107,.08)', fill: true, tension: .3, pointRadius: 4 },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      x: { grid: { color: 'rgba(255,255,255,.06)' }, ticks: { color: '#9ca3b4' } },
+      y: { grid: { color: 'rgba(255,255,255,.06)' }, ticks: { color: '#9ca3b4', callback: v => v+'%' }, title: { display: true, text: '留存率 (%)', color: '#9ca3b4' }, min: 0, max: 100 },
+    },
+    plugins: defaultPlugins,
+  }
+});
+
+// ── Chart 5a: 时序折线图 + 事件标记 ──
+new Chart(document.getElementById('chart5a'), {
+  type: 'line',
+  data: {
+    labels: ['18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:05','21:30','22:00','22:30','23:00','23:30','00:00'],
+    datasets: [{
+      label: '流水 ($K)',
+      data: [45,48,52,50,55,53,56,52,30,18,15,12,10,8],
+      borderColor: COLORS.accent, backgroundColor: 'rgba(108,92,231,.1)', fill: true, tension: .2, pointRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: defaultScales('流水 ($K)'),
+    plugins: {
+      ...defaultPlugins,
+      annotation: {
+        annotations: {
+          event: { type: 'line', xMin: '21:05', xMax: '21:05', borderColor: COLORS.red, borderWidth: 2, borderDash: [6,3], label: { display: true, content: '$99.99 Pack 售罄', position: 'start', backgroundColor: 'rgba(255,107,107,.9)', color: '#fff', font: { size: 11 }, padding: 4, borderRadius: 4 } },
+        }
+      },
+    },
+  }
+});
+
+// ── Chart 5b: 堆叠条形图 ──
+new Chart(document.getElementById('chart5b'), {
+  type: 'bar',
+  data: {
+    labels: ['上周', '本周'],
+    datasets: [
+      { label: '$0.99 Starter Pack', data: [80, 112], backgroundColor: COLORS.green, borderRadius: 4 },
+      { label: '$9.99 Pack', data: [120, 118], backgroundColor: COLORS.blue, borderRadius: 4 },
+      { label: '$29.99 Pack', data: [150, 148], backgroundColor: COLORS.orange, borderRadius: 4 },
+      { label: '$99.99 Pack', data: [200, 176], backgroundColor: COLORS.red, borderRadius: 4 },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      x: { stacked: true, grid: { color: 'rgba(255,255,255,.06)' }, ticks: { color: '#9ca3b4' } },
+      y: { stacked: true, grid: { color: 'rgba(255,255,255,.06)' }, ticks: { color: '#9ca3b4' }, title: { display: true, text: '金额 ($K)', color: '#9ca3b4' } },
+    },
+    plugins: defaultPlugins,
+  }
+});
+</script>
+
+</body>
+</html>

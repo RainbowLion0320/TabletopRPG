@@ -4,7 +4,6 @@ import { DmJournalModal } from '../components/game/DmJournalModal';
 import { GameMenu } from '../components/game/GameMenu';
 import { InfoDrawer } from '../components/game/InfoDrawer';
 import { NarrativePanel } from '../components/game/NarrativePanel';
-import { PartyStrip } from '../components/game/PartyStrip';
 import { SaveManagerModal } from '../components/game/SaveManagerModal';
 import { SceneStage } from '../components/game/SceneStage';
 import { TopBar } from '../components/game/TopBar';
@@ -68,6 +67,7 @@ export function GameScreen({ controller, onHome, onRestart }: GameScreenProps) {
       <NarrativePanel state={state} />
       <ActionDock
         state={state}
+        onActorChange={controller.setCurrentActor}
         onDeclarationChange={controller.setDeclaration}
         onRoll={controller.handleRoll}
         onSplitPlayerChange={controller.setCurrentSplitPlayer}
@@ -75,7 +75,6 @@ export function GameScreen({ controller, onHome, onRestart }: GameScreenProps) {
         onSubmit={controller.submitAction}
         onSuggestion={controller.applySuggestion}
       />
-      <PartyStrip state={state} />
       <ApiConfigModal open={controller.apiOpen} onClose={() => controller.setApiOpen(false)} onSave={controller.saveApi} />
       {controller.toast ? <div className="toast">{controller.toast}</div> : null}
       <DmDebugDrawer />

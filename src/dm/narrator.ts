@@ -259,16 +259,53 @@ function stripReasoningBlocks(raw: string): string {
     .replace(/<analysis>[\s\S]*?<\/analysis>/gi, '');
 }
 
+/**
+ * 从字符串中提取第一个完整的 JSON 对象（通过括号匹配）。
+ * 避免 indexOf('{') + lastIndexOf('}') 跨多个 JSON 对象截断的问题。
+ */
+function extractFirstJsonObject(str: string): string | null {
+  const start = str.indexOf('{');
+  if (start < 0) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < str.length; i++) {
+    const ch = str[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) return str.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
 function collectJsonCandidates(raw: string): string[] {
   const cleaned = stripReasoningBlocks(raw).trim();
   const candidates: string[] = [];
   for (const m of cleaned.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)) {
     if (m[1]?.trim()) candidates.push(m[1].trim());
   }
+  // 提取第一个完整 JSON 对象（括号匹配），优先于全字符串
+  const firstJson = extractFirstJsonObject(cleaned);
+  if (firstJson) candidates.push(firstJson);
   if (cleaned) candidates.push(cleaned);
-  const start = cleaned.indexOf('{');
-  const end = cleaned.lastIndexOf('}');
-  if (start >= 0 && end > start) candidates.push(cleaned.slice(start, end + 1));
   return [...new Set(candidates)];
 }
 
@@ -282,7 +319,15 @@ function parseNarratorJson(raw: string): NarratorJsonShape {
       }
     } catch (e) {
       lastErr = e instanceof Error ? e.message : String(e);
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.warn('[narrator] JSON candidate parse failed:', lastErr, '\nCandidate:', candidate.slice(0, 500));
+      }
     }
+  }
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.error('[narrator] All JSON candidates failed. Raw response:', raw.slice(0, 1000));
   }
   throw new NarratorError(`Narrator JSON 解析失败：${lastErr}`);
 }

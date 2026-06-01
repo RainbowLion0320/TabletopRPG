@@ -9,6 +9,7 @@ export type GameAction =
   | { type: 'setThinking'; value: boolean }
   | { type: 'setExploreMode'; mode: GameState['exploreMode'] }
   | { type: 'setCurrentSplitPlayer'; index: number }
+  | { type: 'setCurrentActor'; index: number }
   | { type: 'setPlayerScene'; playerIndex: number; sceneId: SceneId }
   | { type: 'setDeclaration'; playerId: string; text: string }
   | { type: 'clearDeclarations' }
@@ -750,6 +751,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         type: 'system',
         text: action.mode === 'split' ? '切换为「分头探索」模式。' : '切换为「一起行动」模式。'
       });
+    case 'setCurrentActor':
+      return { ...state, currentActorIndex: state.players.length ? clamp(action.index, 0, state.players.length - 1) : 0 };
     case 'setCurrentSplitPlayer':
       return { ...state, currentSplitPlayer: state.players.length ? clamp(action.index, 0, state.players.length - 1) : 0 };
     case 'setPlayerScene': {

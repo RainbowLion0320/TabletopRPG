@@ -240,6 +240,10 @@ export function useGameController() {
     dispatch({ type: 'setCurrentSplitPlayer', index });
   }
 
+  function setCurrentActor(index: number) {
+    dispatch({ type: 'setCurrentActor', index });
+  }
+
   function setPlayerScene(playerIndex: number, sceneId: SceneId) {
     dispatch({ type: 'setPlayerScene', playerIndex, sceneId });
   }
@@ -268,6 +272,7 @@ export function useGameController() {
     saves: saveSlots.saves,
     setApiOpen,
     setCurrentSplitPlayer,
+    setCurrentActor,
     setDeclaration,
     setDrawerOpen,
     setExploreMode,
