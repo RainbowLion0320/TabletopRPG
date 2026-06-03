@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from 'vitest/config';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { promises as fs } from 'fs';
 import path from 'path';
