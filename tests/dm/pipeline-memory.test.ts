@@ -11,7 +11,16 @@ const config: ApiConfig = {
 };
 
 function jsonResponse(body: unknown): Response {
-  return new Response(JSON.stringify(body), {
+  const content = typeof body === 'string' ? body : JSON.stringify(body);
+  return new Response(JSON.stringify({
+    output_text: content,
+    output: [
+      {
+        type: 'message',
+        content: [{ type: 'output_text', text: content }]
+      }
+    ]
+  }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' }
   });
@@ -22,11 +31,7 @@ function bodyFrom(init: RequestInit | undefined): Record<string, unknown> {
 }
 
 function systemText(body: Record<string, unknown>): string {
-  const system = body.system;
-  if (typeof system === 'string') return system;
-  const messages = Array.isArray(body.messages) ? body.messages : [];
-  const first = messages[0] as { content?: unknown } | undefined;
-  return typeof first?.content === 'string' ? first.content : '';
+  return typeof body.instructions === 'string' ? body.instructions : '';
 }
 
 function makeHistoryPairs(count: number): ConversationTurn[] {
@@ -47,39 +52,22 @@ describe('runDmTurn cognitive memory outputs', () => {
       const system = systemText(body);
       if (system.includes('事实抽取助手')) {
         return jsonResponse({
-          choices: [
+          facts: [
             {
-              message: {
-                content: JSON.stringify({
-                  facts: [
-                    {
-                      actor: '伊莎贝拉·摩勒',
-                      predicate: 'stance_toward',
-                      target: '亨利',
-                      value: '信任'
-                    }
-                  ]
-                })
-              }
+              actor: '伊莎贝拉·摩勒',
+              predicate: 'stance_toward',
+              target: '亨利',
+              value: '信任'
             }
           ]
         });
       }
       if (system.includes('COC 第七版 AI DM Agent')) {
         return jsonResponse({
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  narrative: '伊莎贝拉的语气软化，开始信任亨利。',
-                  activeNpc: '伊莎贝拉·摩勒',
-                  nextPrompt: '她等待你们继续询问。',
-                  playerChoices: ['继续追问']
-                }),
-                tool_calls: []
-              }
-            }
-          ]
+          narrative: '伊莎贝拉的语气软化，开始信任亨利。',
+          activeNpc: '伊莎贝拉·摩勒',
+          nextPrompt: '她等待你们继续询问。',
+          playerChoices: ['继续追问']
         });
       }
       throw new Error(`unexpected prompt: ${system.slice(0, 80)}`);
@@ -116,54 +104,35 @@ describe('runDmTurn cognitive memory outputs', () => {
       const body = bodyFrom(init);
       const system = systemText(body);
       if (system.includes('压缩为一段 200-400 字')) {
-        return jsonResponse({
-          choices: [{ message: { content: JSON.stringify({ summary: '玩家已完成前情调查。' }) } }]
-        });
+        return jsonResponse({ summary: '玩家已完成前情调查。' });
       }
       if (system.includes('认知合成器')) {
         return jsonResponse({
-          choices: [
+          npcMindModels: {
+            '伊莎贝拉·摩勒': {
+              coreMotivation: '找到父亲',
+              currentStance: '信任亨利',
+              playerExceptions: { 亨利: '更愿意透露家事' }
+            }
+          },
+          prospectiveIntents: [
             {
-              message: {
-                content: JSON.stringify({
-                  npcMindModels: {
-                    '伊莎贝拉·摩勒': {
-                      coreMotivation: '找到父亲',
-                      currentStance: '信任亨利',
-                      playerExceptions: { 亨利: '更愿意透露家事' }
-                    }
-                  },
-                  prospectiveIntents: [
-                    {
-                      owner: '伊莎贝拉·摩勒',
-                      predictedAction: '主动交出父亲信件',
-                      triggerCondition: '调查员继续安抚'
-                    }
-                  ]
-                })
-              }
+              owner: '伊莎贝拉·摩勒',
+              predictedAction: '主动交出父亲信件',
+              triggerCondition: '调查员继续安抚'
             }
           ]
         });
       }
       if (system.includes('事实抽取助手')) {
-        return jsonResponse({ choices: [{ message: { content: JSON.stringify({ facts: [] }) } }] });
+        return jsonResponse({ facts: [] });
       }
       if (system.includes('COC 第七版 AI DM Agent')) {
         return jsonResponse({
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  narrative: '她仍在等待你们的判断。',
-                  activeNpc: '伊莎贝拉·摩勒',
-                  nextPrompt: '继续行动。',
-                  playerChoices: ['检查信件']
-                }),
-                tool_calls: []
-              }
-            }
-          ]
+          narrative: '她仍在等待你们的判断。',
+          activeNpc: '伊莎贝拉·摩勒',
+          nextPrompt: '继续行动。',
+          playerChoices: ['检查信件']
         });
       }
       throw new Error(`unexpected prompt: ${system.slice(0, 80)}`);
@@ -224,38 +193,21 @@ describe('runDmTurn cognitive memory outputs', () => {
       systemPrompts.push(system);
       if (system.includes('事实抽取助手')) {
         return jsonResponse({
-          choices: [
+          facts: [
             {
-              message: {
-                content: JSON.stringify({
-                  facts: [
-                    {
-                      actor: '伊莎贝拉·摩勒',
-                      predicate: 'knowledge',
-                      value: '愿意交出父亲信件'
-                    }
-                  ]
-                })
-              }
+              actor: '伊莎贝拉·摩勒',
+              predicate: 'knowledge',
+              value: '愿意交出父亲信件'
             }
           ]
         });
       }
       if (system.includes('COC 第七版 AI DM Agent')) {
         return jsonResponse({
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  narrative: '伊莎贝拉记起先前的承诺，取出父亲的私人信件。',
-                  activeNpc: '伊莎贝拉·摩勒',
-                  nextPrompt: '信件摊在桌上。',
-                  playerChoices: ['阅读信件']
-                }),
-                tool_calls: []
-              }
-            }
-          ]
+          narrative: '伊莎贝拉记起先前的承诺，取出父亲的私人信件。',
+          activeNpc: '伊莎贝拉·摩勒',
+          nextPrompt: '信件摊在桌上。',
+          playerChoices: ['阅读信件']
         });
       }
       throw new Error(`unexpected prompt: ${system.slice(0, 80)}`);

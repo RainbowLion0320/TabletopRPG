@@ -19,6 +19,13 @@ import type {
   NpcMindModel,
   ProspectiveIntent
 } from '../../types/game';
+import {
+  extractResponseText,
+  jsonSchemaTextFormat,
+  readResponsesJson,
+  responsesEndpoint,
+  responsesModel
+} from '../openaiResponses';
 
 // ---------- 输入 / 输出 ----------
 
@@ -131,81 +138,67 @@ function buildSynthesizerUserMessage(input: System2Input): string {
   return lines.join('\n');
 }
 
+const SYSTEM2_RESPONSE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    npcMindModels: {
+      type: 'object',
+      additionalProperties: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          coreMotivation: { type: 'string' },
+          currentStance: { type: 'string' },
+          playerExceptions: {
+            type: 'object',
+            additionalProperties: { type: 'string' }
+          }
+        },
+        required: ['coreMotivation', 'currentStance', 'playerExceptions']
+      }
+    },
+    prospectiveIntents: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          owner: { type: 'string' },
+          predictedAction: { type: 'string' },
+          triggerCondition: { type: 'string' }
+        },
+        required: ['owner', 'predictedAction', 'triggerCondition']
+      }
+    }
+  },
+  required: ['npcMindModels', 'prospectiveIntents']
+} satisfies Record<string, unknown>;
+
 async function callSynthesizerLLM(
   config: ApiConfig,
   input: System2Input
 ): Promise<string> {
   const userMessage = buildSynthesizerUserMessage(input);
 
-  if (config.provider === 'anthropic') {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': config.apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: config.model || 'claude-3-5-sonnet-latest',
-        max_tokens: 1024,
-        system: SYNTHESIZER_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: userMessage }]
-      })
-    });
-    const data = await readJsonResponse(response);
-    if (!response.ok || data.error) {
-      throw new Error(data.error?.message ?? `HTTP ${response.status}`);
-    }
-    return data.content?.[0]?.text || '';
-  }
-
-  const endpoint = (
-    config.provider === 'mimo'
-      ? config.endpoint || 'https://token-plan-cn.xiaomimimo.com/v1'
-      : config.endpoint || 'https://api.openai.com/v1'
-  ).replace(/\/+$/, '');
-  const model =
-    config.provider === 'mimo'
-      ? config.model || 'mimo-v2.5-pro'
-      : config.model || 'gpt-4o';
-
-  const response = await fetch(`${endpoint}/chat/completions`, {
+  const response = await fetch(`${responsesEndpoint(config)}/responses`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${config.apiKey}`
     },
     body: JSON.stringify({
-      model,
-      max_tokens: 1024,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: SYNTHESIZER_SYSTEM_PROMPT },
-        { role: 'user', content: userMessage }
-      ]
+      model: responsesModel(config),
+      instructions: SYNTHESIZER_SYSTEM_PROMPT,
+      input: [{ role: 'user', content: userMessage }],
+      max_output_tokens: 1024,
+      text: jsonSchemaTextFormat('system2_memory', SYSTEM2_RESPONSE_SCHEMA),
+      store: false
     })
   });
-  const data = await readJsonResponse(response);
-  if (!response.ok || data.error) {
-    throw new Error(data.error?.message ?? `HTTP ${response.status}`);
-  }
-  return data.choices?.[0]?.message?.content || '';
+  const data = await readResponsesJson(response, 'system2Synthesizer');
+  return extractResponseText(data);
 }
-
-async function readJsonResponse(response: Response): Promise<{
-  error?: { message?: string };
-  content?: Array<{ text?: string }>;
-  choices?: Array<{ message?: { content?: string } }>;
-}> {
-  const text = await response.text();
-  try {
-    return text ? JSON.parse(text) : {};
-  } catch {
-    if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.slice(0, 120)}`);
-    throw new Error(`system2Synthesizer 响应不是 JSON：${text.slice(0, 120)}`);
-  }
-}
-
 // ---------- JSON 解析 ----------
 
 /** 解析 LLM 输出为 System2Output；宽容解析，schema 不合则丢弃。 */

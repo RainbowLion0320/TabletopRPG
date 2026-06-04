@@ -1,9 +1,10 @@
+import type {} from 'vitest/config';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { promises as fs } from 'fs';
 import path from 'path';
 
-const ENV_KEYS = ['VITE_AI_PROVIDER', 'VITE_AI_API_KEY', 'VITE_AI_MODEL', 'VITE_AI_ENDPOINT'] as const;
+const ENV_KEYS = ['VITE_AI_API_KEY', 'VITE_AI_MODEL'] as const;
 type EnvKey = (typeof ENV_KEYS)[number];
 
 /**
@@ -27,16 +28,12 @@ function envWriterPlugin(): Plugin {
         req.on('end', async () => {
           try {
             const body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}') as {
-              provider?: string;
               apiKey?: string;
               model?: string;
-              endpoint?: string;
             };
             const incoming: Partial<Record<EnvKey, string>> = {
-              VITE_AI_PROVIDER: (body.provider ?? '').trim(),
               VITE_AI_API_KEY: (body.apiKey ?? '').trim(),
-              VITE_AI_MODEL: (body.model ?? '').trim(),
-              VITE_AI_ENDPOINT: (body.endpoint ?? '').trim()
+              VITE_AI_MODEL: (body.model ?? '').trim()
             };
             await mergeEnvLocal(incoming);
             res.statusCode = 200;

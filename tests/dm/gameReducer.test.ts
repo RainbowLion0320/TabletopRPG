@@ -116,6 +116,18 @@ describe('gameReducer appendEvents', () => {
   });
 });
 
+describe('gameReducer actor selection', () => {
+  it('does not let together-mode actor clicks skip the sequential action order', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' }), makeInvestigator({ name: '艾达' })]
+    });
+
+    const next = gameReducer(state, { type: 'setCurrentActor', index: 1 });
+
+    expect(next.currentActorIndex).toBe(0);
+  });
+});
+
 describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
   it('hydrates a save without eventLog/pendingConsequences with empty arrays', () => {
     const stateLikeV2 = {

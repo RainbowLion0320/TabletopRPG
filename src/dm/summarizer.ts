@@ -9,6 +9,13 @@
  */
 
 import type { ApiConfig, ConversationTurn, GameState } from '../types/game';
+import {
+  extractResponseText,
+  jsonSchemaTextFormat,
+  readResponsesJson,
+  responsesEndpoint,
+  responsesModel
+} from './openaiResponses';
 
 /** 近 N 对（user/assistant）原文不被总结。8 对 = 16 条。 */
 export const RECENT_TURN_PAIRS_KEEP = 8;
@@ -86,6 +93,15 @@ interface SummarizerJson {
   summary?: unknown;
 }
 
+const SUMMARY_RESPONSE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    summary: { type: 'string' }
+  },
+  required: ['summary']
+} satisfies Record<string, unknown>;
+
 async function summarizeChunk(
   config: ApiConfig,
   chunk: ConversationTurn[],
@@ -93,57 +109,24 @@ async function summarizeChunk(
 ): Promise<string> {
   const userMessage = buildSummarizerUserMessage(chunk, previousSummary);
 
-  if (config.provider === 'anthropic') {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': config.apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: config.model || 'claude-3-5-sonnet-latest',
-        max_tokens: 1024,
-        system: SUMMARIZE_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: userMessage }]
-      })
-    });
-    const data = await readJsonResponse(response);
-    if (!response.ok || data.error) throw new Error(data.error?.message ?? `HTTP ${response.status}`);
-    return parseSummary(data.content?.[0]?.text || '');
-  }
-
-  const endpoint = (
-    config.provider === 'mimo'
-      ? config.endpoint || 'https://token-plan-cn.xiaomimimo.com/v1'
-      : config.endpoint || 'https://api.openai.com/v1'
-  ).replace(/\/+$/, '');
-  const model =
-    config.provider === 'mimo'
-      ? config.model || 'mimo-v2.5-pro'
-      : config.model || 'gpt-4o';
-
-  const response = await fetch(`${endpoint}/chat/completions`, {
+  const response = await fetch(`${responsesEndpoint(config)}/responses`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${config.apiKey}`
     },
     body: JSON.stringify({
-      model,
-      max_tokens: 1024,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: SUMMARIZE_SYSTEM_PROMPT },
-        { role: 'user', content: userMessage }
-      ]
+      model: responsesModel(config),
+      instructions: SUMMARIZE_SYSTEM_PROMPT,
+      input: [{ role: 'user', content: userMessage }],
+      max_output_tokens: 1024,
+      text: jsonSchemaTextFormat('memory_summary', SUMMARY_RESPONSE_SCHEMA),
+      store: false
     })
   });
-  const data = await readJsonResponse(response);
-  if (!response.ok || data.error) throw new Error(data.error?.message ?? `HTTP ${response.status}`);
-  return parseSummary(data.choices?.[0]?.message?.content || '');
+  const data = await readResponsesJson(response, 'Summarizer');
+  return parseSummary(extractResponseText(data));
 }
-
 function buildSummarizerUserMessage(chunk: ConversationTurn[], previousSummary: string): string {
   const head = previousSummary.trim()
     ? `已有前情提要：\n${previousSummary.trim()}\n\n请整合进新版日志。`
@@ -152,16 +135,6 @@ function buildSummarizerUserMessage(chunk: ConversationTurn[], previousSummary: 
     .map((turn) => `[${turn.role === 'user' ? '玩家' : 'DM'}] ${turn.content}`)
     .join('\n\n');
   return `${head}\n\n以下是需要压缩的回合原文：\n${body}`;
-}
-
-async function readJsonResponse(response: Response) {
-  const text = await response.text();
-  try {
-    return text ? JSON.parse(text) : {};
-  } catch {
-    if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.slice(0, 120)}`);
-    throw new Error(`Summarizer 响应不是 JSON：${text.slice(0, 120)}`);
-  }
 }
 
 function parseSummary(raw: string): string {

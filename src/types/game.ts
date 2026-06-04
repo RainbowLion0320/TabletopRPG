@@ -333,7 +333,7 @@ export interface AiResponse {
 }
 
 export interface ApiConfig {
-  provider: 'openai' | 'anthropic' | 'mimo' | 'custom';
+  provider: 'openai';
   apiKey: string;
   endpoint?: string;
   model?: string;

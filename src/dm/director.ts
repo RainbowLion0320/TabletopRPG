@@ -3,7 +3,7 @@
  *
  * 责任：
  * - 入口护栏：根据当前 ctx 计算允许的工具集（暂时允许全部 5 个，后续可按 intent 收窄）
- * - 出口护栏：把 Narrator 返回的 tool_calls 逐个做语义校验
+ * - 出口护栏：把 Narrator 返回的 function calls 逐个做语义校验
  *   · propose_scene_change 目标必须邻接当前场景
  *   · propose_state_update.sceneChange 同样需要邻接
  *   · propose_state_update.newItems 必须是 KB 已知物品
@@ -75,7 +75,7 @@ export function allowedTools(
 }
 
 /**
- * 出口护栏：逐个语义校验 tool_calls。
+ * 出口护栏：逐个语义校验 function calls。
  *
  * @param calls Narrator 原始调用
  * @param ctx   设计上下文

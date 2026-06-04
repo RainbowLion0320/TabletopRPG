@@ -12,7 +12,7 @@
  */
 
 import type { ApiConfig, GameState, NpcMindModel, ProspectiveIntent, SceneId } from '../types/game';
-import type { PlayerAction } from '../services/aiDm';
+import { AiResponseFormatError, type PlayerAction } from '../services/aiDm';
 import { buildDmContext } from './contextBuilder';
 import {
   computeRevealedSecretIds,
@@ -22,7 +22,7 @@ import {
   getNpcSnapshot,
   getSceneSnapshot
 } from './knowledgeBase';
-import { callNarrator } from './narrator';
+import { callNarrator, NarratorError } from './narrator';
 import { allowedTools, validateToolCalls } from './director';
 import { resolveDmTurn } from './stateResolver';
 import { maybeConsolidateMemory, SUMMARIZE_TRIGGER_PAIRS } from './summarizer';
@@ -243,14 +243,22 @@ export async function runDmTurn(
     return '';
   };
 
-  const narrator = await callNarrator(config, {
-    ctx,
-    actions: input.actions,
-    mode: input.state.exploreMode,
-    history,
-    allowedToolNames: allowed,
-    lookupResolver
-  });
+  let narrator: Awaited<ReturnType<typeof callNarrator>>;
+  try {
+    narrator = await callNarrator(config, {
+      ctx,
+      actions: input.actions,
+      mode: input.state.exploreMode,
+      history,
+      allowedToolNames: allowed,
+      lookupResolver
+    });
+  } catch (err) {
+    if (err instanceof NarratorError) {
+      throw new AiResponseFormatError(err.message);
+    }
+    throw err;
+  }
 
   // 4) 出口护栏：逐个语义校验工具调用，同时检查是否越出 allowed 集
   const directorResult = validateToolCalls(narrator.toolCalls, directorCtx, allowed);
@@ -258,7 +266,7 @@ export async function runDmTurn(
   if (import.meta.env.DEV && directorResult.rejected.length) {
     // eslint-disable-next-line no-console
     console.warn(
-      '[pipeline] director rejected tool_calls:',
+      '[pipeline] director rejected function calls:',
       directorResult.rejected.map((r) => `${r.call.name}: ${r.reason}`)
     );
   }

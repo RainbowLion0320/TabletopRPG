@@ -1,5 +1,5 @@
 /**
- * State Resolver - 把 Narrator 输出 + Director 校验过的 tool_calls
+ * State Resolver - 把 Narrator 输出 + Director 校验过的 function calls
  * 翻译为前端 reducer 能消费的 AiResponse + DMEvent[] 时间线。
  *
  * 关键点：

@@ -752,6 +752,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         text: action.mode === 'split' ? '切换为「分头探索」模式。' : '切换为「一起行动」模式。'
       });
     case 'setCurrentActor':
+      if (state.exploreMode === 'together') return state;
       return { ...state, currentActorIndex: state.players.length ? clamp(action.index, 0, state.players.length - 1) : 0 };
     case 'setCurrentSplitPlayer':
       return { ...state, currentSplitPlayer: state.players.length ? clamp(action.index, 0, state.players.length - 1) : 0 };

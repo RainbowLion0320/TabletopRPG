@@ -90,19 +90,13 @@ export function deleteSave(id: number) {
  * when the user explicitly saves a config in the UI.
  *
  * Required for non-empty config: VITE_AI_API_KEY.
- * Optional: VITE_AI_PROVIDER (default 'mimo'), VITE_AI_MODEL, VITE_AI_ENDPOINT.
+ * Optional: VITE_AI_MODEL.
  */
 export function getEnvDefaultApiConfig(): ApiConfig {
   const env = import.meta.env;
-  const rawProvider = (env.VITE_AI_PROVIDER ?? 'mimo').toLowerCase();
-  const provider: ApiConfig['provider'] =
-    rawProvider === 'openai' || rawProvider === 'anthropic' || rawProvider === 'custom'
-      ? rawProvider
-      : 'mimo';
   return {
-    provider,
+    provider: 'openai',
     apiKey: env.VITE_AI_API_KEY ?? '',
-    endpoint: env.VITE_AI_ENDPOINT ?? '',
     model: env.VITE_AI_MODEL ?? ''
   };
 }
@@ -110,7 +104,13 @@ export function getEnvDefaultApiConfig(): ApiConfig {
 export function readApiConfig(): ApiConfig | null {
   try {
     const cfg = JSON.parse(localStorage.getItem(API_KEY) || 'null') as ApiConfig | null;
-    if (cfg && cfg.apiKey) return cfg;
+    if (cfg && cfg.apiKey) {
+      return {
+        provider: 'openai',
+        apiKey: cfg.apiKey,
+        model: cfg.model ?? ''
+      };
+    }
   } catch {
     // fall through to env defaults
   }

@@ -26,7 +26,7 @@ export interface DmTrace {
   ctx: DmContext;
   /** Narrator 原始返回 */
   narratorRaw: string;
-  /** Narrator 是否原生返回了 tool_calls 字段（false 表示走 JSON 兜底） */
+  /** Narrator 是否原生返回了 function_call items 字段（false 表示走 JSON 兜底） */
   usedFunctionCalling: boolean;
   /** Narrator 解析出的全部工具调用（未经 Director 校验） */
   toolCalls: DmToolCall[];

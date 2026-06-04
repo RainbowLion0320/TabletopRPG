@@ -2,8 +2,8 @@
  * DM Agent 工具契约。
  *
  * 这些 schema 同时用于：
- * 1. 拼装 OpenAI function calling 的 `tools` 字段，发给模型；
- * 2. 接收模型回包后的 tool_calls 校验，违规调用直接丢弃。
+ * 1. 拼装 OpenAI Responses function tools，发给模型；
+ * 2. 接收模型回包后的 function_call items 校验，违规调用直接丢弃。
  *
  * 重要：状态权威方在前端。AI 永远不能直接改 HP / scene / flags，
  * 只能 propose_*；Director 校验、StateResolver 落地。
@@ -13,7 +13,7 @@ import type { DmToolCall, DmToolName } from './types';
 
 // ---------- OpenAI function calling schema ----------
 
-/** OpenAI 兼容的 tools 数组（用于 chat.completions 请求 body） */
+/** OpenAI Responses function tool schema. */
 export interface OpenAiTool {
   type: 'function';
   function: {
@@ -26,6 +26,22 @@ export interface OpenAiTool {
       additionalProperties?: boolean;
     };
   };
+}
+
+export interface OpenAiResponseTool {
+  type: 'function';
+  name: DmToolName;
+  description: string;
+  parameters: OpenAiTool['function']['parameters'];
+}
+
+export function toResponsesTools(tools: OpenAiTool[]): OpenAiResponseTool[] {
+  return tools.map((tool) => ({
+    type: 'function',
+    name: tool.function.name,
+    description: tool.function.description,
+    parameters: tool.function.parameters
+  }));
 }
 
 export const DM_TOOLS: OpenAiTool[] = [
@@ -194,10 +210,12 @@ export const DM_TOOLS: OpenAiTool[] = [
 
 // ---------- 解析与校验 ----------
 
-interface OpenAiToolCallPayload {
+interface OpenAiResponseFunctionCallPayload {
   id?: string;
+  call_id?: string;
   type?: string;
-  function?: { name?: string; arguments?: string };
+  name?: string;
+  arguments?: string;
 }
 
 const TOOL_NAME_SET = new Set<DmToolName>([
@@ -209,27 +227,20 @@ const TOOL_NAME_SET = new Set<DmToolName>([
   'schedule_consequence',
   'update_npc_mind'
 ]);
-
-/**
- * 把 OpenAI 兼容回包里的 tool_calls 数组解析成内部 DmToolCall[]。
- * 不合法的项静默丢弃；返回值已经是"形态合法"的工具调用。
- *
- * @param raw chat.completions 中 message.tool_calls 字段（任意模型可能给 null/undefined/数组）
- */
-export function parseToolCalls(raw: unknown): DmToolCall[] {
+export function parseResponseToolCalls(raw: unknown): DmToolCall[] {
   if (!Array.isArray(raw)) return [];
   const out: DmToolCall[] = [];
-  for (const item of raw as OpenAiToolCallPayload[]) {
+  for (const item of raw as OpenAiResponseFunctionCallPayload[]) {
     if (!item || typeof item !== 'object') continue;
-    if (item.type && item.type !== 'function') continue;
-    const name = item.function?.name;
+    if (item.type !== 'function_call') continue;
+    const name = item.name;
     if (!name || !TOOL_NAME_SET.has(name as DmToolName)) continue;
-    const args = parseToolArguments(item.function?.arguments);
+    const args = parseToolArguments(item.arguments);
     if (!args) continue;
     out.push({
       name: name as DmToolName,
       arguments: args,
-      callId: item.id
+      callId: item.call_id ?? item.id
     });
   }
   return out;

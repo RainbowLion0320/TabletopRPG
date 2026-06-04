@@ -32,3 +32,23 @@ test('game controller owns AI, dice, save, and action-flow dependencies', async 
   expect(controllerSource).toContain('saveCurrentGame');
 });
 
+test('AI model integration uses Responses API only', async () => {
+  const files = [
+    'src/dm/narrator.ts',
+    'src/dm/tools.ts',
+    'src/dm/summarizer.ts',
+    'src/dm/memory/factExtractor.ts',
+    'src/dm/memory/system2Synthesizer.ts',
+    'tests/dm/pipeline-memory.test.ts'
+  ];
+
+  const sources = await Promise.all(files.map(async (file) => `${file}\n${await readSource(file)}`));
+  const joined = sources.join('\n\n');
+
+  expect(joined).not.toContain('chat/completions');
+  expect(joined).not.toContain('chat.completions');
+  expect(joined).not.toContain('response_format');
+  expect(joined).not.toContain('tool_calls');
+  expect(joined).not.toContain('choices:');
+  expect(joined).not.toContain('parseToolCalls');
+});

@@ -12,6 +12,13 @@
  */
 
 import type { ApiConfig, AtomicFact, FactPredicate } from '../../types/game';
+import {
+  extractResponseText,
+  jsonSchemaTextFormat,
+  readResponsesJson,
+  responsesEndpoint,
+  responsesModel
+} from '../openaiResponses';
 import { findSupersedeTarget } from './evolutionChain';
 
 // ---------- 输入 / 输出 ----------
@@ -151,81 +158,52 @@ function buildExtractorUserMessage(input: FactExtractorInput): string {
   return lines.join('\n');
 }
 
+const FACT_EXTRACTOR_RESPONSE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    facts: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          actor: { type: 'string' },
+          predicate: { type: 'string', enum: FACT_PREDICATES },
+          target: { type: 'string' },
+          value: { type: 'string' }
+        },
+        required: ['actor', 'predicate', 'target', 'value']
+      }
+    }
+  },
+  required: ['facts']
+} satisfies Record<string, unknown>;
+
 async function callExtractorLLM(
   config: ApiConfig,
   input: FactExtractorInput
 ): Promise<string> {
   const userMessage = buildExtractorUserMessage(input);
 
-  if (config.provider === 'anthropic') {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': config.apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: config.model || 'claude-3-5-sonnet-latest',
-        max_tokens: 512,
-        system: EXTRACTOR_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: userMessage }]
-      })
-    });
-    const data = await readJsonResponse(response);
-    if (!response.ok || data.error) {
-      throw new Error(data.error?.message ?? `HTTP ${response.status}`);
-    }
-    return data.content?.[0]?.text || '';
-  }
-
-  const endpoint = (
-    config.provider === 'mimo'
-      ? config.endpoint || 'https://token-plan-cn.xiaomimimo.com/v1'
-      : config.endpoint || 'https://api.openai.com/v1'
-  ).replace(/\/+$/, '');
-  const model =
-    config.provider === 'mimo'
-      ? config.model || 'mimo-v2.5-pro'
-      : config.model || 'gpt-4o';
-
-  const response = await fetch(`${endpoint}/chat/completions`, {
+  const response = await fetch(`${responsesEndpoint(config)}/responses`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${config.apiKey}`
     },
     body: JSON.stringify({
-      model,
-      max_tokens: 512,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: EXTRACTOR_SYSTEM_PROMPT },
-        { role: 'user', content: userMessage }
-      ]
+      model: responsesModel(config),
+      instructions: EXTRACTOR_SYSTEM_PROMPT,
+      input: [{ role: 'user', content: userMessage }],
+      max_output_tokens: 512,
+      text: jsonSchemaTextFormat('turn_facts', FACT_EXTRACTOR_RESPONSE_SCHEMA),
+      store: false
     })
   });
-  const data = await readJsonResponse(response);
-  if (!response.ok || data.error) {
-    throw new Error(data.error?.message ?? `HTTP ${response.status}`);
-  }
-  return data.choices?.[0]?.message?.content || '';
+  const data = await readResponsesJson(response, 'factExtractor');
+  return extractResponseText(data);
 }
-
-async function readJsonResponse(response: Response): Promise<{
-  error?: { message?: string };
-  content?: Array<{ text?: string }>;
-  choices?: Array<{ message?: { content?: string } }>;
-}> {
-  const text = await response.text();
-  try {
-    return text ? JSON.parse(text) : {};
-  } catch {
-    if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.slice(0, 120)}`);
-    throw new Error(`factExtractor 响应不是 JSON：${text.slice(0, 120)}`);
-  }
-}
-
 // ---------- JSON 解析 ----------
 
 /** 解析 LLM 返回，宽容地从大段文本中抠出 JSON 对象。 */

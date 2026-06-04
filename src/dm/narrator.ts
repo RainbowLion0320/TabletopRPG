@@ -2,10 +2,10 @@
  * Narrator - DM Agent v2 的主 LLM 调用层。
  *
  * 责任：
- * 1. 把 DmContext + 玩家行动拼成 system / user / tools 三段；
- * 2. 调 OpenAI 兼容的 chat.completions（function calling 模式）；
- * 3. 解析回包：narrative / nextPrompt / playerChoices / activeNpc + tool_calls[]；
- * 4. 兼容性兜底：模型不支持 tool calling 时切回带 JSON schema 的纯 JSON 响应。
+ * 1. 把 DmContext + 玩家行动拼成 instructions / input / tools 三段；
+ * 2. 调 OpenAI Responses API（function calling + structured output）；
+ * 3. 解析回包：narrative / nextPrompt / playerChoices / activeNpc + function_call items；
+ * 4. JSON 解析失败时带原始响应重试修复。
  *
  * 注意：这层不做规则裁决（那是 Director / StateResolver 的事），
  * 只做"把 context 翻译成 prompt"和"把响应翻译成结构化数据"。
@@ -14,8 +14,21 @@
 import type { ApiConfig, ExploreMode } from '../types/game';
 import type { PlayerAction } from '../services/aiDm';
 import type { DmContext } from './contextBuilder';
-import { DM_TOOLS, parseToolCalls } from './tools';
+import { DM_TOOLS, parseResponseToolCalls, toResponsesTools } from './tools';
 import type { DmToolCall, DmToolName } from './types';
+import {
+  extractResponseText,
+  historyToResponseInput,
+  jsonSchemaTextFormat,
+  readResponsesJson,
+  responseFunctionCallItems,
+  responsesEndpoint,
+  responsesModel,
+  type ResponseFunctionCallItem,
+  type ResponseFunctionCallOutputItem,
+  type ResponseInputItem,
+  type ResponseInputMessage
+} from './openaiResponses';
 
 // ---------- 输出契约 ----------
 
@@ -32,7 +45,7 @@ export interface NarratorOutput {
   playerChoices: string[];
   /** 已经形态合法的工具调用；规则校验交给 Director */
   toolCalls: DmToolCall[];
-  /** 调试用：模型是否原生返回了 tool_calls 字段（用于切换兜底） */
+  /** 调试用：模型是否原生返回了 function_call items */
   usedFunctionCalling: boolean;
 }
 
@@ -260,40 +273,45 @@ function stripReasoningBlocks(raw: string): string {
 }
 
 /**
- * 从字符串中提取第一个完整的 JSON 对象（通过括号匹配）。
- * 避免 indexOf('{') + lastIndexOf('}') 跨多个 JSON 对象截断的问题。
+ * 从字符串中提取所有完整 JSON 对象（通过括号匹配）。
+ * 避免 indexOf('{') + lastIndexOf('}') 跨多个 JSON 对象截断的问题，也避免只看第一个草稿对象。
  */
-function extractFirstJsonObject(str: string): string | null {
-  const start = str.indexOf('{');
-  if (start < 0) return null;
-
+function extractJsonObjects(str: string): string[] {
+  const out: string[] = [];
+  let start = -1;
   let depth = 0;
   let inString = false;
   let escaped = false;
 
-  for (let i = start; i < str.length; i++) {
+  for (let i = 0; i < str.length; i++) {
     const ch = str[i];
-    if (escaped) {
-      escaped = false;
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (ch === '\\') {
+        escaped = true;
+        continue;
+      }
+      if (ch === '"') inString = false;
       continue;
     }
-    if (ch === '\\') {
-      escaped = true;
-      continue;
-    }
-    if (ch === '"') {
-      inString = !inString;
-      continue;
-    }
-    if (inString) continue;
 
-    if (ch === '{') depth++;
-    else if (ch === '}') {
+    if (ch === '"') {
+      if (depth > 0) inString = true;
+    } else if (ch === '{') {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (ch === '}' && depth > 0) {
       depth--;
-      if (depth === 0) return str.slice(start, i + 1);
+      if (depth === 0 && start >= 0) {
+        out.push(str.slice(start, i + 1));
+        start = -1;
+      }
     }
   }
-  return null;
+  return out;
 }
 
 function collectJsonCandidates(raw: string): string[] {
@@ -302,9 +320,8 @@ function collectJsonCandidates(raw: string): string[] {
   for (const m of cleaned.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)) {
     if (m[1]?.trim()) candidates.push(m[1].trim());
   }
-  // 提取第一个完整 JSON 对象（括号匹配），优先于全字符串
-  const firstJson = extractFirstJsonObject(cleaned);
-  if (firstJson) candidates.push(firstJson);
+  // 提取完整 JSON 对象（括号匹配），优先于全字符串
+  candidates.push(...extractJsonObjects(cleaned));
   if (cleaned) candidates.push(cleaned);
   return [...new Set(candidates)];
 }
@@ -315,6 +332,11 @@ function parseNarratorJson(raw: string): NarratorJsonShape {
     try {
       const parsed = JSON.parse(candidate);
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const narrative = (parsed as NarratorJsonShape).narrative;
+        if (typeof narrative !== 'string' || !narrative.trim()) {
+          lastErr = 'narrative 字段缺失或为空';
+          continue;
+        }
         return parsed as NarratorJsonShape;
       }
     } catch (e) {
@@ -368,99 +390,74 @@ interface NarratorRequestOptions {
   tools?: typeof DM_TOOLS;
 }
 
-async function readJsonResponse(response: Response) {
-  const text = await response.text();
-  try {
-    return text ? JSON.parse(text) : {};
-  } catch {
-    if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.slice(0, 120)}`);
-    throw new Error(`AI 响应不是 JSON：${text.slice(0, 120)}`);
-  }
-}
-
-interface OpenAiChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
-
 interface RawNarratorPayload {
   raw: string;
-  rawToolCalls: unknown;
-  /** 完整的 assistant message（供下一轮作为 history 追加发送） */
-  assistantMessage: OpenAiAssistantMessage;
+  rawToolCalls: ResponseFunctionCallItem[];
+  outputItems: ResponseInputItem[];
 }
 
-interface OpenAiAssistantMessage {
-  role: 'assistant';
-  content: string | null;
-  tool_calls?: unknown;
-}
+const NARRATOR_RESPONSE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    narrative: { type: 'string' },
+    activeNpc: {
+      anyOf: [{ type: 'string' }, { type: 'null' }]
+    },
+    nextPrompt: { type: 'string' },
+    playerChoices: {
+      type: 'array',
+      items: { type: 'string' }
+    }
+  },
+  required: ['narrative', 'activeNpc', 'nextPrompt', 'playerChoices']
+} satisfies Record<string, unknown>;
 
-interface OpenAiToolMessage {
-  role: 'tool';
-  tool_call_id: string;
-  content: string;
-}
+const MAX_REPAIR_CONTEXT_CHARS = 3000;
 
-type OpenAiAnyMessage = OpenAiChatMessage | OpenAiAssistantMessage | OpenAiToolMessage;
+function buildJsonRepairMessage(raw: string, errorMessage: string): ResponseInputMessage {
+  const trimmed = raw.trim();
+  const excerpt =
+    trimmed.length > MAX_REPAIR_CONTEXT_CHARS
+      ? `${trimmed.slice(0, MAX_REPAIR_CONTEXT_CHARS)}\n...(truncated)`
+      : trimmed;
+  return {
+    role: 'user',
+    content: `Previous Narrator response was invalid JSON. Parse error: ${errorMessage}
+Return exactly one valid JSON object with these fields only:
+{
+  "narrative": "player-facing narration",
+  "activeNpc": null,
+  "nextPrompt": "next prompt",
+  "playerChoices": ["choice 1", "choice 2", "choice 3"]
+}
+Do not use Markdown or extra text. Escape quotes inside strings and keep commas between properties.
+Previous raw response:
+${excerpt}`
+  };
+}
 
 async function requestNarrator(
   config: ApiConfig,
   systemPrompt: string,
-  history: OpenAiAnyMessage[],
+  inputItems: ResponseInputItem[],
   options: NarratorRequestOptions
 ): Promise<RawNarratorPayload> {
-  const useFnCall = options.useFunctionCalling !== false;
-
-  // Anthropic 暂不支持本工具栈中的 function calling（不同 schema）；
-  // v2 阶段先要求使用 OpenAI 兼容协议。Anthropic 走 JSON-only 兜底。
-  if (config.provider === 'anthropic') {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': config.apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: config.model || 'claude-3-5-sonnet-latest',
-        max_tokens: 4096,
-        system: systemPrompt,
-        messages: history
-      })
-    });
-    const data = await readJsonResponse(response);
-    if (!response.ok || data.error) throw new Error(data.error?.message ?? `HTTP ${response.status}`);
-    const text: string = data.content?.[0]?.text || '';
-    return {
-      raw: text,
-      rawToolCalls: null,
-      assistantMessage: { role: 'assistant', content: text }
-    };
-  }
-
-  const endpoint = (config.provider === 'mimo'
-    ? config.endpoint || 'https://token-plan-cn.xiaomimimo.com/v1'
-    : config.endpoint || 'https://api.openai.com/v1'
-  ).replace(/\/+$/, '');
-  const model =
-    config.provider === 'mimo'
-      ? config.model || 'mimo-v2.5-pro'
-      : config.model || 'gpt-4o';
-
   const body: Record<string, unknown> = {
-    model,
-    max_tokens: 4096,
-    messages: [{ role: 'system', content: systemPrompt }, ...history]
+    model: responsesModel(config),
+    instructions: systemPrompt,
+    input: inputItems,
+    max_output_tokens: 4096,
+    text: jsonSchemaTextFormat('narrator_response', NARRATOR_RESPONSE_SCHEMA),
+    store: false
   };
-  if (useFnCall) {
-    body.tools = options.tools ?? DM_TOOLS;
+
+  if (options.useFunctionCalling !== false) {
+    body.tools = toResponsesTools(options.tools ?? DM_TOOLS);
     body.tool_choice = 'auto';
-  } else {
-    body.response_format = { type: 'json_object' };
   }
 
-  const response = await fetch(`${endpoint}/chat/completions`, {
+  const response = await fetch(`${responsesEndpoint(config)}/responses`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -468,32 +465,24 @@ async function requestNarrator(
     },
     body: JSON.stringify(body)
   });
-  const data = await readJsonResponse(response);
-  if (!response.ok || data.error) throw new Error(data.error?.message ?? `HTTP ${response.status}`);
-  const message = data.choices?.[0]?.message ?? {};
-  const content: string = message.content || '';
-  const rawToolCalls = message.tool_calls ?? null;
+  const data = await readResponsesJson(response, 'Narrator');
+  const outputItems = Array.isArray(data.output)
+    ? (data.output.filter((item) => item && typeof item === 'object') as ResponseInputItem[])
+    : [];
   return {
-    raw: content,
-    rawToolCalls,
-    assistantMessage: {
-      role: 'assistant',
-      content: content || null,
-      ...(Array.isArray(rawToolCalls) && rawToolCalls.length > 0
-        ? { tool_calls: rawToolCalls }
-        : {})
-    }
+    raw: extractResponseText(data),
+    rawToolCalls: responseFunctionCallItems(data),
+    outputItems
   };
 }
 
-// ---------- 主入口 ----------
-
+// ---------- Main entry ----------
 export interface CallNarratorInput {
   ctx: DmContext;
   actions: PlayerAction[];
   mode: ExploreMode;
   /** 此前轮次的 conversationHistory（已经过窗口截断） */
-  history: OpenAiChatMessage[];
+  history: ResponseInputMessage[];
   /** 本轮允许的工具名集（来自 Director.allowedTools）；不传则使用全集 */
   allowedToolNames?: DmToolName[];
   /**
@@ -531,7 +520,7 @@ function isLookupOnlyResponse(raw: string, calls: DmToolCall[]): boolean {
 function buildLookupResultMessage(
   call: DmToolCall,
   resolver: (kind: string, id: string) => string
-): OpenAiToolMessage {
+): ResponseFunctionCallOutputItem {
   const kind = String(call.arguments.kind ?? '');
   const id = String(call.arguments.id ?? '');
   let content: string;
@@ -541,9 +530,9 @@ function buildLookupResultMessage(
     content = `（lookup 失败：${err instanceof Error ? err.message : String(err)}）`;
   }
   return {
-    role: 'tool',
-    tool_call_id: call.callId ?? `lookup-${kind}-${id}`,
-    content
+    type: 'function_call_output',
+    call_id: call.callId ?? `lookup-${kind}-${id}`,
+    output: content
   };
 }
 
@@ -556,14 +545,15 @@ export async function callNarrator(
   const tools = filterToolsByAllowed(input.allowedToolNames);
 
   // 首轮 history：history + user
-  const messages: OpenAiAnyMessage[] = [
-    ...input.history,
+  const messages: ResponseInputItem[] = [
+    ...historyToResponseInput(input.history),
     { role: 'user', content: userMessage }
   ];
 
   // function calling 主路径（Anthropic 默认走 JSON、仅最后一轮）
-  let useFnCall = config.provider !== 'anthropic';
+  let useFnCall = true;
   let lookupRoundsUsed = 0;
+  let lastMalformedRaw = '';
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
@@ -572,7 +562,7 @@ export async function callNarrator(
           useFunctionCalling: useFnCall,
           tools
         });
-        const parsedCalls = parseToolCalls(payload.rawToolCalls);
+        const parsedCalls = parseResponseToolCalls(payload.rawToolCalls);
 
         // 检查是否仅 lookup_entity 且未产出 narrative：有 resolver 且轮数未超限则回填后重试。
         if (
@@ -580,7 +570,7 @@ export async function callNarrator(
           lookupRoundsUsed < MAX_LOOKUP_ROUNDS &&
           isLookupOnlyResponse(payload.raw, parsedCalls)
         ) {
-          messages.push(payload.assistantMessage);
+          messages.push(...payload.outputItems);
           for (const call of parsedCalls) {
             messages.push(buildLookupResultMessage(call, input.lookupResolver));
           }
@@ -589,7 +579,13 @@ export async function callNarrator(
         }
 
         // 最终响应：解析 JSON 成型
-        const shaped = shapeNarratorJson(payload.raw);
+        let shaped: ReturnType<typeof shapeNarratorJson>;
+        try {
+          shaped = shapeNarratorJson(payload.raw);
+        } catch (err) {
+          lastMalformedRaw = payload.raw;
+          throw err;
+        }
         return {
           raw: payload.raw,
           narrative: shaped.narrative,
@@ -620,8 +616,12 @@ export async function callNarrator(
       lookupRoundsUsed = 0;
       // 重置话柄到首轮 user（丢弃上一次部分走过的 lookup 循环中间态）。
       messages.length = 0;
-      messages.push(...input.history);
+      messages.push(...historyToResponseInput(input.history));
       messages.push({ role: 'user', content: userMessage });
+      if (err instanceof NarratorError && lastMalformedRaw.trim()) {
+        messages.push(buildJsonRepairMessage(lastMalformedRaw, err.message));
+      }
+      lastMalformedRaw = '';
     }
   }
 
