@@ -831,9 +831,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if (response.narrative) {
         nextState = addMessage(nextState, { type: 'dm', text: response.narrative, npcName: response.activeNpc ?? null });
       }
-      if (!response.check && response.nextPrompt) {
-        nextState = addMessage(nextState, { type: 'system', text: response.nextPrompt });
-      }
       return addLog(nextState, response.narrative?.slice(0, 60) || 'AI DM 响应');
     }
     case 'appendEvents': {

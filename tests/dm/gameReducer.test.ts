@@ -4,6 +4,36 @@ import type { AiResponse, AtomicFact, EpisodicMemoryRecord, PersistedDMEvent, Pr
 import { makeInvestigator, makeState } from './fixtures';
 
 describe('gameReducer applyAiResponse pendingConsequences merge', () => {
+  it('keeps nextPrompt out of player-visible messages while retaining raw DM record', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' })]
+    });
+    const raw = JSON.stringify({
+      narrative: '雾中传来远处的脚步声。',
+      activeNpc: null,
+      nextPrompt: '你们可以继续调查码头或返回灯塔。',
+      playerChoices: ['调查码头', '返回灯塔', '呼喊同伴']
+    });
+    const response: AiResponse = {
+      narrative: '雾中传来远处的脚步声。',
+      activeNpc: null,
+      nextPrompt: '你们可以继续调查码头或返回灯塔。',
+      playerChoices: ['调查码头', '返回灯塔', '呼喊同伴']
+    };
+
+    const next = gameReducer(state, { type: 'applyAiResponse', response, raw });
+
+    expect(next.messages).toEqual([
+      expect.objectContaining({
+        type: 'dm',
+        text: '雾中传来远处的脚步声。'
+      })
+    ]);
+    expect(next.messages.some((message) => message.text === response.nextPrompt)).toBe(false);
+    expect(next.conversationHistory).toEqual([{ role: 'assistant', content: raw }]);
+    expect(next.suggestions).toEqual(['调查码头', '返回灯塔', '呼喊同伴']);
+  });
+
   it('decays existing pending and removes triggered ones; appends fresh scheduled', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '亨利' })],
