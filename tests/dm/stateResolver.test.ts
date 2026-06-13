@@ -9,7 +9,7 @@ function narrator(partial: Partial<NarratorOutput> = {}): NarratorOutput {
     narrative: partial.narrative ?? '叙述',
     activeNpc: partial.activeNpc ?? null,
     nextPrompt: partial.nextPrompt ?? '',
-    playerChoices: partial.playerChoices ?? [],
+    playerChoices: partial.playerChoices ?? {},
     toolCalls: partial.toolCalls ?? [],
     usedFunctionCalling: partial.usedFunctionCalling ?? true
   };

@@ -109,6 +109,7 @@ export function makeState(options: MakeStateOptions = {}): GameState {
     conversationHistory: options.conversationHistory ?? [],
     messages: [],
     suggestions: [],
+    suggestionsByPlayerId: {},
     isThinking: false,
     longTermMemorySummary: '',
     summarizedUntilIndex: 0,

@@ -36,8 +36,8 @@ export interface NarratorOutput {
   activeNpc: string | null;
   /** 下一步提示，1-2 句 */
   nextPrompt: string;
-  /** 推荐行动 3 条 */
-  playerChoices: string[];
+  /** 玩家名 -> 推荐行动 3 条 */
+  playerChoices: Record<string, string[]>;
   /** 已经形态合法的工具调用；规则校验交给 Director */
   toolCalls: DmToolCall[];
   /** 调试用：模型是否原生返回了 function_call items */
@@ -72,8 +72,12 @@ const NARRATOR_SYSTEM_PROMPT_HEAD = `你是 COC 第七版 AI DM Agent，主持�
   "narrative": "给玩家看的叙事，200 字以内，使用第二人称或第三人称",
   "activeNpc": "当前交互 NPC 全名或 null",
   "nextPrompt": "下一步提示，1-2 句",
-  "playerChoices": ["建议行动1", "建议行动2", "建议行动3"]
+  "playerChoices": {
+    "玩家A姓名": ["只适合玩家A当前处境的建议1", "建议2", "建议3"],
+    "玩家B姓名": ["只适合玩家B当前处境的建议1", "建议2", "建议3"]
+  }
 }
+- playerChoices 必须按玩家姓名分组；每名玩家 2-3 条，结合其职业、位置、状态、已知线索和本轮行动，不要给所有玩家返回完全相同的建议。
 其余规则裁决（检定 / 状态变更 / 场景切换 / 内幕解锁）一律通过工具调用，不要写在 narrative 里描述具体数值。`;
 
 function formatRules(rules: DmContext['static']['rules']): string {
@@ -351,14 +355,28 @@ function parseNarratorJson(raw: string): NarratorJsonShape {
 
 function coerceStringArray(v: unknown): string[] {
   if (!Array.isArray(v)) return [];
-  return v.filter((x): x is string => typeof x === 'string');
+  return v.flatMap((x) => typeof x === 'string' && x.trim() ? [x.trim()] : []).slice(0, 3);
 }
 
-function shapeNarratorJson(raw: string): {
+function coercePlayerChoices(v: unknown, playerNames: string[]): Record<string, string[]> {
+  if (Array.isArray(v)) {
+    const list = coerceStringArray(v);
+    return Object.fromEntries(playerNames.map((name) => [name, list]));
+  }
+  if (!v || typeof v !== 'object') return {};
+  const out: Record<string, string[]> = {};
+  for (const [name, rawList] of Object.entries(v as Record<string, unknown>)) {
+    const list = coerceStringArray(rawList);
+    if (name.trim() && list.length) out[name.trim()] = list;
+  }
+  return out;
+}
+
+function shapeNarratorJson(raw: string, playerNames: string[] = ['调查员']): {
   narrative: string;
   activeNpc: string | null;
   nextPrompt: string;
-  playerChoices: string[];
+  playerChoices: Record<string, string[]>;
 } {
   const obj = parseNarratorJson(raw);
   const narrative = typeof obj.narrative === 'string' ? obj.narrative : '';
@@ -372,7 +390,7 @@ function shapeNarratorJson(raw: string): {
       ? obj.activeNpc
       : null;
   const nextPrompt = typeof obj.nextPrompt === 'string' ? obj.nextPrompt : '';
-  const playerChoices = coerceStringArray(obj.playerChoices);
+  const playerChoices = coercePlayerChoices(obj.playerChoices, playerNames);
   return { narrative, activeNpc, nextPrompt, playerChoices };
 }
 
@@ -401,8 +419,11 @@ const NARRATOR_RESPONSE_SCHEMA = {
     },
     nextPrompt: { type: 'string' },
     playerChoices: {
-      type: 'array',
-      items: { type: 'string' }
+      type: 'object',
+      additionalProperties: {
+        type: 'array',
+        items: { type: 'string' }
+      }
     }
   },
   required: ['narrative', 'activeNpc', 'nextPrompt', 'playerChoices']
@@ -424,7 +445,7 @@ Return exactly one valid JSON object with these fields only:
   "narrative": "player-facing narration",
   "activeNpc": null,
   "nextPrompt": "next prompt",
-  "playerChoices": ["choice 1", "choice 2", "choice 3"]
+  "playerChoices": { "player name": ["choice 1", "choice 2", "choice 3"] }
 }
 Do not use Markdown or extra text. Escape quotes inside strings and keep commas between properties.
 Previous raw response:
@@ -515,6 +536,14 @@ function buildLookupResultMessage(
   };
 }
 
+function playerNamesFromContext(ctx: DmContext): string[] {
+  const names = [
+    ctx.dynamic.spotlightPlayer?.name,
+    ...ctx.dynamic.otherPlayers.map((player) => player.name)
+  ].filter((name): name is string => Boolean(name?.trim()));
+  return names.length ? [...new Set(names)] : ['调查员'];
+}
+
 export async function callNarrator(
   config: ApiConfig,
   input: CallNarratorInput
@@ -522,6 +551,7 @@ export async function callNarrator(
   const systemPrompt = buildNarratorSystemPrompt(input.ctx);
   const userMessage = buildNarratorUserMessage(input.actions, input.mode);
   const tools = filterToolsByAllowed(input.allowedToolNames);
+  const playerNames = playerNamesFromContext(input.ctx);
 
   // 首轮 history：history + user
   const messages: LlmInputItem[] = [
@@ -560,7 +590,7 @@ export async function callNarrator(
         // 最终响应：解析 JSON 成型
         let shaped: ReturnType<typeof shapeNarratorJson>;
         try {
-          shaped = shapeNarratorJson(payload.raw);
+          shaped = shapeNarratorJson(payload.raw, playerNames);
         } catch (err) {
           lastMalformedRaw = payload.raw;
           throw err;

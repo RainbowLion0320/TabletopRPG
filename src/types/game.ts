@@ -294,6 +294,7 @@ export interface GameState {
   conversationHistory: ConversationTurn[];
   messages: NarrativeMessage[];
   suggestions: string[];
+  suggestionsByPlayerId: Record<string, string[]>;
   isThinking: boolean;
   /** 长期记忆总结，由 summarizer 维护；phase 5 起启用 */
   longTermMemorySummary?: string;
@@ -329,7 +330,7 @@ export interface AiResponse {
     triggeredConsequenceIds?: string[];
   };
   nextPrompt?: string;
-  playerChoices?: string[];
+  playerChoices?: string[] | Record<string, string[]>;
 }
 
 export type AiProvider = 'openai' | 'mimo' | 'custom';

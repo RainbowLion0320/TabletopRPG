@@ -275,6 +275,54 @@ function normalizeStringList(value: unknown, fallback: string[]) {
   return list.length ? list.slice(0, 5) : fallback;
 }
 
+const INITIAL_SUGGESTION_SETS = [
+  ['侦查门廊与窗边痕迹', '比对求助信细节', '检查书房桌面'],
+  ['安抚并询问伊莎贝拉', '观察屋内异常动静', '询问父亲失踪前行踪'],
+  ['检查门锁与脚印', '搜索可疑信件', '留意街道浓雾'],
+  ['询问邻居目击情况', '整理已知线索', '检查照片与名片']
+] as const;
+
+function defaultSuggestionsForPlayers(players: Investigator[]): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  players.forEach((player, index) => {
+    out[player.id] = [...INITIAL_SUGGESTION_SETS[index % INITIAL_SUGGESTION_SETS.length]];
+  });
+  return out;
+}
+
+function firstSuggestionListByPlayerOrder(
+  suggestionsByPlayerId: Record<string, string[]>,
+  players: Investigator[],
+  fallback: string[]
+): string[] {
+  for (const player of players) {
+    const list = suggestionsByPlayerId[player.id];
+    if (list?.length) return list;
+  }
+  return fallback;
+}
+
+function normalizeSuggestionsByPlayerId(
+  value: unknown,
+  players: Investigator[],
+  fallbackByPlayerId: Record<string, string[]>,
+  fallbackGlobal: string[]
+): Record<string, string[]> {
+  if (Array.isArray(value)) {
+    const list = normalizeStringList(value, fallbackGlobal);
+    return Object.fromEntries(players.map((player) => [player.id, list]));
+  }
+
+  const source = isRecord(value) ? value : {};
+  const out: Record<string, string[]> = {};
+  for (const player of players) {
+    const raw = source[player.id] ?? source[player.name];
+    const fallback = fallbackByPlayerId[player.id] ?? fallbackGlobal;
+    out[player.id] = normalizeStringList(raw, fallback);
+  }
+  return out;
+}
+
 function normalizeStatUpdate(value: unknown) {
   if (!isRecord(value)) return {};
   return Object.fromEntries(Object.entries(value).flatMap(([name, delta]) => {
@@ -613,6 +661,13 @@ function normalizeAiResponse(value: AiResponse, state: GameState): AiResponse {
   const sceneChange = hasOwn(stateUpdate, 'sceneChange') && stateUpdate.sceneChange
     ? normalizeSceneId(stateUpdate.sceneChange, state.currentScene)
     : null;
+  const fallbackByPlayerId = state.suggestionsByPlayerId ?? {};
+  const playerChoices = normalizeSuggestionsByPlayerId(
+    response.playerChoices,
+    state.players,
+    fallbackByPlayerId,
+    state.suggestions
+  );
 
   const normalized: AiResponse = {
     narrative: typeof response.narrative === 'string' ? response.narrative : undefined,
@@ -627,7 +682,7 @@ function normalizeAiResponse(value: AiResponse, state: GameState): AiResponse {
       triggeredConsequenceIds: normalizeTriggeredIds(stateUpdate.triggeredConsequenceIds)
     },
     nextPrompt: typeof response.nextPrompt === 'string' ? response.nextPrompt : undefined,
-    playerChoices: normalizeStringList(response.playerChoices, state.suggestions)
+    playerChoices
   };
 
   if (hasOwn(response, 'activeNpc')) {
@@ -639,6 +694,12 @@ function normalizeAiResponse(value: AiResponse, state: GameState): AiResponse {
 
 export function createInitialGameState(players: Investigator[]): GameState {
   const locations = Object.fromEntries(players.map((player) => [player.id, 'S01' as SceneId]));
+  const suggestionsByPlayerId = defaultSuggestionsForPlayers(players);
+  const suggestions = firstSuggestionListByPlayerOrder(
+    suggestionsByPlayerId,
+    players,
+    ['侦查周围', '询问伊莎贝拉', '检查书房']
+  );
   return {
     players,
     exploreMode: 'together',
@@ -654,7 +715,8 @@ export function createInitialGameState(players: Investigator[]): GameState {
     actionLog: [{ time: time(), text: '游戏开始 · 摩勒住宅' }],
     conversationHistory: [],
     messages: [{ id: id(), type: 'dm', text: initialMessage, npcName: null }],
-    suggestions: ['侦查周围', '询问伊莎贝拉', '检查书房'],
+    suggestions,
+    suggestionsByPlayerId,
     isThinking: false,
     longTermMemorySummary: '',
     summarizedUntilIndex: 0,
@@ -676,6 +738,16 @@ export function hydrateGameState(value: unknown): GameState {
   const base = createInitialGameState(players);
   const currentScene = normalizeSceneId(source.currentScene, base.currentScene);
   const history = normalizeConversationHistory(source.conversationHistory);
+  const suggestionsByPlayerId = normalizeSuggestionsByPlayerId(
+    source.suggestionsByPlayerId ?? source.suggestions,
+    players,
+    base.suggestionsByPlayerId,
+    base.suggestions
+  );
+  const suggestions = normalizeStringList(
+    source.suggestions,
+    firstSuggestionListByPlayerOrder(suggestionsByPlayerId, players, base.suggestions)
+  );
 
   return {
     ...base,
@@ -696,7 +768,8 @@ export function hydrateGameState(value: unknown): GameState {
     actionLog: normalizeActionLog(source.actionLog, base.actionLog),
     conversationHistory: history,
     messages: normalizeMessages(source.messages, history, players, base.messages),
-    suggestions: normalizeStringList(source.suggestions, base.suggestions),
+    suggestions,
+    suggestionsByPlayerId,
     isThinking: false,
     longTermMemorySummary:
       typeof source.longTermMemorySummary === 'string' ? source.longTermMemorySummary : '',
@@ -813,6 +886,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         if (idx >= 0) merged[idx] = fresh;
         else merged.push(fresh);
       }
+      const suggestionsByPlayerId = normalizeSuggestionsByPlayerId(
+        response.playerChoices,
+        state.players,
+        state.suggestionsByPlayerId,
+        state.suggestions
+      );
 
       let nextState: GameState = {
         ...state,
@@ -822,7 +901,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         currentScene,
         activeNpcName: resolveActiveNpcName(response, currentScene, state.activeNpcName),
         pendingCheck: response.check ?? null,
-        suggestions: response.playerChoices ?? state.suggestions,
+        suggestionsByPlayerId,
+        suggestions: firstSuggestionListByPlayerOrder(suggestionsByPlayerId, state.players, state.suggestions),
         conversationHistory: [...state.conversationHistory, { role: 'assistant' as const, content: action.raw }],
         isThinking: false,
         currentActorIndex: 0,

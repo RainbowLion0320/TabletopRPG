@@ -19,6 +19,27 @@ describe('gameReducer start opening message', () => {
 });
 
 describe('gameReducer applyAiResponse pendingConsequences merge', () => {
+  it('stores player-specific choices by player id without collapsing them into global suggestions', () => {
+    const henry = makeInvestigator({ id: 'p-henry', name: '亨利' });
+    const ada = makeInvestigator({ id: 'p-ada', name: '艾达' });
+    const state = makeState({ players: [henry, ada] });
+    const response: AiResponse = {
+      narrative: '你们暂时分工调查。',
+      playerChoices: {
+        亨利: ['检查书桌暗格', '比对便签笔迹', '询问伊莎贝拉父亲习惯'],
+        艾达: ['观察窗外动静', '安抚伊莎贝拉', '留意楼上脚步声']
+      }
+    };
+
+    const next = gameReducer(state, { type: 'applyAiResponse', response, raw: '{}' });
+
+    expect(next.suggestionsByPlayerId).toEqual({
+      'p-henry': ['检查书桌暗格', '比对便签笔迹', '询问伊莎贝拉父亲习惯'],
+      'p-ada': ['观察窗外动静', '安抚伊莎贝拉', '留意楼上脚步声']
+    });
+    expect(next.suggestions).toEqual(['检查书桌暗格', '比对便签笔迹', '询问伊莎贝拉父亲习惯']);
+  });
+
   it('keeps nextPrompt out of player-visible messages while retaining raw DM record', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '亨利' })]

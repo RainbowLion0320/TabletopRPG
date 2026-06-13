@@ -28,6 +28,9 @@ export function ActionDock({
   const togetherIsLast = state.currentActorIndex >= state.players.length - 1;
 
   const currentActor = state.exploreMode === 'split' ? splitActor : togetherActor;
+  const currentSuggestions = currentActor
+    ? state.suggestionsByPlayerId[currentActor.id] ?? state.suggestions
+    : state.suggestions;
 
   const allFilled = state.exploreMode === 'split'
     ? Boolean(state.declarations[splitActor?.id ?? '']?.trim())
@@ -53,9 +56,9 @@ export function ActionDock({
         </div>
       ) : null}
 
-      {state.suggestions.length ? (
+      {currentSuggestions.length ? (
         <div className="suggestion-row">
-          {state.suggestions.slice(0, 3).map((text) => (
+          {currentSuggestions.slice(0, 3).map((text) => (
             <button key={text} onClick={() => onSuggestion(text)}>{text}</button>
           ))}
         </div>

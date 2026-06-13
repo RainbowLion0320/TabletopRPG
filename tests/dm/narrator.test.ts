@@ -103,7 +103,9 @@ describe('callNarrator retry repair', () => {
         narrative: '真正的叙事在后一个对象里。',
         activeNpc: null,
         nextPrompt: '继续调查。',
-        playerChoices: ['检查窗户', '询问委托人', '查看信件']
+        playerChoices: {
+          亨利: ['检查窗户', '询问委托人', '查看信件']
+        }
       })
     ].join('\n');
     const fetchMock = vi.fn(async (url: string | URL | Request) => {
@@ -120,6 +122,9 @@ describe('callNarrator retry repair', () => {
     });
 
     expect(output.narrative).toBe('真正的叙事在后一个对象里。');
+    expect(output.playerChoices).toEqual({
+      亨利: ['检查窗户', '询问委托人', '查看信件']
+    });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
@@ -129,7 +134,9 @@ describe('callNarrator retry repair', () => {
       narrative: '雾里传来钟声。',
       activeNpc: null,
       nextPrompt: '你们要继续靠近码头吗？',
-      playerChoices: ['靠近钟声', '原地观察', '询问同伴']
+      playerChoices: {
+        亨利: ['靠近钟声', '原地观察', '询问同伴']
+      }
     });
     const requestBodies: Record<string, unknown>[] = [];
 
@@ -172,7 +179,9 @@ describe('callNarrator retry repair', () => {
       narrative: '兼容响应已解析。',
       activeNpc: null,
       nextPrompt: '你要继续检查码头吗？',
-      playerChoices: ['检查脚印', '呼喊同伴', '返回灯塔']
+      playerChoices: {
+        亨利: ['检查脚印', '呼喊同伴', '返回灯塔']
+      }
     });
     const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
       expect(String(url)).toBe('https://unit.test/v1/chat/completions');
@@ -205,7 +214,9 @@ describe('callNarrator retry repair', () => {
     });
 
     expect(output.narrative).toBe('兼容响应已解析。');
-    expect(output.playerChoices).toEqual(['检查脚印', '呼喊同伴', '返回灯塔']);
+    expect(output.playerChoices).toEqual({
+      亨利: ['检查脚印', '呼喊同伴', '返回灯塔']
+    });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
