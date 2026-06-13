@@ -141,3 +141,57 @@ test('AI DM handles first player action through a chat-compatible provider', asy
   await expect(page.getByRole('button', { name: 'Inspect the dock' })).toHaveCount(0);
   await expect(page.getByText(/AI DM 返回格式无效/)).toHaveCount(0);
 });
+
+test('AI DM thinking state blocks the game with a full-screen overlay while the turn is running', async ({ page }) => {
+  const narrator = JSON.stringify({
+    narrative: 'The delayed narrator response is shown after the overlay.',
+    activeNpc: null,
+    nextPrompt: 'Choose the next lead.',
+    playerChoices: {
+      '亨利·格雷': ['Inspect the locked drawer'],
+      '艾达·华莱士': ['Watch the street']
+    }
+  });
+  let releaseNarrator!: () => void;
+  const narratorGate = new Promise<void>((resolve) => {
+    releaseNarrator = resolve;
+  });
+  let narratorAttempts = 0;
+
+  await page.route('https://api.openai.com/v1/responses', async (route) => {
+    const body = JSON.parse(route.request().postData() ?? '{}') as { instructions?: string };
+    const system = body.instructions ?? '';
+    let content = JSON.stringify({ facts: [] });
+    if (system.includes('COC 第七版 AI DM Agent')) {
+      narratorAttempts += 1;
+      await narratorGate;
+      content = narrator;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(responseBody(content))
+    });
+  });
+
+  await startGameWithApi(page);
+  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the locked drawer.');
+  await page.getByRole('button', { name: '下一位' }).click();
+  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the street.');
+  await page.getByRole('button', { name: '提交' }).click();
+
+  await expect.poll(() => narratorAttempts).toBe(1);
+  const overlay = page.getByRole('status', { name: 'AI DM 正在推演下一幕' });
+  await expect(overlay).toBeVisible();
+  await expect(page.locator('.thinking-line')).toHaveCount(0);
+  const overlayBox = await overlay.boundingBox();
+  const viewport = page.viewportSize();
+  expect(overlayBox?.x).toBeLessThanOrEqual(1);
+  expect(overlayBox?.y).toBeLessThanOrEqual(1);
+  expect(overlayBox?.width).toBeGreaterThanOrEqual((viewport?.width ?? 0) - 2);
+  expect(overlayBox?.height).toBeGreaterThanOrEqual((viewport?.height ?? 0) - 2);
+
+  releaseNarrator();
+  await expect(page.locator('.story-message.dm p', { hasText: 'The delayed narrator response is shown after the overlay.' })).toBeVisible();
+  await expect(overlay).toHaveCount(0);
+});

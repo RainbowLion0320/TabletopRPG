@@ -41,7 +41,6 @@ export function NarrativePanel({ state }: NarrativePanelProps) {
           <p>{message.text}</p>
         </div>
       ))}
-      {state.isThinking ? <div className="thinking-line">AI DM 正在推演下一幕...</div> : null}
     </div>
   );
 }

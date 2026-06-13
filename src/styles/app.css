@@ -700,10 +700,68 @@ button {
   padding: 4px 0;
 }
 
-.story-message.system p, .thinking-line {
+.story-message.system p {
   color: var(--quiet);
   font-size: 12px;
   letter-spacing: 1px;
+}
+
+.thinking-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: grid;
+  place-items: center;
+  background: #020202;
+  color: var(--text);
+  pointer-events: auto;
+  outline: 0;
+}
+
+.thinking-overlay-text {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.03em;
+  max-width: calc(100vw - 48px);
+  color: var(--gold);
+  font-size: 42px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.25;
+  text-align: center;
+  text-shadow: 0 18px 46px rgba(216,189,122,0.18);
+}
+
+.thinking-overlay-text span {
+  display: inline-block;
+  animation: thinking-bounce 1.05s ease-in-out infinite;
+  animation-delay: var(--delay);
+}
+
+@keyframes thinking-bounce {
+  0%, 80%, 100% {
+    opacity: 0.7;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-0.32em);
+  }
+}
+
+@media (max-width: 640px) {
+  .thinking-overlay-text {
+    max-width: calc(100vw - 28px);
+    font-size: 28px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinking-overlay-text span {
+    animation: none;
+    opacity: 1;
+  }
 }
 
 .action-dock {
