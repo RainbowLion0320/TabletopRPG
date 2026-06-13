@@ -29,6 +29,20 @@ export interface OpenAiResponsesJson {
   output_text?: unknown;
   output?: unknown;
   error?: { message?: string };
+  choices?: unknown;
+}
+
+function collectTextContent(content: unknown, parts: string[]): void {
+  if (typeof content === 'string') {
+    parts.push(content);
+    return;
+  }
+  if (!Array.isArray(content)) return;
+  for (const part of content) {
+    if (!part || typeof part !== 'object') continue;
+    const text = (part as Record<string, unknown>).text;
+    if (typeof text === 'string') parts.push(text);
+  }
 }
 
 export function responsesEndpoint(config: ApiConfig): string {
@@ -90,12 +104,18 @@ export function extractResponseText(data: OpenAiResponsesJson): string {
     if (typeof record.text === 'string') {
       parts.push(record.text);
     }
-    const content = Array.isArray(record.content) ? record.content : [];
-    for (const part of content) {
-      if (!part || typeof part !== 'object') continue;
-      const text = (part as Record<string, unknown>).text;
-      if (typeof text === 'string') parts.push(text);
-    }
+    collectTextContent(record.content, parts);
+  }
+  if (parts.length) return parts.join('\n');
+
+  const choices = Array.isArray(data.choices) ? data.choices : [];
+  for (const choice of choices) {
+    if (!choice || typeof choice !== 'object') continue;
+    const record = choice as Record<string, unknown>;
+    collectTextContent(record.text, parts);
+    const message = record.message;
+    if (!message || typeof message !== 'object') continue;
+    collectTextContent((message as Record<string, unknown>).content, parts);
   }
   return parts.join('\n');
 }

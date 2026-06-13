@@ -158,4 +158,41 @@ describe('callNarrator retry repair', () => {
     expect(repairMessage?.content).toContain('Expected');
     expect(repairMessage?.content).toContain(malformed);
   });
+
+  it('accepts chat-compatible response content from a Responses endpoint proxy', async () => {
+    const content = JSON.stringify({
+      narrative: '兼容响应已解析。',
+      activeNpc: null,
+      nextPrompt: '你要继续检查码头吗？',
+      playerChoices: ['检查脚印', '呼喊同伴', '返回灯塔']
+    });
+    const fetchMock = vi.fn(async (url: string | URL | Request) => {
+      expect(String(url)).toBe('https://unit.test/v1/responses');
+      return new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: { content }
+            }
+          ]
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const output = await callNarrator(config, {
+      ctx,
+      actions: [{ player: '亨利', action: '我查看码头地面。' }],
+      mode: 'together',
+      history: []
+    });
+
+    expect(output.narrative).toBe('兼容响应已解析。');
+    expect(output.playerChoices).toEqual(['检查脚印', '呼喊同伴', '返回灯塔']);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });
