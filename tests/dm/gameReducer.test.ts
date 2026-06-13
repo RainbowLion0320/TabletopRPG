@@ -3,6 +3,21 @@ import { gameReducer, hydrateGameState } from '../../src/state/gameReducer';
 import type { AiResponse, AtomicFact, EpisodicMemoryRecord, PersistedDMEvent, ProspectiveIntent } from '../../src/types/game';
 import { makeInvestigator, makeState } from './fixtures';
 
+describe('gameReducer start opening message', () => {
+  it('keeps the scenario opening compact while preserving the letter paragraph break', () => {
+    const next = gameReducer(makeState(), {
+      type: 'start',
+      players: [makeInvestigator({ name: '亨利' })]
+    });
+    const opening = next.messages[0]?.text ?? '';
+
+    expect(opening).toMatch(/^.+。雨夜的伦敦/);
+    expect(opening).not.toContain('。\n\n雨夜的伦敦');
+    expect(opening.match(/\n\n/g)).toHaveLength(1);
+    expect(opening).toContain('\n\n信中写道');
+  });
+});
+
 describe('gameReducer applyAiResponse pendingConsequences merge', () => {
   it('keeps nextPrompt out of player-visible messages while retaining raw DM record', () => {
     const state = makeState({

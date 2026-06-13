@@ -30,7 +30,7 @@ export type GameAction =
   | { type: 'consumeProspectiveIntent'; id: string }
   | { type: 'decayProspectiveIntents' };
 
-const initialMessage = `${storyData.era}。\n\n雨夜的伦敦裹在浓雾之中，煤气灯的光晕在水汽里渗散开来。你们站在纽伦上街101号的门廊下，手中握着伊莎贝拉·摩勒小姐的求助信。\n\n信中写道：「我父亲埃里克·摩勒于三日前失踪，警察局毫无进展。若您能找到他，必有重谢。」`;
+const initialMessage = `${storyData.era}。雨夜的伦敦裹在浓雾之中，煤气灯的光晕在水汽里渗散开来。你们站在纽伦上街101号的门廊下，手中握着伊莎贝拉·摩勒小姐的求助信。\n\n信中写道：「我父亲埃里克·摩勒于三日前失踪，警察局毫无进展。若您能找到他，必有重谢。」`;
 
 function id() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
