@@ -12,13 +12,7 @@
  */
 
 import type { ApiConfig, AtomicFact, FactPredicate } from '../../types/game';
-import {
-  extractResponseText,
-  jsonSchemaTextFormat,
-  readResponsesJson,
-  responsesEndpoint,
-  responsesModel
-} from '../openaiResponses';
+import { generateJson } from '../llm/client';
 import { findSupersedeTarget } from './evolutionChain';
 
 // ---------- 输入 / 输出 ----------
@@ -186,23 +180,16 @@ async function callExtractorLLM(
 ): Promise<string> {
   const userMessage = buildExtractorUserMessage(input);
 
-  const response = await fetch(`${responsesEndpoint(config)}/responses`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.apiKey}`
-    },
-    body: JSON.stringify({
-      model: responsesModel(config),
-      instructions: EXTRACTOR_SYSTEM_PROMPT,
-      input: [{ role: 'user', content: userMessage }],
-      max_output_tokens: 512,
-      text: jsonSchemaTextFormat('turn_facts', FACT_EXTRACTOR_RESPONSE_SCHEMA),
-      store: false
-    })
+  const result = await generateJson(config, {
+    label: 'factExtractor',
+    instructions: EXTRACTOR_SYSTEM_PROMPT,
+    input: [{ role: 'user', content: userMessage }],
+    maxOutputTokens: 512,
+    schemaName: 'turn_facts',
+    schema: FACT_EXTRACTOR_RESPONSE_SCHEMA,
+    useTools: false
   });
-  const data = await readResponsesJson(response, 'factExtractor');
-  return extractResponseText(data);
+  return result.rawText;
 }
 // ---------- JSON 解析 ----------
 

@@ -1,14 +1,17 @@
 import { expect, test, type Page } from '@playwright/test';
 
-async function startGameWithApi(page: Page) {
+async function startGameWithApi(page: Page, config: Record<string, string> = {
+  provider: 'openai',
+  protocol: 'responses',
+  apiKey: 'test-key',
+  model: 'test-model'
+}) {
   await page.addInitScript(() => {
     window.localStorage.clear();
-    window.localStorage.setItem('trpg-api', JSON.stringify({
-      provider: 'openai',
-      apiKey: 'test-key',
-      model: 'test-model'
-    }));
   });
+  await page.addInitScript((apiConfig) => {
+    window.localStorage.setItem('trpg-api', JSON.stringify(apiConfig));
+  }, config);
 
   await page.goto('/');
   await page.getByRole('button', { name: /开始游戏/ }).click();
@@ -23,6 +26,19 @@ function responseBody(content: string) {
       {
         type: 'message',
         content: [{ type: 'output_text', text: content }]
+      }
+    ]
+  };
+}
+
+function chatBody(content: string) {
+  return {
+    choices: [
+      {
+        message: {
+          role: 'assistant',
+          content
+        }
       }
     ]
   };
@@ -69,4 +85,47 @@ test('AI DM retries malformed model output instead of returning raw text as narr
   expect(narratorRequestBodies[1]).toContain('Previous Narrator response was invalid JSON');
   await expect(page.locator('.story-message.dm p', { hasText: 'The repaired response is shown to the player.' })).toBeVisible();
   await expect(page.getByText('raw malformed output')).toHaveCount(0);
+});
+
+test('AI DM handles first player action through a chat-compatible provider', async ({ page }) => {
+  const narrator = JSON.stringify({
+    narrative: 'The chat-compatible narrator response is shown.',
+    activeNpc: null,
+    nextPrompt: 'Choose the next lead.',
+    playerChoices: ['Inspect the dock', 'Call out', 'Return to the lamp']
+  });
+  let narratorAttempts = 0;
+
+  await page.route('https://gateway.test/v1/chat/completions', async (route) => {
+    const body = JSON.parse(route.request().postData() ?? '{}') as {
+      messages?: Array<{ role?: string; content?: string }>;
+    };
+    const system = body.messages?.find((message) => message.role === 'system')?.content ?? '';
+    let content = JSON.stringify({ facts: [] });
+    if (system.includes('COC 第七版 AI DM Agent')) {
+      narratorAttempts += 1;
+      content = narrator;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(chatBody(content))
+    });
+  });
+
+  await startGameWithApi(page, {
+    provider: 'custom',
+    protocol: 'chat-completions',
+    endpoint: 'https://gateway.test/v1',
+    apiKey: 'test-key',
+    model: 'gateway-model'
+  });
+  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the dock.');
+  await page.getByRole('button', { name: '下一位' }).click();
+  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the fog.');
+  await page.getByRole('button', { name: '提交' }).click();
+
+  await expect.poll(() => narratorAttempts).toBe(1);
+  await expect(page.locator('.story-message.dm p', { hasText: 'The chat-compatible narrator response is shown.' })).toBeVisible();
+  await expect(page.getByText(/AI DM 返回格式无效/)).toHaveCount(0);
 });

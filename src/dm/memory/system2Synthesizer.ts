@@ -19,13 +19,7 @@ import type {
   NpcMindModel,
   ProspectiveIntent
 } from '../../types/game';
-import {
-  extractResponseText,
-  jsonSchemaTextFormat,
-  readResponsesJson,
-  responsesEndpoint,
-  responsesModel
-} from '../openaiResponses';
+import { generateJson } from '../llm/client';
 
 // ---------- 输入 / 输出 ----------
 
@@ -181,23 +175,16 @@ async function callSynthesizerLLM(
 ): Promise<string> {
   const userMessage = buildSynthesizerUserMessage(input);
 
-  const response = await fetch(`${responsesEndpoint(config)}/responses`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.apiKey}`
-    },
-    body: JSON.stringify({
-      model: responsesModel(config),
-      instructions: SYNTHESIZER_SYSTEM_PROMPT,
-      input: [{ role: 'user', content: userMessage }],
-      max_output_tokens: 1024,
-      text: jsonSchemaTextFormat('system2_memory', SYSTEM2_RESPONSE_SCHEMA),
-      store: false
-    })
+  const result = await generateJson(config, {
+    label: 'system2Synthesizer',
+    instructions: SYNTHESIZER_SYSTEM_PROMPT,
+    input: [{ role: 'user', content: userMessage }],
+    maxOutputTokens: 1024,
+    schemaName: 'system2_memory',
+    schema: SYSTEM2_RESPONSE_SCHEMA,
+    useTools: false
   });
-  const data = await readResponsesJson(response, 'system2Synthesizer');
-  return extractResponseText(data);
+  return result.rawText;
 }
 // ---------- JSON 解析 ----------
 

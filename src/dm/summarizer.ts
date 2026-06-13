@@ -5,17 +5,11 @@
  * - conversationHistory 不再无限累积。当超出"近 N 对"窗口时，把更早的部分压缩为
  *   一段 200-400 字的 KP 视角日志，写入 state.longTermMemorySummary。
  * - 每次合并都会把上一次的 summary 当作前置上下文塞给 LLM，避免遗忘。
- * - Anthropic / OpenAI 兼容协议都用纯 JSON 响应（不需要 function calling）。
+ * - 通过统一 LLM provider adapter 获取纯 JSON 响应（不需要 function calling）。
  */
 
 import type { ApiConfig, ConversationTurn, GameState } from '../types/game';
-import {
-  extractResponseText,
-  jsonSchemaTextFormat,
-  readResponsesJson,
-  responsesEndpoint,
-  responsesModel
-} from './openaiResponses';
+import { generateJson } from './llm/client';
 
 /** 近 N 对（user/assistant）原文不被总结。8 对 = 16 条。 */
 export const RECENT_TURN_PAIRS_KEEP = 8;
@@ -109,23 +103,16 @@ async function summarizeChunk(
 ): Promise<string> {
   const userMessage = buildSummarizerUserMessage(chunk, previousSummary);
 
-  const response = await fetch(`${responsesEndpoint(config)}/responses`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.apiKey}`
-    },
-    body: JSON.stringify({
-      model: responsesModel(config),
-      instructions: SUMMARIZE_SYSTEM_PROMPT,
-      input: [{ role: 'user', content: userMessage }],
-      max_output_tokens: 1024,
-      text: jsonSchemaTextFormat('memory_summary', SUMMARY_RESPONSE_SCHEMA),
-      store: false
-    })
+  const result = await generateJson(config, {
+    label: 'Summarizer',
+    instructions: SUMMARIZE_SYSTEM_PROMPT,
+    input: [{ role: 'user', content: userMessage }],
+    maxOutputTokens: 1024,
+    schemaName: 'memory_summary',
+    schema: SUMMARY_RESPONSE_SCHEMA,
+    useTools: false
   });
-  const data = await readResponsesJson(response, 'Summarizer');
-  return parseSummary(extractResponseText(data));
+  return parseSummary(result.rawText);
 }
 function buildSummarizerUserMessage(chunk: ConversationTurn[], previousSummary: string): string {
   const head = previousSummary.trim()

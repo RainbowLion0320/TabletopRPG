@@ -332,8 +332,13 @@ export interface AiResponse {
   playerChoices?: string[];
 }
 
+export type AiProvider = 'openai' | 'mimo' | 'custom';
+
+export type AiProtocol = 'responses' | 'chat-completions';
+
 export interface ApiConfig {
-  provider: 'openai';
+  provider: AiProvider;
+  protocol: AiProtocol;
   apiKey: string;
   endpoint?: string;
   model?: string;

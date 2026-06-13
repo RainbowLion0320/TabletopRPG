@@ -212,10 +212,11 @@ export const DM_TOOLS: OpenAiTool[] = [
 
 interface OpenAiResponseFunctionCallPayload {
   id?: string;
+  callId?: string;
   call_id?: string;
   type?: string;
   name?: string;
-  arguments?: string;
+  arguments?: string | Record<string, unknown>;
 }
 
 const TOOL_NAME_SET = new Set<DmToolName>([
@@ -232,7 +233,7 @@ export function parseResponseToolCalls(raw: unknown): DmToolCall[] {
   const out: DmToolCall[] = [];
   for (const item of raw as OpenAiResponseFunctionCallPayload[]) {
     if (!item || typeof item !== 'object') continue;
-    if (item.type !== 'function_call') continue;
+    if (item.type !== undefined && item.type !== 'function_call') continue;
     const name = item.name;
     if (!name || !TOOL_NAME_SET.has(name as DmToolName)) continue;
     const args = parseToolArguments(item.arguments);
@@ -240,14 +241,15 @@ export function parseResponseToolCalls(raw: unknown): DmToolCall[] {
     out.push({
       name: name as DmToolName,
       arguments: args,
-      callId: item.call_id ?? item.id
+      callId: item.callId ?? item.call_id ?? item.id
     });
   }
   return out;
 }
 
-function parseToolArguments(rawArgs: string | undefined): Record<string, unknown> | null {
+function parseToolArguments(rawArgs: string | Record<string, unknown> | undefined): Record<string, unknown> | null {
   if (rawArgs === undefined || rawArgs === null) return {};
+  if (typeof rawArgs === 'object' && !Array.isArray(rawArgs)) return rawArgs;
   if (typeof rawArgs !== 'string') return null;
   const trimmed = rawArgs.trim();
   if (!trimmed) return {};

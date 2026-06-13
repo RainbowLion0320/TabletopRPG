@@ -3,7 +3,7 @@
  *
  * 责任：
  * 1. 把 DmContext + 玩家行动拼成 instructions / input / tools 三段；
- * 2. 调 OpenAI Responses API（function calling + structured output）；
+ * 2. 通过 LLM provider adapter 调模型（function calling + structured output）；
  * 3. 解析回包：narrative / nextPrompt / playerChoices / activeNpc + function_call items；
  * 4. JSON 解析失败时带原始响应重试修复。
  *
@@ -14,21 +14,16 @@
 import type { ApiConfig, ExploreMode } from '../types/game';
 import type { PlayerAction } from '../services/aiDm';
 import type { DmContext } from './contextBuilder';
-import { DM_TOOLS, parseResponseToolCalls, toResponsesTools } from './tools';
+import { DM_TOOLS, parseResponseToolCalls } from './tools';
 import type { DmToolCall, DmToolName } from './types';
-import {
-  extractResponseText,
-  historyToResponseInput,
-  jsonSchemaTextFormat,
-  readResponsesJson,
-  responseFunctionCallItems,
-  responsesEndpoint,
-  responsesModel,
-  type ResponseFunctionCallItem,
-  type ResponseFunctionCallOutputItem,
-  type ResponseInputItem,
-  type ResponseInputMessage
-} from './openaiResponses';
+import { generateJson } from './llm/client';
+import { isAiProviderRuntimeError } from './llm/errors';
+import type {
+  LlmFunctionOutputItem,
+  LlmInputItem,
+  LlmTextInputMessage,
+  LlmToolCall
+} from './llm/types';
 
 // ---------- 输出契约 ----------
 
@@ -392,8 +387,8 @@ interface NarratorRequestOptions {
 
 interface RawNarratorPayload {
   raw: string;
-  rawToolCalls: ResponseFunctionCallItem[];
-  outputItems: ResponseInputItem[];
+  rawToolCalls: LlmToolCall[];
+  outputItems: LlmInputItem[];
 }
 
 const NARRATOR_RESPONSE_SCHEMA = {
@@ -415,7 +410,7 @@ const NARRATOR_RESPONSE_SCHEMA = {
 
 const MAX_REPAIR_CONTEXT_CHARS = 3000;
 
-function buildJsonRepairMessage(raw: string, errorMessage: string): ResponseInputMessage {
+function buildJsonRepairMessage(raw: string, errorMessage: string): LlmTextInputMessage {
   const trimmed = raw.trim();
   const excerpt =
     trimmed.length > MAX_REPAIR_CONTEXT_CHARS
@@ -440,39 +435,23 @@ ${excerpt}`
 async function requestNarrator(
   config: ApiConfig,
   systemPrompt: string,
-  inputItems: ResponseInputItem[],
+  inputItems: LlmInputItem[],
   options: NarratorRequestOptions
 ): Promise<RawNarratorPayload> {
-  const body: Record<string, unknown> = {
-    model: responsesModel(config),
+  const result = await generateJson(config, {
+    label: 'Narrator',
     instructions: systemPrompt,
     input: inputItems,
-    max_output_tokens: 4096,
-    text: jsonSchemaTextFormat('narrator_response', NARRATOR_RESPONSE_SCHEMA),
-    store: false
-  };
-
-  if (options.useFunctionCalling !== false) {
-    body.tools = toResponsesTools(options.tools ?? DM_TOOLS);
-    body.tool_choice = 'auto';
-  }
-
-  const response = await fetch(`${responsesEndpoint(config)}/responses`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.apiKey}`
-    },
-    body: JSON.stringify(body)
+    maxOutputTokens: 4096,
+    schemaName: 'narrator_response',
+    schema: NARRATOR_RESPONSE_SCHEMA,
+    tools: options.tools ?? DM_TOOLS,
+    useTools: options.useFunctionCalling !== false
   });
-  const data = await readResponsesJson(response, 'Narrator');
-  const outputItems = Array.isArray(data.output)
-    ? (data.output.filter((item) => item && typeof item === 'object') as ResponseInputItem[])
-    : [];
   return {
-    raw: extractResponseText(data),
-    rawToolCalls: responseFunctionCallItems(data),
-    outputItems
+    raw: result.rawText,
+    rawToolCalls: result.toolCalls,
+    outputItems: result.outputItems
   };
 }
 
@@ -482,7 +461,7 @@ export interface CallNarratorInput {
   actions: PlayerAction[];
   mode: ExploreMode;
   /** 此前轮次的 conversationHistory（已经过窗口截断） */
-  history: ResponseInputMessage[];
+  history: LlmTextInputMessage[];
   /** 本轮允许的工具名集（来自 Director.allowedTools）；不传则使用全集 */
   allowedToolNames?: DmToolName[];
   /**
@@ -520,7 +499,7 @@ function isLookupOnlyResponse(raw: string, calls: DmToolCall[]): boolean {
 function buildLookupResultMessage(
   call: DmToolCall,
   resolver: (kind: string, id: string) => string
-): ResponseFunctionCallOutputItem {
+): LlmFunctionOutputItem {
   const kind = String(call.arguments.kind ?? '');
   const id = String(call.arguments.id ?? '');
   let content: string;
@@ -531,7 +510,7 @@ function buildLookupResultMessage(
   }
   return {
     type: 'function_call_output',
-    call_id: call.callId ?? `lookup-${kind}-${id}`,
+    callId: call.callId ?? `lookup-${kind}-${id}`,
     output: content
   };
 }
@@ -545,12 +524,12 @@ export async function callNarrator(
   const tools = filterToolsByAllowed(input.allowedToolNames);
 
   // 首轮 history：history + user
-  const messages: ResponseInputItem[] = [
-    ...historyToResponseInput(input.history),
+  const messages: LlmInputItem[] = [
+    ...input.history.filter((turn) => turn.content.trim()),
     { role: 'user', content: userMessage }
   ];
 
-  // function calling 主路径（Anthropic 默认走 JSON、仅最后一轮）
+  // function calling 主路径；解析失败时再切到 JSON-only 修复轮。
   let useFnCall = true;
   let lookupRoundsUsed = 0;
   let lastMalformedRaw = '';
@@ -599,6 +578,7 @@ export async function callNarrator(
         };
       }
     } catch (err) {
+      if (isAiProviderRuntimeError(err)) throw err;
       if (import.meta.env.DEV) {
         // eslint-disable-next-line no-console
         console.warn(
@@ -616,7 +596,7 @@ export async function callNarrator(
       lookupRoundsUsed = 0;
       // 重置话柄到首轮 user（丢弃上一次部分走过的 lookup 循环中间态）。
       messages.length = 0;
-      messages.push(...historyToResponseInput(input.history));
+      messages.push(...input.history.filter((turn) => turn.content.trim()));
       messages.push({ role: 'user', content: userMessage });
       if (err instanceof NarratorError && lastMalformedRaw.trim()) {
         messages.push(buildJsonRepairMessage(lastMalformedRaw, err.message));

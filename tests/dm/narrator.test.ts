@@ -5,6 +5,7 @@ import type { ApiConfig } from '../../src/types/game';
 
 const config: ApiConfig = {
   provider: 'openai',
+  protocol: 'responses',
   apiKey: 'unit-test-key',
   model: 'unit-test-model',
   endpoint: 'https://unit.test/v1'
@@ -159,20 +160,32 @@ describe('callNarrator retry repair', () => {
     expect(repairMessage?.content).toContain(malformed);
   });
 
-  it('accepts chat-compatible response content from a Responses endpoint proxy', async () => {
+  it('accepts chat-compatible response content through the Chat Completions adapter', async () => {
+    const chatConfig: ApiConfig = {
+      provider: 'custom',
+      protocol: 'chat-completions',
+      apiKey: 'unit-test-key',
+      model: 'unit-test-model',
+      endpoint: 'https://unit.test/v1'
+    };
     const content = JSON.stringify({
       narrative: '兼容响应已解析。',
       activeNpc: null,
       nextPrompt: '你要继续检查码头吗？',
       playerChoices: ['检查脚印', '呼喊同伴', '返回灯塔']
     });
-    const fetchMock = vi.fn(async (url: string | URL | Request) => {
-      expect(String(url)).toBe('https://unit.test/v1/responses');
+    const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      expect(String(url)).toBe('https://unit.test/v1/chat/completions');
+      const body = bodyFrom(init);
+      expect(body.messages).toEqual([
+        expect.objectContaining({ role: 'system' }),
+        { role: 'user', content: '【本轮行动宣言】\n亨利：我查看码头地面。' }
+      ]);
       return new Response(
         JSON.stringify({
           choices: [
             {
-              message: { content }
+              message: { role: 'assistant', content }
             }
           ]
         }),
@@ -184,7 +197,7 @@ describe('callNarrator retry repair', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const output = await callNarrator(config, {
+    const output = await callNarrator(chatConfig, {
       ctx,
       actions: [{ player: '亨利', action: '我查看码头地面。' }],
       mode: 'together',
@@ -194,5 +207,21 @@ describe('callNarrator retry repair', () => {
     expect(output.narrative).toBe('兼容响应已解析。');
     expect(output.playerChoices).toEqual(['检查脚印', '呼喊同伴', '返回灯塔']);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports a diagnostic configuration error when chat-compatible protocol has no endpoint', async () => {
+    const badConfig: ApiConfig = {
+      provider: 'custom',
+      protocol: 'chat-completions',
+      apiKey: 'unit-test-key',
+      model: 'unit-test-model'
+    };
+
+    await expect(callNarrator(badConfig, {
+      ctx,
+      actions: [{ player: '亨利', action: '我查看码头地面。' }],
+      mode: 'together',
+      history: []
+    })).rejects.toThrow(/endpoint|协议|模型|chat-compatible/i);
   });
 });

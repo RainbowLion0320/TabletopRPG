@@ -11,7 +11,7 @@ AI 驱动的横屏网页跑团游戏。当前项目已经迁移为 Vite + React 
 | 语言 | TypeScript |
 | 图标 | lucide-react |
 | 存储 | localStorage |
-| AI 接入 | OpenAI / Anthropic / MiMo / 兼容 OpenAI 的自定义接口 |
+| AI 接入 | OpenAI Responses API / OpenAI-compatible Chat Completions gateway |
 
 ## 快速开始
 
@@ -50,16 +50,39 @@ npm run test:smoke
 
 为了避免每次启动都要在界面里手动填 API Key，推荐把密钥放在**本地 shell 环境变量**里，游戏启动时会自动读取作为默认值。密钥不会写入仓库（`.env*` 已在 `.gitignore` 中）。
 
+### OpenAI 官方（默认，Responses API）
+
+```bash
+export VITE_AI_PROVIDER="openai"
+export VITE_AI_PROTOCOL="responses"
+export VITE_AI_API_KEY="<你的 OpenAI Key>"
+# 可选；为空时默认 gpt-4o
+# export VITE_AI_MODEL="gpt-4o"
+```
+
+### MiMo / 自定义 OpenAI-compatible 网关
+
+这类网关通常兼容 Chat Completions，而不一定支持 OpenAI Responses API。需要显式配置 `chat-completions` 协议和 endpoint：
+
+```bash
+export VITE_AI_PROVIDER="mimo"
+export VITE_AI_PROTOCOL="chat-completions"
+export VITE_AI_ENDPOINT="https://你的网关域名/v1"
+export VITE_AI_API_KEY="<你的 MiMo 或网关 Key>"
+export VITE_AI_MODEL="<网关模型名>"
+```
+
+自定义网关可把 `VITE_AI_PROVIDER` 改成 `custom`。
+
 ### macOS / Linux（zsh / bash）
 
 在 `~/.zshrc`（或 `~/.bashrc`）里追加：
 
 ```bash
-# 小米 MiMo Token Plan（默认 provider）
-export VITE_AI_PROVIDER="mimo"
-export VITE_AI_API_KEY="<你的 MiMo Key>"
-# 可选：覆盖默认模型
-# export VITE_AI_MODEL="mimo-v2.5"
+# OpenAI 官方
+export VITE_AI_PROVIDER="openai"
+export VITE_AI_PROTOCOL="responses"
+export VITE_AI_API_KEY="<你的 OpenAI Key>"
 ```
 
 保存后执行 `source ~/.zshrc`，再运行 `npm run start:game` 即可。
@@ -67,8 +90,9 @@ export VITE_AI_API_KEY="<你的 MiMo Key>"
 ### Windows（PowerShell）
 
 ```powershell
-[Environment]::SetEnvironmentVariable("VITE_AI_PROVIDER", "mimo", "User")
-[Environment]::SetEnvironmentVariable("VITE_AI_API_KEY", "<你的 MiMo Key>", "User")
+[Environment]::SetEnvironmentVariable("VITE_AI_PROVIDER", "openai", "User")
+[Environment]::SetEnvironmentVariable("VITE_AI_PROTOCOL", "responses", "User")
+[Environment]::SetEnvironmentVariable("VITE_AI_API_KEY", "<你的 OpenAI Key>", "User")
 ```
 
 新开一个终端使变量生效，再 `npm start`。
@@ -78,8 +102,9 @@ export VITE_AI_API_KEY="<你的 MiMo Key>"
 如果不想改 shell 配置，也可以在项目根目录新建 `.env.local`：
 
 ```env
-VITE_AI_PROVIDER=mimo
-VITE_AI_API_KEY=<你的 MiMo Key>
+VITE_AI_PROVIDER=openai
+VITE_AI_PROTOCOL=responses
+VITE_AI_API_KEY=<你的 OpenAI Key>
 ```
 
 该文件已被 `.gitignore` 忽略，不会被提交。
@@ -95,9 +120,10 @@ VITE_AI_API_KEY=<你的 MiMo Key>
 | 变量 | 必填 | 说明 |
 | --- | --- | --- |
 | `VITE_AI_API_KEY` | ✅ | API Key |
-| `VITE_AI_PROVIDER` | 可选 | `openai` / `anthropic` / `mimo` / `custom`，默认 `mimo` |
-| `VITE_AI_MODEL` | 可选 | 模型名，缺省由 provider 决定 |
-| `VITE_AI_ENDPOINT` | 可选 | 仅 `provider=custom` 时使用 |
+| `VITE_AI_PROVIDER` | 可选 | `openai` / `mimo` / `custom`，默认 `openai` |
+| `VITE_AI_PROTOCOL` | 可选 | `responses` / `chat-completions`，默认由 provider 决定 |
+| `VITE_AI_ENDPOINT` | 条件必填 | OpenAI 默认 `https://api.openai.com/v1`；MiMo/custom 必填 |
+| `VITE_AI_MODEL` | 条件必填 | OpenAI 默认 `gpt-4o`；MiMo/custom 按网关要求填写 |
 
 
 ## 目录结构

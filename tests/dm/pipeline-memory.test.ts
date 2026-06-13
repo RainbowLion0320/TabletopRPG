@@ -5,6 +5,7 @@ import { makeInvestigator, makeState } from './fixtures';
 
 const config: ApiConfig = {
   provider: 'openai',
+  protocol: 'responses',
   apiKey: 'unit-test-key',
   model: 'unit-test-model',
   endpoint: 'https://unit.test/v1'

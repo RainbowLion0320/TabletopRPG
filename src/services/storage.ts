@@ -1,4 +1,5 @@
 import type { ApiConfig, GameState, SaveSlot } from '../types/game';
+import { isAiProtocol, isAiProvider, normalizeApiConfig } from '../config/aiConfig';
 import { storyData } from '../data/storyData';
 import { hydrateGameState } from '../state/gameReducer';
 
@@ -90,26 +91,24 @@ export function deleteSave(id: number) {
  * when the user explicitly saves a config in the UI.
  *
  * Required for non-empty config: VITE_AI_API_KEY.
- * Optional: VITE_AI_MODEL.
+ * Optional: VITE_AI_PROVIDER, VITE_AI_PROTOCOL, VITE_AI_ENDPOINT, VITE_AI_MODEL.
  */
 export function getEnvDefaultApiConfig(): ApiConfig {
   const env = import.meta.env;
-  return {
-    provider: 'openai',
+  return normalizeApiConfig({
+    provider: isAiProvider(env.VITE_AI_PROVIDER) ? env.VITE_AI_PROVIDER : undefined,
+    protocol: isAiProtocol(env.VITE_AI_PROTOCOL) ? env.VITE_AI_PROTOCOL : undefined,
     apiKey: env.VITE_AI_API_KEY ?? '',
+    endpoint: env.VITE_AI_ENDPOINT ?? '',
     model: env.VITE_AI_MODEL ?? ''
-  };
+  });
 }
 
 export function readApiConfig(): ApiConfig | null {
   try {
     const cfg = JSON.parse(localStorage.getItem(API_KEY) || 'null') as ApiConfig | null;
     if (cfg && cfg.apiKey) {
-      return {
-        provider: 'openai',
-        apiKey: cfg.apiKey,
-        model: cfg.model ?? ''
-      };
+      return normalizeApiConfig(cfg);
     }
   } catch {
     // fall through to env defaults
@@ -119,7 +118,7 @@ export function readApiConfig(): ApiConfig | null {
 }
 
 export function writeApiConfig(config: ApiConfig) {
-  localStorage.setItem(API_KEY, JSON.stringify(config));
+  localStorage.setItem(API_KEY, JSON.stringify(normalizeApiConfig(config)));
 }
 
 /**

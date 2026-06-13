@@ -4,7 +4,14 @@ import react from '@vitejs/plugin-react';
 import { promises as fs } from 'fs';
 import path from 'path';
 
-const ENV_KEYS = ['VITE_AI_API_KEY', 'VITE_AI_MODEL'] as const;
+export const AI_ENV_KEYS = [
+  'VITE_AI_PROVIDER',
+  'VITE_AI_PROTOCOL',
+  'VITE_AI_ENDPOINT',
+  'VITE_AI_API_KEY',
+  'VITE_AI_MODEL'
+] as const;
+const ENV_KEYS = AI_ENV_KEYS;
 type EnvKey = (typeof ENV_KEYS)[number];
 
 /**
@@ -28,10 +35,16 @@ function envWriterPlugin(): Plugin {
         req.on('end', async () => {
           try {
             const body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}') as {
+              provider?: string;
+              protocol?: string;
+              endpoint?: string;
               apiKey?: string;
               model?: string;
             };
             const incoming: Partial<Record<EnvKey, string>> = {
+              VITE_AI_PROVIDER: (body.provider ?? '').trim(),
+              VITE_AI_PROTOCOL: (body.protocol ?? '').trim(),
+              VITE_AI_ENDPOINT: (body.endpoint ?? '').trim(),
               VITE_AI_API_KEY: (body.apiKey ?? '').trim(),
               VITE_AI_MODEL: (body.model ?? '').trim()
             };
@@ -70,13 +83,7 @@ async function mergeEnvLocal(incoming: Partial<Record<EnvKey, string>>) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
   }
 
-  // Apply incoming. Empty string => delete that key (lets the user "unset" via UI).
-  for (const key of ENV_KEYS) {
-    if (!(key in incoming)) continue;
-    const value = incoming[key];
-    if (value && value.length > 0) existing[key] = value;
-    else delete existing[key];
-  }
+  existing = mergeEnvValues(existing, incoming);
 
   // Stable serialization: managed keys first, then preserve any other pre-existing keys.
   const managed = ENV_KEYS.filter((k) => existing[k] !== undefined).map((k) => `${k}=${existing[k]}`);
@@ -90,6 +97,20 @@ async function mergeEnvLocal(incoming: Partial<Record<EnvKey, string>>) {
   ].join('\n') + '\n';
 
   await fs.writeFile(envPath, out, 'utf8');
+}
+
+export function mergeEnvValues(
+  existing: Record<string, string>,
+  incoming: Partial<Record<EnvKey, string>>
+): Record<string, string> {
+  const merged = { ...existing };
+  for (const key of ENV_KEYS) {
+    if (!(key in incoming)) continue;
+    const value = incoming[key];
+    if (value && value.length > 0) merged[key] = value;
+    else delete merged[key];
+  }
+  return merged;
 }
 
 export default defineConfig({
