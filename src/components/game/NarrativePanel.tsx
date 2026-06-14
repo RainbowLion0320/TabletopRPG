@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Expand, Shrink } from 'lucide-react';
 import type { GameState } from '../../types/game';
 import { storyData } from '../../data/storyData';
+import { ThinkingIndicator } from './ThinkingIndicator';
 
 interface NarrativePanelProps {
   state: GameState;
@@ -41,6 +42,7 @@ export function NarrativePanel({ state }: NarrativePanelProps) {
           <p>{message.text}</p>
         </div>
       ))}
+      {state.isThinking ? <ThinkingIndicator /> : null}
     </div>
   );
 }

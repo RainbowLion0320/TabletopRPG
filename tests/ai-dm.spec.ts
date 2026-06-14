@@ -142,9 +142,9 @@ test('AI DM handles first player action through a chat-compatible provider', asy
   await expect(page.getByText(/AI DM 返回格式无效/)).toHaveCount(0);
 });
 
-test('AI DM thinking state blocks the game with a full-screen overlay while the turn is running', async ({ page }) => {
+test('AI DM thinking state shows an inline animated indicator while the turn is running', async ({ page }) => {
   const narrator = JSON.stringify({
-    narrative: 'The delayed narrator response is shown after the overlay.',
+    narrative: 'The delayed narrator response is shown after the indicator.',
     activeNpc: null,
     nextPrompt: 'Choose the next lead.',
     playerChoices: {
@@ -181,19 +181,19 @@ test('AI DM thinking state blocks the game with a full-screen overlay while the 
   await page.getByRole('button', { name: '提交' }).click();
 
   await expect.poll(() => narratorAttempts).toBe(1);
-  const overlay = page.getByRole('status', { name: 'AI DM 正在推演下一幕' });
-  await expect(overlay).toBeVisible();
-  await expect(page.locator('.thinking-line')).toHaveCount(0);
-  const overlayBox = await overlay.boundingBox();
+  const indicator = page.getByRole('status', { name: 'AI DM 正在推演下一幕' });
+  await expect(indicator).toBeVisible();
+  await expect(page.locator('.thinking-overlay')).toHaveCount(0);
+  await expect(page.locator('.narrative-panel .thinking-line')).toHaveCount(1);
+  await expect(page.locator('.action-dock')).toBeVisible();
+  const indicatorBox = await indicator.boundingBox();
+  const indicatorTextBox = await page.locator('.thinking-line-text').boundingBox();
   const viewport = page.viewportSize();
-  expect(overlayBox?.x).toBeLessThanOrEqual(1);
-  expect(overlayBox?.y).toBeLessThanOrEqual(1);
-  expect(overlayBox?.width).toBeGreaterThanOrEqual((viewport?.width ?? 0) - 2);
-  expect(overlayBox?.height).toBeGreaterThanOrEqual((viewport?.height ?? 0) - 2);
-  const overlayBackground = await overlay.evaluate((element) => getComputedStyle(element).backgroundColor);
-  expect(overlayBackground).toMatch(/rgba\(.+,\s*0\.\d+\)/);
+  expect(indicatorBox?.height).toBeLessThan((viewport?.height ?? 0) * 0.2);
+  expect(indicatorTextBox?.width).toBeLessThan((viewport?.width ?? 0) * 0.7);
+  expect(indicatorTextBox?.height).toBeLessThan(40);
 
   releaseNarrator();
-  await expect(page.locator('.story-message.dm p', { hasText: 'The delayed narrator response is shown after the overlay.' })).toBeVisible();
-  await expect(overlay).toHaveCount(0);
+  await expect(page.locator('.story-message.dm p', { hasText: 'The delayed narrator response is shown after the indicator.' })).toBeVisible();
+  await expect(indicator).toHaveCount(0);
 });

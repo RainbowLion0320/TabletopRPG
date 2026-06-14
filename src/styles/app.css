@@ -706,35 +706,27 @@ button {
   letter-spacing: 1px;
 }
 
-.thinking-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 12000;
-  display: grid;
-  place-items: center;
-  background: rgba(2, 2, 2, 0.72);
-  backdrop-filter: blur(3px) saturate(0.72);
-  color: var(--text);
-  pointer-events: auto;
-  outline: 0;
+.thinking-line {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 2px;
 }
 
-.thinking-overlay-text {
+.thinking-line-text {
   display: flex;
   align-items: baseline;
   justify-content: center;
   gap: 0.03em;
-  max-width: calc(100vw - 48px);
   color: var(--gold);
-  font-size: 42px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0;
-  line-height: 1.25;
+  line-height: 1.6;
   text-align: center;
-  text-shadow: 0 18px 46px rgba(216,189,122,0.18);
+  text-shadow: 0 8px 22px rgba(216,189,122,0.18);
 }
 
-.thinking-overlay-text span {
+.thinking-line-text span {
   display: inline-block;
   animation: thinking-bounce 1.05s ease-in-out infinite;
   animation-delay: var(--delay);
@@ -752,14 +744,13 @@ button {
 }
 
 @media (max-width: 640px) {
-  .thinking-overlay-text {
-    max-width: calc(100vw - 28px);
-    font-size: 28px;
+  .thinking-line-text {
+    font-size: 12px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .thinking-overlay-text span {
+  .thinking-line-text span {
     animation: none;
     opacity: 1;
   }

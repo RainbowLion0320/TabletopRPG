@@ -6,7 +6,6 @@ import { InfoDrawer } from '../components/game/InfoDrawer';
 import { NarrativePanel } from '../components/game/NarrativePanel';
 import { SaveManagerModal } from '../components/game/SaveManagerModal';
 import { SceneStage } from '../components/game/SceneStage';
-import { ThinkingOverlay } from '../components/game/ThinkingOverlay';
 import { TopBar } from '../components/game/TopBar';
 import { ApiConfigModal } from '../components/shared/ApiConfigModal';
 import type { SceneId } from '../types/game';
@@ -79,7 +78,6 @@ export function GameScreen({ controller, onHome, onRestart }: GameScreenProps) {
       <ApiConfigModal open={controller.apiOpen} onClose={() => controller.setApiOpen(false)} onSave={controller.saveApi} />
       {controller.toast ? <div className="toast">{controller.toast}</div> : null}
       <DmDebugDrawer />
-      {state.isThinking ? <ThinkingOverlay /> : null}
     </main>
   );
 }
