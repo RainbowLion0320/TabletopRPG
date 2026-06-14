@@ -4,7 +4,7 @@ title: 技术选型
 tags: [tech, architecture, decision, react, vite]
 sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-14
-updated: 2026-05-29
+updated: 2026-06-14
 ---
 
 # 技术选型
@@ -16,7 +16,7 @@ updated: 2026-05-29
 | **前端** | React 18 + TypeScript | 组件化承载复杂 UI 和游戏状态 |
 | **构建工具** | Vite | 本地开发快，生产构建简单 |
 | **图标** | lucide-react | 轻量、统一的按钮图标来源 |
-| **AI 接入** | Anthropic / OpenAI / MiMo / 自定义端点 | 覆盖主流与兼容 OpenAI 的服务 |
+| **AI 接入** | OpenAI Responses / OpenAI-compatible Chat Completions / 自定义端点 | 明确区分官方 Responses 与兼容网关协议 |
 | **数据存储** | localStorage + JSON | 无需后端，适合本地 Demo |
 | **游戏规则** | COC 第七版风格 D100 | 检定机制明确，适合 AI 裁判 |
 | **自动化测试** | Playwright | 覆盖核心浏览器 smoke 流程与 D100 规则 |
@@ -31,7 +31,8 @@ src/
 │   ├── setup/           # 标题页、预设调查员选择
 │   └── game/            # 游戏主界面组件
 ├── data/                # 规则配置、剧本、技能、职业、预设调查员
-├── services/            # AI、骰子、存档/API 配置
+├── dm/                  # AI DM 管线、LLM adapter、记忆层
+├── services/            # 骰子、存档/API 配置等通用服务
 ├── state/               # reducer、存档水合、AI 响应归一化
 ├── styles/              # 全局样式
 ├── types/               # 领域类型
@@ -43,7 +44,7 @@ src/
 | Key | 状态 | 内容 |
 |-----|------|------|
 | `trpg-saves-v2` | 当前 | 新版存档槽位数组，最多 12 条 |
-| `trpg-api` | 当前 | API 配置（provider、apiKey、endpoint、model） |
+| `trpg-api` | 当前 | API 配置（provider、protocol、apiKey、endpoint、model） |
 
 > 当前代码已实现最近存档读取、存档列表、指定载入和删除；导入/导出仍在 backlog。
 
@@ -62,15 +63,21 @@ src/
 
 ## AI 调用
 
-- Anthropic：`https://api.anthropic.com/v1/messages`，默认 `claude-3-5-sonnet-latest`
-- OpenAI：`https://api.openai.com/v1/chat/completions`，默认 `gpt-4o`
-- MiMo：`https://token-plan-cn.xiaomimimo.com/v1/chat/completions`，默认 `mimo-v2.5`
-- 自定义：`{endpoint}/chat/completions`
+AI Provider 配置由 `ApiConfig` 统一承载：`provider`、`protocol`、`endpoint`、`apiKey`、`model`。
+
+| Provider | 默认协议 | 基础端点 | 请求路径 |
+|----------|----------|----------|----------|
+| OpenAI | `responses` | `https://api.openai.com/v1` | `/responses` |
+| MiMo | `chat-completions` | 用户配置 | `/chat/completions` |
+| 自定义 | 用户显式选择 | 用户配置 | 按协议选择 |
+
+`src/dm/llm/client.ts` 是唯一中立入口。协议差异只能存在于 `responsesAdapter.ts` 和 `chatCompletionsAdapter.ts`，DM 业务模块不得直接 `fetch` 模型 endpoint。
 
 ## 关键约束
 
 - API Key 由用户在 UI 中输入并保存在本地浏览器，不能硬编码进仓库。
 - 游戏数值公式优先进入 `src/data/gameRules.ts`，避免 UI、服务和 reducer 各自硬编码。
+- AI Provider 不做失败后自动猜协议；协议由 provider 默认值或用户配置明确决定。
 - AI 响应进入 reducer 前必须通过 JSON 契约校验；格式无效时修复重试一次，仍无效则拦截。
 - 存档或已验证 AI 响应进入 UI 前必须经过归一化，避免非法引用破坏主流程。
 - 核心流程修改后应运行 `npm run test:smoke`。

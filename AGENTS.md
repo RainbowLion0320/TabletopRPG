@@ -7,7 +7,7 @@
 ## 目录结构
 
 ```
-wiki/
+TabletopRPG/
 ├── index.md              # 内容目录（每次 ingest/更新后必须同步）
 ├── log.md                # 操作日志（append-only，只追加不修改）
 ├── overview.md           # 项目全局综述
@@ -18,6 +18,8 @@ wiki/
 
 raw/                      # 原始素材（只读，LLM 不得修改）
 ```
+
+> 历史资料里可能出现 `wiki/` 这个占位名；当前仓库中的实际 wiki 目录是 `TabletopRPG/`。所有新增和更新都必须写入 `TabletopRPG/`。
 
 ---
 
@@ -43,20 +45,30 @@ updated: YYYY-MM-DD
 ### Ingest（导入新资料）
 1. 将原始资料放入 `raw/`
 2. 读取原始资料，与用户讨论关键要点
-3. 在 `wiki/sources/` 写摘要页
-4. 更新 `wiki/overview.md`（如有影响）
+3. 在 `TabletopRPG/sources/` 写摘要页
+4. 更新 `TabletopRPG/overview.md`（如有影响）
 5. 更新或新建相关 `concepts/` 和 `entities/` 页面
-6. 更新 `wiki/index.md`
-7. 在 `wiki/log.md` 追加一条日志：`## [YYYY-MM-DD] ingest | 资料名称`
+6. 更新 `TabletopRPG/index.md`
+7. 在 `TabletopRPG/log.md` 追加一条日志：`## [YYYY-MM-DD] ingest | 资料名称`
 
 ### Query（查询）
-1. 先读 `wiki/index.md` 找相关页面
+1. 先读 `TabletopRPG/index.md` 找相关页面
 2. 读取相关页面后综合回答
 3. 有价值的查询结果可以作为新页面存入 wiki（与用户确认）
 
 ### Lint（健康检查）
 检查：孤立页面（无入链）、矛盾内容、缺失的交叉引用、过时信息。
-在 `wiki/log.md` 追加：`## [YYYY-MM-DD] lint | 发现 N 个问题`
+在 `TabletopRPG/log.md` 追加：`## [YYYY-MM-DD] lint | 发现 N 个问题`
+
+---
+
+## 工程操作规范
+
+- 项目级贡献规则见 `CONTRIBUTING.md`，Git 入门流程见 `docs/git使用指南.md`。
+- 代码改动至少运行 `npm test` 和 `npm run build`；涉及浏览器交互、主游戏界面、AI DM 端到端流程时再运行 `npm run test:smoke`。
+- AI DM 业务模块不得直接调用模型 endpoint。Narrator、Summarizer、Memory 模块只能通过 `src/dm/llm/client.ts` 访问模型。
+- 只有 `src/dm/llm/*Adapter.ts` 可以包含 `/responses`、`/chat/completions` 或协议专用请求字段。
+- 不得提交 `.env.local`、API Key、`dist/`、`test-results/`、`playwright-report/`、`node_modules/` 或原始设计稿。
 
 ---
 

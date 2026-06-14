@@ -115,3 +115,11 @@
 - 资源文件按角色名重命名为 `henry_gray.png`、`ada_wallace.png`、`thomas_bell.png`、`robert_shaw.png`。
 - NPC 数据不再复用调查员立绘；NPC portrait 改为可选字段。
 - 同步代码、资源 README、PRD/GDD、Wiki 和比赛 pitch 页面中的资源路径与表述。
+
+## [2026-06-14] lint | 发现 5 类问题
+
+- `AGENTS.md` 仍使用历史占位目录 `wiki/`，已修正为当前实际目录 `TabletopRPG/`。
+- 项目缺少统一贡献规范、编辑器基础配置、PR 模板、Issue 模板和 CI，已补充 `CONTRIBUTING.md`、`.editorconfig` 与 `.github/` 工作流/模板。
+- `docs/SPEC.md` 的 AI Provider 表仍描述 OpenAI Chat Completions 和 Anthropic，已修正为当前 Responses / Chat Adapter 架构。
+- `prompts/README.md` 仍指向旧的 `src/services/aiDm.ts` 提示词位置，已修正为当前 `src/dm/` 管线。
+- `TabletopRPG/` wiki 和 `docs/PRD.md` 仍有旧 AI Provider / 提示词模块路径，已同步到当前 LLM adapter 与 DM 管线。

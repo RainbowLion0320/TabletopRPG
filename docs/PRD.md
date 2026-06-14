@@ -103,7 +103,8 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 | Player action flow helpers | `src/app/gameFlow.ts` |
 | Game state reducer and hydration | `src/state/gameReducer.ts` |
 | Rules and numeric config | `src/data/gameRules.ts` |
-| AI DM prompt and provider calls | `src/services/aiDm.ts` |
+| AI DM pipeline and prompts | `src/dm/` |
+| LLM provider adapter | `src/dm/llm/` |
 | Dice checks | `src/services/dice.ts` |
 | Save/load/API config | `src/services/storage.ts` |
 | Story module data | `src/data/storyData.ts` |

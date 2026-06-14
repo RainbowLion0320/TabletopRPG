@@ -4,16 +4,18 @@ title: 提示词工程
 tags: [prompt, ai, methodology]
 sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-18
-updated: 2026-05-29
+updated: 2026-06-14
 ---
 
 # 提示词工程
 
 ## 概述
 
-当前运行版系统提示词由 `src/services/aiDm.ts` 的 `buildSystemPrompt()` 动态构建。`/prompts` 目录保留为后续版本化提示词资产目录，尚未被运行时代码直接读取。
+当前运行版提示词以内嵌常量形式分布在 `src/dm/` 管线中，主要包括 `src/dm/narrator.ts`、`src/dm/summarizer.ts`、`src/dm/memory/factExtractor.ts` 和 `src/dm/memory/system2Synthesizer.ts`。`/prompts` 目录保留为后续版本化提示词资产目录，尚未被运行时代码直接读取。
 
 ## 当前系统提示词结构
+
+Narrator 提示词负责玩家可见叙事、检定请求、场景推进和严格 JSON 输出；Summarizer 与 Memory 提示词只服务 DM 内部记录，不直接展示给玩家。
 
 ### 1. 主持规则层
 - AI 只以 KP/DM 身份回应玩家行动。
@@ -86,8 +88,8 @@ updated: 2026-05-29
 
 ## 后续提示词资产化计划
 
-1. 在 `/prompts` 新建 `dm_system_v1.md`。
-2. 将 `buildSystemPrompt()` 拆为静态模板 + 动态状态片段。
+1. 在 `/prompts` 新建 `dm_narrator_v1.md`、`dm_summarizer_v1.md` 等按模块拆分的版本文件。
+2. 将 `src/dm/` 中的提示词常量拆为静态模板 + 动态状态片段。
 3. 为不同 Provider 或不同叙事风格保留版本文件。
 4. 更新 `docs/SPEC.md` 和本页，记录接入方式。
 

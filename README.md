@@ -46,6 +46,12 @@ npx playwright install chromium
 npm run test:smoke
 ```
 
+合并前快速检查：
+
+```bash
+npm run check
+```
+
 ## AI API 配置（推荐：本地环境变量）
 
 为了避免每次启动都要在界面里手动填 API Key，推荐把密钥放在**本地 shell 环境变量**里，游戏启动时会自动读取作为默认值。密钥不会写入仓库（`.env*` 已在 `.gitignore` 中）。
@@ -155,7 +161,14 @@ TabletopRPG/
 | 技术规格 | `docs/SPEC.md` |
 | 游戏设计 | `docs/GDD.md` |
 | Wiki 索引 | `TabletopRPG/index.md` |
+| 贡献规范 | `CONTRIBUTING.md` |
 | 运行时代码 | `src/` |
+
+## 项目规范
+
+- 贡献、测试、Git 与文档同步要求见 `CONTRIBUTING.md`。
+- Wiki 维护规则见 `AGENTS.md`，实际 wiki 目录为 `TabletopRPG/`。
+- CI 会在 `main` push 和 PR 上运行 `npm test`、`npm run build`、`npm run test:smoke`。
 
 ## 当前 UI 结构
 

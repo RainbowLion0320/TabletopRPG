@@ -4,7 +4,7 @@
 
 每次修改提示词必须通过 Git commit 记录，保留完整可回溯历史。
 
-> 当前运行版系统提示词仍内嵌在 `src/services/aiDm.ts` 的 `buildSystemPrompt()` 中。此目录用于后续外部化、版本化和对比不同提示词方案；新增文件后需要同步代码接入方式和 `docs/SPEC.md`。
+> 当前运行版提示词以内嵌常量形式分布在 `src/dm/` 管线中，主要包括 `src/dm/narrator.ts`、`src/dm/summarizer.ts`、`src/dm/memory/factExtractor.ts` 和 `src/dm/memory/system2Synthesizer.ts`。此目录用于后续外部化、版本化和对比不同提示词方案；新增文件后需要同步代码接入方式和 `docs/SPEC.md`。
 
 ## 文件命名规范
 
@@ -30,6 +30,7 @@ prompts/
 2. **写清楚这个提示词的用途**（给谁用？在哪个环节调用？）
 3. 每次迭代新建文件（`v1` → `v2`），不直接覆盖旧版本
 4. 重大改动在 commit message 中说明改了什么、为什么改
+5. 接入运行时代码时必须通过 `src/dm/llm/client.ts`，不得在提示词模块里直接调用模型 endpoint
 
 ## 负责人
 

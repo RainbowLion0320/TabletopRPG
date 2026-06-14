@@ -125,7 +125,7 @@ Current formulas:
 | Key | Status | Purpose |
 | --- | --- | --- |
 | `trpg-saves-v2` | current | Save slots, capped at 12, list/load/delete through Save Manager |
-| `trpg-api` | current | Provider, API key, endpoint, model |
+| `trpg-api` | current | Provider, protocol, API key, endpoint, model |
 
 Current UI loads the latest valid save from the title/menu shortcuts. Save Manager lists valid slots, loads a selected slot, and deletes a selected slot.
 
@@ -133,12 +133,15 @@ Current UI loads the latest valid save from the title/menu shortcuts. Save Manag
 
 ### Providers
 
-| Provider | Endpoint | Default Model |
-| --- | --- | --- |
-| OpenAI | `https://api.openai.com/v1/chat/completions` | `gpt-4o` |
-| Anthropic | `https://api.anthropic.com/v1/messages` | `claude-3-5-sonnet-latest` |
-| MiMo | `https://token-plan-cn.xiaomimimo.com/v1/chat/completions` | `mimo-v2.5` |
-| Custom | `{endpoint}/chat/completions` | user configured or `gpt-4o` |
+| Provider | Protocol | Base Endpoint | Request Path | Default Model |
+| --- | --- | --- | --- | --- |
+| OpenAI | `responses` | `https://api.openai.com/v1` | `/responses` | `gpt-4o` |
+| MiMo | `chat-completions` | user configured | `/chat/completions` | user configured |
+| Custom | user configured | user configured | `/responses` or `/chat/completions` by protocol | user configured |
+
+`ApiConfig` carries `provider`, `protocol`, `endpoint`, `apiKey`, and `model`. OpenAI defaults to the Responses API. MiMo and custom OpenAI-compatible gateways default to Chat Completions only when the provider rules say so; the app does not guess protocol from failed responses.
+
+DM business modules call the neutral LLM client in `src/dm/llm/client.ts`. Only `src/dm/llm/*Adapter.ts` may contain protocol endpoint paths or protocol-specific request fields.
 
 ### Response Shape
 
@@ -252,7 +255,7 @@ Story data also includes 6 NPC entries and 8 item entries. Assets are imported d
 ## 11. Known Technical Limits
 
 - AI calls happen in the browser, so user-entered API keys remain local but are exposed to the browser runtime.
-- Automated coverage is currently smoke-level only: `tests/smoke.spec.ts` covers core navigation, no-key AI guard, save/continue, save manager load/delete, invalid save filtering, and D100 fumble priority.
+- Automated coverage includes Vitest unit/regression tests, architecture boundary tests, and Playwright smoke tests for core browser flows.
 - No server-side state, multiplayer synchronization, or API proxy exists.
 - `docs/GDD.html` is a static documentation mirror, not an application entry.
 
