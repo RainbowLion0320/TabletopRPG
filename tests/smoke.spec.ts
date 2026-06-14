@@ -216,16 +216,22 @@ test('player action messages keep the player name and action on one line', async
     const line = message.querySelector('.player-message-line');
     const name = message.querySelector('.player-inline-name');
     const text = message.querySelector('.player-message-text');
+    const panel = message.closest('.narrative-panel');
     const nameBox = name?.getBoundingClientRect();
     const textBox = text?.getBoundingClientRect();
+    const messageBox = message.getBoundingClientRect();
+    const panelBox = panel?.getBoundingClientRect();
     return {
       directLabel,
       lineText: line?.textContent ?? '',
+      messageWidth: Math.round(messageBox.width),
+      panelWidth: Math.round(panelBox?.width ?? 0),
       sameLine: Math.max(nameBox?.top ?? 999, textBox?.top ?? 0) <= Math.min(nameBox?.bottom ?? 0, textBox?.bottom ?? 999)
     };
   });
   expect(messageLayout.directLabel).toBe(false);
   expect(messageLayout.lineText).toBe('亨利·格雷：侦查门廊与窗边痕迹');
+  expect(messageLayout.messageWidth).toBeLessThan(messageLayout.panelWidth * 0.45);
   expect(messageLayout.sameLine).toBe(true);
 });
 

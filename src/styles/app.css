@@ -684,6 +684,7 @@ button {
 /* 玩家消息：稍浅背景 + 右侧金色竖线 + 右对齐 */
 .story-message.player {
   margin-left: auto;
+  width: fit-content;
   max-width: 76%;
   background: rgba(216,189,122,0.08);
   border-right: 3px solid var(--gold-deep);
