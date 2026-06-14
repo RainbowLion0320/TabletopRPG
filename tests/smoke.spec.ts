@@ -37,6 +37,22 @@ test('new game reaches the main game screen with preset investigators', async ({
   await expect(page.getByRole('button', { name: '下一位' })).toBeDisabled();
   await expect(page.locator('.brand-title')).toHaveText('第一幕：接受委托');
   await expect(page.locator('.brand-scene')).toHaveText('摩勒住宅');
+  const brandPresentation = await page.locator('.game-top').evaluate((top) => {
+    const title = top.querySelector('.brand-title');
+    const scene = top.querySelector('.brand-scene');
+    const titleStyle = title ? getComputedStyle(title) : null;
+    const sceneStyle = scene ? getComputedStyle(scene) : null;
+    return {
+      sceneColor: sceneStyle?.color ?? '',
+      sceneFontSize: Number.parseFloat(sceneStyle?.fontSize ?? '0'),
+      titleColor: titleStyle?.color ?? '',
+      titleFontSize: Number.parseFloat(titleStyle?.fontSize ?? '0')
+    };
+  });
+  expect(brandPresentation.titleColor).toMatch(/rgba\(.+,\s*0\.\d+\)/);
+  expect(brandPresentation.sceneColor).toMatch(/rgba\(.+,\s*0\.\d+\)/);
+  expect(brandPresentation.titleFontSize).toBeLessThanOrEqual(30);
+  expect(brandPresentation.sceneFontSize).toBeLessThanOrEqual(14);
   await expect(page.locator('.party-strip-compact .party-compact')).toHaveCount(2);
   await expect(page.getByText('伊莎贝拉·摩勒').first()).toBeVisible();
 

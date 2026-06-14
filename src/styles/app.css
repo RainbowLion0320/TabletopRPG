@@ -469,8 +469,9 @@ button {
 }
 
 .brand-title {
-  color: var(--gold);
-  font-size: 34px;
+  color: rgba(216,189,122,0.58);
+  font-size: 30px;
+  font-weight: 400;
   letter-spacing: 0;
   line-height: 1.08;
   max-width: min(560px, calc(100vw - 124px));
@@ -478,15 +479,15 @@ button {
 }
 
 .brand-scene {
-  color: var(--gold);
-  font-size: 15px;
+  color: rgba(216,189,122,0.42);
+  font-size: 13px;
   letter-spacing: 0;
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .brand-scene::before, .brand-scene::after {
   content: '—';
-  color: rgba(216,189,122,0.6);
+  color: rgba(216,189,122,0.28);
   margin: 0 10px;
 }
 
@@ -1961,7 +1962,7 @@ button {
   .preset-vitals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .preset-attrs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .game-top { padding: 18px; }
-  .brand-title { font-size: 26px; }
+  .brand-title { font-size: 23px; }
   .menu-button { width: 34px; height: 34px; }
   .scene-npc {
     left: 50%;
