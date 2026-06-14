@@ -18,6 +18,7 @@ const scenes = Object.fromEntries(
     {
       id: layered.public.id,
       name: layered.public.name,
+      chapterTitle: layered.public.chapterTitle,
       desc: layered.public.desc,
       image: layered.public.image,
       npcs: [...layered.public.npcs],

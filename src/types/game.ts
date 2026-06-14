@@ -82,6 +82,7 @@ export interface SkillDefinition {
 export interface SceneDefinition {
   id: SceneId;
   name: string;
+  chapterTitle: string;
   desc: string;
   image: string;
   npcs: string[];

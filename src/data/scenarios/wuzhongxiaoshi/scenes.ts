@@ -17,6 +17,7 @@ export const scenes: Record<SceneId, LayeredEntity<ScenePublic>> = {
     public: {
       id: 'S01',
       name: '摩勒住宅',
+      chapterTitle: '第一幕：接受委托',
       desc: '纽伦上街101-102号，维多利亚式别墅。委托人伊莎贝拉·摩勒小姐在此等候。',
       image: sceneS01,
       npcs: ['伊莎贝拉·摩勒'],
@@ -27,6 +28,7 @@ export const scenes: Record<SceneId, LayeredEntity<ScenePublic>> = {
     public: {
       id: 'S02',
       name: '上城区第二分局',
+      chapterTitle: '第二幕：街区调查',
       desc: '步行约10分钟即可抵达。警察局长洛夫·蒙特利尔在此办公。',
       image: sceneS02,
       npcs: ['洛夫·蒙特利尔'],
@@ -38,6 +40,7 @@ export const scenes: Record<SceneId, LayeredEntity<ScenePublic>> = {
     public: {
       id: 'S03',
       name: '老赫特酒吧',
+      chapterTitle: '第二幕：街区调查',
       desc: '本街区内的小酒馆，昏暗嘈杂，烟味浓重。',
       image: sceneS03,
       npcs: ['老赫特之家酒保'],
@@ -49,6 +52,7 @@ export const scenes: Record<SceneId, LayeredEntity<ScenePublic>> = {
     public: {
       id: 'S04',
       name: '卡森其药店',
+      chapterTitle: '第二幕：街区调查',
       desc: '贝尔街14号，废弃多年的药店，门面破败但门锁仍在。',
       image: sceneS04,
       npcs: [],
@@ -60,6 +64,7 @@ export const scenes: Record<SceneId, LayeredEntity<ScenePublic>> = {
     public: {
       id: 'S05',
       name: '泰晤士港',
+      chapterTitle: '终幕：扶桑花号',
       desc: '港口偏僻角落，浓雾笼罩水面，远处停泊着一艘货船。',
       image: sceneS05,
       npcs: [],

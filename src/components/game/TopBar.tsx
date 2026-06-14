@@ -12,7 +12,7 @@ export function TopBar({ state, onToggleMenu }: TopBarProps) {
   return (
     <header className="game-top">
       <div className="brand-block">
-        <div className="brand-title">雾中消逝</div>
+        <div className="brand-title">{scene.chapterTitle}</div>
         <div className="brand-scene">{scene.name}</div>
       </div>
       <button className="menu-button" onClick={onToggleMenu} title="菜单">

@@ -56,6 +56,8 @@ export interface KnowledgeBase {
 export interface ScenePublic {
   id: SceneId;
   name: string;
+  /** 当前场景所属剧情章节，用于玩家 UI 显示进度 */
+  chapterTitle: string;
   desc: string;
   image: string;
   /** 该场景常驻可见 NPC 名 */

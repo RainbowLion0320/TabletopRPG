@@ -35,6 +35,8 @@ test('new game reaches the main game screen with preset investigators', async ({
 
   await expect(page.getByPlaceholder('亨利·格雷 想要做什么...')).toBeVisible();
   await expect(page.getByRole('button', { name: '下一位' })).toBeDisabled();
+  await expect(page.locator('.brand-title')).toHaveText('第一幕：接受委托');
+  await expect(page.locator('.brand-scene')).toHaveText('摩勒住宅');
   await expect(page.locator('.party-strip-compact .party-compact')).toHaveCount(2);
   await expect(page.getByText('伊莎贝拉·摩勒').first()).toBeVisible();
 

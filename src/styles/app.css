@@ -470,15 +470,17 @@ button {
 
 .brand-title {
   color: var(--gold);
-  font-size: clamp(32px, 2.6vw, 48px);
-  letter-spacing: 8px;
-  line-height: 1;
+  font-size: 34px;
+  letter-spacing: 0;
+  line-height: 1.08;
+  max-width: min(560px, calc(100vw - 124px));
+  overflow-wrap: anywhere;
 }
 
 .brand-scene {
   color: var(--gold);
   font-size: 15px;
-  letter-spacing: 4px;
+  letter-spacing: 0;
   margin-top: 12px;
 }
 
@@ -1959,7 +1961,7 @@ button {
   .preset-vitals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .preset-attrs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .game-top { padding: 18px; }
-  .brand-title { font-size: 30px; }
+  .brand-title { font-size: 26px; }
   .menu-button { width: 34px; height: 34px; }
   .scene-npc {
     left: 50%;
