@@ -712,7 +712,8 @@ button {
   z-index: 12000;
   display: grid;
   place-items: center;
-  background: #020202;
+  background: rgba(2, 2, 2, 0.72);
+  backdrop-filter: blur(3px) saturate(0.72);
   color: var(--text);
   pointer-events: auto;
   outline: 0;

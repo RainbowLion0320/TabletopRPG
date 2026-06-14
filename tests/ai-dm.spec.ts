@@ -190,6 +190,8 @@ test('AI DM thinking state blocks the game with a full-screen overlay while the 
   expect(overlayBox?.y).toBeLessThanOrEqual(1);
   expect(overlayBox?.width).toBeGreaterThanOrEqual((viewport?.width ?? 0) - 2);
   expect(overlayBox?.height).toBeGreaterThanOrEqual((viewport?.height ?? 0) - 2);
+  const overlayBackground = await overlay.evaluate((element) => getComputedStyle(element).backgroundColor);
+  expect(overlayBackground).toMatch(/rgba\(.+,\s*0\.\d+\)/);
 
   releaseNarrator();
   await expect(page.locator('.story-message.dm p', { hasText: 'The delayed narrator response is shown after the overlay.' })).toBeVisible();
