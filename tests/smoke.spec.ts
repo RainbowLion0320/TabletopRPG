@@ -203,6 +203,32 @@ test('investigator setup scrolls vertically on narrow screens', async ({ page })
   await expect.poll(() => setupScreen.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 });
 
+test('player action messages keep the player name and action on one line', async ({ page }) => {
+  await startNewGame(page);
+
+  await page.getByRole('button', { name: '侦查门廊与窗边痕迹' }).click();
+  await page.getByRole('button', { name: '下一位' }).click();
+
+  const playerMessage = page.locator('.story-message.player', { hasText: '侦查门廊与窗边痕迹' });
+  await expect(playerMessage).toHaveCount(1);
+  const messageLayout = await playerMessage.evaluate((message) => {
+    const directLabel = Array.from(message.children).some((child) => child.classList.contains('message-label'));
+    const line = message.querySelector('.player-message-line');
+    const name = message.querySelector('.player-inline-name');
+    const text = message.querySelector('.player-message-text');
+    const nameBox = name?.getBoundingClientRect();
+    const textBox = text?.getBoundingClientRect();
+    return {
+      directLabel,
+      lineText: line?.textContent ?? '',
+      sameLine: Math.max(nameBox?.top ?? 999, textBox?.top ?? 0) <= Math.min(nameBox?.bottom ?? 0, textBox?.bottom ?? 999)
+    };
+  });
+  expect(messageLayout.directLabel).toBe(false);
+  expect(messageLayout.lineText).toBe('亨利·格雷：侦查门廊与窗边痕迹');
+  expect(messageLayout.sameLine).toBe(true);
+});
+
 test('submitting an action without an API key opens AI settings instead of crashing', async ({ page }) => {
   test.skip(hasEnvDefaultApiKey, 'requires no default API key from process env or .env.local');
   await startNewGame(page);

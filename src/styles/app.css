@@ -688,12 +688,36 @@ button {
   background: rgba(216,189,122,0.08);
   border-right: 3px solid var(--gold-deep);
   border-left: 0;
-  padding-left: 16px;
+  padding: 8px 14px 8px 16px;
 }
 
-.story-message.player .message-label {
+.story-message.player .player-message-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
   text-align: right;
+}
+
+.player-inline-name,
+.player-inline-separator {
   color: var(--gold-deep);
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.player-inline-name {
+  white-space: nowrap;
+}
+
+.player-inline-separator {
+  margin: 0 6px 0 2px;
+}
+
+.player-message-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
 }
 
 /* 系统消息：居中灰色 */

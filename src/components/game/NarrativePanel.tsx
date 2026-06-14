@@ -38,8 +38,15 @@ export function NarrativePanel({ state }: NarrativePanelProps) {
       {state.messages.map((message) => (
         <div className={`story-message ${message.type}`} key={message.id}>
           {message.type === 'dm' ? <div className="message-label">AI DM</div> : null}
-          {message.type === 'player' ? <div className="message-label">{message.playerName}</div> : null}
-          <p>{message.text}</p>
+          {message.type === 'player' ? (
+            <p className="player-message-line">
+              <span className="player-inline-name">{message.playerName ?? '玩家'}</span>
+              <span className="player-inline-separator">：</span>
+              <span className="player-message-text">{message.text}</span>
+            </p>
+          ) : (
+            <p>{message.text}</p>
+          )}
         </div>
       ))}
       {state.isThinking ? <ThinkingIndicator /> : null}
