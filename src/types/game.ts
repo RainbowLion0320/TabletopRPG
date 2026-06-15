@@ -113,6 +113,47 @@ export interface StoryData {
   items: Record<string, StoryItem>;
 }
 
+export type CaseBoardNodeType = 'npc' | 'item' | 'scene' | 'theory';
+
+export type CaseBoardEdgeTone = 'evidence' | 'suspicion' | 'route' | 'danger';
+
+export interface CaseBoardRevealCondition {
+  itemFound?: string;
+  npcKnown?: string;
+  sceneVisited?: SceneId;
+  flag?: string;
+}
+
+export type CaseBoardRevealRule =
+  | CaseBoardRevealCondition
+  | { anyOf: CaseBoardRevealCondition[] };
+
+export interface CaseBoardNode {
+  id: string;
+  type: CaseBoardNodeType;
+  refId?: string;
+  title: string;
+  subtitle?: string;
+  x: number;
+  y: number;
+  revealWhen: CaseBoardRevealRule;
+}
+
+export interface CaseBoardEdge {
+  id: string;
+  from: string;
+  to: string;
+  label?: string;
+  tone: CaseBoardEdgeTone;
+  revealWhen: 'bothNodesVisible' | CaseBoardRevealRule;
+}
+
+export interface CaseBoardDefinition {
+  summary: string;
+  nodes: CaseBoardNode[];
+  edges: CaseBoardEdge[];
+}
+
 export interface NarrativeMessage {
   id: string;
   type: MessageRole;

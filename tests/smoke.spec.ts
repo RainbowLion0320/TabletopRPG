@@ -235,6 +235,27 @@ test('player action messages keep the player name and action on one line', async
   expect(messageLayout.sameLine).toBe(true);
 });
 
+test('info drawer opens the case board by default and keeps reference tabs', async ({ page }) => {
+  await startNewGame(page);
+
+  await page.getByRole('button', { name: '资料' }).click();
+
+  await expect(page.locator('.case-board-view')).toBeVisible();
+  await expect(page.getByRole('button', { name: '案件板' })).toHaveClass(/active/);
+  const board = page.locator('.case-board-canvas');
+  await expect(board).toBeVisible();
+  await expect(board.locator('.case-board-node', { hasText: '摩勒住宅' })).toBeVisible();
+  await expect(board.locator('.case-board-node', { hasText: '伊莎贝拉·摩勒' })).toBeVisible();
+  await expect(board.getByText('卡森其药店')).toHaveCount(0);
+
+  await page.getByRole('button', { name: '线索' }).click();
+  await expect(page.getByRole('heading', { name: '已获线索' })).toBeVisible();
+  await page.getByRole('button', { name: '人物' }).click();
+  await expect(page.getByRole('heading', { name: '人物' })).toBeVisible();
+  await page.getByRole('button', { name: '日志' }).click();
+  await expect(page.getByRole('heading', { name: '行动日志' })).toBeVisible();
+});
+
 test('submitting an action without an API key opens AI settings instead of crashing', async ({ page }) => {
   test.skip(hasEnvDefaultApiKey, 'requires no default API key from process env or .env.local');
   await startNewGame(page);

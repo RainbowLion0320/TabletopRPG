@@ -9,6 +9,7 @@ import { npcs } from './npcs';
 import { items } from './items';
 import { secrets } from './secrets';
 import { rules } from './rules';
+import { caseBoard } from './caseBoard';
 
 export const wuzhongxiaoshi: KnowledgeBase = {
   scenarioId: 'wuzhongxiaoshi',
@@ -22,4 +23,4 @@ export const wuzhongxiaoshi: KnowledgeBase = {
   sceneGraph
 };
 
-export { scenes, sceneGraph, npcs, items, secrets, rules };
+export { scenes, sceneGraph, npcs, items, secrets, rules, caseBoard };
