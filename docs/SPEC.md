@@ -129,6 +129,8 @@ Current formulas:
 
 Current UI loads the latest valid save from the title/menu shortcuts. Save Manager lists valid slots, loads a selected slot, and deletes a selected slot.
 
+Save payload version `6` adds `GameState.caseBoard`, the persisted dynamic case board layer. Older saves hydrate with an empty dynamic case board while keeping the static scenario board unchanged.
+
 ## 8. AI DM Contract
 
 ### Providers
@@ -215,6 +217,25 @@ Irreversible story-breaking acts, such as killing a key NPC or destroying key ev
 - `newItems` accepts item ids and known item names.
 - Difficulty text containing `极` -> `极难`, containing `困` -> `困难`, otherwise `普通`.
 
+### Dynamic Case Board
+
+The case board is not a free-form AI UI surface. Runtime display combines two layers:
+
+- Static scenario spine from `src/data/scenarios/wuzhongxiaoshi/caseBoard.ts`, used for stable main clues and authored relationships.
+- Dynamic layer in `GameState.caseBoard`, proposed by `src/dm/caseBoardSynthesizer.ts` after Narrator, Director, StateResolver, events, and facts have completed.
+
+The synthesizer calls `generateJson()` through the same LLM adapter chain as Narrator/Summarizer/Memory. It does not change the Narrator JSON contract. Bad output, provider failure, or malformed JSON returns an empty patch and must not fail the main DM turn.
+
+Dynamic patches are applied only through `gameReducer.applyCaseBoardPatch` after the controller has appended accepted events and facts. The reducer enforces:
+
+- Every dynamic node must cite at least one visible fact, event, or clue id.
+- Every dynamic edge must cite at least one visible fact or event id.
+- Text that references an unrevealed `secret.*` marker is dropped.
+- Duplicate nodes merge by normalized type/title; duplicate edges merge by endpoint/label/tone.
+- Later confirmed evidence upgrades an existing hypothesis to confirmed.
+- Dynamic active capacity is capped at 50 nodes and 80 edges; overflow archives older low-confidence hypotheses first.
+- AI never supplies layout coordinates. Desktop layout is computed by the UI, and narrow screens use the compact list.
+
 ## 9. Dice Contract
 
 The frontend owns dice authority. The AI DM may request a check and narrate the outcome, but it must never ignore, reroll, override, or reinterpret the frontend dice result as the opposite outcome. Numeric thresholds come from `src/data/gameRules.ts`.
@@ -276,5 +297,6 @@ Current smoke coverage:
 - Saving a game enables "continue latest save" from the title screen.
 - Save Manager can list, load, and delete explicit save slots.
 - Invalid save payloads are ignored on the title screen.
+- Fullscreen reference panel renders the static case board and v6 saved dynamic hypotheses.
 - D100 rolls `96-100` are fumbles before success thresholds.
 - Rules config tests verify derived stats, skill base formulas, difficulty thresholds, and fumble range stay centralized.

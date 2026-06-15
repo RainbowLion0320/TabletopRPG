@@ -7,7 +7,7 @@
 
 import type { DmContext } from './contextBuilder';
 import type { DmToolCall } from './types';
-import type { AtomicFact, ProspectiveIntent, NpcMindModel } from '../types/game';
+import type { AtomicFact, CaseBoardPatch, ProspectiveIntent, NpcMindModel } from '../types/game';
 
 export interface DmTraceRejection {
   call: DmToolCall;
@@ -38,6 +38,8 @@ export interface DmTrace {
   memoryUpdate?: { summary: string; summarizedUntilIndex: number };
   /** Phase 9：System1 本轮抽出的 facts（与写入 reducer 一致） */
   s1ExtractedFacts?: AtomicFact[];
+  /** 动态案件板旁路候选 patch（尚需 reducer 审核后才会进入存档/UI） */
+  caseBoardPatch?: CaseBoardPatch;
   /** Phase 9：System2 本轮合成结果；null 表示未触发，error 表示报错 */
   s2Synthesized?: {
     triggered: boolean;

@@ -7,7 +7,7 @@
  * - 上下文是按需组装的，不再"一锅炖"。
  */
 
-import type { GameState, SceneId } from '../types/game';
+import type { CaseBoardPatch, GameState, SceneId } from '../types/game';
 
 // ---------- 知识库（Phase 1 填充） ----------
 
@@ -185,6 +185,8 @@ export interface DmTurnOutput {
   };
   /** Phase 9：System1 抽出待写入的 atomic facts（已设置 supersedes 链） */
   factsToAppend?: import('../types/game').AtomicFact[];
+  /** 动态案件板旁路 patch；controller 写入 facts/events 后再交给 reducer 审核落地 */
+  caseBoardPatch?: CaseBoardPatch;
   /** Phase 9：Narrator 工具调用 + System2 合成产生的 NPC 心智增量 */
   mindUpdates?: Array<{
     npcId: string;

@@ -252,4 +252,112 @@ describe('runDmTurn cognitive memory outputs', () => {
     ]);
     expect(output.episodicMemoriesToAdd?.[0].text).toContain('伊莎贝拉记起先前的承诺');
   });
+
+  it('returns an AI-proposed dynamic case board patch after events and facts are available', async () => {
+    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      const body = bodyFrom(init);
+      const system = systemText(body);
+      if (system.includes('事实抽取助手')) {
+        return jsonResponse({
+          facts: [
+            {
+              actor: '伊莎贝拉·摩勒',
+              predicate: 'knowledge',
+              value: '回避父亲债务'
+            }
+          ]
+        });
+      }
+      if (system.includes('案件板合成助手')) {
+        return jsonResponse({
+          nodes: [
+            {
+              id: 'ai-isabella-debt',
+              type: 'theory',
+              title: '伊莎贝拉回避债务问题',
+              subtitle: '来自本轮对话',
+              source: 'ai',
+              certainty: 'hypothesis',
+              sourceFactIds: ['f_1_0'],
+              sourceEventIds: [],
+              sourceClueIds: [],
+              createdTurn: 1,
+              updatedTurn: 1,
+              status: 'active'
+            }
+          ],
+          edges: []
+        });
+      }
+      if (system.includes('COC 第七版 AI DM Agent')) {
+        return jsonResponse({
+          narrative: '伊莎贝拉避开了关于债务的问题。',
+          activeNpc: '伊莎贝拉·摩勒',
+          nextPrompt: '她等待下一问。',
+          playerChoices: ['追问债务']
+        });
+      }
+      throw new Error(`unexpected prompt: ${system.slice(0, 80)}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' })],
+      currentScene: 'S01'
+    });
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [{ player: '亨利', action: '追问伊莎贝拉是否隐瞒债务。' }]
+    });
+
+    expect(output.legacyResponse?.narrative).toContain('债务');
+    expect(output.caseBoardPatch).toEqual({
+      nodes: [
+        expect.objectContaining({
+          id: 'ai-isabella-debt',
+          title: '伊莎贝拉回避债务问题',
+          certainty: 'hypothesis',
+          sourceFactIds: ['f_1_0']
+        })
+      ],
+      edges: []
+    });
+  });
+
+  it('keeps the DM turn usable when case board synthesis returns malformed JSON', async () => {
+    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      const body = bodyFrom(init);
+      const system = systemText(body);
+      if (system.includes('事实抽取助手')) {
+        return jsonResponse({ facts: [] });
+      }
+      if (system.includes('案件板合成助手')) {
+        return jsonResponse('not json');
+      }
+      if (system.includes('COC 第七版 AI DM Agent')) {
+        return jsonResponse({
+          narrative: '调查继续推进。',
+          activeNpc: null,
+          nextPrompt: '继续行动。',
+          playerChoices: ['检查书房']
+        });
+      }
+      throw new Error(`unexpected prompt: ${system.slice(0, 80)}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' })],
+      currentScene: 'S01'
+    });
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [{ player: '亨利', action: '检查书房。' }]
+    });
+
+    expect(output.legacyResponse?.narrative).toBe('调查继续推进。');
+    expect(output.caseBoardPatch).toEqual({ nodes: [], edges: [] });
+  });
 });

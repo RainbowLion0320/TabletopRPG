@@ -22,7 +22,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 
 - Title screen with new game, continue game, and AI settings.
 - Preset investigator selection for 1-4 investigators, with portraits, full attributes, derived stats, skill values, and background cues.
-- Main game screen with scene art, narrative feed, action dock, investigator party portraits/status, menu, and a fullscreen reference panel centered on the player-known case board.
+- Main game screen with scene art, narrative feed, action dock, investigator party portraits/status, menu, and a fullscreen reference panel centered on a player-known case board.
 - Together mode: all selected investigators submit one action round together.
 - Split mode: one investigator acts in a selected scene at a time.
 - AI DM integration through OpenAI, Anthropic, MiMo, or a custom OpenAI-compatible endpoint.
@@ -31,7 +31,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 - State updates for HP, SAN, flags, scene change, clues, active NPC, and suggested actions.
 - localStorage saves with latest-save load and save manager list/load/delete through `trpg-saves-v2`.
 - Built-in story data for "雾中消逝": 5 scenes, 6 NPC entries, 8 clue items.
-- Automated smoke tests for the title/setup/game flow, setup portrait/full-attribute display, fullscreen case board reference panel, no-key AI settings guard, save/continue, invalid saves, and D100 fumble priority.
+- Automated smoke tests for the title/setup/game flow, setup portrait/full-attribute display, fullscreen case board reference panel, dynamic case board hypotheses, no-key AI settings guard, save/continue, invalid saves, and D100 fumble priority.
 
 ### Out of Scope for Current MVP
 
@@ -85,6 +85,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 | Submit action | Missing API key opens AI settings instead of crashing |
 | AI response | Malformed model output is retried once and never displayed as DM narrative |
 | AI response | Invalid scene names, unknown NPCs, string numeric deltas, and clue names are normalized or ignored safely after format validation |
+| Case board | Reference panel combines the static scenario spine with AI-proposed dynamic cards/edges only after system review, source anchoring, dedupe, and anti-spoiler checks |
 | Dice | 96-100 is treated as fumble before success levels |
 | Rules config | HP/MP/SAN, skill bases, difficulty thresholds, unknown skill fallback, and fumble range come from a centralized rules config |
 | Saves | Latest save is visible on title screen after saving and returning home |
@@ -104,6 +105,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 | Game state reducer and hydration | `src/state/gameReducer.ts` |
 | Rules and numeric config | `src/data/gameRules.ts` |
 | AI DM pipeline and prompts | `src/dm/` |
+| Dynamic case board synthesis | `src/dm/caseBoardSynthesizer.ts` + `gameReducer.applyCaseBoardPatch` |
 | LLM provider adapter | `src/dm/llm/` |
 | Dice checks | `src/services/dice.ts` |
 | Save/load/API config | `src/services/storage.ts` |

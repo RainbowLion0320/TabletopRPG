@@ -73,6 +73,102 @@ describe('InfoDrawer case board', () => {
     expect(screen.getByText(/卡森其·贝尔14/)).toBeInTheDocument();
   });
 
+  it('renders dynamic confirmed and hypothesis case board cards with distinct styles', () => {
+    const state = makeState({ activeNpcName: '伊莎贝拉·摩勒' });
+    state.eventLog = [{ id: 'e1', turn: 1, kind: 'narrative', description: '玩家发现药店后门有被撬痕迹' }];
+    state.caseBoard = {
+      nodes: [
+        {
+          id: 'ai-backdoor-mark',
+          type: 'event',
+          title: '药店后门被撬',
+          subtitle: '来自本轮现场观察',
+          source: 'ai',
+          certainty: 'confirmed',
+          sourceFactIds: [],
+          sourceEventIds: ['e1'],
+          sourceClueIds: [],
+          createdTurn: 1,
+          updatedTurn: 1,
+          status: 'active'
+        },
+        {
+          id: 'ai-inside-help',
+          type: 'theory',
+          title: '可能有内应协助',
+          subtitle: '根据后门痕迹推测',
+          source: 'ai',
+          certainty: 'hypothesis',
+          sourceFactIds: [],
+          sourceEventIds: ['e1'],
+          sourceClueIds: [],
+          createdTurn: 1,
+          updatedTurn: 1,
+          status: 'active'
+        }
+      ],
+      edges: [
+        {
+          id: 'ai-edge-backdoor-help',
+          from: 'ai-backdoor-mark',
+          to: 'ai-inside-help',
+          label: '推测',
+          tone: 'suspicion',
+          source: 'ai',
+          certainty: 'hypothesis',
+          sourceFactIds: [],
+          sourceEventIds: ['e1'],
+          createdTurn: 1,
+          updatedTurn: 1,
+          status: 'active'
+        }
+      ],
+      lastUpdatedTurn: 1
+    };
+
+    const { container } = renderDrawer(state);
+    const board = caseBoardCanvas(container);
+
+    expect(board.getByRole('button', { name: /药店后门被撬/ })).toHaveClass('dynamic', 'confirmed');
+    expect(board.getByRole('button', { name: /可能有内应协助/ })).toHaveClass('dynamic', 'hypothesis');
+    expect(container.querySelector('.case-board-line.hypothesis')).not.toBeNull();
+  });
+
+  it('opens a dynamic case board detail modal from an AI card', () => {
+    const state = makeState({ activeNpcName: '伊莎贝拉·摩勒' });
+    state.eventLog = [{ id: 'e1', turn: 1, kind: 'narrative', description: '伊莎贝拉回避父亲债务问题' }];
+    state.caseBoard = {
+      nodes: [
+        {
+          id: 'ai-isabella-debt',
+          type: 'theory',
+          title: '伊莎贝拉回避债务问题',
+          subtitle: '来自本轮对话',
+          detail: '她对父亲债务的反应明显谨慎，可能担心牵连家族声誉。',
+          source: 'ai',
+          certainty: 'hypothesis',
+          sourceFactIds: [],
+          sourceEventIds: ['e1'],
+          sourceClueIds: [],
+          createdTurn: 1,
+          updatedTurn: 1,
+          status: 'active'
+        }
+      ],
+      edges: [],
+      lastUpdatedTurn: 1
+    };
+
+    const { container } = renderDrawer(state);
+    fireEvent.click(caseBoardCanvas(container).getByRole('button', { name: /伊莎贝拉回避债务问题/ }));
+
+    const dialog = screen.getByRole('dialog', { name: '伊莎贝拉回避债务问题' });
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByText('推测')).toBeInTheDocument();
+    expect(within(dialog).getByText(/父亲债务的反应明显谨慎/)).toBeInTheDocument();
+    expect(within(dialog).getByText('来源事件：e1')).toBeInTheDocument();
+  });
+
   it('keeps the action log as the only auxiliary tab', () => {
     const state = makeState({ activeNpcName: '伊莎贝拉·摩勒' });
     state.clues = [{ ...storyData.items.I04, found: true }];

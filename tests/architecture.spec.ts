@@ -36,6 +36,7 @@ test('AI model integration is isolated behind provider adapters', async () => {
   const dmBusinessFiles = [
     'src/dm/narrator.ts',
     'src/dm/summarizer.ts',
+    'src/dm/caseBoardSynthesizer.ts',
     'src/dm/memory/factExtractor.ts',
     'src/dm/memory/system2Synthesizer.ts'
   ];

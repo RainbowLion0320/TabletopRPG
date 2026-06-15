@@ -1,4 +1,4 @@
-import type { AiResponse, AtomicFact, Attributes, CheckRequest, DiceResult, EpisodicMemoryRecord, EpisodicMemorySource, EpisodicMemoryVisibility, FactPredicate, GameState, Investigator, NarrativeMessage, NpcMindModel, PersistedDMEvent, PersistedPendingConsequence, ProspectiveIntent, SceneId, SkillValue, StoryItem } from '../types/game';
+import type { AiResponse, AtomicFact, Attributes, CaseBoardCertainty, CaseBoardPatch, CheckRequest, DiceResult, DynamicCaseBoardEdge, DynamicCaseBoardNode, EpisodicMemoryRecord, EpisodicMemorySource, EpisodicMemoryVisibility, FactPredicate, GameState, Investigator, NarrativeMessage, NpcMindModel, PersistedDMEvent, PersistedPendingConsequence, ProspectiveIntent, SceneId, SkillValue, StoryItem } from '../types/game';
 import { storyData } from '../data/storyData';
 import { allSkills } from '../data/skills';
 import { deriveInvestigatorStats, gameRules, resolveSkillBase } from '../data/gameRules';
@@ -27,6 +27,7 @@ export type GameAction =
   | { type: 'updateNpcMindModel'; npcId: string; partial: Partial<NpcMindModel> }
   | { type: 'addProspectiveIntents'; intents: ProspectiveIntent[] }
   | { type: 'appendEpisodicMemory'; records: EpisodicMemoryRecord[] }
+  | { type: 'applyCaseBoardPatch'; patch: CaseBoardPatch }
   | { type: 'consumeProspectiveIntent'; id: string }
   | { type: 'decayProspectiveIntents' };
 
@@ -431,6 +432,8 @@ const FACT_PREDICATES: ReadonlySet<FactPredicate> = new Set<FactPredicate>([
 const FACT_CAP = 500;
 const INTENT_CAP = 30;
 const EPISODIC_MEMORY_CAP = 300;
+const CASE_BOARD_NODE_CAP = 50;
+const CASE_BOARD_EDGE_CAP = 80;
 const EPISODIC_SOURCES: ReadonlySet<EpisodicMemorySource> = new Set([
   'episode', 'event', 'fact', 'summary'
 ]);
@@ -606,6 +609,256 @@ function normalizeEpisodicMemory(value: unknown): EpisodicMemoryRecord[] {
   return out.slice(-EPISODIC_MEMORY_CAP);
 }
 
+function normalizeCaseBoardStringArray(value: unknown): string[] {
+  return normalizeStringArray(value).slice(0, 24);
+}
+
+function normalizeCaseBoardCertainty(value: unknown): CaseBoardCertainty {
+  return value === 'confirmed' ? 'confirmed' : 'hypothesis';
+}
+
+function isDynamicNodeType(value: unknown): value is DynamicCaseBoardNode['type'] {
+  return value === 'npc' || value === 'item' || value === 'scene'
+    || value === 'theory' || value === 'event';
+}
+
+function normalizeDynamicCaseBoardNode(value: unknown): DynamicCaseBoardNode | null {
+  if (!isRecord(value)) return null;
+  const idVal = stringValue(value.id);
+  const title = stringValue(value.title).slice(0, 60);
+  if (!idVal || !title || !isDynamicNodeType(value.type)) return null;
+  const createdTurn = Math.max(0, Math.floor(numberValue(value.createdTurn, 0)));
+  const updatedTurn = Math.max(createdTurn, Math.floor(numberValue(value.updatedTurn, createdTurn)));
+  const node: DynamicCaseBoardNode = {
+    id: idVal,
+    type: value.type,
+    title,
+    source: value.source === 'scenario' ? 'scenario' : 'ai',
+    certainty: normalizeCaseBoardCertainty(value.certainty),
+    sourceFactIds: normalizeCaseBoardStringArray(value.sourceFactIds),
+    sourceEventIds: normalizeCaseBoardStringArray(value.sourceEventIds),
+    sourceClueIds: normalizeCaseBoardStringArray(value.sourceClueIds),
+    createdTurn,
+    updatedTurn,
+    status: value.status === 'archived' ? 'archived' : 'active'
+  };
+  const subtitle = stringValue(value.subtitle).slice(0, 80);
+  if (subtitle) node.subtitle = subtitle;
+  const detail = stringValue(value.detail).slice(0, 240);
+  if (detail) node.detail = detail;
+  return node;
+}
+
+function normalizeDynamicCaseBoardEdge(value: unknown): DynamicCaseBoardEdge | null {
+  if (!isRecord(value)) return null;
+  const idVal = stringValue(value.id);
+  const from = stringValue(value.from);
+  const to = stringValue(value.to);
+  if (!idVal || !from || !to) return null;
+  const tone: DynamicCaseBoardEdge['tone'] =
+    value.tone === 'danger' || value.tone === 'route' || value.tone === 'evidence'
+      ? value.tone
+      : 'suspicion';
+  const createdTurn = Math.max(0, Math.floor(numberValue(value.createdTurn, 0)));
+  const updatedTurn = Math.max(createdTurn, Math.floor(numberValue(value.updatedTurn, createdTurn)));
+  const edge: DynamicCaseBoardEdge = {
+    id: idVal,
+    from,
+    to,
+    tone,
+    source: value.source === 'scenario' ? 'scenario' : 'ai',
+    certainty: normalizeCaseBoardCertainty(value.certainty),
+    sourceFactIds: normalizeCaseBoardStringArray(value.sourceFactIds),
+    sourceEventIds: normalizeCaseBoardStringArray(value.sourceEventIds),
+    createdTurn,
+    updatedTurn,
+    status: value.status === 'archived' ? 'archived' : 'active'
+  };
+  const label = stringValue(value.label).slice(0, 40);
+  if (label) edge.label = label;
+  return edge;
+}
+
+function normalizeCaseBoardState(value: unknown): GameState['caseBoard'] {
+  if (!isRecord(value)) return { nodes: [], edges: [], lastUpdatedTurn: 0 };
+  const nodes = Array.isArray(value.nodes)
+    ? value.nodes.flatMap((item) => {
+        const node = normalizeDynamicCaseBoardNode(item);
+        return node ? [node] : [];
+      })
+    : [];
+  const edges = Array.isArray(value.edges)
+    ? value.edges.flatMap((item) => {
+        const edge = normalizeDynamicCaseBoardEdge(item);
+        return edge ? [edge] : [];
+      })
+    : [];
+  const lastUpdatedTurn = Math.max(0, Math.floor(numberValue(value.lastUpdatedTurn, 0)));
+  return { nodes, edges, lastUpdatedTurn };
+}
+
+function normalizeCaseBoardKey(text: string): string {
+  return text.toLocaleLowerCase('zh-CN').replace(/[\s·・:："'“”‘’、，,。.\-—_]/g, '');
+}
+
+function dynamicNodeKey(node: DynamicCaseBoardNode): string {
+  return `${node.type}:${normalizeCaseBoardKey(node.title)}`;
+}
+
+function dynamicEdgeKey(edge: DynamicCaseBoardEdge): string {
+  return `${edge.from}->${edge.to}:${normalizeCaseBoardKey(edge.label ?? '')}:${edge.tone}`;
+}
+
+function mergeUniqueStrings(a: string[], b: string[]): string[] {
+  return normalizeStringArray([...a, ...b]);
+}
+
+function strongerCertainty(a: CaseBoardCertainty, b: CaseBoardCertainty): CaseBoardCertainty {
+  return a === 'confirmed' || b === 'confirmed' ? 'confirmed' : 'hypothesis';
+}
+
+function hasVisibleAnchor(
+  sourceFactIds: string[],
+  sourceEventIds: string[],
+  sourceClueIds: string[],
+  state: GameState
+): boolean {
+  const factIds = new Set((state.atomicFacts ?? []).map((fact) => fact.id));
+  const eventIds = new Set((state.eventLog ?? []).map((event) => event.id));
+  const clueIds = new Set(state.clues.map((clue) => clue.id));
+  return sourceFactIds.some((idVal) => factIds.has(idVal))
+    || sourceEventIds.some((idVal) => eventIds.has(idVal))
+    || sourceClueIds.some((idVal) => clueIds.has(idVal));
+}
+
+function referencesUnrevealedSecret(text: string, state: GameState): boolean {
+  for (const match of text.matchAll(/secret\.([A-Za-z0-9_.-]+?)(?:\.revealed)?\b/g)) {
+    const secretKey = match[1];
+    if (!state.flags[`secret.${secretKey}.revealed`]) return true;
+  }
+  return false;
+}
+
+function isSafeDynamicNode(node: DynamicCaseBoardNode, state: GameState): boolean {
+  if (!hasVisibleAnchor(node.sourceFactIds, node.sourceEventIds, node.sourceClueIds, state)) {
+    return false;
+  }
+  return !referencesUnrevealedSecret(
+    [node.title, node.subtitle, node.detail].filter(Boolean).join(' '),
+    state
+  );
+}
+
+function isSafeDynamicEdge(edge: DynamicCaseBoardEdge, state: GameState): boolean {
+  if (!hasVisibleAnchor(edge.sourceFactIds, edge.sourceEventIds, [], state)) return false;
+  return !referencesUnrevealedSecret([edge.label, edge.from, edge.to].filter(Boolean).join(' '), state);
+}
+
+function archiveOverflow<T extends { status: 'active' | 'archived'; certainty: CaseBoardCertainty; createdTurn: number; updatedTurn: number }>(
+  items: T[],
+  cap: number
+): T[] {
+  const active = items.filter((item) => item.status === 'active');
+  if (active.length <= cap) return items;
+  const overflow = active.length - cap;
+  const archiveSet = new Set<T>();
+  const candidates = [...active].sort((a, b) => {
+    if (a.certainty !== b.certainty) return a.certainty === 'hypothesis' ? -1 : 1;
+    return a.createdTurn - b.createdTurn || a.updatedTurn - b.updatedTurn;
+  });
+  candidates.slice(0, overflow).forEach((item) => archiveSet.add(item));
+  return items.map((item) => archiveSet.has(item) ? { ...item, status: 'archived' } : item);
+}
+
+function applyCaseBoardPatch(state: GameState, patch: CaseBoardPatch): GameState {
+  const current = state.caseBoard ?? { nodes: [], edges: [], lastUpdatedTurn: 0 };
+  const incomingNodes = (Array.isArray(patch.nodes) ? patch.nodes : [])
+    .flatMap((item) => {
+      const node = normalizeDynamicCaseBoardNode(item);
+      return node && isSafeDynamicNode(node, state) ? [node] : [];
+    });
+  const nodeIdRedirect = new Map<string, string>();
+  const nodeByKey = new Map<string, DynamicCaseBoardNode>();
+  for (const node of current.nodes) {
+    nodeByKey.set(dynamicNodeKey(node), node);
+    nodeIdRedirect.set(node.id, node.id);
+  }
+  for (const fresh of incomingNodes) {
+    const key = dynamicNodeKey(fresh);
+    const existing = nodeByKey.get(key);
+    if (!existing) {
+      nodeByKey.set(key, fresh);
+      nodeIdRedirect.set(fresh.id, fresh.id);
+      continue;
+    }
+    nodeIdRedirect.set(fresh.id, existing.id);
+    nodeByKey.set(key, {
+      ...existing,
+      subtitle: fresh.subtitle ?? existing.subtitle,
+      detail: fresh.detail ?? existing.detail,
+      certainty: strongerCertainty(existing.certainty, fresh.certainty),
+      sourceFactIds: mergeUniqueStrings(existing.sourceFactIds, fresh.sourceFactIds),
+      sourceEventIds: mergeUniqueStrings(existing.sourceEventIds, fresh.sourceEventIds),
+      sourceClueIds: mergeUniqueStrings(existing.sourceClueIds, fresh.sourceClueIds),
+      createdTurn: Math.min(existing.createdTurn, fresh.createdTurn),
+      updatedTurn: Math.max(existing.updatedTurn, fresh.updatedTurn),
+      status: existing.status === 'archived' && fresh.status !== 'active' ? 'archived' : 'active'
+    });
+  }
+
+  const visibleNodeIds = new Set([
+    ...Array.from(nodeByKey.values()).map((node) => node.id),
+    ...Object.keys(storyData.items).map((idVal) => `item-${idVal}`),
+    ...Object.keys(storyData.npcs).map((name) => `npc-${normalizeCaseBoardKey(name)}`)
+  ]);
+  const incomingEdges = (Array.isArray(patch.edges) ? patch.edges : [])
+    .flatMap((item) => {
+      const edge = normalizeDynamicCaseBoardEdge(item);
+      if (!edge) return [];
+      const redirected = {
+        ...edge,
+        from: nodeIdRedirect.get(edge.from) ?? edge.from,
+        to: nodeIdRedirect.get(edge.to) ?? edge.to
+      };
+      return isSafeDynamicEdge(redirected, state) ? [redirected] : [];
+    })
+    .filter((edge) => edge.from && edge.to);
+  const edgeByKey = new Map<string, DynamicCaseBoardEdge>();
+  for (const edge of current.edges) {
+    edgeByKey.set(dynamicEdgeKey(edge), edge);
+  }
+  for (const fresh of incomingEdges) {
+    if (fresh.from.startsWith('ai-') && !visibleNodeIds.has(fresh.from)) continue;
+    if (fresh.to.startsWith('ai-') && !visibleNodeIds.has(fresh.to)) continue;
+    const key = dynamicEdgeKey(fresh);
+    const existing = edgeByKey.get(key);
+    if (!existing) {
+      edgeByKey.set(key, fresh);
+      continue;
+    }
+    edgeByKey.set(key, {
+      ...existing,
+      label: fresh.label ?? existing.label,
+      certainty: strongerCertainty(existing.certainty, fresh.certainty),
+      sourceFactIds: mergeUniqueStrings(existing.sourceFactIds, fresh.sourceFactIds),
+      sourceEventIds: mergeUniqueStrings(existing.sourceEventIds, fresh.sourceEventIds),
+      createdTurn: Math.min(existing.createdTurn, fresh.createdTurn),
+      updatedTurn: Math.max(existing.updatedTurn, fresh.updatedTurn),
+      status: existing.status === 'archived' && fresh.status !== 'active' ? 'archived' : 'active'
+    });
+  }
+
+  const nodes = archiveOverflow(Array.from(nodeByKey.values()), CASE_BOARD_NODE_CAP);
+  const edges = archiveOverflow(Array.from(edgeByKey.values()), CASE_BOARD_EDGE_CAP);
+  const lastUpdatedTurn = Math.max(
+    current.lastUpdatedTurn,
+    ...incomingNodes.map((node) => node.updatedTurn),
+    ...incomingEdges.map((edge) => edge.updatedTurn),
+    0
+  );
+  return { ...state, caseBoard: { nodes, edges, lastUpdatedTurn } };
+}
+
 function mergeStanceFactsIntoMindModels(
   prevModels: Record<string, NpcMindModel>,
   facts: readonly AtomicFact[],
@@ -725,7 +978,8 @@ export function createInitialGameState(players: Investigator[]): GameState {
     atomicFacts: [],
     npcMindModels: {},
     prospectiveIntents: [],
-    episodicMemory: []
+    episodicMemory: [],
+    caseBoard: { nodes: [], edges: [], lastUpdatedTurn: 0 }
   };
 }
 
@@ -779,7 +1033,8 @@ export function hydrateGameState(value: unknown): GameState {
     atomicFacts: normalizeAtomicFacts(source.atomicFacts),
     npcMindModels: normalizeNpcMindModels(source.npcMindModels),
     prospectiveIntents: normalizeProspectiveIntents(source.prospectiveIntents),
-    episodicMemory: normalizeEpisodicMemory(source.episodicMemory)
+    episodicMemory: normalizeEpisodicMemory(source.episodicMemory),
+    caseBoard: normalizeCaseBoardState(source.caseBoard)
   };
 }
 
@@ -992,6 +1247,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if (!incoming.length) return state;
       return { ...state, episodicMemory: [...prev, ...incoming].slice(-EPISODIC_MEMORY_CAP) };
     }
+    case 'applyCaseBoardPatch':
+      return applyCaseBoardPatch(state, action.patch);
     case 'consumeProspectiveIntent': {
       const prev = state.prospectiveIntents ?? [];
       const next = prev.filter((intent) => intent.id !== action.id);

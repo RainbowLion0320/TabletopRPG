@@ -128,6 +128,7 @@ export function useGameController() {
         events,
         memoryUpdate,
         factsToAppend,
+        caseBoardPatch,
         mindUpdates,
         prospectiveIntentsToAdd,
         episodicMemoriesToAdd,
@@ -157,6 +158,9 @@ export function useGameController() {
       }
       if (factsToAppend && factsToAppend.length) {
         dispatch({ type: 'appendFacts', facts: factsToAppend });
+      }
+      if (caseBoardPatch) {
+        dispatch({ type: 'applyCaseBoardPatch', patch: caseBoardPatch });
       }
       if (mindUpdates && mindUpdates.length) {
         for (const update of mindUpdates) {

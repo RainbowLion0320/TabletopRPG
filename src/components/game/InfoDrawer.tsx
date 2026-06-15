@@ -1,10 +1,11 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { BookOpen, GripVertical, X } from 'lucide-react';
-import type { CaseBoardNode, GameState, StoryItem } from '../../types/game';
+import type { CaseBoardNode, DynamicCaseBoardNode, GameState, StoryItem } from '../../types/game';
 import { storyData } from '../../data/storyData';
 import { getNpcDetail, getClueDetail, type EntityDetail } from '../../dm/entityDetail';
 import { CaseBoard } from './CaseBoard';
 import { EntityDetailModal } from './EntityDetailModal';
+import { DynamicCaseBoardDetailModal } from './DynamicCaseBoardDetailModal';
 
 interface InfoDrawerProps {
   open: boolean;
@@ -15,6 +16,7 @@ interface InfoDrawerProps {
 
 export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
   const [selectedDetail, setSelectedDetail] = useState<EntityDetail | null>(null);
+  const [selectedDynamicNode, setSelectedDynamicNode] = useState<DynamicCaseBoardNode | null>(null);
   const [activeTab, setActiveTab] = useState<'board' | 'log'>('board');
 
   // 拖拽状态
@@ -138,7 +140,11 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
         </nav>
 
         {activeTab === 'board' ? (
-          <CaseBoard state={state} onNodeOpen={handleBoardNodeOpen} />
+          <CaseBoard
+            state={state}
+            onNodeOpen={handleBoardNodeOpen}
+            onDynamicNodeOpen={setSelectedDynamicNode}
+          />
         ) : null}
 
         {activeTab === 'log' ? (
@@ -154,6 +160,7 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
       </aside>
 
       <EntityDetailModal detail={selectedDetail} onClose={() => setSelectedDetail(null)} />
+      <DynamicCaseBoardDetailModal node={selectedDynamicNode} onClose={() => setSelectedDynamicNode(null)} />
     </>
   );
 }

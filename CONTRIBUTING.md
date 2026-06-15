@@ -54,6 +54,7 @@ npx playwright install chromium
 - DM 业务模块不得直接调用模型 endpoint。模型访问只能通过 `src/dm/llm/client.ts` 和协议 adapter 完成。
 - 只有 `src/dm/llm/*Adapter.ts` 可以包含 `/responses`、`/chat/completions` 和对应协议请求字段。
 - AI 配置必须沿用 `ApiConfig` 的 `provider`、`protocol`、`endpoint`、`model` 链路，不做隐式协议猜测。
+- 动态案件板只能走“AI 提议 patch -> reducer 审核落地”链路；AI 不得直接写 UI、坐标、未解锁 secret 或绕过 `applyCaseBoardPatch`。
 - API Key、`.env.local`、构建产物、测试报告、原始设计稿不得提交。
 
 ## 文档与 Wiki

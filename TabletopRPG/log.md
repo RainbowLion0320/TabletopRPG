@@ -87,6 +87,13 @@
 - 新增 `npm run test:smoke` 命令。
 - 同步 PRD / SPEC / GDD / Wiki，将自动化 smoke tests 从开放 P0 移入已实现质量护栏。
 
+## [2026-06-15] update | 动态案件板旁路落地
+
+- 案件板从纯静态剧本配置升级为“静态主线骨架 + AI 动态提议 + 系统审核落地”。
+- 新增 `GameState.caseBoard` v6 存档层、`caseBoardSynthesizer` 旁路和 reducer 审核合并规则。
+- UI 支持 confirmed/hypothesis 动态卡片、动态关系线和动态详情弹窗。
+- 同步 PRD / SPEC / GDD / Wiki，并补充动态案件板 unit/component/pipeline/smoke 覆盖。
+
 ## [2026-05-29] update | P1 存档管理落地
 
 - 新增存档管理弹窗，支持列出有效存档、指定载入和删除单个本地存档。

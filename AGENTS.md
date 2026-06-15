@@ -66,8 +66,9 @@ updated: YYYY-MM-DD
 
 - 项目级贡献规则见 `CONTRIBUTING.md`，Git 入门流程见 `docs/git使用指南.md`。
 - 代码改动至少运行 `npm test` 和 `npm run build`；涉及浏览器交互、主游戏界面、AI DM 端到端流程时再运行 `npm run test:smoke`。
-- AI DM 业务模块不得直接调用模型 endpoint。Narrator、Summarizer、Memory 模块只能通过 `src/dm/llm/client.ts` 访问模型。
+- AI DM 业务模块不得直接调用模型 endpoint。Narrator、Summarizer、Memory、caseBoardSynthesizer 模块只能通过 `src/dm/llm/client.ts` 访问模型。
 - 只有 `src/dm/llm/*Adapter.ts` 可以包含 `/responses`、`/chat/completions` 或协议专用请求字段。
+- 动态案件板只能走“AI 提议 patch -> reducer 审核落地”链路；AI 不得直接写 UI、坐标、未解锁 secret 或绕过 `applyCaseBoardPatch`。
 - 不得提交 `.env.local`、API Key、`dist/`、`test-results/`、`playwright-report/`、`node_modules/` 或原始设计稿。
 
 ---

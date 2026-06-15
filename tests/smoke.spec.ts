@@ -1,7 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { existsSync, readFileSync } from 'fs';
 import { rollD100 } from '../src/services/dice';
-import type { CheckRequest } from '../src/types/game';
+import type { CheckRequest, GameState } from '../src/types/game';
+import { makeInvestigator } from './dm/fixtures';
 
 const hasEnvDefaultApiKey =
   Boolean(process.env.VITE_AI_API_KEY) ||
@@ -28,6 +29,104 @@ async function submitTogetherActions(page: Page, firstAction: string, secondActi
   await expect(page.getByPlaceholder('艾达·华莱士 想要做什么...')).toBeVisible();
   await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill(secondAction);
   await page.getByRole('button', { name: '提交' }).click();
+}
+
+function createDynamicCaseBoardSave(): GameState {
+  const players = [
+    makeInvestigator({ id: 'inspector', name: '亨利·格雷' }),
+    makeInvestigator({ id: 'nurse', name: '艾达·华莱士', gender: '女' })
+  ];
+  return {
+    players,
+    exploreMode: 'together',
+    currentSplitPlayer: 0,
+    currentActorIndex: 0,
+    playerLocations: { inspector: 'S01', nurse: 'S01' },
+    declarations: {},
+    pendingCheck: null,
+    currentScene: 'S01',
+    activeNpcName: '伊莎贝拉·摩勒',
+    clues: [],
+    flags: {},
+    actionLog: [{ time: '20:00', text: '游戏开始 · 摩勒住宅' }],
+    conversationHistory: [],
+    messages: [{ id: 'm1', type: 'dm', text: '浓雾压在摩勒住宅的窗外。', npcName: null }],
+    suggestions: [],
+    suggestionsByPlayerId: {},
+    isThinking: false,
+    longTermMemorySummary: '',
+    summarizedUntilIndex: 0,
+    eventLog: [{ id: 'e1', turn: 1, kind: 'narrative', description: '玩家发现药店后门有被撬痕迹' }],
+    pendingConsequences: [],
+    atomicFacts: [],
+    npcMindModels: {},
+    prospectiveIntents: [],
+    episodicMemory: [],
+    caseBoard: {
+      nodes: [
+        {
+          id: 'ai-backdoor-mark',
+          type: 'event',
+          title: '药店后门被撬',
+          subtitle: '来自本轮现场观察',
+          source: 'ai',
+          certainty: 'confirmed',
+          sourceFactIds: [],
+          sourceEventIds: ['e1'],
+          sourceClueIds: [],
+          createdTurn: 1,
+          updatedTurn: 1,
+          status: 'active'
+        },
+        {
+          id: 'ai-inside-help',
+          type: 'theory',
+          title: '可能有内应协助',
+          subtitle: '根据后门痕迹推测',
+          source: 'ai',
+          certainty: 'hypothesis',
+          sourceFactIds: [],
+          sourceEventIds: ['e1'],
+          sourceClueIds: [],
+          createdTurn: 1,
+          updatedTurn: 1,
+          status: 'active'
+        }
+      ],
+      edges: [
+        {
+          id: 'ai-edge-backdoor-help',
+          from: 'ai-backdoor-mark',
+          to: 'ai-inside-help',
+          label: '推测',
+          tone: 'suspicion',
+          source: 'ai',
+          certainty: 'hypothesis',
+          sourceFactIds: [],
+          sourceEventIds: ['e1'],
+          createdTurn: 1,
+          updatedTurn: 1,
+          status: 'active'
+        }
+      ],
+      lastUpdatedTurn: 1
+    }
+  };
+}
+
+async function gotoWithSave(page: Page, gameState: GameState) {
+  await page.addInitScript((serializedState) => {
+    window.localStorage.clear();
+    window.localStorage.setItem('trpg-saves-v2', JSON.stringify([{
+      id: 1718400000000,
+      savedAt: '2026/6/15 20:00:00',
+      scene: '摩勒住宅',
+      players: '亨利·格雷、艾达·华莱士',
+      gameState: serializedState,
+      version: 6
+    }]));
+  }, gameState);
+  await page.goto('/');
 }
 
 test('new game reaches the main game screen with preset investigators', async ({ page }) => {
@@ -258,6 +357,23 @@ test('reference panel opens a fullscreen case board and keeps the log tab', asyn
 
   await page.getByRole('button', { name: '日志' }).click();
   await expect(page.getByRole('heading', { name: '行动日志' })).toBeVisible();
+});
+
+test('reference panel renders saved dynamic case board hypotheses', async ({ page }) => {
+  await gotoWithSave(page, createDynamicCaseBoardSave());
+
+  await page.getByRole('button', { name: '继续游戏' }).click();
+  await expect(page.locator('.game-screen')).toBeVisible();
+  await page.getByRole('button', { name: '资料' }).click();
+
+  const drawer = page.locator('.info-drawer-react.open');
+  const board = drawer.locator('.case-board-canvas');
+  await expect(board.locator('.case-board-node.dynamic.confirmed', { hasText: '药店后门被撬' })).toBeVisible();
+  await expect(board.locator('.case-board-node.dynamic.hypothesis', { hasText: '可能有内应协助' })).toBeVisible();
+  await expect(board.locator('.case-board-line.hypothesis.dynamic')).toHaveCount(1);
+  await board.locator('.case-board-node.dynamic.hypothesis', { hasText: '可能有内应协助' }).click();
+  await expect(page.getByRole('dialog', { name: '可能有内应协助' })).toBeVisible();
+  await expect(page.getByText('来源事件：e1')).toBeVisible();
 });
 
 test('submitting an action without an API key opens AI settings instead of crashing', async ({ page }) => {

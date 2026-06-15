@@ -27,6 +27,7 @@ import { allowedTools, validateToolCalls } from './director';
 import { resolveDmTurn } from './stateResolver';
 import { maybeConsolidateMemory, SUMMARIZE_TRIGGER_PAIRS } from './summarizer';
 import { classifyIntent } from './intentClassifier';
+import { synthesizeCaseBoardPatch } from './caseBoardSynthesizer';
 import { extractFactsFromTurn } from './memory/factExtractor';
 import { synthesizeSystem2 } from './memory/system2Synthesizer';
 import {
@@ -293,6 +294,16 @@ export async function runDmTurn(
     if (extracted.length) factsToAppend = extracted;
   }
 
+  const caseBoardPatch = await synthesizeCaseBoardPatch(config, {
+    turn: currentTurn,
+    narrative: resolved.legacyResponse.narrative ?? narrator.narrative,
+    playerActions: input.actions.map((a) => ({ player: a.player, action: a.action })),
+    facts: [...(input.state.atomicFacts ?? []), ...(factsToAppend ?? [])],
+    events: [...(input.state.eventLog ?? []), ...(resolved.events ?? [])],
+    clues: input.state.clues,
+    existingBoard: input.state.caseBoard ?? { nodes: [], edges: [], lastUpdatedTurn: 0 }
+  });
+
   const mindUpdates = [
     ...(s2MindUpdates ?? []),
     ...(resolved.mindUpdates ?? [])
@@ -325,6 +336,7 @@ export async function runDmTurn(
         ? { summary: memoryUpdate.summary, summarizedUntilIndex: memoryUpdate.summarizedUntilIndex }
         : undefined,
       s1ExtractedFacts: factsToAppend,
+      caseBoardPatch,
       s2Synthesized: {
         triggered: s2Triggered,
         ...(s2Error ? { error: s2Error } : {}),
@@ -340,6 +352,7 @@ export async function runDmTurn(
     events: resolved.events,
     memoryUpdate,
     factsToAppend,
+    caseBoardPatch,
     mindUpdates: mindUpdates.length ? mindUpdates : undefined,
     prospectiveIntentsToAdd: s2Intents,
     episodicMemoriesToAdd: episode ? [episode] : undefined,
