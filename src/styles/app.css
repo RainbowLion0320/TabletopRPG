@@ -1258,18 +1258,16 @@ button {
 
 .info-drawer-react {
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   z-index: 60;
-  width: min(980px, calc(100vw - 72px));
+  width: 100vw;
   overflow-y: auto;
-  border-left: 1px solid var(--line);
-  background: rgba(14,12,10,0.94);
+  border-left: 0;
+  background: rgba(14,12,10,0.96);
   backdrop-filter: blur(18px);
-  box-shadow: -24px 0 64px rgba(0,0,0,0.42);
-  padding: 26px 20px;
-  transform: translateX(104%);
+  box-shadow: inset 0 0 120px rgba(0,0,0,0.30);
+  padding: clamp(22px, 3vw, 36px);
+  transform: translateX(100%);
   transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -1284,6 +1282,15 @@ button {
   border-bottom: 1px solid var(--line-soft);
   padding-bottom: 14px;
   margin-bottom: 14px;
+}
+
+.info-drawer-react header,
+.info-drawer-tabs,
+.case-board-view,
+.drawer-section {
+  width: min(100%, 1480px);
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .info-drawer-react header p {
@@ -1348,49 +1355,10 @@ button {
   margin-bottom: 12px;
 }
 
-.npc-mini {
-  display: grid;
-  grid-template-columns: 62px 1fr;
-  gap: 12px;
-}
-
-.npc-mini img {
-  width: 62px;
-  height: 62px;
-  object-fit: cover;
-  border-radius: 6px;
-  border: 1px solid var(--line-soft);
-}
-
-.npc-mini strong, .npc-mini span {
-  display: block;
-}
-
-.npc-mini span, .npc-mini p, .empty-note, .clue-list p, .log-list-modern p {
+.empty-note, .log-list-modern p {
   color: var(--muted);
   line-height: 1.6;
   font-size: 13px;
-}
-
-.clue-list {
-  display: grid;
-  gap: 8px;
-}
-
-.known-npc-list {
-  display: grid;
-  gap: 10px;
-}
-
-.clue-list article {
-  border: 1px solid var(--line-soft);
-  border-radius: 5px;
-  padding: 9px;
-  background: rgba(0,0,0,0.2);
-}
-
-.clue-list strong {
-  color: var(--gold);
 }
 
 .log-list-modern p {
@@ -1449,7 +1417,7 @@ button {
 
 .case-board-canvas {
   position: relative;
-  min-height: min(560px, calc(100dvh - 210px));
+  min-height: min(680px, calc(100dvh - 220px));
   border: 1px solid rgba(216,189,122,0.24);
   border-radius: 8px;
   background:
@@ -2222,11 +2190,8 @@ button.case-board-node:hover {
     height: 46vh;
     max-height: 460px;
   }
-  .info-drawer-react {
-    width: min(760px, calc(100vw - 48px));
-  }
   .case-board-canvas {
-    min-height: 480px;
+    min-height: min(600px, calc(100dvh - 220px));
   }
   .case-board-node {
     width: 126px;
@@ -2288,7 +2253,7 @@ button.case-board-node:hover {
   }
   .info-drawer-tabs {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .info-drawer-tabs button {
     padding: 0 6px;

@@ -4,7 +4,7 @@ title: Wiki 内容目录
 tags: [index, aligned]
 sources: [../../docs/PRD.md, ../../docs/SPEC.md, ../../docs/GDD.md]
 created: 2026-05-14
-updated: 2026-05-29
+updated: 2026-06-15
 ---
 
 # TabletopRPG Wiki · 内容目录

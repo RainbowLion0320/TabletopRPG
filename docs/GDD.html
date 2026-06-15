@@ -180,7 +180,7 @@ footer {
 <body>
 <nav id="sidebar">
   <div class="nav-title">GDD Mirror</div>
-<a href="#s0" class="">0. 当前实现状态（2026-05-29 对齐补充）</a>
+<a href="#s0" class="">0. 当前实现状态（2026-06-15 对齐补充）</a>
 <a href="#s0-1" class="sub">0.1 当前已实现</a>
 <a href="#s0-2" class="sub">0.2 当前未实现但保留为设计目标</a>
 <a href="#s0-3" class="sub">0.3 阅读约定</a>
@@ -235,9 +235,9 @@ footer {
 <main>
   <div class="content">
 <header class="doc-header"><h1>《雾中消逝》AI跑团 游戏设计文档 (GDD)</h1><p class="doc-subtitle">Full GDD mirror - Source: docs/GDD.md - Updated 2026-05-29</p></header>
-<blockquote><p>设计版本：v0.4 | 原始基线：2026-05-15</p><p>实现对齐补充：2026-05-29</p><p>规则体系：COC 第7版 | 首发模组：《雾中消逝》| 作者：舒爾茲上尉</p></blockquote>
+<blockquote><p>设计版本：v0.5 | 原始基线：2026-05-15</p><p>实现对齐补充：2026-06-15</p><p>规则体系：COC 第7版 | 首发模组：《雾中消逝》| 作者：舒爾茲上尉</p></blockquote>
 <hr>
-<h2 id="s0">0. 当前实现状态（2026-05-29 对齐补充）</h2>
+<h2 id="s0">0. 当前实现状态（2026-06-15 对齐补充）</h2>
 <blockquote><p>本文是完整 GDD，包含当前已实现内容、未开发模块、后续设计目标和细节规则。</p><p>当前可运行产品的产品范围见 <code>docs/PRD.md</code>，技术契约见 <code>docs/SPEC.md</code>。未实现模块不删除，统一按 backlog / 待开发处理。</p></blockquote>
 <h3 id="s0-1">0.1 当前已实现</h3>
 <div class="table-wrap"><table>
@@ -246,7 +246,7 @@ footer {
 <tr><td>前端架构</td><td>Vite + React + TypeScript 单页应用</td></tr>
 <tr><td>游戏入口</td><td>标题页、AI 设置、继续最近存档</td></tr>
 <tr><td>角色系统</td><td>4 个预设调查员选择，支持 1-4 人开局；选角页展示立绘、完整属性、派生数值、技能和背景摘要</td></tr>
-<tr><td>主界面</td><td>场景图、调查员立绘、叙事区、行动输入、队伍状态、资料抽屉、菜单</td></tr>
+<tr><td>主界面</td><td>场景图、调查员立绘、叙事区、行动输入、队伍状态、全屏资料界面、菜单</td></tr>
 <tr><td>探索模式</td><td>一起行动 / 分头探索</td></tr>
 <tr><td>AI DM</td><td>OpenAI / Anthropic / MiMo / 自定义端点，严格 JSON 输出 + 格式校验 + 一次修复重试</td></tr>
 <tr><td>检定</td><td>前端 D100，核心数值规则集中在 <code>src/data/gameRules.ts</code>，AI 只请求检定并根据结果继续叙事</td></tr>
@@ -572,10 +572,10 @@ AI DM解析：
 │                          │  │ 玩家2 伊文  ❤09  ☯52     ││
 │  AI DM 叙述文本           │  │ 玩家3 露西  ❤12  ☯60     ││
 │  （打字机效果流出）        │  └──────────────────────────┘│
-│                          │  ┌─ 当前线索 ─────────────────┐│
-│                          │  │ 📄 便签（已获取）           ││
-│                          │  │ 📷 合影照片（已获取）       ││
-│                          │  │ 📖 小册子（已解密）         ││
+│                          │  ┌─ 资料入口 ─────────────────┐│
+│                          │  │ 打开全屏案件板              ││
+│                          │  │ 查看已知人物/地点/物证关系 ││
+│                          │  │ 日志页签保留行动记录        ││
 ├──────────────────────────┤  └──────────────────────────┘│
 │  [立绘区]                │  ┌─ 骰子区 ───────────────────┐│
 │  调查员立绘              │  │ 🎲 侦查检定 D100=23        ││
@@ -588,6 +588,7 @@ AI DM解析：
 │  └────────────────────────────────────────────┘        │
 │  [快捷] 侦查周围 | 询问NPC | 查看道具 | 等待 | 骰骰子   │
 └─────────────────────────────────────────────────────────┘</code></pre>
+<p>当前实现中，【资料】不再是窄版线索/NPC 抽屉，而是全屏资料界面。默认页签为“案件板”，以玩家已知的 NPC、地点、物证、推理卡片和静态剧本关系线展示案件进展；未发现内容不显示，避免剧透。辅助页签只保留“日志”，用于回看行动记录。</p>
 <h3 id="s5-2">5.2 场景图规划</h3>
 <div class="table-wrap"><table>
 <thead><tr><th>场景ID</th><th>图片描述</th><th>风格</th></tr></thead>
@@ -949,11 +950,11 @@ AI代理：服务端统一调用（隐藏密钥）
 <div class="table-wrap"><table>
 <thead><tr><th>优先级</th><th>项目</th><th>当前状态</th><th>说明</th></tr></thead>
 <tbody>
-<tr><td>P0</td><td>React/Vite 基础 UI</td><td>已实现</td><td>标题页、预设选择、游戏主界面、资料抽屉、菜单</td></tr>
+<tr><td>P0</td><td>React/Vite 基础 UI</td><td>已实现</td><td>标题页、预设选择、游戏主界面、全屏案件板资料界面、菜单</td></tr>
 <tr><td>P0</td><td>AI DM 核心 Prompt + 防注入</td><td>已实现并持续迭代</td><td>JSON 契约、格式校验/修复重试、容错度、骰子权威、冲突处理</td></tr>
 <tr><td>P0</td><td>D100 检定</td><td>已实现</td><td>前端骰子权威，数值规则集中在 <code>gameRules.ts</code>，含 <code>幸运</code> 冲突仲裁</td></tr>
 <tr><td>P0</td><td>剧情标记 / 线索 / 场景</td><td>已实现基础版</td><td>5 个场景、6 个 NPC 条目、8 个线索物品</td></tr>
-<tr><td>P0</td><td>自动化 smoke tests</td><td>已实现</td><td>覆盖标题页、选角立绘/完整属性、主界面、无 API Key、存档/读档、非法存档、大失败优先</td></tr>
+<tr><td>P0</td><td>自动化 smoke tests</td><td>已实现</td><td>覆盖标题页、选角立绘/完整属性、主界面、全屏案件板资料界面、无 API Key、存档/读档、非法存档、大失败优先</td></tr>
 <tr><td>P1</td><td>本地同屏多人</td><td>已实现基础版</td><td>1-4 名预设调查员，Together/Split 两种探索方式</td></tr>
 <tr><td>P1</td><td>存档 / 读档 / 存档管理</td><td>已实现</td><td><code>trpg-saves-v2</code> 最近存档、存档列表、指定载入和删除</td></tr>
 <tr><td>P2</td><td>5 步自定义角色创建</td><td>Backlog</td><td>保留骰点、技能分配、导出设计</td></tr>

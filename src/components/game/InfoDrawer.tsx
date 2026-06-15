@@ -2,7 +2,6 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { BookOpen, GripVertical, X } from 'lucide-react';
 import type { CaseBoardNode, GameState, StoryItem } from '../../types/game';
 import { storyData } from '../../data/storyData';
-import { collectKnownNpcNames } from '../../dm/caseBoard';
 import { getNpcDetail, getClueDetail, type EntityDetail } from '../../dm/entityDetail';
 import { CaseBoard } from './CaseBoard';
 import { EntityDetailModal } from './EntityDetailModal';
@@ -15,9 +14,8 @@ interface InfoDrawerProps {
 }
 
 export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
-  const npc = state.activeNpcName ? storyData.npcs[state.activeNpcName] : null;
   const [selectedDetail, setSelectedDetail] = useState<EntityDetail | null>(null);
-  const [activeTab, setActiveTab] = useState<'board' | 'clues' | 'people' | 'log'>('board');
+  const [activeTab, setActiveTab] = useState<'board' | 'log'>('board');
 
   // 拖拽状态
   const tabRef = useRef<HTMLButtonElement>(null);
@@ -93,26 +91,16 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
     isDragging.current = false;
   }, [tabTop]);
 
-  function handleNpcClick() {
-    if (!state.activeNpcName) return;
-    const detail = getNpcDetail(state.activeNpcName, state);
-    if (detail) setSelectedDetail(detail);
-  }
-
   function handleClueClick(clue: StoryItem) {
     const detail = getClueDetail(clue, state);
-    if (detail) setSelectedDetail(detail);
-  }
-
-  function handleKnownNpcClick(npcName: string) {
-    const detail = getNpcDetail(npcName, state);
     if (detail) setSelectedDetail(detail);
   }
 
   function handleBoardNodeOpen(node: CaseBoardNode) {
     if (!node.refId) return;
     if (node.type === 'npc') {
-      handleKnownNpcClick(node.refId);
+      const detail = getNpcDetail(node.refId, state);
+      if (detail) setSelectedDetail(detail);
       return;
     }
     if (node.type === 'item') {
@@ -120,8 +108,6 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
       if (clue) handleClueClick(clue);
     }
   }
-
-  const knownNpcNames = collectKnownNpcNames(state);
 
   return (
     <>
@@ -137,7 +123,7 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
         <BookOpen size={16} />
         <span>资料</span>
       </button>
-      <aside className={`info-drawer-react ${open ? 'open' : ''}`}>
+      <aside className={`info-drawer-react fullscreen ${open ? 'open' : ''}`}>
         <header>
           <div>
             <p>SESSION</p>
@@ -148,73 +134,11 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
 
         <nav className="info-drawer-tabs" aria-label="资料视图">
           <button className={activeTab === 'board' ? 'active' : ''} onClick={() => setActiveTab('board')}>案件板</button>
-          <button className={activeTab === 'clues' ? 'active' : ''} onClick={() => setActiveTab('clues')}>线索</button>
-          <button className={activeTab === 'people' ? 'active' : ''} onClick={() => setActiveTab('people')}>人物</button>
           <button className={activeTab === 'log' ? 'active' : ''} onClick={() => setActiveTab('log')}>日志</button>
         </nav>
 
         {activeTab === 'board' ? (
           <CaseBoard state={state} onNodeOpen={handleBoardNodeOpen} />
-        ) : null}
-
-        {activeTab === 'clues' ? (
-          <section className="drawer-section">
-            <h3>已获线索</h3>
-            {state.clues.length ? (
-              <div className="clue-list">
-                {state.clues.map((clue) => (
-                  <article
-                    key={clue.id}
-                    className="clickable"
-                    onClick={() => handleClueClick(clue)}
-                    role="button"
-                    tabIndex={0}
-                  >
-                    <strong>{clue.name}</strong>
-                    <p>{clue.desc}</p>
-                  </article>
-                ))}
-              </div>
-            ) : <p className="empty-note">尚未获取任何线索。</p>}
-          </section>
-        ) : null}
-
-        {activeTab === 'people' ? (
-          <section className="drawer-section">
-            <h3>人物</h3>
-            {knownNpcNames.length ? (
-              <div className="known-npc-list">
-                {knownNpcNames.map((npcName) => {
-                  const knownNpc = storyData.npcs[npcName];
-                  return (
-                    <div
-                      key={npcName}
-                      className="npc-mini clickable"
-                      onClick={() => handleKnownNpcClick(npcName)}
-                      role="button"
-                      tabIndex={0}
-                    >
-                      {knownNpc.portrait ? <img src={knownNpc.portrait} alt="" /> : null}
-                      <div>
-                        <strong>{npcName}</strong>
-                        <span>{knownNpc.role} · {knownNpc.attitude}</span>
-                        <p>{knownNpc.notes}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : npc ? (
-              <div className="npc-mini clickable" onClick={handleNpcClick} role="button" tabIndex={0}>
-                {npc.portrait ? <img src={npc.portrait} alt="" /> : null}
-                <div>
-                  <strong>{state.activeNpcName}</strong>
-                  <span>{npc.role} · {npc.attitude}</span>
-                  <p>{npc.notes}</p>
-                </div>
-              </div>
-            ) : <p className="empty-note">当前没有已知 NPC。</p>}
-          </section>
         ) : null}
 
         {activeTab === 'log' ? (

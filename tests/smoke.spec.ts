@@ -235,23 +235,27 @@ test('player action messages keep the player name and action on one line', async
   expect(messageLayout.sameLine).toBe(true);
 });
 
-test('info drawer opens the case board by default and keeps reference tabs', async ({ page }) => {
+test('reference panel opens a fullscreen case board and keeps the log tab', async ({ page }) => {
   await startNewGame(page);
 
   await page.getByRole('button', { name: '资料' }).click();
 
-  await expect(page.locator('.case-board-view')).toBeVisible();
+  const drawer = page.locator('.info-drawer-react.open');
+  await expect(drawer).toBeVisible();
+  const drawerBox = await drawer.boundingBox();
+  expect(drawerBox?.width ?? 0).toBeGreaterThanOrEqual(1100);
+  expect(drawerBox?.height ?? 0).toBeGreaterThanOrEqual(650);
+  await expect(drawer).toHaveClass(/fullscreen/);
+  await expect(drawer.locator('.case-board-view')).toBeVisible();
   await expect(page.getByRole('button', { name: '案件板' })).toHaveClass(/active/);
   const board = page.locator('.case-board-canvas');
   await expect(board).toBeVisible();
   await expect(board.locator('.case-board-node', { hasText: '摩勒住宅' })).toBeVisible();
   await expect(board.locator('.case-board-node', { hasText: '伊莎贝拉·摩勒' })).toBeVisible();
   await expect(board.getByText('卡森其药店')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '线索' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '人物' })).toHaveCount(0);
 
-  await page.getByRole('button', { name: '线索' }).click();
-  await expect(page.getByRole('heading', { name: '已获线索' })).toBeVisible();
-  await page.getByRole('button', { name: '人物' }).click();
-  await expect(page.getByRole('heading', { name: '人物' })).toBeVisible();
   await page.getByRole('button', { name: '日志' }).click();
   await expect(page.getByRole('heading', { name: '行动日志' })).toBeVisible();
 });

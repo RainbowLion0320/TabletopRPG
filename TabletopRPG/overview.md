@@ -4,7 +4,7 @@ title: 项目全局综述
 tags: [overview, project, aligned]
 sources: [project_plan.md, ../../docs/PRD.md, ../../docs/SPEC.md, ../../docs/GDD.md]
 created: 2026-05-14
-updated: 2026-05-29
+updated: 2026-06-15
 ---
 
 # AI 跑团游戏 · 项目全局综述
@@ -33,7 +33,7 @@ updated: 2026-05-29
 - D100 技能检定系统，骰子由前端执行。
 - Together / Split 两种探索模式。
 - AI 推荐行动建议。
-- 资料抽屉：当前 NPC、已获线索、行动日志。
+- 全屏资料界面：默认展示玩家已知案件板，行动日志作为辅助页签保留。
 - localStorage 存档：当前 key 为 `trpg-saves-v2`，支持最近存档、列表载入和删除。
 - 首个剧本模块「雾中消逝」：5 个场景、6 个 NPC 条目、8 个线索物品。
 - Playwright smoke tests：覆盖标题页、选角、主界面、无 API Key、存档/读档、非法存档和 D100 大失败优先规则。

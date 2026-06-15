@@ -55,7 +55,7 @@ type Screen = 'title' | 'setup' | 'game';
 | --- | --- |
 | `title` | New game, continue latest save, AI settings |
 | `setup` | Select 1-4 preset investigators |
-| `game` | Scene, narrative, action dock, party strip, info drawer, menu |
+| `game` | Scene, narrative, action dock, party strip, fullscreen reference panel, menu |
 
 `src/app` is split by responsibility:
 

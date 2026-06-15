@@ -20,11 +20,22 @@ describe('InfoDrawer case board', () => {
     const board = caseBoardCanvas(container);
 
     expect(screen.getByRole('button', { name: '案件板' })).toHaveClass('active');
+    expect(screen.queryByRole('button', { name: '线索' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '人物' })).not.toBeInTheDocument();
     expect(board.getByText('摩勒住宅')).toBeInTheDocument();
     expect(board.getByText('伊莎贝拉·摩勒')).toBeInTheDocument();
     expect(screen.queryByText('卡森其药店')).not.toBeInTheDocument();
     expect(screen.queryByText('扶桑花号')).not.toBeInTheDocument();
     expect(screen.queryByText('走私嫌疑')).not.toBeInTheDocument();
+  });
+
+  it('uses a fullscreen drawer layout for long-running case boards', () => {
+    const { container } = renderDrawer();
+    const drawer = container.querySelector('.info-drawer-react');
+
+    expect(drawer).not.toBeNull();
+    expect(drawer).toHaveClass('fullscreen');
+    expect(drawer).toHaveClass('open');
   });
 
   it('reveals the Carson pharmacy branch after the hidden pamphlet clue is found', () => {
@@ -62,20 +73,16 @@ describe('InfoDrawer case board', () => {
     expect(screen.getByText(/卡森其·贝尔14/)).toBeInTheDocument();
   });
 
-  it('keeps the old clue, people, and log views as tabs', () => {
+  it('keeps the action log as the only auxiliary tab', () => {
     const state = makeState({ activeNpcName: '伊莎贝拉·摩勒' });
     state.clues = [{ ...storyData.items.I04, found: true }];
     state.actionLog = [{ time: '20:00', text: '检查书房桌面' }];
 
     renderDrawer(state);
 
-    fireEvent.click(screen.getByRole('button', { name: '线索' }));
-    expect(screen.getByRole('heading', { name: '已获线索' })).toBeInTheDocument();
-    expect(screen.getByText('小册子')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: '人物' }));
-    expect(screen.getByRole('heading', { name: '人物' })).toBeInTheDocument();
-    expect(screen.getByText('伊莎贝拉·摩勒')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /^(案件板|日志)$/ })).toHaveLength(2);
+    expect(screen.queryByRole('heading', { name: '已获线索' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '人物' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '日志' }));
     const logSection = screen.getByRole('region', { name: '行动日志' });

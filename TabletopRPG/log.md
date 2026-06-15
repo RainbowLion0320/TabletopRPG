@@ -78,6 +78,12 @@
 ## [2026-05-27] update | P0 smoke tests 落地
 
 - 新增 Playwright smoke tests，覆盖标题页、预设选角、主界面、无 API Key 防崩溃、保存/继续、非法存档过滤和 D100 大失败优先规则。
+
+## [2026-06-15] update | 资料界面案件板全屏化
+
+- 资料入口改为全屏资料界面，默认展示案件板。
+- 移除独立线索/人物页签，行动日志作为唯一辅助页签保留。
+- 同步 `README.md`、`docs/PRD.md`、`docs/SPEC.md`、`docs/GDD.md` 与 wiki overview。
 - 新增 `npm run test:smoke` 命令。
 - 同步 PRD / SPEC / GDD / Wiki，将自动化 smoke tests 从开放 P0 移入已实现质量护栏。
 
