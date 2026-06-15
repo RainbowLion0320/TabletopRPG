@@ -142,6 +142,26 @@ test('AI DM handles first player action through a chat-compatible provider', asy
   await expect(page.getByText(/AI DM 返回格式无效/)).toHaveCount(0);
 });
 
+test('AI DM opens settings when a chat-compatible provider is missing its endpoint', async ({ page }) => {
+  await startGameWithApi(page, {
+    provider: 'mimo',
+    protocol: 'chat-completions',
+    apiKey: 'test-key',
+    model: 'mimo-v2.5'
+  });
+
+  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the study.');
+  await page.getByRole('button', { name: '下一位' }).click();
+  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the hallway.');
+  await page.getByRole('button', { name: '提交' }).click();
+
+  const configDialog = page.getByRole('dialog', { name: 'AI DM 配置' });
+  await expect(configDialog).toBeVisible();
+  await expect(configDialog.getByLabel('Endpoint')).toBeVisible();
+  await expect(page.getByText(/请补全 AI DM 配置/)).toBeVisible();
+  await expect(page.getByText(/MiMo\/custom provider 必须配置 endpoint/)).toBeVisible();
+});
+
 test('AI DM thinking state shows an inline animated indicator while the turn is running', async ({ page }) => {
   const narrator = JSON.stringify({
     narrative: 'The delayed narrator response is shown after the indicator.',

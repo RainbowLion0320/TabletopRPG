@@ -50,10 +50,12 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
     onSave(normalized);
   };
 
+  const titleId = 'api-config-modal-title';
+
   return (
     <div className="modal-backdrop">
-      <div className="modal-card">
-        <h2>AI DM 配置</h2>
+      <div className="modal-card" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+        <h2 id={titleId}>AI DM 配置</h2>
         <p>保存后会同时写入本地浏览器与项目根目录的 <code>.env.local</code>（已 gitignore），下次启动自动生效。</p>
         <label>
           Provider

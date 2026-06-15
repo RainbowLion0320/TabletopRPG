@@ -12,6 +12,7 @@ import { prepareCheck, rollD100 } from '../services/dice';
 import { persistApiConfig, readApiConfig } from '../services/storage';
 import { createInitialGameState, gameReducer } from '../state/gameReducer';
 import type { ApiConfig, GameState, Investigator, SceneId } from '../types/game';
+import { AiProviderConfigError } from '../dm/llm/errors';
 import { runDmTurn } from '../dm/pipeline';
 
 export function useGameController() {
@@ -170,6 +171,16 @@ export function useGameController() {
       }
     } catch (error) {
       dispatch({ type: 'setThinking', value: false });
+      if (error instanceof AiProviderConfigError) {
+        const message = error.message;
+        setMenuOpen(false);
+        setApiOpen(true);
+        dispatch({
+          type: 'appendMessage',
+          message: { type: 'system', text: `请补全 AI DM 配置：${message}` }
+        });
+        return;
+      }
       const prefix = error instanceof AiResponseFormatError ? 'AI DM 返回格式无效' : 'AI DM 连接失败';
       dispatch({
         type: 'appendMessage',

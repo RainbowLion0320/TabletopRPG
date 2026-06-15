@@ -55,16 +55,16 @@ export function getApiConfigValidationError(config: ApiConfig): string | null {
   const normalized = normalizeApiConfig(config);
   if (!normalized.apiKey) return '请输入 API Key。';
   if (normalized.provider !== 'openai' && !normalized.endpoint) {
-    return 'MiMo/custom provider 必须配置 endpoint。';
+    return 'MiMo/custom provider 必须配置 endpoint，例如 https://你的网关域名/v1。';
   }
   if (normalized.protocol === 'chat-completions' && !normalized.endpoint) {
-    return 'chat-compatible 协议必须配置 endpoint。';
+    return 'chat-compatible 协议必须配置 endpoint，例如 https://你的网关域名/v1。';
   }
   if (normalized.provider === 'custom' && !normalized.model) {
-    return 'custom provider 必须配置 model。';
+    return 'custom provider 必须配置 model，请填写网关提供的模型名。';
   }
   if (normalized.protocol === 'chat-completions' && !normalized.model) {
-    return 'chat-compatible 协议必须配置 model。';
+    return 'chat-compatible 协议必须配置 model，请填写网关提供的模型名。';
   }
   return null;
 }
