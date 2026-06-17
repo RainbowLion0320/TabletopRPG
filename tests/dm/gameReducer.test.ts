@@ -182,6 +182,36 @@ describe('gameReducer appendEvents', () => {
   });
 });
 
+describe('gameReducer consolidateMemory', () => {
+  it('preserves conversation history appended after the summarized source snapshot', () => {
+    const baseHistory = [
+      { role: 'user' as const, content: 'old user' },
+      { role: 'assistant' as const, content: 'old dm' }
+    ];
+    const suffix = [
+      { role: 'user' as const, content: 'current user' },
+      { role: 'assistant' as const, content: 'current dm' }
+    ];
+    const state = makeState({
+      conversationHistory: [...baseHistory, ...suffix]
+    });
+
+    const next = gameReducer(state, {
+      type: 'consolidateMemory',
+      summary: 'summarized old turns',
+      summarizedUntilIndex: 0,
+      remainingHistory: [{ role: 'assistant', content: 'kept recent old dm' }],
+      sourceHistoryLength: baseHistory.length
+    });
+
+    expect(next.longTermMemorySummary).toBe('summarized old turns');
+    expect(next.conversationHistory).toEqual([
+      { role: 'assistant', content: 'kept recent old dm' },
+      ...suffix
+    ]);
+  });
+});
+
 describe('gameReducer actor selection', () => {
   it('does not let together-mode actor clicks skip the sequential action order', () => {
     const state = makeState({

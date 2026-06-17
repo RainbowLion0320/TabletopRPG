@@ -6,7 +6,7 @@
  */
 
 import type { DmContext } from './contextBuilder';
-import type { DmToolCall } from './types';
+import type { DmToolCall, DmTurnTiming } from './types';
 import type { AtomicFact, CaseBoardPatch, ProspectiveIntent, NpcMindModel } from '../types/game';
 
 export interface DmTraceRejection {
@@ -47,6 +47,7 @@ export interface DmTrace {
     mindUpdates?: Array<{ npcId: string; partial: Partial<NpcMindModel> }>;
     intents?: ProspectiveIntent[];
   };
+  timings?: DmTurnTiming;
 }
 
 const MAX_TRACES = 20;
@@ -56,6 +57,19 @@ const listeners = new Set<() => void>();
 export function pushTrace(trace: DmTrace): void {
   traces.unshift(trace);
   if (traces.length > MAX_TRACES) traces.length = MAX_TRACES;
+  listeners.forEach((fn) => {
+    try {
+      fn();
+    } catch {
+      /* ignore listener errors */
+    }
+  });
+}
+
+export function updateTrace(id: string, patch: Partial<DmTrace>): void {
+  const index = traces.findIndex((trace) => trace.id === id);
+  if (index < 0) return;
+  traces[index] = { ...traces[index], ...patch };
   listeners.forEach((fn) => {
     try {
       fn();

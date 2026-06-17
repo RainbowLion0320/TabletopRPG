@@ -7,7 +7,16 @@
  * - 上下文是按需组装的，不再"一锅炖"。
  */
 
-import type { CaseBoardPatch, GameState, SceneId } from '../types/game';
+import type {
+  AtomicFact,
+  CaseBoardPatch,
+  ConversationTurn,
+  EpisodicMemoryRecord,
+  GameState,
+  NpcMindModel,
+  ProspectiveIntent,
+  SceneId
+} from '../types/game';
 
 // ---------- 知识库（Phase 1 填充） ----------
 
@@ -170,6 +179,37 @@ export interface DmTurnInput {
   actions: Array<{ player: string; action: string; scene?: string }>;
 }
 
+export interface DmTurnTiming {
+  summary?: number;
+  system2?: number;
+  narrator?: number;
+  facts?: number;
+  caseBoard?: number;
+  totalForeground?: number;
+  totalBackground?: number;
+}
+
+export interface DmMemoryUpdate {
+  summary: string;
+  summarizedUntilIndex: number;
+  remainingHistory: ConversationTurn[];
+}
+
+export interface DmMindUpdate {
+  npcId: string;
+  partial: Partial<NpcMindModel>;
+}
+
+export interface DmBackgroundUpdate {
+  memoryUpdate?: DmMemoryUpdate;
+  factsToAppend?: AtomicFact[];
+  caseBoardPatch?: CaseBoardPatch;
+  mindUpdates?: DmMindUpdate[];
+  prospectiveIntentsToAdd?: ProspectiveIntent[];
+  episodicMemoriesToAdd?: EpisodicMemoryRecord[];
+  timings?: DmTurnTiming;
+}
+
 export interface DmTurnOutput {
   /** Narrator 原始返回文本（用于 conversationHistory + debug） */
   raw: string;
@@ -178,26 +218,23 @@ export interface DmTurnOutput {
   /** 新契约下的事件序列；v2 启用时使用 */
   events?: DMEvent[];
   /** 本轮产生的长期记忆更新；controller 应优先 dispatch consolidateMemory */
-  memoryUpdate?: {
-    summary: string;
-    summarizedUntilIndex: number;
-    remainingHistory: import('../types/game').ConversationTurn[];
-  };
+  memoryUpdate?: DmMemoryUpdate;
   /** Phase 9：System1 抽出待写入的 atomic facts（已设置 supersedes 链） */
-  factsToAppend?: import('../types/game').AtomicFact[];
+  factsToAppend?: AtomicFact[];
   /** 动态案件板旁路 patch；controller 写入 facts/events 后再交给 reducer 审核落地 */
   caseBoardPatch?: CaseBoardPatch;
   /** Phase 9：Narrator 工具调用 + System2 合成产生的 NPC 心智增量 */
-  mindUpdates?: Array<{
-    npcId: string;
-    partial: Partial<import('../types/game').NpcMindModel>;
-  }>;
+  mindUpdates?: DmMindUpdate[];
   /** Phase 9：System2 合成出的新增前瞻意图（已分配 id 与 ttl） */
-  prospectiveIntentsToAdd?: import('../types/game').ProspectiveIntent[];
+  prospectiveIntentsToAdd?: ProspectiveIntent[];
   /** 长尾事件召回层：本轮完成后追加的 episodic memory 片段 */
-  episodicMemoriesToAdd?: import('../types/game').EpisodicMemoryRecord[];
+  episodicMemoriesToAdd?: EpisodicMemoryRecord[];
   /** Phase 9：本轮是否需要执行 ttl 衰减（每轮 true） */
   decayIntents?: boolean;
+  /** Foreground/background phase timings in milliseconds. */
+  timings?: DmTurnTiming;
+  /** Non-blocking memory/case-board/cognition updates for this turn. */
+  backgroundUpdate?: Promise<DmBackgroundUpdate>;
 }
 
 // ---------- Feature Flag ----------

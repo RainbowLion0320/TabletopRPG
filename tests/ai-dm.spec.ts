@@ -142,6 +142,56 @@ test('AI DM handles first player action through a chat-compatible provider', asy
   await expect(page.getByText(/AI DM 返回格式无效/)).toHaveCount(0);
 });
 
+test('AI DM shows the narrator response before background memory synthesis finishes', async ({ page }) => {
+  const narrator = JSON.stringify({
+    narrative: 'The foreground narrator response appears before background memory is done.',
+    activeNpc: null,
+    nextPrompt: 'Choose the next lead.',
+    playerChoices: {
+      '亨利·格雷': ['Inspect the desk'],
+      '艾达·华莱士': ['Watch the street']
+    }
+  });
+  let releaseFacts!: () => void;
+  const factsGate = new Promise<void>((resolve) => {
+    releaseFacts = resolve;
+  });
+  let factsStarted = false;
+
+  await page.route('https://api.openai.com/v1/responses', async (route) => {
+    const body = JSON.parse(route.request().postData() ?? '{}') as { instructions?: string };
+    const system = body.instructions ?? '';
+    let content = JSON.stringify({ nodes: [], edges: [] });
+    if (system.includes('COC 第七版 AI DM Agent')) {
+      content = narrator;
+    } else if (system.includes('事实抽取助手')) {
+      factsStarted = true;
+      await factsGate;
+      content = JSON.stringify({ facts: [] });
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(responseBody(content))
+    });
+  });
+
+  await startGameWithApi(page);
+  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the study.');
+  await page.getByRole('button', { name: '下一位' }).click();
+  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the street.');
+  await page.getByRole('button', { name: '提交' }).click();
+
+  await expect.poll(() => factsStarted).toBe(true);
+  await expect(page.locator('.story-message.dm p', {
+    hasText: 'The foreground narrator response appears before background memory is done.'
+  })).toBeVisible();
+  await expect(page.getByRole('status', { name: 'AI DM 正在推演下一幕' })).toHaveCount(0);
+  await expect(page.getByText(/AI DM 连接失败/)).toHaveCount(0);
+
+  releaseFacts();
+});
+
 test('AI DM opens settings when a chat-compatible provider is missing its endpoint', async ({ page }) => {
   await startGameWithApi(page, {
     provider: 'mimo',

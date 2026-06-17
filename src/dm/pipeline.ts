@@ -11,7 +11,7 @@
  * - 工具不可用时由 Narrator 自动降级到带 schema 的 json_object 响应。
  */
 
-import type { ApiConfig, GameState, NpcMindModel, ProspectiveIntent, SceneId } from '../types/game';
+import type { ApiConfig, GameState, ProspectiveIntent, SceneId } from '../types/game';
 import { AiResponseFormatError, type PlayerAction } from '../services/aiDm';
 import { buildDmContext } from './contextBuilder';
 import {
@@ -36,11 +36,35 @@ import {
   searchEpisodicMemory,
   shouldRetrieveEpisodicMemory
 } from './memory/episodicMemory';
-import { pushTrace } from './debugTrace';
+import { pushTrace, updateTrace } from './debugTrace';
 import { DEFAULT_MEMORY_OPTIONS } from './types';
-import type { DmTurnInput, DmTurnOutput } from './types';
+import type {
+  DmBackgroundUpdate,
+  DmMemoryUpdate,
+  DmMindUpdate,
+  DmTurnInput,
+  DmTurnOutput,
+  DmTurnTiming
+} from './types';
 
 const RECENT_TURN_WINDOW_PAIRS = 8; // 8 对 user/assistant = 16 条消息
+
+function nowMs(): number {
+  return typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+}
+
+function elapsedMs(start: number): number {
+  return Math.round(nowMs() - start);
+}
+
+function devWarn(message: string, err: unknown): void {
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.warn(message, err instanceof Error ? err.message : err);
+  }
+}
 
 function pickSpotlightPlayer(actions: PlayerAction[]): string | null {
   if (actions.length === 1) return actions[0].player;
@@ -95,10 +119,203 @@ function collectRetrievalEntityIds(
   return Array.from(out);
 }
 
+type DmContextForTurn = ReturnType<typeof buildDmContext>;
+type NarratorTurnResult = Awaited<ReturnType<typeof callNarrator>>;
+type ResolvedDmTurn = ReturnType<typeof resolveDmTurn>;
+
+interface BackgroundUpdateParams {
+  config: ApiConfig;
+  input: DmTurnInput;
+  kb: ReturnType<typeof getActiveKnowledgeBase>;
+  currentTurn: number;
+  ctx: DmContextForTurn;
+  narrator: NarratorTurnResult;
+  resolved: ResolvedDmTurn;
+  traceId?: string;
+  foregroundTimings: DmTurnTiming;
+}
+
+async function runDmBackgroundUpdate(params: BackgroundUpdateParams): Promise<DmBackgroundUpdate> {
+  const backgroundStart = nowMs();
+  const timings: DmTurnTiming = {};
+  const {
+    config,
+    input,
+    kb,
+    currentTurn,
+    ctx,
+    narrator,
+    resolved,
+    traceId,
+    foregroundTimings
+  } = params;
+  const turn = ctx.dynamic.workingMemory.turnCount + 1;
+  const narrative = resolved.legacyResponse.narrative ?? narrator.narrative;
+
+  const memoryPromise = (async (): Promise<DmMemoryUpdate | undefined> => {
+    const start = nowMs();
+    try {
+      const consolidation = await maybeConsolidateMemory(config, input.state);
+      return consolidation ?? undefined;
+    } catch (err) {
+      devWarn('[pipeline] memory consolidation failed (background):', err);
+      return undefined;
+    } finally {
+      timings.summary = elapsedMs(start);
+    }
+  })();
+
+  const s2Triggered = shouldRunSystem2(input.state);
+  const system2Promise = (async (): Promise<{
+    mindUpdates?: DmMindUpdate[];
+    intents?: ProspectiveIntent[];
+    error?: string;
+  }> => {
+    if (!s2Triggered) {
+      timings.system2 = 0;
+      return {};
+    }
+
+    const start = nowMs();
+    try {
+      const result = await synthesizeSystem2(config, {
+        turn: currentTurn,
+        recentFacts: (input.state.atomicFacts ?? []).slice(-60),
+        existingMindModels: input.state.npcMindModels ?? {},
+        npcCandidates: collectRecentNpcCandidates(input.state, kb),
+        playerNames: input.state.players.map((p) => p.name),
+        summary: input.state.longTermMemorySummary ?? '',
+        defaultIntentTtl: DEFAULT_MEMORY_OPTIONS.defaultIntentTtl
+      });
+      const mindUpdates = result.mindModelUpdates.map((u) => ({
+        npcId: u.npcId,
+        partial: {
+          coreMotivation: u.coreMotivation,
+          currentStance: u.currentStance,
+          ...(u.playerExceptions ? { playerExceptions: u.playerExceptions } : {}),
+          lastUpdatedTurn: currentTurn
+        }
+      }));
+      return {
+        ...(mindUpdates.length ? { mindUpdates } : {}),
+        ...(result.prospectiveIntents.length ? { intents: result.prospectiveIntents } : {})
+      };
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      devWarn('[pipeline] system2 synthesis failed (background):', error);
+      return { error };
+    } finally {
+      timings.system2 = elapsedMs(start);
+    }
+  })();
+
+  const narrativeMemoryPromise = (async (): Promise<{
+    factsToAppend?: DmBackgroundUpdate['factsToAppend'];
+    caseBoardPatch?: DmBackgroundUpdate['caseBoardPatch'];
+    episodicMemoriesToAdd?: DmBackgroundUpdate['episodicMemoriesToAdd'];
+  }> => {
+    let factsToAppend: DmBackgroundUpdate['factsToAppend'];
+    const factsStart = nowMs();
+    try {
+      if (DEFAULT_MEMORY_OPTIONS.enableSystem1) {
+        const extracted = await extractFactsFromTurn(config, {
+          turn,
+          narrative,
+          playerActions: input.actions.map((a) => ({ player: a.player, action: a.action })),
+          inScopeNpcs: ctx.dynamic.workingMemory.inScopeNpcIds,
+          playerNames: input.state.players.map((p) => p.name),
+          existingFacts: input.state.atomicFacts ?? []
+        });
+        if (extracted.length) factsToAppend = extracted;
+      }
+    } finally {
+      timings.facts = elapsedMs(factsStart);
+    }
+
+    const caseBoardStart = nowMs();
+    const caseBoardPatch = await synthesizeCaseBoardPatch(config, {
+      turn: currentTurn,
+      narrative,
+      playerActions: input.actions.map((a) => ({ player: a.player, action: a.action })),
+      facts: [...(input.state.atomicFacts ?? []), ...(factsToAppend ?? [])],
+      events: [...(input.state.eventLog ?? []), ...(resolved.events ?? [])],
+      clues: input.state.clues,
+      existingBoard: input.state.caseBoard ?? { nodes: [], edges: [], lastUpdatedTurn: 0 }
+    });
+    timings.caseBoard = elapsedMs(caseBoardStart);
+
+    const episode = buildEpisodicMemoryRecord({
+      turn,
+      sceneId: input.state.currentScene,
+      actions: input.actions,
+      narrative,
+      events: resolved.events ?? [],
+      facts: factsToAppend ?? [],
+      activeNpcName: resolved.legacyResponse.activeNpc ?? narrator.activeNpc ?? input.state.activeNpcName
+    });
+
+    return {
+      factsToAppend,
+      caseBoardPatch,
+      episodicMemoriesToAdd: episode ? [episode] : undefined
+    };
+  })();
+
+  try {
+    const [memoryUpdate, system2, narrativeMemory] = await Promise.all([
+      memoryPromise,
+      system2Promise,
+      narrativeMemoryPromise
+    ]);
+    const mindUpdates = [
+      ...(system2.mindUpdates ?? []),
+      ...(resolved.mindUpdates ?? [])
+    ];
+    timings.totalBackground = elapsedMs(backgroundStart);
+    const result: DmBackgroundUpdate = {
+      memoryUpdate,
+      factsToAppend: narrativeMemory.factsToAppend,
+      caseBoardPatch: narrativeMemory.caseBoardPatch,
+      mindUpdates: mindUpdates.length ? mindUpdates : undefined,
+      prospectiveIntentsToAdd: system2.intents,
+      episodicMemoriesToAdd: narrativeMemory.episodicMemoriesToAdd,
+      timings
+    };
+
+    if (import.meta.env.DEV && traceId) {
+      updateTrace(traceId, {
+        memoryUpdate: memoryUpdate
+          ? { summary: memoryUpdate.summary, summarizedUntilIndex: memoryUpdate.summarizedUntilIndex }
+          : undefined,
+        s1ExtractedFacts: narrativeMemory.factsToAppend,
+        caseBoardPatch: narrativeMemory.caseBoardPatch,
+        s2Synthesized: {
+          triggered: s2Triggered,
+          ...(system2.error ? { error: system2.error } : {}),
+          ...(system2.mindUpdates ? { mindUpdates: system2.mindUpdates } : {}),
+          ...(system2.intents ? { intents: system2.intents } : {})
+        },
+        timings: { ...foregroundTimings, ...timings }
+      });
+    }
+
+    return result;
+  } catch (err) {
+    devWarn('[pipeline] background update failed:', err);
+    timings.totalBackground = elapsedMs(backgroundStart);
+    if (import.meta.env.DEV && traceId) {
+      updateTrace(traceId, { timings: { ...foregroundTimings, ...timings } });
+    }
+    return { timings };
+  }
+}
+
 export async function runDmTurn(
   config: ApiConfig,
   input: DmTurnInput
 ): Promise<DmTurnOutput> {
+  const foregroundStart = nowMs();
+  const timings: DmTurnTiming = {};
   const kb = getActiveKnowledgeBase();
   const currentTurn = getCurrentTurn(input.state);
 
@@ -117,65 +334,9 @@ export async function runDmTurn(
       })
     : [];
 
-  // 1) 入口检查：是否需要合并旧轮为总结
-  let memoryUpdate: DmTurnOutput['memoryUpdate'];
-  let effectiveSummary = input.state.longTermMemorySummary ?? '';
-  let effectiveHistory = input.state.conversationHistory;
-  try {
-    const consolidation = await maybeConsolidateMemory(config, input.state);
-    if (consolidation) {
-      memoryUpdate = consolidation;
-      effectiveSummary = consolidation.summary;
-      effectiveHistory = consolidation.remainingHistory;
-    }
-  } catch (err) {
-    if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
-      console.warn(
-        '[pipeline] memory consolidation failed (continuing without):',
-        err instanceof Error ? err.message : err
-      );
-    }
-  }
-
-  // 1b) System2 异步合成：与 summarizer 同频触发，串行调用
-  let s2MindUpdates: Array<{ npcId: string; partial: Partial<NpcMindModel> }> | undefined;
-  let s2Intents: ProspectiveIntent[] | undefined;
-  let s2Triggered = false;
-  let s2Error: string | undefined;
-  if (shouldRunSystem2(input.state)) {
-    s2Triggered = true;
-    try {
-      const result = await synthesizeSystem2(config, {
-        turn: currentTurn,
-        recentFacts: (input.state.atomicFacts ?? []).slice(-60),
-        existingMindModels: input.state.npcMindModels ?? {},
-        npcCandidates: collectRecentNpcCandidates(input.state, kb),
-        playerNames: input.state.players.map((p) => p.name),
-        summary: effectiveSummary,
-        defaultIntentTtl: DEFAULT_MEMORY_OPTIONS.defaultIntentTtl
-      });
-      if (result.mindModelUpdates.length) {
-        s2MindUpdates = result.mindModelUpdates.map((u) => ({
-          npcId: u.npcId,
-          partial: {
-            coreMotivation: u.coreMotivation,
-            currentStance: u.currentStance,
-            ...(u.playerExceptions ? { playerExceptions: u.playerExceptions } : {}),
-            lastUpdatedTurn: currentTurn
-          }
-        }));
-      }
-      if (result.prospectiveIntents.length) s2Intents = result.prospectiveIntents;
-    } catch (err) {
-      s2Error = err instanceof Error ? err.message : String(err);
-      if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
-        console.warn('[pipeline] system2 synthesis failed (keeping old mind models):', s2Error);
-      }
-    }
-  }
-
+  // 1) 当前轮只使用既有 summary；新 summary 在后台生成，供下一轮使用
+  const effectiveSummary = input.state.longTermMemorySummary ?? '';
+  const effectiveHistory = input.state.conversationHistory;
   // 2) 拼装本轮上下文（已脱敏，仅含已解锁内幕）
   const ctx = buildDmContext(
     input.state,
@@ -245,6 +406,7 @@ export async function runDmTurn(
   };
 
   let narrator: Awaited<ReturnType<typeof callNarrator>>;
+  const narratorStart = nowMs();
   try {
     narrator = await callNarrator(config, {
       ctx,
@@ -260,6 +422,7 @@ export async function runDmTurn(
     }
     throw err;
   }
+  timings.narrator = elapsedMs(narratorStart);
 
   // 4) 出口护栏：逐个语义校验工具调用，同时检查是否越出 allowed 集
   const directorResult = validateToolCalls(narrator.toolCalls, directorCtx, allowed);
@@ -280,49 +443,26 @@ export async function runDmTurn(
     pendingBefore: input.state.pendingConsequences ?? []
   });
 
-  // 5b) System1 同步事实抽取：主叙事完成后记录本轮新增/变化事实。
-  let factsToAppend: DmTurnOutput['factsToAppend'];
-  if (DEFAULT_MEMORY_OPTIONS.enableSystem1) {
-    const extracted = await extractFactsFromTurn(config, {
-      turn: ctx.dynamic.workingMemory.turnCount + 1,
-      narrative: resolved.legacyResponse.narrative ?? narrator.narrative,
-      playerActions: input.actions.map((a) => ({ player: a.player, action: a.action })),
-      inScopeNpcs: ctx.dynamic.workingMemory.inScopeNpcIds,
-      playerNames: input.state.players.map((p) => p.name),
-      existingFacts: input.state.atomicFacts ?? []
-    });
-    if (extracted.length) factsToAppend = extracted;
-  }
-
-  const caseBoardPatch = await synthesizeCaseBoardPatch(config, {
-    turn: currentTurn,
-    narrative: resolved.legacyResponse.narrative ?? narrator.narrative,
-    playerActions: input.actions.map((a) => ({ player: a.player, action: a.action })),
-    facts: [...(input.state.atomicFacts ?? []), ...(factsToAppend ?? [])],
-    events: [...(input.state.eventLog ?? []), ...(resolved.events ?? [])],
-    clues: input.state.clues,
-    existingBoard: input.state.caseBoard ?? { nodes: [], edges: [], lastUpdatedTurn: 0 }
-  });
-
-  const mindUpdates = [
-    ...(s2MindUpdates ?? []),
-    ...(resolved.mindUpdates ?? [])
-  ];
-
-  const episode = buildEpisodicMemoryRecord({
-    turn: ctx.dynamic.workingMemory.turnCount + 1,
-    sceneId: input.state.currentScene,
-    actions: input.actions,
-    narrative: resolved.legacyResponse.narrative ?? narrator.narrative,
-    events: resolved.events ?? [],
-    facts: factsToAppend ?? [],
-    activeNpcName: resolved.legacyResponse.activeNpc ?? narrator.activeNpc ?? input.state.activeNpcName
+  timings.totalForeground = elapsedMs(foregroundStart);
+  const traceId = import.meta.env.DEV
+    ? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    : undefined;
+  const backgroundUpdate = runDmBackgroundUpdate({
+    config,
+    input,
+    kb,
+    currentTurn,
+    ctx,
+    narrator,
+    resolved,
+    traceId,
+    foregroundTimings: timings
   });
 
   // 6) DEV 追踪：让右下角 DmDebugDrawer 看到这一轮经过的所有阶段
   if (import.meta.env.DEV) {
     pushTrace({
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: traceId ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       timestamp: Date.now(),
       turn: ctx.dynamic.workingMemory.turnCount + 1,
       actions: input.actions.map((a) => ({ player: a.player, action: a.action, scene: a.scene })),
@@ -332,17 +472,10 @@ export async function runDmTurn(
       toolCalls: narrator.toolCalls,
       acceptedCalls: directorResult.accepted,
       rejectedCalls: directorResult.rejected,
-      memoryUpdate: memoryUpdate
-        ? { summary: memoryUpdate.summary, summarizedUntilIndex: memoryUpdate.summarizedUntilIndex }
-        : undefined,
-      s1ExtractedFacts: factsToAppend,
-      caseBoardPatch,
       s2Synthesized: {
-        triggered: s2Triggered,
-        ...(s2Error ? { error: s2Error } : {}),
-        ...(s2MindUpdates ? { mindUpdates: s2MindUpdates } : {}),
-        ...(s2Intents ? { intents: s2Intents } : {})
-      }
+        triggered: shouldRunSystem2(input.state)
+      },
+      timings
     });
   }
 
@@ -350,12 +483,8 @@ export async function runDmTurn(
     raw: narrator.raw,
     legacyResponse: resolved.legacyResponse,
     events: resolved.events,
-    memoryUpdate,
-    factsToAppend,
-    caseBoardPatch,
-    mindUpdates: mindUpdates.length ? mindUpdates : undefined,
-    prospectiveIntentsToAdd: s2Intents,
-    episodicMemoriesToAdd: episode ? [episode] : undefined,
-    decayIntents: true
+    decayIntents: true,
+    timings,
+    backgroundUpdate
   };
 }
