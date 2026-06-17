@@ -22,7 +22,13 @@ export type GameAction =
   | { type: 'setSuggestions'; suggestions: string[] }
   | { type: 'addLog'; text: string }
   | { type: 'appendEvents'; events: PersistedDMEvent[] }
-  | { type: 'consolidateMemory'; summary: string; summarizedUntilIndex: number; remainingHistory: GameState['conversationHistory'] }
+  | {
+      type: 'consolidateMemory';
+      summary: string;
+      summarizedUntilIndex: number;
+      remainingHistory: GameState['conversationHistory'];
+      sourceHistoryLength?: number;
+    }
   | { type: 'appendFacts'; facts: AtomicFact[] }
   | { type: 'updateNpcMindModel'; npcId: string; partial: Partial<NpcMindModel> }
   | { type: 'addProspectiveIntents'; intents: ProspectiveIntent[] }
@@ -1175,11 +1181,15 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, eventLog: next };
     }
     case 'consolidateMemory': {
+      const suffix = typeof action.sourceHistoryLength === 'number'
+        && state.conversationHistory.length > action.sourceHistoryLength
+        ? state.conversationHistory.slice(action.sourceHistoryLength)
+        : [];
       return {
         ...state,
         longTermMemorySummary: action.summary,
         summarizedUntilIndex: action.summarizedUntilIndex,
-        conversationHistory: action.remainingHistory
+        conversationHistory: [...action.remainingHistory, ...suffix]
       };
     }
     case 'appendFacts': {

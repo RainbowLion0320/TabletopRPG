@@ -14,6 +14,7 @@ import { createInitialGameState, gameReducer } from '../state/gameReducer';
 import type { ApiConfig, GameState, Investigator, SceneId } from '../types/game';
 import { AiProviderConfigError } from '../dm/llm/errors';
 import { runDmTurn } from '../dm/pipeline';
+import type { DmBackgroundUpdate } from '../dm/types';
 
 export function useGameController() {
   const { notify, toast } = useToast();
@@ -113,6 +114,43 @@ export function useGameController() {
     runAi(actions);
   }
 
+  function applyBackgroundUpdate(update: DmBackgroundUpdate, sourceHistoryLength: number) {
+    const {
+      memoryUpdate,
+      factsToAppend,
+      caseBoardPatch,
+      mindUpdates,
+      prospectiveIntentsToAdd,
+      episodicMemoriesToAdd
+    } = update;
+    if (memoryUpdate) {
+      dispatch({
+        type: 'consolidateMemory',
+        summary: memoryUpdate.summary,
+        summarizedUntilIndex: memoryUpdate.summarizedUntilIndex,
+        remainingHistory: memoryUpdate.remainingHistory,
+        sourceHistoryLength
+      });
+    }
+    if (factsToAppend && factsToAppend.length) {
+      dispatch({ type: 'appendFacts', facts: factsToAppend });
+    }
+    if (caseBoardPatch) {
+      dispatch({ type: 'applyCaseBoardPatch', patch: caseBoardPatch });
+    }
+    if (mindUpdates && mindUpdates.length) {
+      for (const updateItem of mindUpdates) {
+        dispatch({ type: 'updateNpcMindModel', npcId: updateItem.npcId, partial: updateItem.partial });
+      }
+    }
+    if (prospectiveIntentsToAdd && prospectiveIntentsToAdd.length) {
+      dispatch({ type: 'addProspectiveIntents', intents: prospectiveIntentsToAdd });
+    }
+    if (episodicMemoriesToAdd && episodicMemoriesToAdd.length) {
+      dispatch({ type: 'appendEpisodicMemory', records: episodicMemoriesToAdd });
+    }
+  }
+
   async function runAi(actions: PlayerAction[]) {
     const config = readApiConfig();
     if (!config?.apiKey) {
@@ -122,26 +160,14 @@ export function useGameController() {
     }
     try {
       dispatch({ type: 'setThinking', value: true });
+      const sourceHistoryLength = state.conversationHistory.length;
       const {
         raw,
         legacyResponse,
         events,
-        memoryUpdate,
-        factsToAppend,
-        caseBoardPatch,
-        mindUpdates,
-        prospectiveIntentsToAdd,
-        episodicMemoriesToAdd,
-        decayIntents
+        decayIntents,
+        backgroundUpdate
       } = await runDmTurn(config, { state, actions });
-      if (memoryUpdate) {
-        dispatch({
-          type: 'consolidateMemory',
-          summary: memoryUpdate.summary,
-          summarizedUntilIndex: memoryUpdate.summarizedUntilIndex,
-          remainingHistory: memoryUpdate.remainingHistory
-        });
-      }
       if (decayIntents) {
         dispatch({ type: 'decayProspectiveIntents' });
       }
@@ -156,22 +182,18 @@ export function useGameController() {
       if (events && events.length) {
         dispatch({ type: 'appendEvents', events });
       }
-      if (factsToAppend && factsToAppend.length) {
-        dispatch({ type: 'appendFacts', facts: factsToAppend });
-      }
-      if (caseBoardPatch) {
-        dispatch({ type: 'applyCaseBoardPatch', patch: caseBoardPatch });
-      }
-      if (mindUpdates && mindUpdates.length) {
-        for (const update of mindUpdates) {
-          dispatch({ type: 'updateNpcMindModel', npcId: update.npcId, partial: update.partial });
-        }
-      }
-      if (prospectiveIntentsToAdd && prospectiveIntentsToAdd.length) {
-        dispatch({ type: 'addProspectiveIntents', intents: prospectiveIntentsToAdd });
-      }
-      if (episodicMemoriesToAdd && episodicMemoriesToAdd.length) {
-        dispatch({ type: 'appendEpisodicMemory', records: episodicMemoriesToAdd });
+      if (backgroundUpdate) {
+        void backgroundUpdate
+          .then((update) => applyBackgroundUpdate(update, sourceHistoryLength))
+          .catch((error) => {
+            if (import.meta.env.DEV) {
+              // eslint-disable-next-line no-console
+              console.warn(
+                '[useGameController] AI DM background update failed:',
+                error instanceof Error ? error.message : error
+              );
+            }
+          });
       }
     } catch (error) {
       dispatch({ type: 'setThinking', value: false });

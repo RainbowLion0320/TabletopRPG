@@ -27,6 +27,16 @@ function jsonResponse(body: unknown): Response {
   });
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 function bodyFrom(init: RequestInit | undefined): Record<string, unknown> {
   return JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
 }
@@ -47,6 +57,95 @@ afterEach(() => {
 });
 
 describe('runDmTurn cognitive memory outputs', () => {
+  it('returns narrator output before background facts and case board finish', async () => {
+    const slowFacts = deferred<Response>();
+    const slowCaseBoard = deferred<Response>();
+    let narratorReturned = false;
+
+    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      const body = bodyFrom(init);
+      const system = systemText(body);
+      if (system.includes('事实抽取助手')) return slowFacts.promise;
+      if (system.includes('案件板合成助手')) return slowCaseBoard.promise;
+      if (system.includes('COC 第七版 AI DM Agent')) {
+        narratorReturned = true;
+        return jsonResponse({
+          narrative: '前台叙事已经完成。',
+          activeNpc: null,
+          nextPrompt: '继续行动。',
+          playerChoices: ['继续']
+        });
+      }
+      throw new Error(`unexpected prompt: ${system.slice(0, 80)}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' })],
+      currentScene: 'S01'
+    });
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [{ player: '亨利', action: '继续调查。' }]
+    });
+
+    expect(narratorReturned).toBe(true);
+    expect(output.legacyResponse?.narrative).toBe('前台叙事已经完成。');
+    expect(output.factsToAppend).toBeUndefined();
+    expect(output.caseBoardPatch).toBeUndefined();
+    expect(output.backgroundUpdate).toBeInstanceOf(Promise);
+
+    slowFacts.resolve(jsonResponse({
+      facts: [{ actor: 'world', predicate: 'knowledge', target: '', value: '后台事实' }]
+    }));
+    slowCaseBoard.resolve(jsonResponse({
+      nodes: [],
+      edges: []
+    }));
+
+    const background = await output.backgroundUpdate;
+    expect(background?.factsToAppend).toEqual([
+      expect.objectContaining({ id: 'f_1_0', actor: 'world', value: '后台事实' })
+    ]);
+    expect(background?.caseBoardPatch).toEqual({ nodes: [], edges: [] });
+  });
+
+  it('keeps narrator output usable when background synthesis fails', async () => {
+    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      const body = bodyFrom(init);
+      const system = systemText(body);
+      if (system.includes('事实抽取助手')) throw new Error('facts offline');
+      if (system.includes('案件板合成助手')) throw new Error('case board offline');
+      if (system.includes('COC 第七版 AI DM Agent')) {
+        return jsonResponse({
+          narrative: '前台仍然可用。',
+          activeNpc: null,
+          nextPrompt: '继续行动。',
+          playerChoices: ['继续']
+        });
+      }
+      throw new Error(`unexpected prompt: ${system.slice(0, 80)}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' })],
+      currentScene: 'S01'
+    });
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [{ player: '亨利', action: '继续调查。' }]
+    });
+
+    expect(output.legacyResponse?.narrative).toBe('前台仍然可用。');
+    await expect(output.backgroundUpdate).resolves.toEqual(expect.objectContaining({
+      factsToAppend: undefined,
+      caseBoardPatch: { nodes: [], edges: [] }
+    }));
+  });
+
   it('returns System1 facts extracted from the resolved turn narrative', async () => {
     const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
       const body = bodyFrom(init);
@@ -86,7 +185,8 @@ describe('runDmTurn cognitive memory outputs', () => {
     });
 
     expect(output.legacyResponse.narrative).toContain('信任亨利');
-    expect(output.factsToAppend).toEqual([
+    const background = await output.backgroundUpdate;
+    expect(background?.factsToAppend).toEqual([
       expect.objectContaining({
         id: 'f_1_0',
         turn: 1,
@@ -162,8 +262,9 @@ describe('runDmTurn cognitive memory outputs', () => {
       actions: [{ player: '亨利', action: '继续安抚伊莎贝拉。' }]
     });
 
-    expect(output.memoryUpdate?.summary).toBe('玩家已完成前情调查。');
-    expect(output.mindUpdates).toEqual([
+    const background = await output.backgroundUpdate;
+    expect(background?.memoryUpdate?.summary).toBe('玩家已完成前情调查。');
+    expect(background?.mindUpdates).toEqual([
       {
         npcId: '伊莎贝拉·摩勒',
         partial: {
@@ -174,7 +275,7 @@ describe('runDmTurn cognitive memory outputs', () => {
         }
       }
     ]);
-    expect(output.prospectiveIntentsToAdd).toEqual([
+    expect(background?.prospectiveIntentsToAdd).toEqual([
       expect.objectContaining({
         id: 'i_15_0',
         owner: '伊莎贝拉·摩勒',
@@ -242,7 +343,8 @@ describe('runDmTurn cognitive memory outputs', () => {
     const narratorPrompt = systemPrompts.find((prompt) => prompt.includes('COC 第七版 AI DM Agent')) ?? '';
     expect(narratorPrompt).toContain('相关历史片段');
     expect(narratorPrompt).toContain('交出父亲的私人信件');
-    expect(output.episodicMemoriesToAdd).toEqual([
+    const background = await output.backgroundUpdate;
+    expect(background?.episodicMemoriesToAdd).toEqual([
       expect.objectContaining({
         turn: 1,
         sceneId: 'S01',
@@ -250,7 +352,7 @@ describe('runDmTurn cognitive memory outputs', () => {
         visibility: 'dm'
       })
     ]);
-    expect(output.episodicMemoriesToAdd?.[0].text).toContain('伊莎贝拉记起先前的承诺');
+    expect(background?.episodicMemoriesToAdd?.[0].text).toContain('伊莎贝拉记起先前的承诺');
   });
 
   it('returns an AI-proposed dynamic case board patch after events and facts are available', async () => {
@@ -312,7 +414,8 @@ describe('runDmTurn cognitive memory outputs', () => {
     });
 
     expect(output.legacyResponse?.narrative).toContain('债务');
-    expect(output.caseBoardPatch).toEqual({
+    const background = await output.backgroundUpdate;
+    expect(background?.caseBoardPatch).toEqual({
       nodes: [
         expect.objectContaining({
           id: 'ai-isabella-debt',
@@ -358,6 +461,7 @@ describe('runDmTurn cognitive memory outputs', () => {
     });
 
     expect(output.legacyResponse?.narrative).toBe('调查继续推进。');
-    expect(output.caseBoardPatch).toEqual({ nodes: [], edges: [] });
+    const background = await output.backgroundUpdate;
+    expect(background?.caseBoardPatch).toEqual({ nodes: [], edges: [] });
   });
 });

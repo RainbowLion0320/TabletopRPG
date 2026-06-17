@@ -175,6 +175,11 @@ function NarratorPane({ trace }: { trace: DmTrace }) {
       <Section title={`Mode: ${trace.usedFunctionCalling ? 'function calling' : 'JSON 兜底'}`}>
         <div />
       </Section>
+      {trace.timings ? (
+        <Section title="Timings (ms)">
+          <pre className="dm-debug-pre">{JSON.stringify(trace.timings, null, 2)}</pre>
+        </Section>
+      ) : null}
       <Section title="Raw Response">
         <pre className="dm-debug-pre">{trace.narratorRaw || '(空)'}</pre>
       </Section>
