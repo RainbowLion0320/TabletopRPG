@@ -113,93 +113,6 @@ export interface StoryData {
   items: Record<string, StoryItem>;
 }
 
-export type CaseBoardNodeType = 'npc' | 'item' | 'scene' | 'theory';
-
-export type CaseBoardEdgeTone = 'evidence' | 'suspicion' | 'route' | 'danger';
-
-export type CaseBoardCertainty = 'confirmed' | 'hypothesis';
-
-export type CaseBoardSource = 'scenario' | 'ai';
-
-export interface CaseBoardRevealCondition {
-  itemFound?: string;
-  npcKnown?: string;
-  sceneVisited?: SceneId;
-  flag?: string;
-}
-
-export type CaseBoardRevealRule =
-  | CaseBoardRevealCondition
-  | { anyOf: CaseBoardRevealCondition[] };
-
-export interface CaseBoardNode {
-  id: string;
-  type: CaseBoardNodeType;
-  refId?: string;
-  title: string;
-  subtitle?: string;
-  x: number;
-  y: number;
-  revealWhen: CaseBoardRevealRule;
-}
-
-export interface CaseBoardEdge {
-  id: string;
-  from: string;
-  to: string;
-  label?: string;
-  tone: CaseBoardEdgeTone;
-  revealWhen: 'bothNodesVisible' | CaseBoardRevealRule;
-}
-
-export interface CaseBoardDefinition {
-  summary: string;
-  nodes: CaseBoardNode[];
-  edges: CaseBoardEdge[];
-}
-
-export interface DynamicCaseBoardNode {
-  id: string;
-  type: CaseBoardNodeType | 'event';
-  title: string;
-  subtitle?: string;
-  detail?: string;
-  source: CaseBoardSource;
-  certainty: CaseBoardCertainty;
-  sourceFactIds: string[];
-  sourceEventIds: string[];
-  sourceClueIds: string[];
-  createdTurn: number;
-  updatedTurn: number;
-  status: 'active' | 'archived';
-}
-
-export interface DynamicCaseBoardEdge {
-  id: string;
-  from: string;
-  to: string;
-  label?: string;
-  tone: CaseBoardEdgeTone;
-  source: CaseBoardSource;
-  certainty: CaseBoardCertainty;
-  sourceFactIds: string[];
-  sourceEventIds: string[];
-  createdTurn: number;
-  updatedTurn: number;
-  status: 'active' | 'archived';
-}
-
-export interface CaseBoardState {
-  nodes: DynamicCaseBoardNode[];
-  edges: DynamicCaseBoardEdge[];
-  lastUpdatedTurn: number;
-}
-
-export interface CaseBoardPatch {
-  nodes: DynamicCaseBoardNode[];
-  edges: DynamicCaseBoardEdge[];
-}
-
 export interface NarrativeMessage {
   id: string;
   type: MessageRole;
@@ -400,8 +313,6 @@ export interface GameState {
   prospectiveIntents?: ProspectiveIntent[];
   /** 长尾事件召回片段（最多 300 条），非权威状态，仅供 prompt 召回 */
   episodicMemory?: EpisodicMemoryRecord[];
-  /** 玩家可见案件板动态层；静态剧本骨架仍由 scenario caseBoard 提供 */
-  caseBoard?: CaseBoardState;
 }
 
 export interface AiResponse {
@@ -441,6 +352,6 @@ export interface SaveSlot {
   scene: string;
   players: string;
   gameState: GameState;
-  /** 存档格式版本；v6 起新增动态案件板。 */
-  version?: 1 | 2 | 3 | 4 | 5 | 6;
+  /** 存档格式版本；v5 起新增 episodicMemory。 */
+  version?: 1 | 2 | 3 | 4 | 5;
 }

@@ -38,24 +38,15 @@ Write-Host "TabletopRPG launcher"
 Write-Host "Project: $root"
 Write-Host ""
 
-if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-  Write-Host "Node.js was not found. Please install Node.js first: https://nodejs.org/"
-  exit 1
-}
-
-if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-  Write-Host "npm was not found. Please reinstall Node.js with npm enabled."
-  exit 1
-}
-
-if (-not (Test-Path (Join-Path $root "node_modules"))) {
-  Write-Host "Dependencies are missing. Running npm install..."
-  npm install
-  if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-  }
+# ── Environment pre-check (auto-detect & fix) ──────────
+Write-Host "Running environment pre-check..."
+node scripts/precheck.mjs
+if ($LASTEXITCODE -ne 0) {
   Write-Host ""
+  Write-Host "Pre-check failed. Please fix the issues above before starting the game."
+  exit 1
 }
+Write-Host ""
 
 if (Test-GameServer) {
   Write-Host "The game server is already running."

@@ -463,7 +463,7 @@ async function requestNarrator(
     label: 'Narrator',
     instructions: systemPrompt,
     input: inputItems,
-    maxOutputTokens: 4096,
+    maxOutputTokens: 2048, // P2: 实际输出约 500-800 tokens，2048 有充裕余量
     schemaName: 'narrator_response',
     schema: NARRATOR_RESPONSE_SCHEMA,
     tools: options.tools ?? DM_TOOLS,
@@ -494,7 +494,7 @@ export interface CallNarratorInput {
 }
 
 /** Narrator 内部 lookup 循环的最大轮数（不含最后一轮最终响应）。 */
-const MAX_LOOKUP_ROUNDS = 2;
+const MAX_LOOKUP_ROUNDS = 1; // P3: 原为 2，每轮一次完整 LLM 往返，降至 1 省一个 RTT
 
 function filterToolsByAllowed(
   allowed: DmToolName[] | undefined

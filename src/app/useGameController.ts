@@ -12,9 +12,9 @@ import { prepareCheck, rollD100 } from '../services/dice';
 import { persistApiConfig, readApiConfig } from '../services/storage';
 import { createInitialGameState, gameReducer } from '../state/gameReducer';
 import type { ApiConfig, GameState, Investigator, SceneId } from '../types/game';
-import { AiProviderConfigError } from '../dm/llm/errors';
 import { runDmTurn } from '../dm/pipeline';
-import type { DmBackgroundUpdate } from '../dm/types';
+
+const DM_TURN_TIMEOUT_MS = 180_000; // 3 分钟整体超时
 
 export function useGameController() {
   const { notify, toast } = useToast();
@@ -114,43 +114,6 @@ export function useGameController() {
     runAi(actions);
   }
 
-  function applyBackgroundUpdate(update: DmBackgroundUpdate, sourceHistoryLength: number) {
-    const {
-      memoryUpdate,
-      factsToAppend,
-      caseBoardPatch,
-      mindUpdates,
-      prospectiveIntentsToAdd,
-      episodicMemoriesToAdd
-    } = update;
-    if (memoryUpdate) {
-      dispatch({
-        type: 'consolidateMemory',
-        summary: memoryUpdate.summary,
-        summarizedUntilIndex: memoryUpdate.summarizedUntilIndex,
-        remainingHistory: memoryUpdate.remainingHistory,
-        sourceHistoryLength
-      });
-    }
-    if (factsToAppend && factsToAppend.length) {
-      dispatch({ type: 'appendFacts', facts: factsToAppend });
-    }
-    if (caseBoardPatch) {
-      dispatch({ type: 'applyCaseBoardPatch', patch: caseBoardPatch });
-    }
-    if (mindUpdates && mindUpdates.length) {
-      for (const updateItem of mindUpdates) {
-        dispatch({ type: 'updateNpcMindModel', npcId: updateItem.npcId, partial: updateItem.partial });
-      }
-    }
-    if (prospectiveIntentsToAdd && prospectiveIntentsToAdd.length) {
-      dispatch({ type: 'addProspectiveIntents', intents: prospectiveIntentsToAdd });
-    }
-    if (episodicMemoriesToAdd && episodicMemoriesToAdd.length) {
-      dispatch({ type: 'appendEpisodicMemory', records: episodicMemoriesToAdd });
-    }
-  }
-
   async function runAi(actions: PlayerAction[]) {
     const config = readApiConfig();
     if (!config?.apiKey) {
@@ -160,14 +123,28 @@ export function useGameController() {
     }
     try {
       dispatch({ type: 'setThinking', value: true });
-      const sourceHistoryLength = state.conversationHistory.length;
+      const turnPromise = runDmTurn(config, { state, actions });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('DM 推演超时（3分钟），请检查网络连接或 API 服务状态')), DM_TURN_TIMEOUT_MS)
+      );
       const {
         raw,
         legacyResponse,
         events,
-        decayIntents,
-        backgroundUpdate
-      } = await runDmTurn(config, { state, actions });
+        memoryUpdate,
+        mindUpdates,
+        prospectiveIntentsToAdd,
+        deferredUpdates,
+        decayIntents
+      } = await Promise.race([turnPromise, timeoutPromise]);
+      if (memoryUpdate) {
+        dispatch({
+          type: 'consolidateMemory',
+          summary: memoryUpdate.summary,
+          summarizedUntilIndex: memoryUpdate.summarizedUntilIndex,
+          remainingHistory: memoryUpdate.remainingHistory
+        });
+      }
       if (decayIntents) {
         dispatch({ type: 'decayProspectiveIntents' });
       }
@@ -182,31 +159,27 @@ export function useGameController() {
       if (events && events.length) {
         dispatch({ type: 'appendEvents', events });
       }
-      if (backgroundUpdate) {
-        void backgroundUpdate
-          .then((update) => applyBackgroundUpdate(update, sourceHistoryLength))
-          .catch((error) => {
-            if (import.meta.env.DEV) {
-              // eslint-disable-next-line no-console
-              console.warn(
-                '[useGameController] AI DM background update failed:',
-                error instanceof Error ? error.message : error
-              );
-            }
-          });
+      if (mindUpdates && mindUpdates.length) {
+        for (const update of mindUpdates) {
+          dispatch({ type: 'updateNpcMindModel', npcId: update.npcId, partial: update.partial });
+        }
+      }
+      if (prospectiveIntentsToAdd && prospectiveIntentsToAdd.length) {
+        dispatch({ type: 'addProspectiveIntents', intents: prospectiveIntentsToAdd });
+      }
+      // P1: 事实抽取 + 情景记忆延迟写入，不阻塞玩家可见响应
+      if (deferredUpdates) {
+        void deferredUpdates.then(({ factsToAppend, episodicMemoriesToAdd }) => {
+          if (factsToAppend && factsToAppend.length) {
+            dispatch({ type: 'appendFacts', facts: factsToAppend });
+          }
+          if (episodicMemoriesToAdd && episodicMemoriesToAdd.length) {
+            dispatch({ type: 'appendEpisodicMemory', records: episodicMemoriesToAdd });
+          }
+        });
       }
     } catch (error) {
       dispatch({ type: 'setThinking', value: false });
-      if (error instanceof AiProviderConfigError) {
-        const message = error.message;
-        setMenuOpen(false);
-        setApiOpen(true);
-        dispatch({
-          type: 'appendMessage',
-          message: { type: 'system', text: `请补全 AI DM 配置：${message}` }
-        });
-        return;
-      }
       const prefix = error instanceof AiResponseFormatError ? 'AI DM 返回格式无效' : 'AI DM 连接失败';
       dispatch({
         type: 'appendMessage',

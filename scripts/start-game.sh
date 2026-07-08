@@ -41,21 +41,15 @@ echo "TabletopRPG launcher"
 echo "Project: $ROOT"
 echo ""
 
-if ! command -v node >/dev/null 2>&1; then
-  echo "Node.js was not found. Please install Node.js first: https://nodejs.org/"
-  exit 1
-fi
-
-if ! command -v npm >/dev/null 2>&1; then
-  echo "npm was not found. Please reinstall Node.js with npm enabled."
-  exit 1
-fi
-
-if [ ! -d "$ROOT/node_modules" ]; then
-  echo "Dependencies are missing. Running npm install..."
-  npm install
+# ── Environment pre-check (auto-detect & fix) ──────────
+echo "Running environment pre-check..."
+node scripts/precheck.mjs
+if [ $? -ne 0 ]; then
   echo ""
+  echo "Pre-check failed. Please fix the issues above before starting the game."
+  exit 1
 fi
+echo ""
 
 if test_server; then
   echo "The game server is already running."
