@@ -13,6 +13,7 @@
 
 import type { ApiConfig, GameState, ProspectiveIntent, SceneId } from '../types/game';
 import { AiResponseFormatError, type PlayerAction } from '../services/aiDm';
+import { storyData } from '../data/storyData';
 import { buildDmContext } from './contextBuilder';
 import {
   computeRevealedSecretIds,
@@ -237,13 +238,21 @@ async function runDmBackgroundUpdate(params: BackgroundUpdateParams): Promise<Dm
     }
 
     const caseBoardStart = nowMs();
+    const newClueIds = resolved.legacyResponse.stateUpdate?.newItems ?? [];
+    const clueById = new Map(input.state.clues.map((clue) => [clue.id, clue]));
+    for (const clueId of newClueIds) {
+      const clue = storyData.items[clueId];
+      if (clue) clueById.set(clue.id, { ...clue, found: true });
+    }
     const caseBoardPatch = await synthesizeCaseBoardPatch(config, {
       turn: currentTurn,
       narrative,
       playerActions: input.actions.map((a) => ({ player: a.player, action: a.action })),
       facts: [...(input.state.atomicFacts ?? []), ...(factsToAppend ?? [])],
+      newFacts: factsToAppend ?? [],
       events: [...(input.state.eventLog ?? []), ...(resolved.events ?? [])],
-      clues: input.state.clues,
+      clues: Array.from(clueById.values()),
+      newClueIds,
       existingBoard: input.state.caseBoard ?? { nodes: [], edges: [], lastUpdatedTurn: 0 },
       signal: input.signal
     });

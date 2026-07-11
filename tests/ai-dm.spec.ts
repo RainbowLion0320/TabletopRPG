@@ -192,6 +192,53 @@ test('AI DM shows the narrator response before background memory synthesis finis
   releaseFacts();
 });
 
+test('case board records a meaningful fact when the AI proposes an empty patch', async ({ page }) => {
+  const narrator = JSON.stringify({
+    narrative: '亨利在门廊发现几道新鲜的拖拽刮痕，像是有人搬运过重物。',
+    activeNpc: null,
+    nextPrompt: '继续检查门廊。',
+    playerChoices: {
+      '亨利·格雷': ['检查刮痕方向'],
+      '艾达·华莱士': ['检查残留物']
+    }
+  });
+
+  await page.route('https://api.openai.com/v1/responses', async (route) => {
+    const body = JSON.parse(route.request().postData() ?? '{}') as { instructions?: string };
+    const system = body.instructions ?? '';
+    let content = JSON.stringify({ nodes: [], edges: [] });
+    if (system.includes('COC 第七版 AI DM Agent')) {
+      content = narrator;
+    } else if (system.includes('事实抽取助手')) {
+      content = JSON.stringify({
+        facts: [{
+          actor: 'world',
+          predicate: 'state',
+          target: '',
+          value: '门廊有拖拽痕迹'
+        }]
+      });
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(responseBody(content))
+    });
+  });
+
+  await startGameWithApi(page);
+  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('检查门廊。');
+  await page.getByRole('button', { name: '下一位' }).click();
+  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('观察周围。');
+  await page.getByRole('button', { name: '提交' }).click();
+  await expect(page.getByText('亨利在门廊发现几道新鲜的拖拽刮痕，像是有人搬运过重物。')).toBeVisible();
+
+  await page.getByRole('button', { name: '资料' }).click();
+  await expect(page.locator('.case-board-node.dynamic.confirmed', {
+    hasText: '门廊有拖拽痕迹'
+  })).toBeVisible();
+});
+
 test('AI DM opens settings when a chat-compatible provider is missing its endpoint', async ({ page }) => {
   await startGameWithApi(page, {
     provider: 'mimo',

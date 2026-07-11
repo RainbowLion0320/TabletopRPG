@@ -141,3 +141,9 @@
 
 - 代码在环境预检和性能优化合入后丢失动态案件板、v6 存档及非阻塞后台更新契约，而 UI、测试和文档仍依赖这些能力；已恢复并增加架构、竞态、取消和完整检查护栏。
 - PRD、SPEC、GDD、比赛页与 Wiki 再次出现 Anthropic、旧 Narrator `check/stateUpdate` 字段和阻塞式 AI 流程描述；已统一为 OpenAI Responses、MiMo/custom Chat-compatible、工具调用和 session-scoped 后台更新架构。
+
+## [2026-07-11] update | 动态案件板信息增量兜底
+
+- 强化案件板合成提示，显式标记本轮新增 facts/clues，并预审模型引用的来源 id。
+- AI 返回空、坏 JSON 或无效来源时，对本轮新 fact 或高信息量 narrative event 生成保守卡片；普通延续叙事不加卡。
+- 增加单元与 Playwright 回归，覆盖明显物证不漏记、无效来源回退和普通对话不刷屏。

@@ -236,7 +236,9 @@ The case board is not a free-form AI UI surface. Runtime display combines two la
 - Static scenario spine from `src/data/scenarios/wuzhongxiaoshi/caseBoard.ts`, used for stable main clues and authored relationships.
 - Dynamic layer in `GameState.caseBoard`, proposed by `src/dm/caseBoardSynthesizer.ts` after Narrator, Director, StateResolver, events, and facts have completed.
 
-The synthesizer calls `generateJson()` through the same LLM adapter chain as Narrator/Summarizer/Memory. It does not change the Narrator JSON contract. Bad output, provider failure, or malformed JSON returns an empty patch and must not fail the main DM turn.
+The synthesizer calls `generateJson()` through the same LLM adapter chain as Narrator/Summarizer/Memory. It does not change the Narrator JSON contract. Proposed source ids are pre-audited against the exact visible fact/event/clue ids before reducer application.
+
+If the provider returns an empty, malformed, or source-invalid patch, the system applies a conservative fallback only when there is real information gain: current-turn atomic facts become source-anchored cards, or a high-signal narrative sentence can become a card anchored to the current narrative event. Generic continuation text remains empty. Provider failure and fallback failure must never fail the main DM turn.
 
 Dynamic patches are applied only through `gameReducer.applyCaseBoardPatch` after the controller has appended accepted events and facts. The reducer enforces:
 

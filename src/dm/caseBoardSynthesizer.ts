@@ -14,8 +14,12 @@ export interface CaseBoardSynthesizerInput {
   narrative: string;
   playerActions: Array<{ player: string; action: string }>;
   facts: readonly AtomicFact[];
+  /** Facts extracted from this turn only, used for deterministic fallback. */
+  newFacts?: readonly AtomicFact[];
   events: readonly PersistedDMEvent[];
   clues: readonly StoryItem[];
+  /** Clues accepted by StateResolver during this turn. */
+  newClueIds?: readonly string[];
   existingBoard: CaseBoardPatch;
   signal?: AbortSignal;
 }
@@ -32,6 +36,9 @@ const CASE_BOARD_SYNTHESIZER_PROMPT = `你是跑团案件板合成助手。任�
 - 每个 node 必须至少包含一个 sourceFactIds / sourceEventIds / sourceClueIds。
 - 每个 edge 必须至少包含一个 sourceFactIds / sourceEventIds。
 - 证据明确时 certainty="confirmed"，合理推测时 certainty="hypothesis"。
+- 优先引用“本轮新增 facts”和本轮 events，来源 id 必须逐字复制输入中的真实 id。
+- 若本轮出现新的物证、痕迹、证词、地点、人物关系或合理推测，至少输出 1 个 node。
+- 只有本轮纯属重复叙述、没有任何案件信息增量时，才返回空 nodes/edges。
 - 不要输出坐标；系统会自动布局。
 - 每轮最多 4 个 nodes、4 条 edges。
 - 不要 Markdown，不要注释，不要前后缀文本。`;
@@ -133,6 +140,13 @@ function buildSynthesizerUserMessage(input: CaseBoardSynthesizerInput): string {
           `- ${fact.id}：${fact.actor}/${fact.predicate}/${fact.target ?? '-'}=${fact.value}`
         )
       : ['- （无）']),
+    '本轮新增 facts（优先转成案件板资料）：',
+    ...(input.newFacts?.length
+      ? input.newFacts.map((fact) =>
+          `- ${fact.id}：${fact.actor}/${fact.predicate}/${fact.target ?? '-'}=${fact.value}`
+        )
+      : ['- （无）']),
+    `本轮新增线索 id：${input.newClueIds?.length ? input.newClueIds.join('、') : '（无）'}`,
     '可引用 events：',
     ...(input.events.length
       ? compactList(input.events, 20).map((event) => `- ${event.id}：${event.kind} ${event.description}`)
@@ -144,6 +158,188 @@ function buildSynthesizerUserMessage(input: CaseBoardSynthesizerInput): string {
       .map((edge) => `- edge ${edge.id} ${edge.from}->${edge.to} ${edge.label ?? ''}（${edge.certainty}）`)
   ];
   return lines.join('\n');
+}
+
+function normalizeBoardText(text: string): string {
+  return text.toLocaleLowerCase('zh-CN').replace(/[\s·・:："'“”‘’、，,。.\-—_]/g, '');
+}
+
+function hasValidAnchor(
+  sourceFactIds: readonly string[],
+  sourceEventIds: readonly string[],
+  sourceClueIds: readonly string[],
+  input: CaseBoardSynthesizerInput
+): boolean {
+  const facts = new Set(input.facts.map((fact) => fact.id));
+  const events = new Set(input.events.map((event) => event.id));
+  const clues = new Set(input.clues.map((clue) => clue.id));
+  return sourceFactIds.some((id) => facts.has(id))
+    || sourceEventIds.some((id) => events.has(id))
+    || sourceClueIds.some((id) => clues.has(id));
+}
+
+function auditPatch(patch: CaseBoardPatch, input: CaseBoardSynthesizerInput): CaseBoardPatch {
+  return {
+    nodes: patch.nodes.filter((node) => hasValidAnchor(
+      node.sourceFactIds,
+      node.sourceEventIds,
+      node.sourceClueIds,
+      input
+    )),
+    edges: patch.edges.filter((edge) => hasValidAnchor(
+      edge.sourceFactIds,
+      edge.sourceEventIds,
+      [],
+      input
+    ))
+  };
+}
+
+function addsSource(incoming: readonly string[], existing: readonly string[]): boolean {
+  const known = new Set(existing);
+  return incoming.some((id) => !known.has(id));
+}
+
+function hasMeaningfulPatch(patch: CaseBoardPatch, input: CaseBoardSynthesizerInput): boolean {
+  const existingNodes = new Map(input.existingBoard.nodes.map((node) => [
+    `${node.type}:${normalizeBoardText(node.title)}`,
+    node
+  ]));
+  const existingEdges = new Map(input.existingBoard.edges.map((edge) => [
+    `${edge.from}->${edge.to}:${normalizeBoardText(edge.label ?? '')}:${edge.tone}`,
+    edge
+  ]));
+  const nodeChange = patch.nodes.some((node) => {
+    const existing = existingNodes.get(`${node.type}:${normalizeBoardText(node.title)}`);
+    if (!existing) return true;
+    return (existing.certainty === 'hypothesis' && node.certainty === 'confirmed')
+      || addsSource(node.sourceFactIds, existing.sourceFactIds)
+      || addsSource(node.sourceEventIds, existing.sourceEventIds)
+      || addsSource(node.sourceClueIds, existing.sourceClueIds)
+      || Boolean(node.subtitle && node.subtitle !== existing.subtitle)
+      || Boolean(node.detail && node.detail !== existing.detail);
+  });
+  if (nodeChange) return true;
+  return patch.edges.some((edge) => {
+    const key = `${edge.from}->${edge.to}:${normalizeBoardText(edge.label ?? '')}:${edge.tone}`;
+    const existing = existingEdges.get(key);
+    if (!existing) return true;
+    return (existing.certainty === 'hypothesis' && edge.certainty === 'confirmed')
+      || addsSource(edge.sourceFactIds, existing.sourceFactIds)
+      || addsSource(edge.sourceEventIds, existing.sourceEventIds);
+  });
+}
+
+function trimTitle(text: string, maxLength = 30): string {
+  const normalized = text.replace(/\s+/g, ' ').replace(/^[：:，,。；;\s]+|[：:，,。；;\s]+$/g, '');
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength - 1)}…` : normalized;
+}
+
+function factTitle(fact: AtomicFact): string {
+  if (fact.actor === 'world') return trimTitle(fact.value);
+  if (fact.predicate === 'stance_toward') {
+    return trimTitle(`${fact.actor}对${fact.target ?? '调查员'}：${fact.value}`);
+  }
+  if (fact.predicate === 'relationship') {
+    return trimTitle(`${fact.actor}${fact.target ? `与${fact.target}` : ''}：${fact.value}`);
+  }
+  if (fact.predicate === 'goal') return trimTitle(`${fact.actor}的目标：${fact.value}`);
+  if (fact.predicate === 'knowledge') return trimTitle(`${fact.actor}透露：${fact.value}`);
+  return trimTitle(`${fact.actor}：${fact.value}`);
+}
+
+function fallbackFromFacts(input: CaseBoardSynthesizerInput): DynamicCaseBoardNode[] {
+  const existing = new Set(input.existingBoard.nodes.map((node) =>
+    `${node.type}:${normalizeBoardText(node.title)}`
+  ));
+  const nodes: DynamicCaseBoardNode[] = [];
+  for (const fact of input.newFacts ?? []) {
+    const title = factTitle(fact);
+    if (!title) continue;
+    const uncertain = fact.predicate === 'goal' || fact.predicate === 'stance_toward';
+    const type: DynamicCaseBoardNode['type'] = uncertain || fact.predicate === 'relationship'
+      ? 'theory'
+      : 'event';
+    const key = `${type}:${normalizeBoardText(title)}`;
+    if (existing.has(key)) continue;
+    existing.add(key);
+    nodes.push({
+      id: `ai-fact-${fact.id}`,
+      type,
+      title,
+      subtitle: fact.actor === 'world' ? '本轮调查发现' : `${fact.actor} · ${fact.predicate}`,
+      detail: `${fact.actor}${fact.target ? ` → ${fact.target}` : ''}：${fact.value}`,
+      source: 'ai',
+      certainty: uncertain ? 'hypothesis' : 'confirmed',
+      sourceFactIds: [fact.id],
+      sourceEventIds: [],
+      sourceClueIds: [],
+      createdTurn: input.turn,
+      updatedTurn: input.turn,
+      status: 'active'
+    });
+    if (nodes.length >= 2) break;
+  }
+  return nodes;
+}
+
+const CASE_SIGNAL_TERMS = [
+  '发现', '痕迹', '刮痕', '拖拽', '脚印', '指纹', '血迹', '污渍', '药水', '气味',
+  '闷响', '证词', '承认', '否认', '回避', '隐瞒', '可疑', '异常', '暗格', '标本',
+  '纸条', '信件', '照片', '地图', '账本', '指向', '关系', '去过', '地下室'
+] as const;
+
+function signalScore(text: string): number {
+  return CASE_SIGNAL_TERMS.reduce((score, term) => score + (text.includes(term) ? 1 : 0), 0);
+}
+
+function fallbackFromNarrative(input: CaseBoardSynthesizerInput): DynamicCaseBoardNode[] {
+  const narrativeEvent = [...input.events].reverse().find((event) =>
+    event.turn === input.turn && event.kind === 'narrative'
+  );
+  if (!narrativeEvent) return [];
+  const candidates = input.narrative
+    .split(/[。！？!?；;\n]+/)
+    .map((text) => text.trim())
+    .filter((text) => text.length >= 6)
+    .map((text) => ({ text, score: signalScore(text) }))
+    .sort((a, b) => b.score - a.score || a.text.length - b.text.length);
+  const best = candidates[0];
+  if (!best || best.score < 2) return [];
+
+  const uncertain = /可能|也许|或许|似乎|像是|疑似|推测|怀疑|不确定/.test(best.text);
+  const title = trimTitle(best.text);
+  const key = `${uncertain ? 'theory' : 'event'}:${normalizeBoardText(title)}`;
+  const duplicate = input.existingBoard.nodes.some((node) =>
+    `${node.type}:${normalizeBoardText(node.title)}` === key
+  );
+  if (duplicate) return [];
+  return [{
+    id: `ai-event-${narrativeEvent.id}`,
+    type: uncertain ? 'theory' : 'event',
+    title,
+    subtitle: uncertain ? '根据本轮叙事自动整理' : '本轮调查记录',
+    detail: best.text,
+    source: 'ai',
+    certainty: uncertain ? 'hypothesis' : 'confirmed',
+    sourceFactIds: [],
+    sourceEventIds: [narrativeEvent.id],
+    sourceClueIds: [],
+    createdTurn: input.turn,
+    updatedTurn: input.turn,
+    status: 'active'
+  }];
+}
+
+function ensureMeaningfulPatch(
+  proposed: CaseBoardPatch,
+  input: CaseBoardSynthesizerInput
+): CaseBoardPatch {
+  const audited = auditPatch(proposed, input);
+  if (hasMeaningfulPatch(audited, input)) return audited;
+  const factNodes = fallbackFromFacts(input);
+  if (factNodes.length) return { nodes: factNodes, edges: [] };
+  return { nodes: fallbackFromNarrative(input), edges: [] };
 }
 
 function toStringArray(value: unknown): string[] {
@@ -223,6 +419,7 @@ export async function synthesizeCaseBoardPatch(
   config: ApiConfig,
   input: CaseBoardSynthesizerInput
 ): Promise<CaseBoardPatch> {
+  let proposed: CaseBoardPatch = { nodes: [], edges: [] };
   try {
     const result = await generateJson(config, {
       label: 'caseBoardSynthesizer',
@@ -234,13 +431,13 @@ export async function synthesizeCaseBoardPatch(
       useTools: false,
       signal: input.signal
     });
-    return parseCaseBoardPatchJson(result.rawText);
+    proposed = parseCaseBoardPatchJson(result.rawText);
   } catch (err) {
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
       console.warn('[caseBoardSynthesizer] failed, skip patch:',
         err instanceof Error ? err.message : err);
     }
-    return { nodes: [], edges: [] };
   }
+  return ensureMeaningfulPatch(proposed, input);
 }

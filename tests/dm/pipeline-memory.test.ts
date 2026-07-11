@@ -107,7 +107,14 @@ describe('runDmTurn cognitive memory outputs', () => {
     expect(background?.factsToAppend).toEqual([
       expect.objectContaining({ id: 'f_1_0', actor: 'world', value: '后台事实' })
     ]);
-    expect(background?.caseBoardPatch).toEqual({ nodes: [], edges: [] });
+    expect(background?.caseBoardPatch).toEqual({
+      nodes: [expect.objectContaining({
+        id: 'ai-fact-f_1_0',
+        title: '后台事实',
+        sourceFactIds: ['f_1_0']
+      })],
+      edges: []
+    });
   });
 
   it('keeps narrator output usable when background synthesis fails', async () => {

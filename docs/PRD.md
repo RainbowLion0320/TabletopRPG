@@ -88,6 +88,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 | AI lifecycle | Narrator is player-visible before optional cognition jobs finish; background results are ordered and stale sessions cannot write state |
 | AI response | Invalid scene names, unknown NPCs, string numeric deltas, and clue names are normalized or ignored safely after format validation |
 | Case board | Reference panel combines the static scenario spine with AI-proposed dynamic cards/edges only after system review, source anchoring, dedupe, and anti-spoiler checks |
+| Case board | Meaningful new facts still produce a conservative source-anchored card when the AI proposal is empty or invalid; generic continuation turns do not add noise |
 | Dice | 96-100 is treated as fumble before success levels |
 | Rules config | HP/MP/SAN, skill bases, difficulty thresholds, unknown skill fallback, and fumble range come from a centralized rules config |
 | Saves | Latest save is visible on title screen after saving and returning home |

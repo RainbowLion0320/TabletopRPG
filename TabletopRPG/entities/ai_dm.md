@@ -63,7 +63,9 @@ AI 担任完整的 TRPG 游戏主持人（DM/KP），负责场景描述、NPC �
 
 - 静态骨架由剧本数据维护，保证关键线索链稳定可控。
 - `caseBoardSynthesizer` 在 Narrator 完成本轮叙事、Director/StateResolver 产出事件、System1 facts 抽取后运行。
-- 合成器只输出候选节点/连线 patch，不修改 Narrator 主 JSON 契约；失败、坏 JSON 或 provider 错误均返回空 patch，不影响本轮 DM。
+- 合成器只输出候选节点/连线 patch，不修改 Narrator 主 JSON 契约；系统先按真实 fact/event/clue id 预审来源。
+- 当 AI 返回空、坏 JSON 或无效来源，而本轮确有新 fact 或高信息量叙事时，系统生成保守的来源锚定卡片；普通重复叙事保持空 patch，避免案件板刷屏。
+- Provider 或案件板后台失败不影响本轮 DM 叙事。
 - reducer 的 `applyCaseBoardPatch` 负责来源锚定、去重、未解锁 secret 过滤、推测升级为证实、容量裁剪和归档。
 - UI 分层展示 confirmed 与 hypothesis，推测关系用弱化/虚线样式，点击动态卡片只展示玩家可见来源摘要。
 
