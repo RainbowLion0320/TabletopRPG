@@ -4,7 +4,7 @@ title: 存档系统
 tags: [save, storage, localStorage]
 sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-18
-updated: 2026-05-29
+updated: 2026-07-11
 ---
 
 # 存档系统
@@ -29,6 +29,7 @@ interface SaveSlot {
   scene: string;
   players: string;
   gameState: GameState;
+  version: 7;
 }
 ```
 
@@ -37,6 +38,8 @@ interface SaveSlot {
 - 缺失的 `messages` / `suggestions` / `actionLog` 等新字段。
 - 角色字段缺失的 `id`、`currentHp`、`skills` 等。
 - 非法场景、NPC、线索等引用。
+- v7 案件板的稳定语义键、关系键和实体 insights。
+- v6 案件板在读档时确定性折叠原子事实卡、重定向关系端点并归档低价值孤立卡；迁移不调用模型。
 
 ## 功能特性
 
@@ -57,7 +60,7 @@ interface SaveSlot {
 - 删除后重读 `trpg-saves-v2`，空列表显示“暂无存档”。
 
 ### API 配置
-- `trpg-api` 保存 provider、apiKey、endpoint、model。
+- `trpg-api` 保存 provider、protocol、apiKey、endpoint、model。
 
 ## 当前限制
 

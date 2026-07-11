@@ -3,18 +3,12 @@ import { synthesizeCaseBoardPatch } from '../../src/dm/caseBoardSynthesizer';
 import type { ApiConfig, AtomicFact, PersistedDMEvent } from '../../src/types/game';
 
 const config: ApiConfig = {
-  provider: 'openai',
-  protocol: 'responses',
-  apiKey: 'unit-test-key',
-  model: 'unit-test-model',
-  endpoint: 'https://unit.test/v1'
+  provider: 'openai', protocol: 'responses', apiKey: 'unit-test-key', model: 'unit-test-model', endpoint: 'https://unit.test/v1'
 };
 
 function response(body: unknown): Response {
-  const content = typeof body === 'string' ? body : JSON.stringify(body);
-  return new Response(JSON.stringify({ output_text: content }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' }
+  return new Response(JSON.stringify({ output_text: JSON.stringify(body) }), {
+    status: 200, headers: { 'Content-Type': 'application/json' }
   });
 }
 
@@ -23,14 +17,7 @@ function narrativeEvent(description: string): PersistedDMEvent {
 }
 
 function fact(value: string): AtomicFact {
-  return {
-    id: 'f_1_0',
-    turn: 1,
-    actor: 'world',
-    predicate: 'state',
-    value,
-    source: 'system1'
-  };
+  return { id: 'f_1_0', turn: 1, actor: '伊莎贝拉·摩勒', predicate: 'knowledge', value, source: 'system1' };
 }
 
 function input(overrides: Partial<Parameters<typeof synthesizeCaseBoardPatch>[1]> = {}) {
@@ -44,143 +31,79 @@ function input(overrides: Partial<Parameters<typeof synthesizeCaseBoardPatch>[1]
     events: [event],
     clues: [],
     newClueIds: [],
-    existingBoard: { nodes: [], edges: [] },
+    existingBoard: { nodes: [], edges: [], insights: [] },
+    visibleNodes: [
+      { id: 'scene-s01', type: 'scene' as const, title: '摩勒住宅' },
+      { id: 'npc-isabella', type: 'npc' as const, title: '伊莎贝拉·摩勒' }
+    ],
+    currentSceneNodeId: 'scene-s01',
     ...overrides
   };
 }
 
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
+afterEach(() => vi.unstubAllGlobals());
 
-describe('caseBoardSynthesizer fallback', () => {
-  it('creates a source-anchored card from a new fact when AI returns an empty patch', async () => {
-    const newFact = fact('门廊留有拖拽重物的刮痕');
+describe('caseBoardSynthesizer v7', () => {
+  it('does not promote an entity atomic fact into a standalone card', async () => {
+    const newFact = fact('回避父亲债务');
     vi.stubGlobal('fetch', vi.fn(async () => response({ nodes: [], edges: [] })));
-
     const patch = await synthesizeCaseBoardPatch(config, input({
-      facts: [newFact],
-      newFacts: [newFact]
+      narrative: '伊莎贝拉沉默片刻。',
+      events: [narrativeEvent('伊莎贝拉沉默片刻。')],
+      facts: [newFact], newFacts: [newFact]
     }));
-
-    expect(patch).toEqual({
-      nodes: [expect.objectContaining({
-        id: 'ai-fact-f_1_0',
-        title: '门廊留有拖拽重物的刮痕',
-        certainty: 'confirmed',
-        sourceFactIds: ['f_1_0']
-      })],
-      edges: []
-    });
+    expect(patch).toEqual({ nodes: [], edges: [], insights: [] });
   });
 
-  it('uses a high-signal narrative event when fact extraction produced nothing', async () => {
+  it('creates a connected event fallback from a high-signal narrative', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => response({ nodes: [], edges: [] })));
-    const narrative = '伊莎贝拉提到地下室昨晚传来闷响。她对此显得十分不安。';
-
-    const patch = await synthesizeCaseBoardPatch(config, input({
-      narrative,
-      events: [narrativeEvent(narrative)]
-    }));
-
-    expect(patch.nodes).toEqual([
-      expect.objectContaining({
-        id: 'ai-event-evt-1-narr',
-        title: '伊莎贝拉提到地下室昨晚传来闷响',
-        sourceEventIds: ['evt-1-narr']
-      })
-    ]);
+    const patch = await synthesizeCaseBoardPatch(config, input());
+    expect(patch.nodes).toEqual([expect.objectContaining({ type: 'event', title: '门廊留下了新鲜拖拽刮痕' })]);
+    expect(patch.edges).toEqual([expect.objectContaining({ from: 'scene-s01', to: patch.nodes[0].id })]);
   });
 
   it('does not create noise from a generic continuation turn', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => response({ nodes: [], edges: [] })));
     const narrative = '调查继续进行，众人等待下一步行动。';
-
-    const patch = await synthesizeCaseBoardPatch(config, input({
-      narrative,
-      events: [narrativeEvent(narrative)]
-    }));
-
-    expect(patch).toEqual({ nodes: [], edges: [] });
+    const patch = await synthesizeCaseBoardPatch(config, input({ narrative, events: [narrativeEvent(narrative)] }));
+    expect(patch).toEqual({ nodes: [], edges: [], insights: [] });
   });
 
-  it('drops proposals with invented source ids and falls back to the real new fact', async () => {
-    const newFact = fact('楼梯地毯留有疑似血迹的污渍');
+  it('drops invented source ids and falls back to the real narrative event', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => response({
       nodes: [{
-        id: 'ai-invented',
-        type: 'theory',
-        title: '不存在来源的推测',
-        source: 'ai',
-        certainty: 'hypothesis',
-        sourceFactIds: ['not-a-real-fact'],
-        sourceEventIds: [],
-        sourceClueIds: [],
-        createdTurn: 1,
-        updatedTurn: 1,
-        status: 'active'
+        id: 'ai-invented', semanticKey: 'theory:invented', type: 'theory', title: '不存在来源的推测', subtitle: '', detail: '',
+        importance: 5, source: 'ai', certainty: 'hypothesis', sourceFactIds: ['fake'], sourceEventIds: [], sourceClueIds: [],
+        createdTurn: 1, updatedTurn: 1, status: 'active'
       }],
       edges: []
     })));
-
-    const patch = await synthesizeCaseBoardPatch(config, input({
-      facts: [newFact],
-      newFacts: [newFact]
-    }));
-
-    expect(patch.nodes).toEqual([
-      expect.objectContaining({ id: 'ai-fact-f_1_0', sourceFactIds: ['f_1_0'] })
-    ]);
+    const patch = await synthesizeCaseBoardPatch(config, input());
+    expect(patch.nodes[0]).toMatchObject({ type: 'event', sourceEventIds: ['evt-1-narr'] });
   });
 
-  it('preserves a duplicate-title proposal when it upgrades an existing hypothesis', async () => {
-    const oldEvent: PersistedDMEvent = {
-      id: 'evt-old', turn: 0, kind: 'narrative', description: '旧推测'
-    };
-    const newEvent = narrativeEvent('新证词证实地下室有人活动');
+  it('accepts a theory only when it connects two visible anchors', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => response({
       nodes: [{
-        id: 'ai-basement-new',
-        type: 'theory',
-        title: '地下室有人活动',
-        source: 'ai',
-        certainty: 'confirmed',
-        sourceFactIds: [],
-        sourceEventIds: [newEvent.id],
-        sourceClueIds: [],
-        createdTurn: 1,
-        updatedTurn: 1,
-        status: 'active'
+        id: 'ai-theory', semanticKey: 'theory:isabella-house', type: 'theory', title: '伊莎贝拉隐瞒住宅内的活动',
+        subtitle: '待验证', detail: '她的证词与现场不一致', importance: 4, source: 'ai', certainty: 'hypothesis',
+        sourceFactIds: [], sourceEventIds: ['evt-1-narr'], sourceClueIds: [], createdTurn: 1, updatedTurn: 1, status: 'active'
       }],
-      edges: []
+      edges: [
+        {
+          id: 'edge-1', relationKey: 'scene-theory', from: 'scene-s01', to: 'ai-theory', label: '现场矛盾', tone: 'suspicion',
+          source: 'ai', certainty: 'hypothesis', sourceFactIds: [], sourceEventIds: ['evt-1-narr'], sourceClueIds: [],
+          createdTurn: 1, updatedTurn: 1, status: 'active'
+        },
+        {
+          id: 'edge-2', relationKey: 'isabella-theory', from: 'npc-isabella', to: 'ai-theory', label: '证词矛盾', tone: 'suspicion',
+          source: 'ai', certainty: 'hypothesis', sourceFactIds: [], sourceEventIds: ['evt-1-narr'], sourceClueIds: [],
+          createdTurn: 1, updatedTurn: 1, status: 'active'
+        }
+      ]
     })));
-
-    const patch = await synthesizeCaseBoardPatch(config, input({
-      events: [oldEvent, newEvent],
-      existingBoard: {
-        nodes: [{
-          id: 'ai-basement-old',
-          type: 'theory',
-          title: '地下室有人活动',
-          source: 'ai',
-          certainty: 'hypothesis',
-          sourceFactIds: [],
-          sourceEventIds: [oldEvent.id],
-          sourceClueIds: [],
-          createdTurn: 0,
-          updatedTurn: 0,
-          status: 'active'
-        }],
-        edges: []
-      }
-    }));
-
-    expect(patch.nodes).toEqual([
-      expect.objectContaining({
-        id: 'ai-basement-new',
-        certainty: 'confirmed',
-        sourceEventIds: [newEvent.id]
-      })
-    ]);
+    const patch = await synthesizeCaseBoardPatch(config, input());
+    expect(patch.nodes).toHaveLength(1);
+    expect(patch.edges).toHaveLength(2);
   });
 });

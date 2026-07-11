@@ -107,6 +107,20 @@ function createDynamicCaseBoardSave(): GameState {
           createdTurn: 1,
           updatedTurn: 1,
           status: 'active'
+        },
+        {
+          id: 'ai-edge-scene-help',
+          from: 'scene-s01',
+          to: 'ai-inside-help',
+          label: '与现场相符',
+          tone: 'evidence',
+          source: 'ai',
+          certainty: 'confirmed',
+          sourceFactIds: [],
+          sourceEventIds: ['e1'],
+          createdTurn: 1,
+          updatedTurn: 1,
+          status: 'active'
         }
       ],
       lastUpdatedTurn: 1
@@ -337,7 +351,7 @@ test('player action messages keep the player name and action on one line', async
 test('reference panel opens a fullscreen case board and keeps the log tab', async ({ page }) => {
   await startNewGame(page);
 
-  await page.getByRole('button', { name: '资料' }).click();
+  await page.getByRole('button', { name: '资料', exact: true }).click();
 
   const drawer = page.locator('.info-drawer-react.open');
   await expect(drawer).toBeVisible();
@@ -347,10 +361,10 @@ test('reference panel opens a fullscreen case board and keeps the log tab', asyn
   await expect(drawer).toHaveClass(/fullscreen/);
   await expect(drawer.locator('.case-board-view')).toBeVisible();
   await expect(page.getByRole('button', { name: '案件板' })).toHaveClass(/active/);
-  const board = page.locator('.case-board-canvas');
+  const board = page.locator('.case-board-flow-wrap');
   await expect(board).toBeVisible();
-  await expect(board.locator('.case-board-node', { hasText: '摩勒住宅' })).toBeVisible();
-  await expect(board.locator('.case-board-node', { hasText: '伊莎贝拉·摩勒' })).toBeVisible();
+  await expect(board.locator('.case-flow-node.scene', { hasText: '摩勒住宅' })).toBeVisible();
+  await expect(board.locator('.case-flow-node.npc', { hasText: '伊莎贝拉·摩勒' })).toBeVisible();
   await expect(board.getByText('卡森其药店')).toHaveCount(0);
   await expect(page.getByRole('button', { name: '线索' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: '人物' })).toHaveCount(0);
@@ -364,16 +378,18 @@ test('reference panel renders saved dynamic case board hypotheses', async ({ pag
 
   await page.getByRole('button', { name: '继续游戏' }).click();
   await expect(page.locator('.game-screen')).toBeVisible();
-  await page.getByRole('button', { name: '资料' }).click();
+  await page.getByRole('button', { name: '资料', exact: true }).click();
 
   const drawer = page.locator('.info-drawer-react.open');
-  const board = drawer.locator('.case-board-canvas');
-  await expect(board.locator('.case-board-node.dynamic.confirmed', { hasText: '药店后门被撬' })).toBeVisible();
-  await expect(board.locator('.case-board-node.dynamic.hypothesis', { hasText: '可能有内应协助' })).toBeVisible();
-  await expect(board.locator('.case-board-line.hypothesis.dynamic')).toHaveCount(1);
-  await board.locator('.case-board-node.dynamic.hypothesis', { hasText: '可能有内应协助' }).click();
-  await expect(page.getByRole('dialog', { name: '可能有内应协助' })).toBeVisible();
-  await expect(page.getByText('来源事件：e1')).toBeVisible();
+  const board = drawer.locator('.case-board-flow-wrap');
+  await expect(board.locator('.case-flow-node.event.confirmed', { hasText: '药店后门被撬' })).toBeVisible();
+  await expect(board.locator('.case-flow-node.theory.hypothesis', { hasText: '可能有内应协助' })).toBeVisible();
+  await expect(board.locator('.react-flow__edge.case-flow-edge.dynamic.hypothesis')).toHaveCount(1);
+  await board.locator('.case-flow-node.theory.hypothesis', { hasText: '可能有内应协助' }).click();
+  const inspector = page.getByLabel('可能有内应协助详情');
+  await expect(inspector).toBeVisible();
+  await expect(inspector.getByText('第 1 回合：玩家发现药店后门有被撬痕迹')).toBeVisible();
+  await expect(inspector.getByText(/e1/)).toHaveCount(0);
 });
 
 test('reference panel uses the compact case board without horizontal overflow at 390px', async ({ page }) => {
@@ -381,14 +397,17 @@ test('reference panel uses the compact case board without horizontal overflow at
   await gotoWithSave(page, createDynamicCaseBoardSave());
 
   await page.getByRole('button', { name: '继续游戏' }).click();
-  await page.getByRole('button', { name: '资料' }).click();
+  await page.getByRole('button', { name: '资料', exact: true }).click();
 
   const drawer = page.locator('.info-drawer-react.open');
-  await expect(drawer.locator('.case-board-compact-list')).toBeVisible();
-  await expect(drawer.locator('.case-board-canvas')).toBeHidden();
-  await expect(drawer.locator('.case-board-compact-card.dynamic.hypothesis', {
+  await expect(drawer.locator('.case-board-mobile-list')).toBeVisible();
+  await expect(drawer.locator('.case-board-flow-wrap')).toBeHidden();
+  const hypothesis = drawer.locator('.case-board-mobile-card.theory.hypothesis', {
     hasText: '可能有内应协助'
-  })).toBeVisible();
+  });
+  await expect(hypothesis).toBeVisible();
+  await hypothesis.click();
+  await expect(page.getByRole('dialog', { name: '可能有内应协助详情' })).toBeVisible();
   const overflow = await page.evaluate(() => ({
     document: document.documentElement.scrollWidth - window.innerWidth,
     drawer: Math.max(0, (document.querySelector('.info-drawer-react')?.scrollWidth ?? 0) - window.innerWidth)

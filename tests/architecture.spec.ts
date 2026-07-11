@@ -68,12 +68,23 @@ test('dynamic case board and background update contracts remain wired end to end
   const gameTypes = await readSource('src/types/game.ts');
   const reducer = await readSource('src/state/gameReducer.ts');
   const pipeline = await readSource('src/dm/pipeline.ts');
+  const synthesizer = await readSource('src/dm/caseBoardSynthesizer.ts');
+  const board = await readSource('src/components/game/CaseBoard.tsx');
 
   expect(gameTypes).toContain('caseBoard?: CaseBoardState');
+  expect(gameTypes).toContain('insights: CaseBoardInsight[]');
+  expect(gameTypes).toContain('semanticKey: string');
+  expect(gameTypes).toContain('relationKey: string');
   expect(reducer).toContain("type: 'applyCaseBoardPatch'");
+  expect(reducer).toContain('migrateLegacyCaseBoard');
   expect(pipeline).toContain('synthesizeCaseBoardPatch');
+  expect(pipeline).toContain('buildFactCaseBoardPatch');
   expect(pipeline).toContain('backgroundUpdate');
   expect(pipeline).not.toContain('deferredUpdates');
+  expect(synthesizer).toContain('visibleNodes');
+  expect(synthesizer).not.toMatch(/^\s*[xy]\s*:/m);
+  expect(board).toContain('@xyflow/react');
+  expect(board).toContain('layoutCaseBoardGraph');
 });
 
 test('narrative rich text stays in the safe markup pipeline', async () => {

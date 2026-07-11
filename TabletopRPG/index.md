@@ -33,6 +33,7 @@ updated: 2026-07-11
 | [核心玩法循环](concepts/core_loop.md) | title/setup/game 状态机，行动 -> AI -> 检定循环 | ✅ 已实现 |
 | [提示词工程](concepts/prompt_engineering.md) | 当前内嵌提示词结构与外部化计划 | ✅ |
 | [技术选型](concepts/tech_stack.md) | React/Vite/TypeScript、多 Provider、localStorage、数值规则配置 | ✅ |
+| [动态案件板与调查台](concepts/case_board.md) | v7 核心关系、实体档案、审核规则、自动布局与 v6 迁移 | ✅ 已实现 |
 
 ## 决策记录（decisions/）
 

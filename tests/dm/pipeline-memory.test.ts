@@ -108,12 +108,9 @@ describe('runDmTurn cognitive memory outputs', () => {
       expect.objectContaining({ id: 'f_1_0', actor: 'world', value: '后台事实' })
     ]);
     expect(background?.caseBoardPatch).toEqual({
-      nodes: [expect.objectContaining({
-        id: 'ai-fact-f_1_0',
-        title: '后台事实',
-        sourceFactIds: ['f_1_0']
-      })],
-      edges: []
+      nodes: [],
+      edges: [],
+      insights: []
     });
   });
 
@@ -148,7 +145,7 @@ describe('runDmTurn cognitive memory outputs', () => {
     expect(output.legacyResponse?.narrative).toBe('前台仍然可用。');
     await expect(output.backgroundUpdate).resolves.toEqual(expect.objectContaining({
       factsToAppend: undefined,
-      caseBoardPatch: { nodes: [], edges: [] }
+      caseBoardPatch: { nodes: [], edges: [], insights: [] }
     }));
   });
 
@@ -381,9 +378,12 @@ describe('runDmTurn cognitive memory outputs', () => {
           nodes: [
             {
               id: 'ai-isabella-debt',
+              semanticKey: 'theory:isabella-debt',
               type: 'theory',
               title: '伊莎贝拉回避债务问题',
               subtitle: '来自本轮对话',
+              detail: '她的证词与现场信息不一致。',
+              importance: 4,
               source: 'ai',
               certainty: 'hypothesis',
               sourceFactIds: ['f_1_0'],
@@ -394,7 +394,18 @@ describe('runDmTurn cognitive memory outputs', () => {
               status: 'active'
             }
           ],
-          edges: []
+          edges: [
+            {
+              id: 'edge-scene-debt', relationKey: 'scene-debt', from: 'scene-s01', to: 'ai-isabella-debt',
+              label: '现场背景', tone: 'suspicion', source: 'ai', certainty: 'hypothesis', sourceFactIds: ['f_1_0'],
+              sourceEventIds: [], sourceClueIds: [], createdTurn: 1, updatedTurn: 1, status: 'active'
+            },
+            {
+              id: 'edge-isabella-debt', relationKey: 'isabella-debt', from: 'npc-isabella', to: 'ai-isabella-debt',
+              label: '证词矛盾', tone: 'suspicion', source: 'ai', certainty: 'hypothesis', sourceFactIds: ['f_1_0'],
+              sourceEventIds: [], sourceClueIds: [], createdTurn: 1, updatedTurn: 1, status: 'active'
+            }
+          ]
         });
       }
       if (system.includes('COC 第七版 AI DM Agent')) {
@@ -430,7 +441,13 @@ describe('runDmTurn cognitive memory outputs', () => {
           sourceFactIds: ['f_1_0']
         })
       ],
-      edges: []
+      edges: [
+        expect.objectContaining({ relationKey: 'scene-debt', from: 'scene-s01', to: 'ai-isabella-debt' }),
+        expect.objectContaining({ relationKey: 'isabella-debt', from: 'npc-isabella', to: 'ai-isabella-debt' })
+      ],
+      insights: [expect.objectContaining({
+        ownerNodeId: 'npc-isabella', kind: 'testimony', text: '透露或知晓：回避父亲债务'
+      })]
     });
   });
 
@@ -468,6 +485,6 @@ describe('runDmTurn cognitive memory outputs', () => {
 
     expect(output.legacyResponse?.narrative).toBe('调查继续推进。');
     const background = await output.backgroundUpdate;
-    expect(background?.caseBoardPatch).toEqual({ nodes: [], edges: [] });
+    expect(background?.caseBoardPatch).toEqual({ nodes: [], edges: [], insights: [] });
   });
 });

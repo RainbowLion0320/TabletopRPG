@@ -1,6 +1,6 @@
 # TabletopRPG PRD
 
-> Version: v0.7
+> Version: v0.8
 > Updated: 2026-07-11
 > Product baseline: Vite + React + TypeScript MVP
 
@@ -22,7 +22,8 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 
 - Title screen with new game, continue game, and AI settings.
 - Preset investigator selection for 1-4 investigators, with portraits, full attributes, derived stats, skill values, and background cues.
-- Main game screen with scene art, narrative feed, action dock, investigator party portraits/status, menu, and a fullscreen reference panel centered on a player-known case board.
+- Main game screen with scene art, narrative feed, action dock, investigator party portraits/status, menu, and a fullscreen investigation workspace centered on a player-known case board.
+- Mixed case board: authored main-clue spine, reviewed AI events/theories, entity dossier insights, automatic relationship layout, investigation-thread navigation, search, type filters, and a narrow-screen grouped list.
 - Safe interactive narrative highlighting for people, locations, evidence, skills, checks, and temporary model-suggested clue/danger/state phrases.
 - Together mode: all selected investigators submit one action round together.
 - Split mode: one investigator acts in a selected scene at a time.
@@ -90,8 +91,11 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 | AI response | Invalid scene names, unknown NPCs, string numeric deltas, and clue names are normalized or ignored safely after format validation |
 | Narrative reading | Names use stable per-person colors; semantic marks preserve the exact source text and open player-safe details without rendering model HTML or exposing locked secret counts |
 | Narrative keywords | Optional model hints are exact narrative substrings, limited to 6 clue/danger/state phrases, and invalid hints are dropped without retrying Narrator |
-| Case board | Reference panel combines the static scenario spine with AI-proposed dynamic cards/edges only after system review, source anchoring, dedupe, and anti-spoiler checks |
-| Case board | Meaningful new facts still produce a conservative source-anchored card when the AI proposal is empty or invalid; generic continuation turns do not add noise |
+| Case board | The main graph contains only people, places, evidence, core events, and connected theories; goal/stance/knowledge/capability/state facts update entity dossiers instead of adding cards |
+| Case board | Reviewed AI proposals use stable semantic/relation keys, cite player-visible sources, connect visible anchors, and never provide layout coordinates or locked information |
+| Case board UI | Desktop uses automatic non-overlapping relationship layout and readable source details; narrow screens use investigation-thread groups with no horizontal overflow |
+| Case board fallback | A high-signal world observation may create a conservative event linked to its scene; generic continuation turns do not add noise |
+| Saves | v7 persists case-board insights and stable keys; v6 boards migrate deterministically without a model call |
 | Dice | 96-100 is treated as fumble before success levels |
 | Rules config | HP/MP/SAN, skill bases, difficulty thresholds, unknown skill fallback, and fumble range come from a centralized rules config |
 | Saves | Latest save is visible on title screen after saving and returning home |
@@ -111,7 +115,8 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 | Game state reducer and hydration | `src/state/gameReducer.ts` |
 | Rules and numeric config | `src/data/gameRules.ts` |
 | AI DM pipeline and prompts | `src/dm/` |
-| Dynamic case board synthesis | `src/dm/caseBoardSynthesizer.ts` + `gameReducer.applyCaseBoardPatch` |
+| Case board model and synthesis | `src/dm/caseBoardModel.ts` + `src/dm/caseBoardSynthesizer.ts` + `gameReducer.applyCaseBoardPatch` |
+| Case board relationship UI | `src/components/game/CaseBoard.tsx` + `caseBoardGraph.ts` |
 | LLM provider adapter | `src/dm/llm/` |
 | Dice checks | `src/services/dice.ts` |
 | Save/load/API config | `src/services/storage.ts` |

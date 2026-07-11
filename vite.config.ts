@@ -119,6 +119,9 @@ export default defineConfig({
     port: 5273,
     strictPort: false
   },
+  worker: {
+    format: 'es'
+  },
   build: {
     target: 'es2020',
     sourcemap: true

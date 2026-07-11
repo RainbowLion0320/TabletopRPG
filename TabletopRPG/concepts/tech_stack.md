@@ -39,6 +39,8 @@ src/
 └── main.tsx             # React 挂载入口
 ```
 
+案件板桌面关系图使用 `@xyflow/react`，自动布局使用 `elkjs` 的 Layered 算法。ELK 只在打开资料界面时随案件板组件懒加载，并在 Web Worker 中执行；AI 和存档都不保存坐标。
+
 ## 数据存储（localStorage）
 
 | Key | 状态 | 内容 |
@@ -82,6 +84,7 @@ AI Provider 配置由 `ApiConfig` 统一承载：`provider`、`protocol`、`endp
 - 每个 DM 回合共享一个 `AbortSignal`；后台更新按回合有序落地，session 变化后旧结果一律丢弃。
 - AI 响应进入 reducer 前必须通过 JSON 契约校验；格式无效时修复重试一次，仍无效则拦截。
 - 存档或已验证 AI 响应进入 UI 前必须经过归一化，避免非法引用破坏主流程。
+- 动态案件板只能由 `caseBoardSynthesizer` 提议核心关系并经 reducer 审核；原子事实 insight 由系统确定性生成，布局只能由前端计算。
 - 核心流程修改后应运行 `npm run test:smoke`。
 - 当前项目无后端；公开部署前若要隐藏 API Key，需要新增服务端代理。
 

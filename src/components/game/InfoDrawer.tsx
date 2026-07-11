@@ -1,11 +1,9 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { lazy, Suspense, useRef, useState, useCallback, useEffect } from 'react';
 import { BookOpen, GripVertical, X } from 'lucide-react';
-import type { CaseBoardNode, DynamicCaseBoardNode, GameState, StoryItem } from '../../types/game';
+import type { GameState } from '../../types/game';
 import { storyData } from '../../data/storyData';
-import { getNpcDetail, getClueDetail, type EntityDetail } from '../../dm/entityDetail';
-import { CaseBoard } from './CaseBoard';
-import { EntityDetailModal } from './EntityDetailModal';
-import { DynamicCaseBoardDetailModal } from './DynamicCaseBoardDetailModal';
+
+const CaseBoard = lazy(() => import('./CaseBoard').then((module) => ({ default: module.CaseBoard })));
 
 interface InfoDrawerProps {
   open: boolean;
@@ -15,8 +13,6 @@ interface InfoDrawerProps {
 }
 
 export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
-  const [selectedDetail, setSelectedDetail] = useState<EntityDetail | null>(null);
-  const [selectedDynamicNode, setSelectedDynamicNode] = useState<DynamicCaseBoardNode | null>(null);
   const [activeTab, setActiveTab] = useState<'board' | 'log'>('board');
 
   // 拖拽状态
@@ -93,24 +89,6 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
     isDragging.current = false;
   }, [tabTop]);
 
-  function handleClueClick(clue: StoryItem) {
-    const detail = getClueDetail(clue, state);
-    if (detail) setSelectedDetail(detail);
-  }
-
-  function handleBoardNodeOpen(node: CaseBoardNode) {
-    if (!node.refId) return;
-    if (node.type === 'npc') {
-      const detail = getNpcDetail(node.refId, state);
-      if (detail) setSelectedDetail(detail);
-      return;
-    }
-    if (node.type === 'item') {
-      const clue = state.clues.find((item) => item.id === node.refId) ?? storyData.items[node.refId];
-      if (clue) handleClueClick(clue);
-    }
-  }
-
   return (
     <>
       <button
@@ -127,24 +105,21 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
       </button>
       <aside className={`info-drawer-react fullscreen ${open ? 'open' : ''}`}>
         <header>
-          <div>
-            <p>SESSION</p>
+          <div className="info-drawer-title">
             <h2>资料</h2>
+            <span>{storyData.scenes[state.currentScene]?.chapterTitle ?? '当前章节'}</span>
           </div>
-          <button onClick={onClose}><X size={18} /></button>
+          <nav className="info-drawer-tabs" aria-label="资料视图">
+            <button className={activeTab === 'board' ? 'active' : ''} onClick={() => setActiveTab('board')}>案件板</button>
+            <button className={activeTab === 'log' ? 'active' : ''} onClick={() => setActiveTab('log')}>日志</button>
+          </nav>
+          <button aria-label="关闭资料" onClick={onClose} title="关闭"><X size={18} /></button>
         </header>
 
-        <nav className="info-drawer-tabs" aria-label="资料视图">
-          <button className={activeTab === 'board' ? 'active' : ''} onClick={() => setActiveTab('board')}>案件板</button>
-          <button className={activeTab === 'log' ? 'active' : ''} onClick={() => setActiveTab('log')}>日志</button>
-        </nav>
-
         {activeTab === 'board' ? (
-          <CaseBoard
-            state={state}
-            onNodeOpen={handleBoardNodeOpen}
-            onDynamicNodeOpen={setSelectedDynamicNode}
-          />
+          <Suspense fallback={<p className="empty-note">正在整理案件资料...</p>}>
+            <CaseBoard state={state} />
+          </Suspense>
         ) : null}
 
         {activeTab === 'log' ? (
@@ -158,9 +133,6 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
           </section>
         ) : null}
       </aside>
-
-      <EntityDetailModal detail={selectedDetail} onClose={() => setSelectedDetail(null)} />
-      <DynamicCaseBoardDetailModal node={selectedDynamicNode} onClose={() => setSelectedDynamicNode(null)} />
     </>
   );
 }

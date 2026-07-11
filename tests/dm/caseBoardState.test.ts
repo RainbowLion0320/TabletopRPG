@@ -1,290 +1,193 @@
 import { describe, expect, it } from 'vitest';
+import { buildFactCaseBoardPatch } from '../../src/dm/caseBoardModel';
 import { gameReducer, hydrateGameState } from '../../src/state/gameReducer';
+import type { AtomicFact, DynamicCaseBoardEdge, DynamicCaseBoardNode } from '../../src/types/game';
 import { makeState } from './fixtures';
 
 function applyCaseBoardPatch(state: ReturnType<typeof makeState>, patch: unknown) {
   return gameReducer(state, { type: 'applyCaseBoardPatch', patch } as never);
 }
 
-describe('gameReducer dynamic case board state', () => {
-  it('drops AI nodes and edges that have no player-visible source anchor', () => {
+function node(partial: Partial<DynamicCaseBoardNode> & Pick<DynamicCaseBoardNode, 'id' | 'type' | 'title'>): DynamicCaseBoardNode {
+  return {
+    semanticKey: `${partial.type}:${partial.title.replace(/\s/g, '')}`,
+    importance: 3,
+    source: 'ai',
+    certainty: partial.type === 'theory' ? 'hypothesis' : 'confirmed',
+    sourceFactIds: [],
+    sourceEventIds: [],
+    sourceClueIds: [],
+    createdTurn: 1,
+    updatedTurn: 1,
+    status: 'active',
+    ...partial
+  };
+}
+
+function edge(partial: Partial<DynamicCaseBoardEdge> & Pick<DynamicCaseBoardEdge, 'id' | 'from' | 'to'>): DynamicCaseBoardEdge {
+  return {
+    relationKey: `${partial.from}->${partial.to}:evidence`,
+    tone: 'evidence',
+    source: 'ai',
+    certainty: 'confirmed',
+    sourceFactIds: [],
+    sourceEventIds: [],
+    sourceClueIds: [],
+    createdTurn: 1,
+    updatedTurn: 1,
+    status: 'active',
+    ...partial
+  };
+}
+
+describe('gameReducer v7 case board state', () => {
+  it('drops proposals without a player-visible source anchor', () => {
     const state = makeState();
-
     const next = applyCaseBoardPatch(state, {
-      nodes: [
-        {
-          id: 'ai-node-orphan',
-          type: 'theory',
-          title: '凭空出现的幕后真相',
-          source: 'ai',
-          certainty: 'hypothesis',
-          sourceFactIds: [],
-          sourceEventIds: [],
-          sourceClueIds: [],
-          createdTurn: 1,
-          updatedTurn: 1,
-          status: 'active'
-        }
-      ],
-      edges: [
-        {
-          id: 'ai-edge-orphan',
-          from: 'ai-node-orphan',
-          to: 'scene-s01',
-          tone: 'suspicion',
-          source: 'ai',
-          certainty: 'hypothesis',
-          sourceFactIds: [],
-          sourceEventIds: [],
-          createdTurn: 1,
-          updatedTurn: 1,
-          status: 'active'
-        }
-      ]
+      nodes: [node({ id: 'ai-orphan', type: 'event', title: '凭空出现的真相' })],
+      edges: [edge({ id: 'edge-orphan', from: 'scene-s01', to: 'ai-orphan' })],
+      insights: []
     });
-
     expect(next.caseBoard?.nodes).toEqual([]);
     expect(next.caseBoard?.edges).toEqual([]);
   });
 
-  it('drops AI nodes that reference unrevealed KP secrets', () => {
-    const state = makeState({
-      eventLog: [{ id: 'evt-1', turn: 1, kind: 'narrative', description: '玩家注意到伊莎贝拉回避问题' }]
-    });
-
+  it('drops content that references an unrevealed secret', () => {
+    const state = makeState({ eventLog: [{ id: 'evt-1', turn: 1, kind: 'narrative', description: '回避问题' }] });
     const next = applyCaseBoardPatch(state, {
-      nodes: [
-        {
-          id: 'ai-secret-node',
-          type: 'theory',
-          title: '未解锁内幕',
-          detail: 'secret.note_resentment.revealed 指向真相',
-          source: 'ai',
-          certainty: 'hypothesis',
-          sourceFactIds: [],
-          sourceEventIds: ['evt-1'],
-          sourceClueIds: [],
-          createdTurn: 1,
-          updatedTurn: 1,
-          status: 'active'
-        }
-      ],
-      edges: []
+      nodes: [node({
+        id: 'ai-secret', type: 'event', title: '未解锁内容', detail: 'secret.hidden.truth', sourceEventIds: ['evt-1']
+      })],
+      edges: [edge({ id: 'edge-secret', from: 'scene-s01', to: 'ai-secret', sourceEventIds: ['evt-1'] })],
+      insights: []
     });
-
     expect(next.caseBoard?.nodes).toEqual([]);
   });
 
-  it('merges duplicate AI nodes and upgrades hypotheses to confirmed when evidence arrives', () => {
+  it('merges by semanticKey and upgrades a connected hypothesis', () => {
     const state = makeState({
+      activeNpcName: '伊莎贝拉·摩勒',
       eventLog: [
-        { id: 'evt-1', turn: 1, kind: 'narrative', description: '玩家怀疑伊莎贝拉隐瞒动机' },
-        { id: 'evt-2', turn: 2, kind: 'state_update', description: '玩家找到相关线索' }
-      ],
-      clueIds: ['I02']
+        { id: 'evt-1', turn: 1, kind: 'narrative', description: '怀疑隐瞒' },
+        { id: 'evt-2', turn: 2, kind: 'narrative', description: '证词补强' }
+      ]
     });
-
     const first = applyCaseBoardPatch(state, {
-      nodes: [
-        {
-          id: 'ai-isabella-hidden',
-          type: 'theory',
-          title: '伊莎贝拉有所隐瞒',
-          source: 'ai',
-          certainty: 'hypothesis',
-          sourceFactIds: [],
-          sourceEventIds: ['evt-1'],
-          sourceClueIds: [],
-          createdTurn: 1,
-          updatedTurn: 1,
-          status: 'active'
-        }
+      nodes: [node({
+        id: 'ai-hidden', semanticKey: 'theory:isabella-hidden', type: 'theory', title: '伊莎贝拉有所隐瞒', sourceEventIds: ['evt-1']
+      })],
+      edges: [
+        edge({ id: 'e1', relationKey: 'scene-hidden', from: 'scene-s01', to: 'ai-hidden', tone: 'suspicion', certainty: 'hypothesis', sourceEventIds: ['evt-1'] }),
+        edge({ id: 'e2', relationKey: 'isabella-hidden', from: 'npc-isabella', to: 'ai-hidden', tone: 'suspicion', certainty: 'hypothesis', sourceEventIds: ['evt-1'] })
       ],
-      edges: []
+      insights: []
     });
-
     const second = applyCaseBoardPatch(first, {
-      nodes: [
-        {
-          id: 'ai-isabella-hidden-duplicate',
-          type: 'theory',
-          title: '伊莎贝拉 有所隐瞒',
-          subtitle: '由合影照片支持',
-          source: 'ai',
-          certainty: 'confirmed',
-          sourceFactIds: [],
-          sourceEventIds: ['evt-2'],
-          sourceClueIds: ['I02'],
-          createdTurn: 2,
-          updatedTurn: 2,
-          status: 'active'
-        }
-      ],
-      edges: []
+      nodes: [node({
+        id: 'ai-hidden-new', semanticKey: 'theory:isabella-hidden', type: 'theory', title: '伊莎贝拉隐瞒了信息',
+        subtitle: '证词补强', certainty: 'confirmed', sourceEventIds: ['evt-2'], updatedTurn: 2
+      })],
+      edges: [],
+      insights: []
     });
-
     expect(second.caseBoard?.nodes).toHaveLength(1);
     expect(second.caseBoard?.nodes[0]).toMatchObject({
-      id: 'ai-isabella-hidden',
-      title: '伊莎贝拉有所隐瞒',
-      subtitle: '由合影照片支持',
-      certainty: 'confirmed',
-      sourceEventIds: ['evt-1', 'evt-2'],
-      sourceClueIds: ['I02'],
-      createdTurn: 1,
-      updatedTurn: 2,
-      status: 'active'
+      id: 'ai-hidden', certainty: 'confirmed', subtitle: '证词补强', status: 'active', sourceEventIds: ['evt-1', 'evt-2']
     });
   });
 
-  it('remaps edges from duplicate incoming node ids to the merged node id', () => {
-    const state = makeState({
-      eventLog: [
-        { id: 'evt-1', turn: 1, kind: 'narrative', description: '玩家看到药店后门有撬痕' },
-        { id: 'evt-2', turn: 2, kind: 'narrative', description: '玩家推断可能有人协助进入' }
-      ]
-    });
-
-    const first = applyCaseBoardPatch(state, {
-      nodes: [
-        {
-          id: 'ai-backdoor-old',
-          type: 'event',
-          title: '药店后门被撬',
-          source: 'ai',
-          certainty: 'confirmed',
-          sourceFactIds: [],
-          sourceEventIds: ['evt-1'],
-          sourceClueIds: [],
-          createdTurn: 1,
-          updatedTurn: 1,
-          status: 'active'
-        },
-        {
-          id: 'ai-inside-help',
-          type: 'theory',
-          title: '可能有内应协助',
-          source: 'ai',
-          certainty: 'hypothesis',
-          sourceFactIds: [],
-          sourceEventIds: ['evt-2'],
-          sourceClueIds: [],
-          createdTurn: 2,
-          updatedTurn: 2,
-          status: 'active'
-        }
-      ],
-      edges: []
-    });
-
-    const second = applyCaseBoardPatch(first, {
-      nodes: [
-        {
-          id: 'ai-backdoor-new',
-          type: 'event',
-          title: '药店后门 被撬',
-          source: 'ai',
-          certainty: 'confirmed',
-          sourceFactIds: [],
-          sourceEventIds: ['evt-2'],
-          sourceClueIds: [],
-          createdTurn: 2,
-          updatedTurn: 2,
-          status: 'active'
-        }
-      ],
-      edges: [
-        {
-          id: 'ai-edge-help',
-          from: 'ai-backdoor-new',
-          to: 'ai-inside-help',
-          label: '推测',
-          tone: 'suspicion',
-          source: 'ai',
-          certainty: 'hypothesis',
-          sourceFactIds: [],
-          sourceEventIds: ['evt-2'],
-          createdTurn: 2,
-          updatedTurn: 2,
-          status: 'active'
-        }
-      ]
-    });
-
-    expect(second.caseBoard?.nodes).toHaveLength(2);
-    expect(second.caseBoard?.edges).toHaveLength(1);
-    expect(second.caseBoard?.edges[0]).toMatchObject({
-      from: 'ai-backdoor-old',
-      to: 'ai-inside-help'
+  it('folds fact slots into one entity insight instead of adding cards', () => {
+    const oldFact: AtomicFact = {
+      id: 'f_1_0', turn: 1, actor: '伊莎贝拉·摩勒', predicate: 'goal', value: '保护父亲名誉', source: 'system1'
+    };
+    const newFact: AtomicFact = {
+      id: 'f_2_0', turn: 2, actor: '伊莎贝拉·摩勒', predicate: 'goal', value: '协助调查', source: 'system1', supersedes: oldFact.id
+    };
+    let state = makeState({ activeNpcName: '伊莎贝拉·摩勒' });
+    state.atomicFacts = [oldFact, newFact];
+    state = applyCaseBoardPatch(state, buildFactCaseBoardPatch(state, [oldFact]));
+    state = applyCaseBoardPatch(state, buildFactCaseBoardPatch(state, [newFact]));
+    expect(state.caseBoard?.nodes).toEqual([]);
+    expect(state.caseBoard?.insights).toHaveLength(1);
+    expect(state.caseBoard?.insights[0]).toMatchObject({
+      ownerNodeId: 'npc-isabella', kind: 'motive', text: '当前目标：协助调查', sourceFactIds: ['f_1_0', 'f_2_0']
     });
   });
 
-  it('caps active AI nodes by archiving old low-confidence hypotheses first', () => {
-    const eventLog = Array.from({ length: 55 }, (_, index) => ({
-      id: `evt-${index}`,
-      turn: index,
-      kind: 'narrative',
-      description: `事件 ${index}`
+  it('turns a relationship between visible entities into a stable edge', () => {
+    const relation: AtomicFact = {
+      id: 'f_3_0', turn: 3, actor: '伊莎贝拉·摩勒', predicate: 'relationship',
+      target: '埃里克·摩勒', value: '父女', source: 'system1'
+    };
+    const state = makeState({ activeNpcName: '伊莎贝拉·摩勒' });
+    state.clues = [{ id: 'I02', name: '合影照片', desc: '一张合影。', scene: 'S01', found: true }];
+    state.atomicFacts = [relation];
+    const next = applyCaseBoardPatch(state, buildFactCaseBoardPatch(state, [relation]));
+    expect(next.caseBoard?.edges).toEqual([
+      expect.objectContaining({
+        from: 'npc-isabella', to: 'npc-eric', relationKey: 'npc-isabella->npc-eric:relationship', label: '父女'
+      })
+    ]);
+    expect(next.caseBoard?.insights).toEqual([]);
+  });
+
+  it('keeps a relationship with an unknown endpoint in the known subject dossier', () => {
+    const relation: AtomicFact = {
+      id: 'f_3_1', turn: 3, actor: '伊莎贝拉·摩勒', predicate: 'relationship',
+      target: '尚未露面的陌生人', value: '似乎认识对方', source: 'system1'
+    };
+    const state = makeState({ activeNpcName: '伊莎贝拉·摩勒' });
+    state.atomicFacts = [relation];
+    const next = applyCaseBoardPatch(state, buildFactCaseBoardPatch(state, [relation]));
+    expect(next.caseBoard?.edges).toEqual([]);
+    expect(next.caseBoard?.insights).toEqual([
+      expect.objectContaining({ ownerNodeId: 'npc-isabella', text: '似乎认识对方' })
+    ]);
+  });
+
+  it('archives old low-confidence nodes after the 30-node cap', () => {
+    const eventLog = Array.from({ length: 35 }, (_, index) => ({
+      id: `evt-${index}`, turn: index + 1, kind: 'narrative', description: `事件 ${index}`
     }));
     const state = makeState({ eventLog });
-    const nodes = eventLog.map((event, index) => ({
-      id: `ai-node-${index}`,
-      type: 'theory',
-      title: `推测 ${index}`,
-      source: 'ai',
-      certainty: index === 0 ? 'confirmed' : 'hypothesis',
-      sourceFactIds: [],
-      sourceEventIds: [event.id],
-      sourceClueIds: [],
-      createdTurn: index,
-      updatedTurn: index,
-      status: 'active'
+    const nodes = eventLog.map((event, index) => node({
+      id: `ai-${index}`, semanticKey: `event:${index}`, type: 'event', title: `事件 ${index}`,
+      certainty: index === 0 ? 'confirmed' : 'hypothesis', sourceEventIds: [event.id], createdTurn: index + 1, updatedTurn: index + 1
     }));
-
-    const next = applyCaseBoardPatch(state, { nodes, edges: [] });
-    const active = next.caseBoard?.nodes.filter((node) => node.status === 'active') ?? [];
-    const archived = next.caseBoard?.nodes.filter((node) => node.status === 'archived') ?? [];
-
-    expect(active).toHaveLength(50);
-    expect(archived).toHaveLength(5);
-    expect(next.caseBoard?.nodes.find((node) => node.id === 'ai-node-0')?.status).toBe('active');
-    expect(next.caseBoard?.nodes.find((node) => node.id === 'ai-node-1')?.status).toBe('archived');
+    const edges = eventLog.map((event, index) => edge({
+      id: `edge-${index}`, relationKey: `scene-event-${index}`, from: 'scene-s01', to: `ai-${index}`,
+      sourceEventIds: [event.id], createdTurn: index + 1, updatedTurn: index + 1
+    }));
+    const next = applyCaseBoardPatch(state, { nodes, edges, insights: [] });
+    expect(next.caseBoard?.nodes.filter((item) => item.status === 'active')).toHaveLength(30);
+    expect(next.caseBoard?.nodes.find((item) => item.id === 'ai-0')?.status).toBe('active');
   });
 
-  it('hydrates v6 caseBoard saves and defaults old saves to an empty board', () => {
-    const legacy = hydrateGameState({ players: [], currentScene: 'S01' });
-    expect(legacy.caseBoard).toEqual({ nodes: [], edges: [], lastUpdatedTurn: 0 });
-
+  it('migrates v6 fact cards into v7 entity insights without a model call', () => {
     const hydrated = hydrateGameState({
       players: [],
       currentScene: 'S01',
+      activeNpcName: '伊莎贝拉·摩勒',
+      atomicFacts: [{
+        id: 'f_1_0', turn: 1, actor: '伊莎贝拉·摩勒', predicate: 'knowledge', value: '父亲常去酒吧', source: 'system1'
+      }],
       caseBoard: {
-        lastUpdatedTurn: 3,
-        nodes: [
-          {
-            id: 'ai-node',
-            type: 'event',
-            title: '玩家打碎窗户',
-            source: 'ai',
-            certainty: 'confirmed',
-            sourceFactIds: [],
-            sourceEventIds: ['evt-3'],
-            sourceClueIds: [],
-            createdTurn: 3,
-            updatedTurn: 3,
-            status: 'active'
-          }
-        ],
+        lastUpdatedTurn: 1,
+        nodes: [{
+          id: 'ai-old-card', type: 'event', title: '伊莎贝拉透露父亲常去酒吧', source: 'ai', certainty: 'confirmed',
+          sourceFactIds: ['f_1_0'], sourceEventIds: [], sourceClueIds: [], createdTurn: 1, updatedTurn: 1, status: 'active'
+        }],
         edges: []
       }
     });
+    expect(hydrated.caseBoard?.nodes).toEqual([]);
+    expect(hydrated.caseBoard?.insights).toEqual([
+      expect.objectContaining({ ownerNodeId: 'npc-isabella', kind: 'testimony', text: '透露或知晓：父亲常去酒吧' })
+    ]);
+  });
 
-    expect(hydrated.caseBoard?.lastUpdatedTurn).toBe(3);
-    expect(hydrated.caseBoard?.nodes[0]).toMatchObject({
-      id: 'ai-node',
-      type: 'event',
-      title: '玩家打碎窗户',
-      certainty: 'confirmed'
-    });
+  it('defaults old saves to an empty v7 board', () => {
+    const legacy = hydrateGameState({ players: [], currentScene: 'S01' });
+    expect(legacy.caseBoard).toEqual({ nodes: [], edges: [], insights: [], lastUpdatedTurn: 0 });
   });
 });

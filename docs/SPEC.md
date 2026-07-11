@@ -1,6 +1,6 @@
 # TabletopRPG Technical Spec
 
-> Version: v0.6
+> Version: v0.7
 > Updated: 2026-07-11
 > Scope: current React/Vite implementation
 
@@ -12,6 +12,8 @@
 | Language | TypeScript |
 | Build tool | Vite |
 | Icons | `lucide-react` |
+| Relationship graph | `@xyflow/react` |
+| Automatic graph layout | `elkjs` Layered in a Web Worker, left-to-right with orthogonal edges |
 | Persistence | browser `localStorage` |
 | AI API | OpenAI Responses API, MiMo/OpenAI-compatible Chat Completions |
 
@@ -137,7 +139,7 @@ Current formulas:
 
 Current UI loads the latest valid save from the title/menu shortcuts. Save Manager lists valid slots, loads a selected slot, and deletes a selected slot.
 
-Save payload version `6` adds `GameState.caseBoard`, the persisted dynamic case board layer. Older saves hydrate with an empty dynamic case board while keeping the static scenario board unchanged.
+Save payload version `7` adds case-board entity insights plus stable `semanticKey` and `relationKey` identities. v6 case-board cards migrate deterministically during `hydrateGameState()`: entity facts fold into dossier insights, valid relationships retain redirected endpoints, and unsupported low-value orphan cards are archived. No model call is made during save migration. Older saves without a case board receive an empty v7 dynamic layer while the static scenario board remains authored data.
 
 ## 8. AI DM Contract
 
@@ -248,24 +250,28 @@ Irreversible story-breaking acts, such as killing a key NPC or destroying key ev
 
 ### Dynamic Case Board
 
-The case board is not a free-form AI UI surface. Runtime display combines two layers:
+The case board is not a free-form AI UI surface. v7 is a mixed investigation workspace with three data responsibilities:
 
 - Static scenario spine from `src/data/scenarios/wuzhongxiaoshi/caseBoard.ts`, used for stable main clues and authored relationships.
-- Dynamic layer in `GameState.caseBoard`, proposed by `src/dm/caseBoardSynthesizer.ts` after Narrator, Director, StateResolver, events, and facts have completed.
+- Dynamic core nodes/edges in `GameState.caseBoard`, limited to meaningful events, cross-entity relationships, and connected theories.
+- Entity dossier `insights`, where goal, stance, knowledge, capability, testimony, and actor-state changes are updated by stable slots instead of becoming graph cards.
 
-The synthesizer calls `generateJson()` through the same LLM adapter chain as Narrator/Summarizer/Memory. It does not change the Narrator JSON contract. Proposed source ids are pre-audited against the exact visible fact/event/clue ids before reducer application.
+The synthesizer calls `generateJson()` through the same LLM adapter chain as Narrator/Summarizer/Memory. It sees the current player-visible static and dynamic node ids, does not change the Narrator JSON contract, and proposes at most two core nodes and four edges per turn. It may only create `event` or `theory` nodes; deterministic fact-to-insight and relationship-to-edge conversion stays in `caseBoardModel.ts`.
 
-If the provider returns an empty, malformed, or source-invalid patch, the system applies a conservative fallback only when there is real information gain: current-turn atomic facts become source-anchored cards, or a high-signal narrative sentence can become a card anchored to the current narrative event. Generic continuation text remains empty. Provider failure and fallback failure must never fail the main DM turn.
+If the provider returns an empty, malformed, or source-invalid patch, entity facts still update dossiers deterministically. A high-signal world observation may create one event linked to the current scene; generic continuation text remains empty. Provider failure and fallback failure never fail the main DM turn.
 
 Dynamic patches are applied only through `gameReducer.applyCaseBoardPatch` after the controller has appended accepted events and facts. The reducer enforces:
 
 - Every dynamic node must cite at least one visible fact, event, or clue id.
 - Every dynamic edge must cite at least one visible fact or event id.
 - Text that references an unrevealed `secret.*` marker is dropped.
-- Duplicate nodes merge by normalized type/title; duplicate edges merge by endpoint/label/tone.
+- Duplicate nodes merge by stable `semanticKey`; insights update by `slotKey`; edges update by `relationKey`.
 - Later confirmed evidence upgrades an existing hypothesis to confirmed.
-- Dynamic active capacity is capped at 50 nodes and 80 edges; overflow archives older low-confidence hypotheses first.
-- AI never supplies layout coordinates. Desktop layout is computed by the UI, and narrow screens use the compact list.
+- Event nodes require one visible graph anchor and theories require two. Orphan proposals are rejected or archived.
+- Dynamic active capacity is capped at 30 core nodes, 60 edges, and 120 insights; overflow archives older low-confidence hypotheses first.
+- AI never supplies layout coordinates. Desktop uses React Flow with ELK Layered ordering and orthogonal edges; narrow screens use connected-component investigation groups.
+
+The desktop workspace derives connected components as investigation threads, supports pan/zoom/fit, search, type filtering, and hypothesis visibility, and opens a non-modal dossier inspector. New background nodes do not reset the current viewport. Mobile hides the graph, shows at most two relationship summaries on each card, and opens an accessible full-screen detail layer. Player-visible sources resolve to clue names or turn-numbered fact/event text; internal ids are never rendered.
 
 ## 9. Dice Contract
 
@@ -328,7 +334,7 @@ Current smoke coverage:
 - Saving a game enables "continue latest save" from the title screen.
 - Save Manager can list, load, and delete explicit save slots.
 - Invalid save payloads are ignored on the title screen.
-- Fullscreen reference panel renders the static case board and v6 saved dynamic hypotheses.
+- Fullscreen reference panel renders the v7 investigation workspace and deterministically migrates v6 dynamic hypotheses.
 - Narrator becomes visible before background cognition completes, and abandoned-session responses cannot write into a restarted game.
 - D100 rolls `96-100` are fumbles before success thresholds.
 - Rules config tests verify derived stats, skill base formulas, difficulty thresholds, and fumble range stay centralized.

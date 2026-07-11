@@ -14,6 +14,7 @@
 import type { ApiConfig, GameState, ProspectiveIntent, SceneId } from '../types/game';
 import { AiResponseFormatError, type PlayerAction } from '../services/aiDm';
 import { storyData } from '../data/storyData';
+import { caseBoard as caseBoardDefinition } from '../data/scenarios/wuzhongxiaoshi';
 import { buildDmContext } from './contextBuilder';
 import {
   computeRevealedSecretIds,
@@ -29,6 +30,8 @@ import { resolveDmTurn } from './stateResolver';
 import { maybeConsolidateMemory, SUMMARIZE_TRIGGER_PAIRS } from './summarizer';
 import { classifyIntent } from './intentClassifier';
 import { synthesizeCaseBoardPatch } from './caseBoardSynthesizer';
+import { getVisibleCaseBoard } from './caseBoard';
+import { buildFactCaseBoardPatch, mergeCaseBoardPatches } from './caseBoardModel';
 import { extractFactsFromTurn } from './memory/factExtractor';
 import { synthesizeSystem2 } from './memory/system2Synthesizer';
 import {
@@ -244,18 +247,42 @@ async function runDmBackgroundUpdate(params: BackgroundUpdateParams): Promise<Dm
       const clue = storyData.items[clueId];
       if (clue) clueById.set(clue.id, { ...clue, found: true });
     }
-    const caseBoardPatch = await synthesizeCaseBoardPatch(config, {
+    const projectedState: GameState = {
+      ...input.state,
+      currentScene: resolved.legacyResponse.stateUpdate?.sceneChange ?? input.state.currentScene,
+      activeNpcName: resolved.legacyResponse.activeNpc ?? input.state.activeNpcName,
+      clues: Array.from(clueById.values()),
+      atomicFacts: [...(input.state.atomicFacts ?? []), ...(factsToAppend ?? [])],
+      eventLog: [...(input.state.eventLog ?? []), ...(resolved.events ?? [])]
+    };
+    const visibleBoard = getVisibleCaseBoard(caseBoardDefinition, projectedState);
+    const visibleNodes = [
+      ...visibleBoard.nodes.map((node) => ({ id: node.id, type: node.type, title: node.title })),
+      ...(projectedState.caseBoard?.nodes ?? [])
+        .filter((node) => node.status === 'active')
+        .map((node) => ({ id: node.id, type: node.type, title: node.title }))
+    ];
+    const currentSceneNodeId = visibleBoard.nodes.find((node) =>
+      node.type === 'scene' && node.refId === projectedState.currentScene
+    )?.id ?? '';
+    const aiCaseBoardPatch = await synthesizeCaseBoardPatch(config, {
       turn: currentTurn,
       narrative,
       playerActions: input.actions.map((a) => ({ player: a.player, action: a.action })),
-      facts: [...(input.state.atomicFacts ?? []), ...(factsToAppend ?? [])],
+      facts: projectedState.atomicFacts ?? [],
       newFacts: factsToAppend ?? [],
-      events: [...(input.state.eventLog ?? []), ...(resolved.events ?? [])],
-      clues: Array.from(clueById.values()),
+      events: projectedState.eventLog ?? [],
+      clues: projectedState.clues,
       newClueIds,
-      existingBoard: input.state.caseBoard ?? { nodes: [], edges: [], lastUpdatedTurn: 0 },
+      existingBoard: projectedState.caseBoard ?? { nodes: [], edges: [], insights: [], lastUpdatedTurn: 0 },
+      visibleNodes,
+      currentSceneNodeId,
       signal: input.signal
     });
+    const caseBoardPatch = mergeCaseBoardPatches(
+      buildFactCaseBoardPatch(projectedState, factsToAppend ?? []),
+      aiCaseBoardPatch
+    );
     timings.caseBoard = elapsedMs(caseBoardStart);
 
     const episode = buildEpisodicMemoryRecord({

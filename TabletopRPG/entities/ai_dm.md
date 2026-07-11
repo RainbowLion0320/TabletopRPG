@@ -59,15 +59,18 @@ AI 担任完整的 TRPG 游戏主持人（DM/KP），负责场景描述、NPC �
 
 ## 动态案件板
 
-案件板不是 AI 直接写 UI 的自由画布，而是“静态主线骨架 + AI 动态提议 + 系统审核落地”：
+案件板不是 AI 直接写 UI 的自由画布，而是“静态主线骨架 + 确定性实体档案 + AI 核心关系提议 + 系统审核落地”：
 
 - 静态骨架由剧本数据维护，保证关键线索链稳定可控。
 - `caseBoardSynthesizer` 在 Narrator 完成本轮叙事、Director/StateResolver 产出事件、System1 facts 抽取后运行。
-- 合成器只输出候选节点/连线 patch，不修改 Narrator 主 JSON 契约；系统先按真实 fact/event/clue id 预审来源。
-- 当 AI 返回空、坏 JSON 或无效来源，而本轮确有新 fact 或高信息量叙事时，系统生成保守的来源锚定卡片；普通重复叙事保持空 patch，避免案件板刷屏。
+- `goal / stance_toward / knowledge / capability / state` 由系统写入人物或地点的 insight 时间线，`relationship` 在双方可见时确定性转为关系边。
+- 合成器只输出关键事件、跨实体关系和核心推测，不修改 Narrator 主 JSON 契约；系统先按真实 fact/event/clue id 和可见静态节点预审来源。
+- AI 返回空、坏 JSON 或无效来源时，实体档案仍可更新；只有高信息量现场观察会生成连接当前场景的保守事件卡，普通重复叙事保持空 patch。
 - Provider 或案件板后台失败不影响本轮 DM 叙事。
-- reducer 的 `applyCaseBoardPatch` 负责来源锚定、去重、未解锁 secret 过滤、推测升级为证实、容量裁剪和归档。
-- UI 分层展示 confirmed 与 hypothesis，推测关系用弱化/虚线样式，点击动态卡片只展示玩家可见来源摘要。
+- reducer 的 `applyCaseBoardPatch` 负责来源锚定、`semanticKey / slotKey / relationKey` 去重、未解锁 secret 过滤、推测升级、孤立检查、容量裁剪和归档。
+- 桌面 UI 使用 React Flow + ELK 自动关系图和右侧实体档案；移动端使用调查脉络分组列表。来源解析为玩家可读的回合文本，不显示内部 id。
+
+详见 [[concepts/case_board]]。
 
 ## 行动容错度
 

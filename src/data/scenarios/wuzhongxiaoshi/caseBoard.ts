@@ -1,7 +1,7 @@
 import type { CaseBoardDefinition } from '../../../types/game';
 
 export const caseBoard: CaseBoardDefinition = {
-  summary: '埃里克·摩勒的失踪与街区鸦片运输、蒙特利尔关系网和泰晤士港货船线索逐步交汇。',
+  summary: '围绕埃里克·摩勒失踪案，整理目前已知的人物、地点、物证与待验证推测。',
   nodes: [
     {
       id: 'scene-s01',
@@ -9,8 +9,7 @@ export const caseBoard: CaseBoardDefinition = {
       refId: 'S01',
       title: '摩勒住宅',
       subtitle: '委托起点',
-      x: 16,
-      y: 22,
+      importance: 5,
       revealWhen: { sceneVisited: 'S01' }
     },
     {
@@ -19,8 +18,7 @@ export const caseBoard: CaseBoardDefinition = {
       refId: '伊莎贝拉·摩勒',
       title: '伊莎贝拉·摩勒',
       subtitle: '委托人',
-      x: 13,
-      y: 46,
+      importance: 5,
       revealWhen: { npcKnown: '伊莎贝拉·摩勒' }
     },
     {
@@ -29,8 +27,7 @@ export const caseBoard: CaseBoardDefinition = {
       refId: 'I01',
       title: '便签',
       subtitle: '“别来找我”',
-      x: 31,
-      y: 18,
+      importance: 3,
       revealWhen: { itemFound: 'I01' }
     },
     {
@@ -39,8 +36,7 @@ export const caseBoard: CaseBoardDefinition = {
       refId: 'I02',
       title: '合影照片',
       subtitle: '蒙特利尔与埃里克',
-      x: 40,
-      y: 28,
+      importance: 4,
       revealWhen: { itemFound: 'I02' }
     },
     {
@@ -49,8 +45,7 @@ export const caseBoard: CaseBoardDefinition = {
       refId: '洛夫·蒙特利尔',
       title: '洛夫·蒙特利尔',
       subtitle: '警察局长',
-      x: 58,
-      y: 22,
+      importance: 4,
       revealWhen: { anyOf: [{ npcKnown: '洛夫·蒙特利尔' }, { itemFound: 'I02' }, { itemFound: 'I06' }] }
     },
     {
@@ -59,8 +54,7 @@ export const caseBoard: CaseBoardDefinition = {
       refId: '埃里克·摩勒',
       title: '埃里克·摩勒',
       subtitle: '失踪者',
-      x: 78,
-      y: 30,
+      importance: 5,
       revealWhen: { anyOf: [{ itemFound: 'I02' }, { itemFound: 'I05' }, { itemFound: 'I08' }] }
     },
     {
@@ -69,8 +63,7 @@ export const caseBoard: CaseBoardDefinition = {
       refId: 'I05',
       title: '白色粉末样品',
       subtitle: '暗格中的可疑粉末',
-      x: 35,
-      y: 52,
+      importance: 4,
       revealWhen: { itemFound: 'I05' }
     },
     {
@@ -79,8 +72,7 @@ export const caseBoard: CaseBoardDefinition = {
       refId: 'I06',
       title: '报纸残片',
       subtitle: '扫毒英雄通稿',
-      x: 54,
-      y: 54,
+      importance: 4,
       revealWhen: { itemFound: 'I06' }
     },
     {
@@ -88,8 +80,7 @@ export const caseBoard: CaseBoardDefinition = {
       type: 'theory',
       title: '走私嫌疑',
       subtitle: '失踪案背后可能有鸦片运输',
-      x: 64,
-      y: 43,
+      importance: 5,
       revealWhen: { anyOf: [{ itemFound: 'I05' }, { itemFound: 'I06' }] }
     },
     {
@@ -98,8 +89,7 @@ export const caseBoard: CaseBoardDefinition = {
       refId: 'I04',
       title: '小册子',
       subtitle: '隐写文字指向贝尔街14号',
-      x: 22,
-      y: 70,
+      importance: 4,
       revealWhen: { itemFound: 'I04' }
     },
     {
@@ -108,8 +98,7 @@ export const caseBoard: CaseBoardDefinition = {
       refId: 'S04',
       title: '卡森其药店',
       subtitle: '贝尔街14号',
-      x: 44,
-      y: 77,
+      importance: 5,
       revealWhen: { anyOf: [{ itemFound: 'I04' }, { sceneVisited: 'S04' }] }
     },
     {
@@ -118,8 +107,7 @@ export const caseBoard: CaseBoardDefinition = {
       refId: '老赫特之家酒保',
       title: '老赫特之家酒保',
       subtitle: '线人消息来源',
-      x: 18,
-      y: 88,
+      importance: 3,
       revealWhen: { npcKnown: '老赫特之家酒保' }
     },
     {
@@ -127,8 +115,7 @@ export const caseBoard: CaseBoardDefinition = {
       type: 'theory',
       title: '“老鼠”线索',
       subtitle: '可换取贝尔街相关消息',
-      x: 36,
-      y: 90,
+      importance: 3,
       revealWhen: { sceneVisited: 'S03' }
     },
     {
@@ -137,8 +124,7 @@ export const caseBoard: CaseBoardDefinition = {
       refId: 'I08',
       title: '雪茄头',
       subtitle: '与埃里克书房品牌一致',
-      x: 62,
-      y: 78,
+      importance: 4,
       revealWhen: { itemFound: 'I08' }
     },
     {
@@ -147,8 +133,7 @@ export const caseBoard: CaseBoardDefinition = {
       refId: 'I07',
       title: '潮湿的地图笔记',
       subtitle: '标注港口货船位置',
-      x: 76,
-      y: 70,
+      importance: 5,
       revealWhen: { itemFound: 'I07' }
     },
     {
@@ -157,8 +142,7 @@ export const caseBoard: CaseBoardDefinition = {
       refId: 'S05',
       title: '扶桑花号',
       subtitle: '泰晤士港终幕地点',
-      x: 86,
-      y: 88,
+      importance: 5,
       revealWhen: { itemFound: 'I07' }
     }
   ],

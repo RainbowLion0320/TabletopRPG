@@ -123,6 +123,15 @@ export type CaseBoardCertainty = 'confirmed' | 'hypothesis';
 
 export type CaseBoardSource = 'scenario' | 'ai';
 
+export type CaseBoardImportance = 1 | 2 | 3 | 4 | 5;
+
+export type CaseBoardInsightKind =
+  | 'observation'
+  | 'testimony'
+  | 'motive'
+  | 'attitude'
+  | 'status';
+
 export interface CaseBoardRevealCondition {
   itemFound?: string;
   npcKnown?: string;
@@ -140,8 +149,7 @@ export interface CaseBoardNode {
   refId?: string;
   title: string;
   subtitle?: string;
-  x: number;
-  y: number;
+  importance?: CaseBoardImportance;
   revealWhen: CaseBoardRevealRule;
 }
 
@@ -162,10 +170,15 @@ export interface CaseBoardDefinition {
 
 export interface DynamicCaseBoardNode {
   id: string;
+  /** 稳定语义键；标题变化时仍合并为同一卡片。 */
+  semanticKey: string;
   type: CaseBoardNodeType | 'event';
+  /** 已知剧本实体 id/name；动态事件或推测可省略。 */
+  refId?: string;
   title: string;
   subtitle?: string;
   detail?: string;
+  importance: CaseBoardImportance;
   source: CaseBoardSource;
   certainty: CaseBoardCertainty;
   sourceFactIds: string[];
@@ -178,6 +191,8 @@ export interface DynamicCaseBoardNode {
 
 export interface DynamicCaseBoardEdge {
   id: string;
+  /** 稳定关系键；标签措辞变化时仍合并为同一关系。 */
+  relationKey: string;
   from: string;
   to: string;
   label?: string;
@@ -186,6 +201,23 @@ export interface DynamicCaseBoardEdge {
   certainty: CaseBoardCertainty;
   sourceFactIds: string[];
   sourceEventIds: string[];
+  sourceClueIds: string[];
+  createdTurn: number;
+  updatedTurn: number;
+  status: 'active' | 'archived';
+}
+
+export interface CaseBoardInsight {
+  id: string;
+  ownerNodeId: string;
+  slotKey: string;
+  kind: CaseBoardInsightKind;
+  text: string;
+  detail?: string;
+  certainty: CaseBoardCertainty;
+  sourceFactIds: string[];
+  sourceEventIds: string[];
+  sourceClueIds: string[];
   createdTurn: number;
   updatedTurn: number;
   status: 'active' | 'archived';
@@ -194,12 +226,14 @@ export interface DynamicCaseBoardEdge {
 export interface CaseBoardState {
   nodes: DynamicCaseBoardNode[];
   edges: DynamicCaseBoardEdge[];
+  insights: CaseBoardInsight[];
   lastUpdatedTurn: number;
 }
 
 export interface CaseBoardPatch {
   nodes: DynamicCaseBoardNode[];
   edges: DynamicCaseBoardEdge[];
+  insights: CaseBoardInsight[];
 }
 
 export interface NarrativeMessage {
@@ -452,6 +486,6 @@ export interface SaveSlot {
   scene: string;
   players: string;
   gameState: GameState;
-  /** 存档格式版本；v6 起新增动态案件板。 */
-  version?: 1 | 2 | 3 | 4 | 5 | 6;
+  /** 存档格式版本；v7 起案件板增加实体 insight 与稳定语义键。 */
+  version?: 1 | 2 | 3 | 4 | 5 | 6 | 7;
 }

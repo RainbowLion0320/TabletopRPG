@@ -34,7 +34,7 @@ updated: 2026-07-11
 - Together / Split 两种探索模式。
 - AI 推荐行动建议。
 - 对话富文本阅读层：人物稳定配色，地点/物证/技能/状态分类高亮，安全详情导航，以及可选的 Narrator 临时语义关键词。
-- 全屏资料界面：默认展示玩家已知案件板，行动日志作为辅助页签保留；案件板由静态主线骨架与 AI 审核后的动态卡片/关系组成。
+- 全屏资料界面：默认展示玩家已知的混合调查台；静态主线、AI 审核核心关系和确定性实体档案共同组成案件板，桌面自动布局、移动端按调查脉络分组，行动日志作为辅助页签保留。
 - localStorage 存档：当前 key 为 `trpg-saves-v2`，支持最近存档、列表载入和删除。
 - 首个剧本模块「雾中消逝」：5 个场景、6 个 NPC 条目、8 个线索物品。
 - Playwright smoke tests：覆盖标题页、选角、主界面、无 API Key、存档/读档、非法存档和 D100 大失败优先规则。
@@ -55,6 +55,7 @@ updated: 2026-07-11
 - **异步一致性**：Narrator 前台完成即展示；总结、事实、心智、情景记忆和动态案件板在后台按回合落地，并受 session epoch 与 AbortSignal 保护。
 - **数据存储**：localStorage + JSON，无后端。
 - **状态管理**：`useReducer` + `GameState`，恢复存档时统一经过 `hydrateGameState()`。
+- **案件板布局**：React Flow + ELK Layered；布局坐标不进入 AI 输出或存档，v6 案件板确定性迁移到 v7。
 - **游戏规则**：COC 第七版风格 D100 技能检定。
 
 详见 [[concepts/tech_stack]]
@@ -77,4 +78,5 @@ updated: 2026-07-11
 - [[concepts/core_loop]] -- 核心玩法循环
 - [[concepts/tech_stack]] -- 技术选型
 - [[concepts/prompt_engineering]] -- 提示词工程
+- [[concepts/case_board]] -- 动态案件板与调查台
 - [[sources/project_plan]] -- 原始推进方案

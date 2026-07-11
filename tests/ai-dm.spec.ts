@@ -337,8 +337,8 @@ test('case board records a meaningful fact when the AI proposes an empty patch',
   await page.getByRole('button', { name: '提交' }).click();
   await expect(page.getByText('亨利在门廊发现几道新鲜的拖拽刮痕，像是有人搬运过重物。')).toBeVisible();
 
-  await page.getByRole('button', { name: '资料' }).click();
-  await expect(page.locator('.case-board-node.dynamic.confirmed', {
+  await page.getByRole('button', { name: '资料', exact: true }).click();
+  await expect(page.locator('.case-flow-node.event.confirmed', {
     hasText: '门廊有拖拽痕迹'
   })).toBeVisible();
 });
