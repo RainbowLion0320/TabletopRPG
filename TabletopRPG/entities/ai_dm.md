@@ -4,7 +4,7 @@ title: AI DM 系统
 tags: [ai, core, implemented]
 sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-14
-updated: 2026-06-15
+updated: 2026-07-11
 ---
 
 # AI DM 系统
@@ -27,22 +27,23 @@ AI 担任完整的 TRPG 游戏主持人（DM/KP），负责场景描述、NPC �
 
 ```
 玩家行动
-  -> runDmTurn(config, state, actions)
-  -> ContextBuilder / Memory
-  -> Narrator.generateNarration()
+  -> runDmTurn(config, { state, actions, signal })
+  -> ContextBuilder
+  -> Narrator
   -> src/dm/llm/client.ts
     ├─ responsesAdapter
     └─ chatCompletionsAdapter
-  -> parseAiResponse(raw)
-    ├─ 格式有效：继续
-    └─ 格式无效：同 Provider 修复重试一次
-  -> prepareCheck()（如有检定）
-  -> gameReducer.applyAiResponse
-  -> caseBoardSynthesizer（旁路，失败返回空 patch）
+  -> Director 校验工具 -> StateResolver
+  -> 前台立即 applyAiResponse / appendEvents -> UI 更新
+  -> backgroundUpdate
+    ├─ Summarizer
+    ├─ System2
+    └─ FactExtractor -> caseBoardSynthesizer / episodicMemory
+  -> DmTurnCoordinator 按回合顺序应用
   -> gameReducer.applyCaseBoardPatch（审核后写入动态案件板）
-  -> normalizeAiResponse()
-  -> UI 更新
 ```
+
+每轮共享一个 `AbortSignal`。180 秒计时、重开、读档、返回首页或组件卸载会取消活跃请求；session epoch 不匹配的前台或后台结果不得写入状态。
 
 ## 系统提示词组成
 
@@ -105,43 +106,32 @@ MVP 阶段采用 **2.5-3 档容错**：宽容玩家的做法，不宽容破坏�
 {
   "narrative": "给玩家看的叙事文本，200字以内",
   "activeNpc": "当前交互 NPC 全名或 null",
-  "check": null,
-  "stateUpdate": {
-    "hp": {},
-    "san": {},
-    "flags": {},
-    "newItems": [],
-    "sceneChange": null
-  },
   "nextPrompt": "下一步提示",
-  "playerChoices": ["建议行动1", "建议行动2", "建议行动3"]
+  "playerChoices": {
+    "亨利·格雷": ["适合亨利的建议1", "建议2"],
+    "艾达·华莱士": ["适合艾达的建议1", "建议2"]
+  }
 }
 ```
 
-`check` 可为：
-
-```json
-{ "skill": "侦查", "difficulty": "普通|困难|极难", "player": "角色名", "reason": "触发原因" }
-```
+检定、状态更新、场景切换、内幕揭示和 NPC 心智更新通过 Narrator 工具调用提议，不进入主 JSON。只有 Director 接受的调用才能由 StateResolver 落地。
 
 ## 格式校验、修复重试与归一化
 
 - 支持解析 ```json 包裹的返回。
 - 支持从混合文本中提取 JSON 对象。
-- AI 响应必须通过 `parseAiResponse()` 的结构校验：`narrative`、`activeNpc`、`check`、`stateUpdate`、`nextPrompt`、`playerChoices` 必须存在且类型正确。
+- AI 响应必须通过 Narrator 的结构校验：`narrative`、`activeNpc`、`nextPrompt`、`playerChoices` 必须存在且类型正确。
 - 首次格式无效时，前端会把无效输出和 JSON 契约发回同一 Provider，请求重新输出一次。
 - 第二次仍无效时，原始输出会被拦截，只显示系统错误；非 JSON 文本、坏 JSON 或 Markdown 残片不会作为 DM 叙事展示。
-- 场景支持 `S01`-`S05` 或已知场景中文名。
-- 未知 NPC 会归一化为 `null`。
-- HP/SAN 数值字符串会转为数字，非法值忽略。
-- 线索支持 item id 和已知线索名。
-- 检定难度包含 `极` 归为极难，包含 `困` 归为困难，否则普通。
+- 工具调用由 Director 按当前场景、允许工具集、玩家、物品和 secret 条件校验；非法调用被拒绝而不是直接写状态。
 
 ## 上下文管理
 
 - AI 调用时结合场景公开知识、KP secrets、近期历史、长期摘要、原子事实和角色认知模型。
 - reducer 内保留最近 32 条 conversation turns。
 - 长期记忆由 `src/dm/summarizer.ts`、`src/dm/memory/factExtractor.ts` 和 `src/dm/memory/system2Synthesizer.ts` 逐步落地。
+- 叙事前台不等待长期记忆；后台更新集中在 `DmBackgroundUpdate`，失败不会撤回有效叙事。
+- Summarizer 只接受非空 JSON `summary`，坏 JSON 不写入长期记忆。
 - Narrator 系统提示词每次基于最新状态重建，不依赖历史中的旧状态。
 
 ## 技能检定流程

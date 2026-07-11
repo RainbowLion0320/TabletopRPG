@@ -267,3 +267,53 @@ test('AI DM thinking state shows an inline animated indicator while the turn is 
   await expect(page.locator('.story-message.dm p', { hasText: 'The delayed narrator response is shown after the indicator.' })).toBeVisible();
   await expect(indicator).toHaveCount(0);
 });
+
+test('an aborted narrator request cannot write into a restarted game session', async ({ page }) => {
+  const staleNarrative = 'This response belongs to the abandoned game session.';
+  let releaseNarrator!: () => void;
+  const narratorGate = new Promise<void>((resolve) => {
+    releaseNarrator = resolve;
+  });
+  let narratorAttempts = 0;
+
+  await page.route('https://api.openai.com/v1/responses', async (route) => {
+    const body = JSON.parse(route.request().postData() ?? '{}') as { instructions?: string };
+    const system = body.instructions ?? '';
+    let content = JSON.stringify({ facts: [] });
+    if (system.includes('COC 第七版 AI DM Agent')) {
+      narratorAttempts += 1;
+      await narratorGate;
+      content = JSON.stringify({
+        narrative: staleNarrative,
+        activeNpc: null,
+        nextPrompt: 'stale',
+        playerChoices: {
+          '亨利·格雷': ['stale'],
+          '艾达·华莱士': ['stale']
+        }
+      });
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(responseBody(content))
+    }).catch(() => undefined);
+  });
+
+  await startGameWithApi(page);
+  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the study.');
+  await page.getByRole('button', { name: '下一位' }).click();
+  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the street.');
+  await page.getByRole('button', { name: '提交' }).click();
+  await expect.poll(() => narratorAttempts).toBe(1);
+
+  await page.getByTitle('菜单').click();
+  await page.getByRole('button', { name: '重新开始' }).click();
+  await expect(page.getByRole('heading', { name: '选择调查员' })).toBeVisible();
+  releaseNarrator();
+  await page.getByRole('button', { name: /进入游戏/ }).click();
+
+  await expect(page.locator('.game-screen')).toBeVisible();
+  await expect(page.getByText(staleNarrative)).toHaveCount(0);
+  expect(narratorAttempts).toBe(1);
+});

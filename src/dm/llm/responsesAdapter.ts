@@ -54,7 +54,8 @@ export async function requestResponsesJson(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${config.apiKey}`
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
+    signal: request.signal
   });
   const data = await readJsonResponse<ResponsesJson>(response, request.label);
   const rawFunctionItems = responseFunctionItems(data);

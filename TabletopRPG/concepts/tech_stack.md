@@ -4,7 +4,7 @@ title: 技术选型
 tags: [tech, architecture, decision, react, vite]
 sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-14
-updated: 2026-06-14
+updated: 2026-07-11
 ---
 
 # 技术选型
@@ -78,6 +78,8 @@ AI Provider 配置由 `ApiConfig` 统一承载：`provider`、`protocol`、`endp
 - API Key 由用户在 UI 中输入并保存在本地浏览器，不能硬编码进仓库。
 - 游戏数值公式优先进入 `src/data/gameRules.ts`，避免 UI、服务和 reducer 各自硬编码。
 - AI Provider 不做失败后自动猜协议；协议由 provider 默认值或用户配置明确决定。
+- Provider 从 OpenAI 切换到 MiMo/custom 时清空 OpenAI endpoint/model，避免把兼容协议请求误发到官方端点。
+- 每个 DM 回合共享一个 `AbortSignal`；后台更新按回合有序落地，session 变化后旧结果一律丢弃。
 - AI 响应进入 reducer 前必须通过 JSON 契约校验；格式无效时修复重试一次，仍无效则拦截。
 - 存档或已验证 AI 响应进入 UI 前必须经过归一化，避免非法引用破坏主流程。
 - 核心流程修改后应运行 `npm run test:smoke`。

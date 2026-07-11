@@ -56,7 +56,8 @@ export async function requestChatCompletionsJson(
         'Content-Type': 'application/json',
         Authorization: `Bearer ${config.apiKey}`
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: request.signal
     });
     data = await readJsonResponse<ChatCompletionJson>(response, request.label);
   } catch (error) {

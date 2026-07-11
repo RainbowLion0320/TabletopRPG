@@ -4,7 +4,7 @@ title: 项目全局综述
 tags: [overview, project, aligned]
 sources: [project_plan.md, ../../docs/PRD.md, ../../docs/SPEC.md, ../../docs/GDD.md]
 created: 2026-05-14
-updated: 2026-06-15
+updated: 2026-07-11
 ---
 
 # AI 跑团游戏 · 项目全局综述
@@ -28,7 +28,7 @@ updated: 2026-06-15
 - React/Vite/TypeScript 前端架构。
 - 标题页、预设调查员选择页、横屏游戏主界面。
 - 4 个预设调查员，可选择 1-4 名进入游戏。
-- AI DM 支持 OpenAI、Anthropic、MiMo、自定义 OpenAI-compatible endpoint。
+- AI DM 支持 OpenAI Responses、MiMo 和自定义 OpenAI-compatible Chat Completions endpoint。
 - AI DM 响应进入游戏前执行 JSON 契约校验，格式无效时自动修复重试一次。
 - D100 技能检定系统，骰子由前端执行。
 - Together / Split 两种探索模式。
@@ -50,7 +50,8 @@ updated: 2026-06-15
 ## 核心技术决策
 
 - **前端**：React 18 + TypeScript + Vite。
-- **AI 接入**：浏览器直调 Anthropic / OpenAI / MiMo / 自定义端点。
+- **AI 接入**：浏览器经统一 adapter 直调 OpenAI Responses、MiMo 或自定义 Chat-compatible endpoint。
+- **异步一致性**：Narrator 前台完成即展示；总结、事实、心智、情景记忆和动态案件板在后台按回合落地，并受 session epoch 与 AbortSignal 保护。
 - **数据存储**：localStorage + JSON，无后端。
 - **状态管理**：`useReducer` + `GameState`，恢复存档时统一经过 `hydrateGameState()`。
 - **游戏规则**：COC 第七版风格 D100 技能检定。

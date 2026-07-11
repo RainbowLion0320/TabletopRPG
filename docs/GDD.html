@@ -180,7 +180,7 @@ footer {
 <body>
 <nav id="sidebar">
   <div class="nav-title">GDD Mirror</div>
-<a href="#s0" class="">0. 当前实现状态（2026-06-15 对齐补充）</a>
+<a href="#s0" class="">0. 当前实现状态（2026-07-11 对齐补充）</a>
 <a href="#s0-1" class="sub">0.1 当前已实现</a>
 <a href="#s0-2" class="sub">0.2 当前未实现但保留为设计目标</a>
 <a href="#s0-3" class="sub">0.3 阅读约定</a>
@@ -235,9 +235,9 @@ footer {
 <main>
   <div class="content">
 <header class="doc-header"><h1>《雾中消逝》AI跑团 游戏设计文档 (GDD)</h1><p class="doc-subtitle">Full GDD mirror - Source: docs/GDD.md - Updated 2026-05-29</p></header>
-<blockquote><p>设计版本：v0.5 | 原始基线：2026-05-15</p><p>实现对齐补充：2026-06-15</p><p>规则体系：COC 第7版 | 首发模组：《雾中消逝》| 作者：舒爾茲上尉</p></blockquote>
+<blockquote><p>设计版本：v0.6 | 原始基线：2026-05-15</p><p>实现对齐补充：2026-07-11</p><p>规则体系：COC 第7版 | 首发模组：《雾中消逝》| 作者：舒爾茲上尉</p></blockquote>
 <hr>
-<h2 id="s0">0. 当前实现状态（2026-06-15 对齐补充）</h2>
+<h2 id="s0">0. 当前实现状态（2026-07-11 对齐补充）</h2>
 <blockquote><p>本文是完整 GDD，包含当前已实现内容、未开发模块、后续设计目标和细节规则。</p><p>当前可运行产品的产品范围见 <code>docs/PRD.md</code>，技术契约见 <code>docs/SPEC.md</code>。未实现模块不删除，统一按 backlog / 待开发处理。</p></blockquote>
 <h3 id="s0-1">0.1 当前已实现</h3>
 <div class="table-wrap"><table>
@@ -248,7 +248,7 @@ footer {
 <tr><td>角色系统</td><td>4 个预设调查员选择，支持 1-4 人开局；选角页展示立绘、完整属性、派生数值、技能和背景摘要</td></tr>
 <tr><td>主界面</td><td>场景图、调查员立绘、叙事区、行动输入、队伍状态、全屏资料界面、菜单</td></tr>
 <tr><td>探索模式</td><td>一起行动 / 分头探索</td></tr>
-<tr><td>AI DM</td><td>OpenAI / Anthropic / MiMo / 自定义端点，严格 JSON 输出 + 格式校验 + 一次修复重试</td></tr>
+<tr><td>AI DM</td><td>OpenAI Responses / MiMo / Chat-compatible 自定义端点，严格 JSON 输出 + 工具校验 + 一次修复重试</td></tr>
 <tr><td>检定</td><td>前端 D100，核心数值规则集中在 <code>src/data/gameRules.ts</code>，AI 只请求检定并根据结果继续叙事</td></tr>
 <tr><td>存档</td><td><code>trpg-saves-v2</code> 存档槽位，最多保留 12 条，支持最近存档、列表载入和删除</td></tr>
 <tr><td>剧本数据</td><td>5 个场景、6 个 NPC 条目、8 个线索物品</td></tr>
@@ -703,28 +703,21 @@ AI DM输出结构（JSON）
 {
   &quot;narrative&quot;: &quot;场景叙述文本（给玩家看的）&quot;,
   &quot;activeNpc&quot;: &quot;当前交互 NPC 全名或 null&quot;,
-  &quot;check&quot;: null 或 {
-    &quot;skill&quot;: &quot;侦查&quot;,
-    &quot;difficulty&quot;: &quot;普通&quot;,
-    &quot;player&quot;: &quot;亨利·格雷&quot;,
-    &quot;reason&quot;: &quot;触发原因&quot;
-  },
-  &quot;stateUpdate&quot;: {
-    &quot;hp&quot;: {},
-    &quot;san&quot;: {},
-    &quot;flags&quot;: {},
-    &quot;newItems&quot;: [],
-    &quot;sceneChange&quot;: null
-  },
   &quot;nextPrompt&quot;: &quot;接下来你们想做什么？&quot;,
-  &quot;playerChoices&quot;: [&quot;建议行动1&quot;, &quot;建议行动2&quot;, &quot;建议行动3&quot;]
+  &quot;playerChoices&quot;: {
+    &quot;亨利·格雷&quot;: [&quot;仅适合亨利的建议1&quot;, &quot;建议2&quot;],
+    &quot;艾达·华莱士&quot;: [&quot;仅适合艾达的建议1&quot;, &quot;建议2&quot;]
+  }
 }</code></pre>
+<p>检定、状态更新、场景变化和内幕解锁不写入 Narrator JSON，而是通过工具调用提议；Director 校验后才由 StateResolver 转为游戏事件和 reducer 可消费状态。</p>
 <p>运行时格式规则：</p>
 <ul>
 <li>AI DM 输出必须能解析为符合上述契约的 JSON 对象。</li>
 <li>完整 Markdown JSON 代码块可以被提取解析，但 system prompt 要求模型不要返回代码块。</li>
 <li>第一次输出格式无效时，前端向同一 Provider 发送一次格式修复请求。</li>
 <li>第二次仍无效时，前端拦截原始输出，只显示系统错误，不把坏 JSON、Markdown 或混合文本展示为 DM 叙事。</li>
+<li>Narrator 完成后立即展示叙事；总结、事实、NPC 心智、情景记忆和动态案件板在后台继续，按回合顺序落地。</li>
+<li>重开、读档、返回首页、超时或卸载会取消旧请求，旧会话结果不得写入当前游戏。</li>
 </ul>
 <h3 id="s7-3">7.3 自由度边界控制（核心设计）</h3>
 <p><strong>Layer 1：物理合理性（硬限制）</strong></p>
@@ -903,7 +896,7 @@ AI DM输出结构（JSON）
 <h2 id="s9">九、技术架构</h2>
 <h3 id="s9-1">9.1 当前技术栈（Vite + React）</h3>
 <pre><code>前端：Vite + React 18 + TypeScript
-AI接入：OpenAI / Anthropic / MiMo / OpenAI-compatible Custom Endpoint
+AI接入：OpenAI Responses / MiMo / OpenAI-compatible Chat Completions
 数据：localStorage（存档槽位/API配置/剧情状态）
 骰子：前端 D100 随机数 + React 检定卡
 状态：useReducer + GameState hydration
@@ -912,7 +905,8 @@ AI接入：OpenAI / Anthropic / MiMo / OpenAI-compatible Custom Endpoint
 <h3 id="s9-2">9.2 AI API接入</h3>
 <p>当前运行时配置：</p>
 <pre><code class="language-typescript">ApiConfig {
-  provider: &quot;openai&quot; | &quot;anthropic&quot; | &quot;mimo&quot; | &quot;custom&quot;;
+  provider: &quot;openai&quot; | &quot;mimo&quot; | &quot;custom&quot;;
+  protocol: &quot;responses&quot; | &quot;chat-completions&quot;;
   apiKey: string;
   endpoint?: string;
   model?: string;
@@ -984,11 +978,11 @@ AI代理：服务端统一调用（隐藏密钥）
 <ol>
 <li><strong>立绘素材升级路线</strong>——现有素材继续使用；正式版是写实、插画、AI 生成还是手绘仍待定。</li>
 <li><strong>场景图升级路线</strong>——<code>scene_main_fog_london.gif</code> 作为高表现力主视觉保留；其余场景最终美术制作方式待定。</li>
-<li><strong>本地模型支持</strong>——OpenAI / Anthropic / MiMo / 自定义端点已支持；是否投入本地模型路线仍待评估。</li>
+<li><strong>本地模型支持</strong>——当前支持 OpenAI Responses、MiMo 与自定义 Chat-compatible endpoint；是否投入本地模型路线仍待评估。</li>
 <li><strong>游戏正式名称</strong>——暂定“《雾中消逝》AI跑团”。</li>
 </ol>
 <hr>
-<p><em>GDD v0.4 | 2026-05-29 | 基于当前代码、PRD、SPEC 和保留设计目标整理</em> <em>剧本原作：舒爾茲上尉（790086893@qq.com）</em></p>
+<p><em>GDD v0.6 | 2026-07-11 | 基于当前代码、PRD、SPEC 和保留设计目标整理</em> <em>剧本原作：舒爾茲上尉（790086893@qq.com）</em></p>
 
     <footer>GDD HTML mirror - Source: docs/GDD.md - Updated 2026-05-29</footer>
   </div>

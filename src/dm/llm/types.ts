@@ -40,6 +40,7 @@ export interface LlmJsonRequest {
   maxOutputTokens?: number;
   tools?: OpenAiTool[];
   useTools?: boolean;
+  signal?: AbortSignal;
 }
 
 export interface LlmResult {

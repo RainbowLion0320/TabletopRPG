@@ -10,6 +10,7 @@
 
 import type { ApiConfig, ConversationTurn, GameState } from '../types/game';
 import { generateJson } from './llm/client';
+import { AiResponseFormatError } from './llm/errors';
 
 /** 近 N 对（user/assistant）原文不被总结。8 对 = 16 条。 */
 export const RECENT_TURN_PAIRS_KEEP = 8;
@@ -28,6 +29,7 @@ export interface MemoryConsolidation {
 export interface MaybeConsolidateOptions {
   /** 强制总结（用于调试） */
   force?: boolean;
+  signal?: AbortSignal;
 }
 
 /**
@@ -60,7 +62,8 @@ export async function maybeConsolidateMemory(
   const newSummary = await summarizeChunk(
     config,
     oldChunk,
-    state.longTermMemorySummary || ''
+    state.longTermMemorySummary || '',
+    options.signal
   );
 
   const remainingHistory = history.slice(sliceEnd);
@@ -99,7 +102,8 @@ const SUMMARY_RESPONSE_SCHEMA = {
 async function summarizeChunk(
   config: ApiConfig,
   chunk: ConversationTurn[],
-  previousSummary: string
+  previousSummary: string,
+  signal?: AbortSignal
 ): Promise<string> {
   const userMessage = buildSummarizerUserMessage(chunk, previousSummary);
 
@@ -110,7 +114,8 @@ async function summarizeChunk(
     maxOutputTokens: 1024,
     schemaName: 'memory_summary',
     schema: SUMMARY_RESPONSE_SCHEMA,
-    useTools: false
+    useTools: false,
+    signal
   });
   return parseSummary(result.rawText);
 }
@@ -143,6 +148,5 @@ function parseSummary(raw: string): string {
       // try next candidate
     }
   }
-  // 解析失败时退回原文（去掉外层），避免污染。
-  return stripped.slice(0, 800);
+  throw new AiResponseFormatError('Summarizer 返回的 summary 不是有效的非空 JSON 字段');
 }

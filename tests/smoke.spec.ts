@@ -376,6 +376,27 @@ test('reference panel renders saved dynamic case board hypotheses', async ({ pag
   await expect(page.getByText('来源事件：e1')).toBeVisible();
 });
 
+test('reference panel uses the compact case board without horizontal overflow at 390px', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await gotoWithSave(page, createDynamicCaseBoardSave());
+
+  await page.getByRole('button', { name: '继续游戏' }).click();
+  await page.getByRole('button', { name: '资料' }).click();
+
+  const drawer = page.locator('.info-drawer-react.open');
+  await expect(drawer.locator('.case-board-compact-list')).toBeVisible();
+  await expect(drawer.locator('.case-board-canvas')).toBeHidden();
+  await expect(drawer.locator('.case-board-compact-card.dynamic.hypothesis', {
+    hasText: '可能有内应协助'
+  })).toBeVisible();
+  const overflow = await page.evaluate(() => ({
+    document: document.documentElement.scrollWidth - window.innerWidth,
+    drawer: Math.max(0, (document.querySelector('.info-drawer-react')?.scrollWidth ?? 0) - window.innerWidth)
+  }));
+  expect(overflow.document).toBeLessThanOrEqual(1);
+  expect(overflow.drawer).toBeLessThanOrEqual(1);
+});
+
 test('submitting an action without an API key opens AI settings instead of crashing', async ({ page }) => {
   test.skip(hasEnvDefaultApiKey, 'requires no default API key from process env or .env.local');
   await startNewGame(page);

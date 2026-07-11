@@ -1,11 +1,11 @@
 # 《雾中消逝》AI跑团 游戏设计文档 (GDD)
-> 设计版本：v0.5 | 原始基线：2026-05-15
-> 实现对齐补充：2026-06-15
+> 设计版本：v0.6 | 原始基线：2026-05-15
+> 实现对齐补充：2026-07-11
 > 规则体系：COC 第7版 | 首发模组：《雾中消逝》| 作者：舒爾茲上尉
 
 ---
 
-## 0. 当前实现状态（2026-06-15 对齐补充）
+## 0. 当前实现状态（2026-07-11 对齐补充）
 
 > 本文是完整 GDD，包含当前已实现内容、未开发模块、后续设计目标和细节规则。
 > 当前可运行产品的产品范围见 `docs/PRD.md`，技术契约见 `docs/SPEC.md`。未实现模块不删除，统一按 backlog / 待开发处理。
@@ -19,7 +19,7 @@
 | 角色系统 | 4 个预设调查员选择，支持 1-4 人开局；选角页展示立绘、完整属性、派生数值、技能和背景摘要 |
 | 主界面 | 场景图、调查员立绘、叙事区、行动输入、队伍状态、全屏资料界面、菜单 |
 | 探索模式 | 一起行动 / 分头探索 |
-| AI DM | OpenAI / Anthropic / MiMo / 自定义端点，严格 JSON 输出 + 格式校验 + 一次修复重试 |
+| AI DM | OpenAI Responses / MiMo / Chat-compatible 自定义端点，严格 JSON 输出 + 工具校验 + 一次修复重试 |
 | 检定 | 前端 D100，核心数值规则集中在 `src/data/gameRules.ts`，AI 只请求检定并根据结果继续叙事 |
 | 存档 | `trpg-saves-v2` 存档槽位，最多保留 12 条，支持最近存档、列表载入和删除 |
 | 剧本数据 | 5 个场景、6 个 NPC 条目、8 个线索物品 |
@@ -513,29 +513,23 @@ AI DM输出结构（JSON）
 {
   "narrative": "场景叙述文本（给玩家看的）",
   "activeNpc": "当前交互 NPC 全名或 null",
-  "check": null 或 {
-    "skill": "侦查",
-    "difficulty": "普通",
-    "player": "亨利·格雷",
-    "reason": "触发原因"
-  },
-  "stateUpdate": {
-    "hp": {},
-    "san": {},
-    "flags": {},
-    "newItems": [],
-    "sceneChange": null
-  },
   "nextPrompt": "接下来你们想做什么？",
-  "playerChoices": ["建议行动1", "建议行动2", "建议行动3"]
+  "playerChoices": {
+    "亨利·格雷": ["仅适合亨利的建议1", "建议2"],
+    "艾达·华莱士": ["仅适合艾达的建议1", "建议2"]
+  }
 }
 ```
+
+检定、状态更新、场景变化和内幕解锁不写入 Narrator JSON，而是通过工具调用提议；Director 校验后才由 StateResolver 转为游戏事件和 reducer 可消费状态。
 
 运行时格式规则：
 - AI DM 输出必须能解析为符合上述契约的 JSON 对象。
 - 完整 Markdown JSON 代码块可以被提取解析，但 system prompt 要求模型不要返回代码块。
 - 第一次输出格式无效时，前端向同一 Provider 发送一次格式修复请求。
 - 第二次仍无效时，前端拦截原始输出，只显示系统错误，不把坏 JSON、Markdown 或混合文本展示为 DM 叙事。
+- Narrator 完成后立即展示叙事；总结、事实、NPC 心智、情景记忆和动态案件板在后台继续，按回合顺序落地。
+- 重开、读档、返回首页、超时或卸载会取消旧请求，旧会话结果不得写入当前游戏。
 
 ### 7.3 自由度边界控制（核心设计）
 
@@ -722,7 +716,7 @@ MVP 执行方式：
 
 ```
 前端：Vite + React 18 + TypeScript
-AI接入：OpenAI / Anthropic / MiMo / OpenAI-compatible Custom Endpoint
+AI接入：OpenAI Responses / MiMo / OpenAI-compatible Chat Completions
 数据：localStorage（存档槽位/API配置/剧情状态）
 骰子：前端 D100 随机数 + React 检定卡
 状态：useReducer + GameState hydration
@@ -735,7 +729,8 @@ AI接入：OpenAI / Anthropic / MiMo / OpenAI-compatible Custom Endpoint
 当前运行时配置：
 ```typescript
 ApiConfig {
-  provider: "openai" | "anthropic" | "mimo" | "custom";
+  provider: "openai" | "mimo" | "custom";
+  protocol: "responses" | "chat-completions";
   apiKey: string;
   endpoint?: string;
   model?: string;
@@ -819,10 +814,10 @@ TabletopRPG/
 
 1. **立绘素材升级路线**——现有素材继续使用；正式版是写实、插画、AI 生成还是手绘仍待定。
 2. **场景图升级路线**——`scene_main_fog_london.gif` 作为高表现力主视觉保留；其余场景最终美术制作方式待定。
-3. **本地模型支持**——OpenAI / Anthropic / MiMo / 自定义端点已支持；是否投入本地模型路线仍待评估。
+3. **本地模型支持**——当前支持 OpenAI Responses、MiMo 与自定义 Chat-compatible endpoint；是否投入本地模型路线仍待评估。
 4. **游戏正式名称**——暂定“《雾中消逝》AI跑团”。
 
 ---
 
-*GDD v0.4 | 2026-05-29 | 基于当前代码、PRD、SPEC 和保留设计目标整理*
+*GDD v0.6 | 2026-07-11 | 基于当前代码、PRD、SPEC 和保留设计目标整理*
 *剧本原作：舒爾茲上尉（790086893@qq.com）*

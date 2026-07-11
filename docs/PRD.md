@@ -1,7 +1,7 @@
 # TabletopRPG PRD
 
-> Version: v0.5
-> Updated: 2026-06-15
+> Version: v0.6
+> Updated: 2026-07-11
 > Product baseline: Vite + React + TypeScript MVP
 
 ## 1. Product Positioning
@@ -25,7 +25,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 - Main game screen with scene art, narrative feed, action dock, investigator party portraits/status, menu, and a fullscreen reference panel centered on a player-known case board.
 - Together mode: all selected investigators submit one action round together.
 - Split mode: one investigator acts in a selected scene at a time.
-- AI DM integration through OpenAI, Anthropic, MiMo, or a custom OpenAI-compatible endpoint.
+- AI DM integration through OpenAI Responses, MiMo, or a custom OpenAI-compatible Chat Completions endpoint.
 - Strict JSON-oriented AI response contract with fallback parsing.
 - D100 skill check flow handled by the frontend.
 - State updates for HP, SAN, flags, scene change, clues, active NPC, and suggested actions.
@@ -63,11 +63,12 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 
 1. User enters investigator actions.
 2. App appends player messages and conversation history.
-3. App calls AI DM with current state and actions.
-4. AI returns a JSON object matching the response contract.
-5. App validates the response format before it reaches the reducer.
-6. If the first AI response is malformed, App retries once with a format-repair prompt; if still invalid, the raw output is blocked and shown only as a system error.
-7. App normalizes the valid response and updates narrative, checks, state, clues, scene, and suggestions.
+3. App starts a session-scoped AI DM turn and calls Narrator through the configured protocol adapter.
+4. Narrator returns player-facing JSON plus optional tool calls; Director validates tools and StateResolver translates accepted calls.
+5. The valid narrative is applied immediately and the thinking indicator is cleared.
+6. Summary, System2, fact extraction, episodic memory, and dynamic case board synthesis continue in the background without blocking player feedback.
+7. Background updates are applied in DM-turn order. Restart, load, home navigation, timeout, or unmount aborts the old session and prevents stale writes.
+8. If the first Narrator response is malformed, App retries once with a format-repair prompt; if still invalid, the raw output is blocked and shown only as a system error.
 
 ### Skill Check
 
@@ -84,6 +85,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 | New game | Preset selection can enter the main game with at least one investigator |
 | Submit action | Missing API key opens AI settings instead of crashing |
 | AI response | Malformed model output is retried once and never displayed as DM narrative |
+| AI lifecycle | Narrator is player-visible before optional cognition jobs finish; background results are ordered and stale sessions cannot write state |
 | AI response | Invalid scene names, unknown NPCs, string numeric deltas, and clue names are normalized or ignored safely after format validation |
 | Case board | Reference panel combines the static scenario spine with AI-proposed dynamic cards/edges only after system review, source anchoring, dedupe, and anti-spoiler checks |
 | Dice | 96-100 is treated as fumble before success levels |

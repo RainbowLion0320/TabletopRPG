@@ -4,7 +4,7 @@ title: MVP 功能范围
 tags: [decision, mvp, scope, aligned]
 sources: [project_plan.md, ../../docs/PRD.md]
 created: 2026-05-18
-updated: 2026-05-29
+updated: 2026-07-11
 ---
 
 # 决策：MVP 功能范围
@@ -35,7 +35,7 @@ updated: 2026-05-29
 - COC 风格属性、HP/MP/SAN、技能总值。
 
 ### AI DM 系统
-- OpenAI / Anthropic / MiMo / 自定义 Provider。
+- OpenAI Responses / MiMo / 自定义 Chat-compatible Provider。
 - 系统提示词动态注入剧本、状态、角色卡。
 - JSON 契约校验、格式修复重试、状态归一化。
 - 推荐行动建议。

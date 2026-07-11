@@ -24,6 +24,7 @@ import { existsSync, readFileSync, statSync, rmSync, writeFileSync } from 'node:
 import { join, resolve, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { buildCacheFileEntries, cacheFilesMatch } from './precheck-cache.mjs';
 
 // ── paths ──────────────────────────────────────────────
 const __filename = fileURLToPath(import.meta.url);
@@ -150,13 +151,7 @@ function tryCache() {
 
   // All tracked files must have identical mtime
   const files = trackedFiles();
-  if (files.length !== (cache.files || []).length) return false;
-
-  for (const entry of cache.files) {
-    const currentMtime = mtime(entry.path);
-    if (currentMtime === 0) return false;       // file deleted
-    if (currentMtime !== entry.mtime) return false; // file changed
-  }
+  if (!cacheFilesMatch(files, cache.files, mtime)) return false;
 
   // Cache hit — environment unchanged since last successful check
   console.log(`  ${OK_TAG} environment verified ${c.dim}(cached)${c.reset}`);
@@ -164,9 +159,7 @@ function tryCache() {
 }
 
 function writeCache() {
-  const files = trackedFiles()
-    .map((path) => ({ path, mtime: mtime(path) }))
-    .filter((f) => f.mtime > 0);
+  const files = buildCacheFileEntries(trackedFiles(), mtime);
 
   try {
     writeFileSync(CACHE_FILE, JSON.stringify({

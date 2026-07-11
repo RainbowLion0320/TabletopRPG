@@ -18,6 +18,7 @@ afterEach(() => {
 
 describe('LLM provider adapters', () => {
   it('uses Responses request and response shapes for responses protocol', async () => {
+    const controller = new AbortController();
     const config: ApiConfig = {
       provider: 'openai',
       protocol: 'responses',
@@ -56,12 +57,14 @@ describe('LLM provider adapters', () => {
       schema,
       maxOutputTokens: 128,
       tools: [DM_TOOLS[0]],
-      useTools: true
+      useTools: true,
+      signal: controller.signal
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0];
     expect(String(url)).toBe('https://unit.test/v1/responses');
+    expect(init?.signal).toBe(controller.signal);
     const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
     expect(body).toMatchObject({
       model: 'gpt-test',
@@ -92,6 +95,7 @@ describe('LLM provider adapters', () => {
   });
 
   it('uses Chat Completions request and response shapes for chat-compatible protocol', async () => {
+    const controller = new AbortController();
     const config: ApiConfig = {
       provider: 'custom',
       protocol: 'chat-completions',
@@ -134,12 +138,14 @@ describe('LLM provider adapters', () => {
       schema,
       maxOutputTokens: 128,
       tools: [DM_TOOLS[0]],
-      useTools: true
+      useTools: true,
+      signal: controller.signal
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0];
     expect(String(url)).toBe('https://gateway.test/v1/chat/completions');
+    expect(init?.signal).toBe(controller.signal);
     const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
     expect(body).toMatchObject({
       model: 'gateway-model',

@@ -30,6 +30,7 @@ export interface FactExtractorInput {
   playerNames: string[];
   /** 现有 facts（用于 supersede 合并查询） */
   existingFacts: readonly AtomicFact[];
+  signal?: AbortSignal;
 }
 
 const FACT_PREDICATES: ReadonlyArray<FactPredicate> = [
@@ -187,7 +188,8 @@ async function callExtractorLLM(
     maxOutputTokens: 512,
     schemaName: 'turn_facts',
     schema: FACT_EXTRACTOR_RESPONSE_SCHEMA,
-    useTools: false
+    useTools: false,
+    signal: input.signal
   });
   return result.rawText;
 }

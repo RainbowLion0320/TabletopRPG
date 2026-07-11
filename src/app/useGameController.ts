@@ -1,4 +1,4 @@
-import { useReducer, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import {
   buildDiceResultAction,
   buildDiceResultMessage,
@@ -12,9 +12,12 @@ import { prepareCheck, rollD100 } from '../services/dice';
 import { persistApiConfig, readApiConfig } from '../services/storage';
 import { createInitialGameState, gameReducer } from '../state/gameReducer';
 import type { ApiConfig, GameState, Investigator, SceneId } from '../types/game';
+import { AiProviderConfigError } from '../dm/llm/errors';
 import { runDmTurn } from '../dm/pipeline';
+import type { DmBackgroundUpdate } from '../dm/types';
+import { DmTurnCoordinator } from './dmTurnCoordinator';
 
-const DM_TURN_TIMEOUT_MS = 180_000; // 3 分钟整体超时
+const AI_DM_TIMEOUT_MS = 180_000;
 
 export function useGameController() {
   const { notify, toast } = useToast();
@@ -25,14 +28,19 @@ export function useGameController() {
   const [apiOpen, setApiOpen] = useState(false);
   const [saveManagerOpen, setSaveManagerOpen] = useState(false);
   const [journalOpen, setJournalOpen] = useState(false);
+  const dmCoordinatorRef = useRef(new DmTurnCoordinator());
+
+  useEffect(() => () => dmCoordinatorRef.current.invalidate(), []);
 
   function startGame(players: Investigator[]) {
+    dmCoordinatorRef.current.invalidate();
     dispatch({ type: 'start', players });
   }
 
   function loadLatest() {
     const latest = saveSlots.getLatestSave();
     if (!latest) return false;
+    dmCoordinatorRef.current.invalidate();
     dispatch({ type: 'restore', state: latest.gameState });
     return true;
   }
@@ -48,6 +56,7 @@ export function useGameController() {
       notify('暂无存档');
       return;
     }
+    dmCoordinatorRef.current.invalidate();
     dispatch({ type: 'restore', state: latest.gameState });
     setMenuOpen(false);
     notify('已载入最近存档');
@@ -60,6 +69,7 @@ export function useGameController() {
   }
 
   function loadSaveSlot(save: GameState) {
+    dmCoordinatorRef.current.invalidate();
     dispatch({ type: 'restore', state: save });
     setSaveManagerOpen(false);
     setMenuOpen(false);
@@ -114,6 +124,43 @@ export function useGameController() {
     runAi(actions);
   }
 
+  function applyBackgroundUpdate(update: DmBackgroundUpdate, sourceHistoryLength: number) {
+    const {
+      memoryUpdate,
+      factsToAppend,
+      caseBoardPatch,
+      mindUpdates,
+      prospectiveIntentsToAdd,
+      episodicMemoriesToAdd
+    } = update;
+    if (memoryUpdate) {
+      dispatch({
+        type: 'consolidateMemory',
+        summary: memoryUpdate.summary,
+        summarizedUntilIndex: memoryUpdate.summarizedUntilIndex,
+        remainingHistory: memoryUpdate.remainingHistory,
+        sourceHistoryLength
+      });
+    }
+    if (factsToAppend && factsToAppend.length) {
+      dispatch({ type: 'appendFacts', facts: factsToAppend });
+    }
+    if (caseBoardPatch) {
+      dispatch({ type: 'applyCaseBoardPatch', patch: caseBoardPatch });
+    }
+    if (mindUpdates && mindUpdates.length) {
+      for (const updateItem of mindUpdates) {
+        dispatch({ type: 'updateNpcMindModel', npcId: updateItem.npcId, partial: updateItem.partial });
+      }
+    }
+    if (prospectiveIntentsToAdd && prospectiveIntentsToAdd.length) {
+      dispatch({ type: 'addProspectiveIntents', intents: prospectiveIntentsToAdd });
+    }
+    if (episodicMemoriesToAdd && episodicMemoriesToAdd.length) {
+      dispatch({ type: 'appendEpisodicMemory', records: episodicMemoriesToAdd });
+    }
+  }
+
   async function runAi(actions: PlayerAction[]) {
     const config = readApiConfig();
     if (!config?.apiKey) {
@@ -121,29 +168,25 @@ export function useGameController() {
       setApiOpen(true);
       return;
     }
+    const coordinator = dmCoordinatorRef.current;
+    const task = coordinator.begin(AI_DM_TIMEOUT_MS);
     try {
       dispatch({ type: 'setThinking', value: true });
-      const turnPromise = runDmTurn(config, { state, actions });
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('DM 推演超时（3分钟），请检查网络连接或 API 服务状态')), DM_TURN_TIMEOUT_MS)
-      );
+      const sourceHistoryLength = state.conversationHistory.length;
       const {
         raw,
         legacyResponse,
         events,
-        memoryUpdate,
-        mindUpdates,
-        prospectiveIntentsToAdd,
-        deferredUpdates,
-        decayIntents
-      } = await Promise.race([turnPromise, timeoutPromise]);
-      if (memoryUpdate) {
-        dispatch({
-          type: 'consolidateMemory',
-          summary: memoryUpdate.summary,
-          summarizedUntilIndex: memoryUpdate.summarizedUntilIndex,
-          remainingHistory: memoryUpdate.remainingHistory
-        });
+        decayIntents,
+        backgroundUpdate
+      } = await runDmTurn(config, {
+        state,
+        actions,
+        signal: task.controller.signal
+      });
+      if (!coordinator.isCurrent(task)) {
+        coordinator.finish(task);
+        return;
       }
       if (decayIntents) {
         dispatch({ type: 'decayProspectiveIntents' });
@@ -159,27 +202,50 @@ export function useGameController() {
       if (events && events.length) {
         dispatch({ type: 'appendEvents', events });
       }
-      if (mindUpdates && mindUpdates.length) {
-        for (const update of mindUpdates) {
-          dispatch({ type: 'updateNpcMindModel', npcId: update.npcId, partial: update.partial });
-        }
-      }
-      if (prospectiveIntentsToAdd && prospectiveIntentsToAdd.length) {
-        dispatch({ type: 'addProspectiveIntents', intents: prospectiveIntentsToAdd });
-      }
-      // P1: 事实抽取 + 情景记忆延迟写入，不阻塞玩家可见响应
-      if (deferredUpdates) {
-        void deferredUpdates.then(({ factsToAppend, episodicMemoriesToAdd }) => {
-          if (factsToAppend && factsToAppend.length) {
-            dispatch({ type: 'appendFacts', facts: factsToAppend });
+      if (backgroundUpdate) {
+        void coordinator.enqueue(
+          task,
+          backgroundUpdate,
+          (update) => applyBackgroundUpdate(update, sourceHistoryLength),
+          (error) => {
+            if (import.meta.env.DEV) {
+              // eslint-disable-next-line no-console
+              console.warn(
+                '[useGameController] AI DM background update failed:',
+                error instanceof Error ? error.message : error
+              );
+            }
           }
-          if (episodicMemoriesToAdd && episodicMemoriesToAdd.length) {
-            dispatch({ type: 'appendEpisodicMemory', records: episodicMemoriesToAdd });
-          }
-        });
+        );
+      } else {
+        coordinator.finish(task);
       }
     } catch (error) {
+      if (task.timedOut) {
+        coordinator.finish(task);
+        dispatch({ type: 'setThinking', value: false });
+        dispatch({
+          type: 'appendMessage',
+          message: { type: 'system', text: 'AI DM 连接超时：推演超过 3 分钟，请检查模型服务后重试。' }
+        });
+        return;
+      }
+      if (!coordinator.isCurrent(task)) {
+        coordinator.finish(task);
+        return;
+      }
+      coordinator.finish(task);
       dispatch({ type: 'setThinking', value: false });
+      if (error instanceof AiProviderConfigError) {
+        const message = error.message;
+        setMenuOpen(false);
+        setApiOpen(true);
+        dispatch({
+          type: 'appendMessage',
+          message: { type: 'system', text: `请补全 AI DM 配置：${message}` }
+        });
+        return;
+      }
       const prefix = error instanceof AiResponseFormatError ? 'AI DM 返回格式无效' : 'AI DM 连接失败';
       dispatch({
         type: 'appendMessage',
@@ -215,11 +281,13 @@ export function useGameController() {
   }
 
   function returnHome() {
+    dmCoordinatorRef.current.invalidate();
     saveSlots.refreshSaves();
     setMenuOpen(false);
   }
 
   function restartSetup() {
+    dmCoordinatorRef.current.invalidate();
     setMenuOpen(false);
   }
 

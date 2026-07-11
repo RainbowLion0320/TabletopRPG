@@ -17,6 +17,7 @@ export interface CaseBoardSynthesizerInput {
   events: readonly PersistedDMEvent[];
   clues: readonly StoryItem[];
   existingBoard: CaseBoardPatch;
+  signal?: AbortSignal;
 }
 
 const CASE_BOARD_SYNTHESIZER_PROMPT = `你是跑团案件板合成助手。任务：只基于玩家已见信息，提出可展示在案件板上的动态卡片和关系。
@@ -230,7 +231,8 @@ export async function synthesizeCaseBoardPatch(
       schemaName: 'case_board_patch',
       schema: CASE_BOARD_PATCH_SCHEMA,
       maxOutputTokens: 900,
-      useTools: false
+      useTools: false,
+      signal: input.signal
     });
     return parseCaseBoardPatchJson(result.rawText);
   } catch (err) {

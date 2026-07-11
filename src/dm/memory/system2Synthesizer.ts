@@ -38,6 +38,7 @@ export interface System2Input {
   summary: string;
   /** intent 默认 ttl（默认 6） */
   defaultIntentTtl: number;
+  signal?: AbortSignal;
 }
 
 export interface System2Output {
@@ -182,7 +183,8 @@ async function callSynthesizerLLM(
     maxOutputTokens: 1024,
     schemaName: 'system2_memory',
     schema: SYSTEM2_RESPONSE_SCHEMA,
-    useTools: false
+    useTools: false,
+    signal: input.signal
   });
   return result.rawText;
 }

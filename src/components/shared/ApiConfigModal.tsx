@@ -35,8 +35,8 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
       ...current,
       provider,
       protocol: defaultProtocolForProvider(provider),
-      endpoint: defaultEndpointForProvider(provider) || current.endpoint || '',
-      model: defaultModelForProvider(provider) || current.model || ''
+      endpoint: defaultEndpointForProvider(provider),
+      model: defaultModelForProvider(provider)
     }));
   };
 

@@ -136,3 +136,8 @@
 - `docs/SPEC.md` 的 AI Provider 表仍描述 OpenAI Chat Completions 和 Anthropic，已修正为当前 Responses / Chat Adapter 架构。
 - `prompts/README.md` 仍指向旧的 `src/services/aiDm.ts` 提示词位置，已修正为当前 `src/dm/` 管线。
 - `TabletopRPG/` wiki 和 `docs/PRD.md` 仍有旧 AI Provider / 提示词模块路径，已同步到当前 LLM adapter 与 DM 管线。
+
+## [2026-07-11] lint | 发现 2 类问题
+
+- 代码在环境预检和性能优化合入后丢失动态案件板、v6 存档及非阻塞后台更新契约，而 UI、测试和文档仍依赖这些能力；已恢复并增加架构、竞态、取消和完整检查护栏。
+- PRD、SPEC、GDD、比赛页与 Wiki 再次出现 Anthropic、旧 Narrator `check/stateUpdate` 字段和阻塞式 AI 流程描述；已统一为 OpenAI Responses、MiMo/custom Chat-compatible、工具调用和 session-scoped 后台更新架构。

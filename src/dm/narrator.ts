@@ -457,7 +457,8 @@ async function requestNarrator(
   config: ApiConfig,
   systemPrompt: string,
   inputItems: LlmInputItem[],
-  options: NarratorRequestOptions
+  options: NarratorRequestOptions,
+  signal?: AbortSignal
 ): Promise<RawNarratorPayload> {
   const result = await generateJson(config, {
     label: 'Narrator',
@@ -467,7 +468,8 @@ async function requestNarrator(
     schemaName: 'narrator_response',
     schema: NARRATOR_RESPONSE_SCHEMA,
     tools: options.tools ?? DM_TOOLS,
-    useTools: options.useFunctionCalling !== false
+    useTools: options.useFunctionCalling !== false,
+    signal
   });
   return {
     raw: result.rawText,
@@ -491,6 +493,7 @@ export interface CallNarratorInput {
    * 不传则 lookup_entity 仅校验形态，模型在同一轮拿不到查询结果。
    */
   lookupResolver?: (kind: string, id: string) => string;
+  signal?: AbortSignal;
 }
 
 /** Narrator 内部 lookup 循环的最大轮数（不含最后一轮最终响应）。 */
@@ -570,7 +573,7 @@ export async function callNarrator(
         const payload = await requestNarrator(config, systemPrompt, messages, {
           useFunctionCalling: useFnCall,
           tools
-        });
+        }, input.signal);
         const parsedCalls = parseResponseToolCalls(payload.rawToolCalls);
 
         // 检查是否仅 lookup_entity 且未产出 narrative：有 resolver 且轮数未超限则回填后重试。
@@ -608,6 +611,7 @@ export async function callNarrator(
         };
       }
     } catch (err) {
+      if (input.signal?.aborted) throw err;
       if (isAiProviderRuntimeError(err)) throw err;
       if (import.meta.env.DEV) {
         // eslint-disable-next-line no-console

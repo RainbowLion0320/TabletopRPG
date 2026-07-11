@@ -1,7 +1,7 @@
 # TabletopRPG Technical Spec
 
-> Version: v0.4
-> Updated: 2026-05-29
+> Version: v0.5
+> Updated: 2026-07-11
 > Scope: current React/Vite implementation
 
 ## 1. Runtime Stack
@@ -13,7 +13,7 @@
 | Build tool | Vite |
 | Icons | `lucide-react` |
 | Persistence | browser `localStorage` |
-| AI API | Anthropic Messages API, OpenAI Chat Completions, MiMo/OpenAI-compatible custom endpoint |
+| AI API | OpenAI Responses API, MiMo/OpenAI-compatible Chat Completions |
 
 ## 2. Commands
 
@@ -36,7 +36,8 @@ src/
 │   ├── game/            # Main game screen controls and panels
 │   └── shared/          # Cross-screen UI such as API settings
 ├── data/                # Rules config, story, skills, jobs, preset investigators
-├── services/            # AI, dice, storage
+├── dm/                  # AI DM pipeline, provider adapters, memory, case board synthesis
+├── services/            # Dice, storage, legacy response helpers
 ├── state/               # Reducer, state hydration, AI response normalization
 ├── styles/              # Global CSS
 ├── types/               # Domain interfaces
@@ -88,7 +89,14 @@ type Screen = 'title' | 'setup' | 'game';
   conversationHistory,
   messages,
   suggestions,
-  isThinking
+  isThinking,
+  longTermMemorySummary,
+  eventLog,
+  atomicFacts,
+  npcMindModels,
+  prospectiveIntents,
+  episodicMemory,
+  caseBoard
 }
 ```
 
@@ -145,7 +153,7 @@ Save payload version `6` adds `GameState.caseBoard`, the persisted dynamic case 
 
 DM business modules call the neutral LLM client in `src/dm/llm/client.ts`. Only `src/dm/llm/*Adapter.ts` may contain protocol endpoint paths or protocol-specific request fields.
 
-### Response Shape
+### Narrator Response Shape
 
 The model output is accepted only after it parses as a JSON object matching this contract. Markdown-wrapped JSON and mixed text with an extractable JSON object are parsed as candidates, but arbitrary non-JSON text is rejected.
 
@@ -153,30 +161,34 @@ The model output is accepted only after it parses as a JSON object matching this
 {
   "narrative": "string",
   "activeNpc": "string or null",
-  "check": {
-    "skill": "侦查",
-    "difficulty": "普通",
-    "player": "亨利·格雷",
-    "reason": "optional"
-  },
-  "stateUpdate": {
-    "hp": { "亨利·格雷": -1 },
-    "san": {},
-    "flags": {},
-    "newItems": ["I01"],
-    "sceneChange": "S02"
-  },
   "nextPrompt": "string",
-  "playerChoices": ["行动1", "行动2", "行动3"]
+  "playerChoices": {
+    "亨利·格雷": ["行动1", "行动2"],
+    "艾达·华莱士": ["行动1", "行动2"]
+  }
 }
 ```
 
+Checks and state changes are not fields in Narrator JSON. Narrator proposes them through `request_check`, `propose_state_update`, `reveal_secret`, `propose_scene_change`, `schedule_consequence`, and `update_npc_mind` tool calls. Director rejects unavailable or invalid calls before StateResolver creates reducer-compatible events and the legacy UI response.
+
 ### Format Enforcement
 
-1. `callAiDm()` requests an AI response for the current action round.
-2. `parseAiResponse()` validates required fields and nested field types before the reducer sees the result.
+1. `callNarrator()` requests an AI response for the current action round through `src/dm/llm/client.ts`.
+2. Narrator validates the JSON fields and parses provider-native tool calls before Director sees the result.
 3. If the first model response is malformed, the frontend sends one repair prompt to the same provider with the invalid output and the exact JSON contract.
 4. If the repair response is still invalid, the raw model output is blocked and a system error is shown. Raw malformed JSON/Markdown must never be appended as a player-visible DM narrative.
+
+### Foreground And Background Lifecycle
+
+`runDmTurn()` has one foreground result and one optional `backgroundUpdate: Promise<DmBackgroundUpdate>`:
+
+1. Foreground waits only for ContextBuilder, Narrator, Director, and StateResolver.
+2. The controller immediately applies narrative, accepted events, checks, and suggestions, then clears `isThinking`.
+3. Summary and System2 run concurrently in the background. Fact extraction runs before dynamic case board synthesis and episodic memory construction.
+4. `DmTurnCoordinator` applies completed background updates in invocation order. `DmTurnOutput` does not expose a duplicate `deferredUpdates` path.
+5. Every LLM request receives the turn's `AbortSignal`. A 180-second task timer is cleared on completion.
+6. New game, restart, save load, return home, component unmount, or timeout invalidates the session, aborts active fetches, and prevents stale foreground or background writes.
+7. Background failures are soft failures and do not retract a valid Narrator result. Invalid or empty Summarizer JSON is discarded rather than stored as long-term memory.
 
 ### Freedom and Tolerance Rules
 
@@ -298,5 +310,6 @@ Current smoke coverage:
 - Save Manager can list, load, and delete explicit save slots.
 - Invalid save payloads are ignored on the title screen.
 - Fullscreen reference panel renders the static case board and v6 saved dynamic hypotheses.
+- Narrator becomes visible before background cognition completes, and abandoned-session responses cannot write into a restarted game.
 - D100 rolls `96-100` are fumbles before success thresholds.
 - Rules config tests verify derived stats, skill base formulas, difficulty thresholds, and fumble range stay centralized.

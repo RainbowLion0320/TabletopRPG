@@ -4,7 +4,7 @@ title: 核心玩法循环
 tags: [gameplay, core, loop]
 sources: [project_plan.md, ../../docs/PRD.md, ../../docs/GDD.md]
 created: 2026-05-18
-updated: 2026-05-29
+updated: 2026-07-11
 ---
 
 # 核心玩法循环
@@ -18,11 +18,13 @@ updated: 2026-05-29
 ```
 AI 叙事
   -> 玩家输入行动
-  -> callAiDm()
-  -> AI JSON 响应
+  -> runDmTurn()
+  -> Narrator JSON + 工具调用
     ├─ 格式无效：修复重试一次；仍无效则拦截为系统错误
-    ├─ 无检定：applyAiResponse() 更新状态与叙事
-    └─ 有检定：prepareCheck() -> 玩家掷骰 -> 检定结果回传 AI
+    ├─ Director / StateResolver：校验工具并生成事件
+    ├─ 前台：applyAiResponse() 立即更新状态与叙事
+    ├─ 有检定：prepareCheck() -> 玩家掷骰 -> 检定结果回传 AI
+    └─ 后台：summary / facts / System2 / episodic memory / case board 按回合落地
 ```
 
 ## 页面状态机
@@ -82,12 +84,7 @@ AI 响应中的 `playerChoices` 会显示为建议行动按钮。玩家可以点
 
 ## 状态更新
 
-AI 响应可通过 `stateUpdate` 更新：
-
-- HP/SAN 增减。
-- flags。
-- newItems。
-- sceneChange。
+AI 不直接写 reducer。Narrator 通过 `request_check`、`propose_state_update`、`reveal_secret`、`propose_scene_change`、`schedule_consequence` 等工具提出变更，Director 校验后由 StateResolver 转为事件。重开、读档或返回首页会取消旧 session 的请求，防止旧结果污染当前游戏。
 - activeNpc。
 - playerChoices。
 

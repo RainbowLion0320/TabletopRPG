@@ -63,3 +63,15 @@ test('AI model integration is isolated behind provider adapters', async () => {
   expect(adapterJoined).toContain('/responses');
   expect(adapterJoined).toContain('/chat/completions');
 });
+
+test('dynamic case board and background update contracts remain wired end to end', async () => {
+  const gameTypes = await readSource('src/types/game.ts');
+  const reducer = await readSource('src/state/gameReducer.ts');
+  const pipeline = await readSource('src/dm/pipeline.ts');
+
+  expect(gameTypes).toContain('caseBoard?: CaseBoardState');
+  expect(reducer).toContain("type: 'applyCaseBoardPatch'");
+  expect(pipeline).toContain('synthesizeCaseBoardPatch');
+  expect(pipeline).toContain('backgroundUpdate');
+  expect(pipeline).not.toContain('deferredUpdates');
+});
