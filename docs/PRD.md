@@ -68,7 +68,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 5. The valid narrative is applied immediately and the thinking indicator is cleared.
 6. Summary, System2, fact extraction, episodic memory, and dynamic case board synthesis continue in the background without blocking player feedback.
 7. Background updates are applied in DM-turn order. Restart, load, home navigation, timeout, or unmount aborts the old session and prevents stale writes.
-8. If the first Narrator response is malformed, App retries once with a format-repair prompt; if still invalid, the raw output is blocked and shown only as a system error.
+8. If Narrator JSON is malformed, App first performs deterministic local syntax repair while rechecking the complete contract; only unrepairable output consumes one model-repair retry. If that still fails, raw output is blocked and shown only as a system error.
 
 ### Skill Check
 

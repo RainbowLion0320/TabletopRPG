@@ -174,9 +174,10 @@ Checks and state changes are not fields in Narrator JSON. Narrator proposes them
 ### Format Enforcement
 
 1. `callNarrator()` requests an AI response for the current action round through `src/dm/llm/client.ts`.
-2. Narrator validates the JSON fields and parses provider-native tool calls before Director sees the result.
-3. If the first model response is malformed, the frontend sends one repair prompt to the same provider with the invalid output and the exact JSON contract.
-4. If the repair response is still invalid, the raw model output is blocked and a system error is shown. Raw malformed JSON/Markdown must never be appended as a player-visible DM narrative.
+2. Narrator first performs strict `JSON.parse`, validates required fields, and parses provider-native tool calls before Director sees the result.
+3. Syntax failures are passed through the deterministic `jsonrepair` parser locally. Locally repaired output is accepted only when all Narrator contract fields are present, so truncated JSON cannot be promoted into player-visible narrative.
+4. If local repair cannot produce a complete contract, the frontend sends one repair prompt to the same provider with the invalid output and diagnostic message.
+5. The retry response goes through the same strict/local pipeline. If it is still invalid, raw output is blocked and a system error is shown. Raw malformed JSON/Markdown must never be appended as player-visible DM narrative.
 
 ### Foreground And Background Lifecycle
 

@@ -12,6 +12,7 @@
  */
 
 import type { ApiConfig, ExploreMode } from '../types/game';
+import { jsonrepair } from 'jsonrepair';
 import type { PlayerAction } from '../services/aiDm';
 import type { DmContext } from './contextBuilder';
 import { DM_TOOLS, parseResponseToolCalls } from './tools';
@@ -325,26 +326,50 @@ function collectJsonCandidates(raw: string): string[] {
   return [...new Set(candidates)];
 }
 
+function hasCompleteNarratorContract(value: unknown): value is NarratorJsonShape {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  return typeof record.narrative === 'string'
+    && (record.activeNpc === null || typeof record.activeNpc === 'string')
+    && typeof record.nextPrompt === 'string'
+    && Boolean(record.playerChoices)
+    && typeof record.playerChoices === 'object';
+}
+
 function parseNarratorJson(raw: string): NarratorJsonShape {
   let lastErr = '没有可解析内容';
   for (const candidate of collectJsonCandidates(raw)) {
+    let parsed: unknown;
     try {
-      const parsed = JSON.parse(candidate);
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        const narrative = (parsed as NarratorJsonShape).narrative;
-        if (typeof narrative !== 'string' || !narrative.trim()) {
-          lastErr = 'narrative 字段缺失或为空';
+      parsed = JSON.parse(candidate);
+    } catch (strictError) {
+      try {
+        parsed = JSON.parse(jsonrepair(candidate));
+        if (!hasCompleteNarratorContract(parsed)) {
+          lastErr = '本地修复后的 JSON 缺少 Narrator 必填字段';
           continue;
         }
-        return parsed as NarratorJsonShape;
-      }
-    } catch (e) {
-      lastErr = e instanceof Error ? e.message : String(e);
-      if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
-        console.warn('[narrator] JSON candidate parse failed:', lastErr, '\nCandidate:', candidate.slice(0, 500));
+      } catch (repairError) {
+        const strictMessage = strictError instanceof Error ? strictError.message : String(strictError);
+        const repairMessage = repairError instanceof Error ? repairError.message : String(repairError);
+        lastErr = `${strictMessage}；本地修复失败：${repairMessage}`;
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.warn('[narrator] JSON candidate parse failed:', lastErr, '\nCandidate:', candidate.slice(0, 500));
+        }
+        continue;
       }
     }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      lastErr = '返回值不是 JSON 对象';
+      continue;
+    }
+    const narrative = (parsed as NarratorJsonShape).narrative;
+    if (typeof narrative !== 'string' || !narrative.trim()) {
+      lastErr = 'narrative 字段缺失或为空';
+      continue;
+    }
+    return parsed as NarratorJsonShape;
   }
   if (import.meta.env.DEV) {
     // eslint-disable-next-line no-console

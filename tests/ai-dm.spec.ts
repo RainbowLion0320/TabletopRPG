@@ -90,6 +90,38 @@ test('AI DM retries malformed model output instead of returning raw text as narr
   await expect(page.getByText('raw malformed output')).toHaveCount(0);
 });
 
+test('AI DM repairs unescaped dialogue quotes locally without interrupting the turn', async ({ page }) => {
+  const malformed = '{"narrative":"伊莎贝拉说父亲总提到"水里的东西"，随后沉默下来。","activeNpc":"伊莎贝拉·摩勒","nextPrompt":"继续追问吗？","playerChoices":{"亨利·格雷":["追问细节"],"艾达·华莱士":["观察她的反应"]}}';
+  let narratorAttempts = 0;
+
+  await page.route('https://api.openai.com/v1/responses', async (route) => {
+    const body = JSON.parse(route.request().postData() ?? '{}') as { instructions?: string };
+    const system = body.instructions ?? '';
+    let content = JSON.stringify({ facts: [] });
+    if (system.includes('COC 第七版 AI DM Agent')) {
+      narratorAttempts += 1;
+      content = malformed;
+    } else if (system.includes('案件板合成助手')) {
+      content = JSON.stringify({ nodes: [], edges: [] });
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(responseBody(content))
+    });
+  });
+
+  await startGameWithApi(page);
+  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('追问那句话。');
+  await page.getByRole('button', { name: '下一位' }).click();
+  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('观察她的反应。');
+  await page.getByRole('button', { name: '提交' }).click();
+
+  await expect(page.getByText('伊莎贝拉说父亲总提到"水里的东西"，随后沉默下来。')).toBeVisible();
+  await expect(page.getByText(/AI DM 返回格式无效/)).toHaveCount(0);
+  expect(narratorAttempts).toBe(1);
+});
+
 test('AI DM handles first player action through a chat-compatible provider', async ({ page }) => {
   const narrator = JSON.stringify({
     narrative: 'The chat-compatible narrator response is shown.',

@@ -128,8 +128,24 @@ describe('callNarrator retry repair', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('sends the malformed response and parse error back on the Responses retry', async () => {
-    const malformed = '{\n  "narrative": "雾里传来"钟声"\n  "activeNpc": null\n}';
+  it('repairs unescaped dialogue quotes locally without another model request', async () => {
+    const malformed = '{"narrative":"老人说什么"水里的东西"，随后闭口不言。","activeNpc":null,"nextPrompt":"继续追问吗？","playerChoices":{"亨利":["追问细节"]}}';
+    const fetchMock = vi.fn(async () => jsonResponse(malformed));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const output = await callNarrator(config, {
+      ctx,
+      actions: [{ player: '亨利', action: '追问他看见了什么。' }],
+      mode: 'together',
+      history: []
+    });
+
+    expect(output.narrative).toBe('老人说什么"水里的东西"，随后闭口不言。');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends a response that local repair cannot validate back on the Responses retry', async () => {
+    const malformed = 'not a narrator json object';
     const repaired = JSON.stringify({
       narrative: '雾里传来钟声。',
       activeNpc: null,
@@ -163,7 +179,7 @@ describe('callNarrator retry repair', () => {
     const repairMessage = retryInput.at(-1);
     expect(repairMessage?.role).toBe('user');
     expect(repairMessage?.content).toContain('Previous Narrator response was invalid JSON');
-    expect(repairMessage?.content).toContain('Expected');
+    expect(repairMessage?.content).toContain('本地修复后的 JSON 缺少 Narrator 必填字段');
     expect(repairMessage?.content).toContain(malformed);
   });
 
