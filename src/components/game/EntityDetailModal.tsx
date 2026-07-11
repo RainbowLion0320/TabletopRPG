@@ -1,3 +1,4 @@
+import { useEffect, useId, useRef } from 'react';
 import { X, Lock } from 'lucide-react';
 import type { EntityDetail } from '../../dm/entityDetail';
 
@@ -7,13 +8,44 @@ interface EntityDetailModalProps {
 }
 
 export function EntityDetailModal({ detail, onClose }: EntityDetailModalProps) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const titleId = useId();
+
+  useEffect(() => {
+    if (!detail) return;
+    returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    closeRef.current?.focus();
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose();
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      returnFocusRef.current?.focus();
+    };
+  }, [detail, onClose]);
+
   if (!detail) return null;
 
   return (
     <div className="entity-detail-overlay" onClick={onClose}>
-      <div className="entity-detail-card" onClick={(e) => e.stopPropagation()}>
+      <div
+        aria-labelledby={titleId}
+        aria-modal="true"
+        className="entity-detail-card"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+      >
         {/* 关闭按钮 */}
-        <button className="entity-detail-close" onClick={onClose} type="button">
+        <button
+          aria-label="关闭详情"
+          className="entity-detail-close"
+          onClick={onClose}
+          ref={closeRef}
+          title="关闭"
+          type="button"
+        >
           <X size={18} />
         </button>
 
@@ -26,7 +58,7 @@ export function EntityDetailModal({ detail, onClose }: EntityDetailModalProps) {
 
         {/* 名称 + 身份 */}
         <div className="entity-detail-header">
-          <h3>{detail.name}</h3>
+          <h3 id={titleId}>{detail.name}</h3>
           <span>{detail.role}</span>
         </div>
 

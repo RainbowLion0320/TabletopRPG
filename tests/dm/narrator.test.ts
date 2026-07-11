@@ -236,6 +236,33 @@ describe('callNarrator retry repair', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('silently drops invalid keywords without retrying the Narrator', async () => {
+    const content = JSON.stringify({
+      narrative: '老人低声提到水里的东西。',
+      activeNpc: null,
+      nextPrompt: '要继续追问吗？',
+      playerChoices: { 亨利: ['追问细节', '观察神情'] },
+      keywords: [
+        { text: '水里的东西', kind: 'clue' },
+        { text: '<script>', kind: 'danger' },
+        { text: '正文没有这句话', kind: 'state' },
+        { text: '老人', kind: 'person' }
+      ]
+    });
+    const fetchMock = vi.fn(async () => jsonResponse(content));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const output = await callNarrator(config, {
+      ctx,
+      actions: [{ player: '亨利', action: '继续追问。' }],
+      mode: 'together',
+      history: []
+    });
+
+    expect(output.keywords).toEqual([{ text: '水里的东西', kind: 'clue' }]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('reports a diagnostic configuration error when chat-compatible protocol has no endpoint', async () => {
     const badConfig: ApiConfig = {
       provider: 'custom',

@@ -1,6 +1,6 @@
 # TabletopRPG Technical Spec
 
-> Version: v0.5
+> Version: v0.6
 > Updated: 2026-07-11
 > Scope: current React/Vite implementation
 
@@ -165,9 +165,14 @@ The model output is accepted only after it parses as a JSON object matching this
   "playerChoices": {
     "亨利·格雷": ["行动1", "行动2"],
     "艾达·华莱士": ["行动1", "行动2"]
-  }
+  },
+  "keywords": [
+    { "text": "水里的东西", "kind": "clue" }
+  ]
 }
 ```
+
+`keywords` is optional at runtime for compatibility. It may contain at most six exact 2-24 character substrings from `narrative`, and `kind` is limited to `clue`, `danger`, or `state`. Invalid, duplicate, generic, HTML-shaped, overlong, or non-existent phrases are silently discarded and never trigger a Narrator retry. The model must not mark known people, locations, items, skills, colors, HTML, Markdown, or character offsets.
 
 Checks and state changes are not fields in Narrator JSON. Narrator proposes them through `request_check`, `propose_state_update`, `reveal_secret`, `propose_scene_change`, `schedule_consequence`, and `update_npc_mind` tool calls. Director rejects unavailable or invalid calls before StateResolver creates reducer-compatible events and the legacy UI response.
 
@@ -178,6 +183,17 @@ Checks and state changes are not fields in Narrator JSON. Narrator proposes them
 3. Syntax failures are passed through the deterministic `jsonrepair` parser locally. Locally repaired output is accepted only when all Narrator contract fields are present, so truncated JSON cannot be promoted into player-visible narrative.
 4. If local repair cannot produce a complete contract, the frontend sends one repair prompt to the same provider with the invalid output and diagnostic message.
 5. The retry response goes through the same strict/local pipeline. If it is still invalid, raw output is blocked and a system error is shown. Raw malformed JSON/Markdown must never be appended as player-visible DM narrative.
+
+### Narrative Markup And Safe Details
+
+`src/services/narrativeMarkup.ts` builds immutable text segments; React renders those segments directly and never uses Markdown, model HTML, or `dangerouslySetInnerHTML`.
+
+- Deterministic terms come from investigators, public NPC aliases, public scene aliases, authored items, visible dynamic case-board titles, skills, check difficulty/results, HP/SAN, and curated states.
+- Optional Narrator keywords only supplement emergent clue/danger/state language. Deterministic entities win every overlap; otherwise longer terms win.
+- Person colors are derived from canonical names with a stable hash and palette collision resolution. The same map is used in message text, player labels, and the active-NPC nameplate.
+- Every mark opens `EntityDetailModal`. The resolver may show only public authored information, already unlocked secrets, current investigator values, rule explanations, or the original sentence for an LLM hint. It never exposes locked secret contents or counts from narrative navigation.
+- DM messages may use their stored keyword hints. Player and system messages run deterministic markup only. Old saves without keywords still receive deterministic markup after hydration.
+- The modal uses dialog semantics, supports Escape, and restores focus to the invoking control.
 
 ### Foreground And Background Lifecycle
 

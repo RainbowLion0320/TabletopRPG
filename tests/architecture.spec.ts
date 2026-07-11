@@ -75,3 +75,18 @@ test('dynamic case board and background update contracts remain wired end to end
   expect(pipeline).toContain('backgroundUpdate');
   expect(pipeline).not.toContain('deferredUpdates');
 });
+
+test('narrative rich text stays in the safe markup pipeline', async () => {
+  const narrator = await readSource('src/dm/narrator.ts');
+  const reducer = await readSource('src/state/gameReducer.ts');
+  const panel = await readSource('src/components/game/NarrativePanel.tsx');
+  const markup = await readSource('src/services/narrativeMarkup.ts');
+  const combined = `${panel}\n${markup}`;
+
+  expect(narrator).toContain('normalizeNarrativeKeywordHints');
+  expect(reducer).toContain('keywords: response.keywords?.length');
+  expect(panel).toContain('markNarrativeText');
+  expect(combined).not.toContain('dangerouslySetInnerHTML');
+  expect(combined).not.toContain('marked(');
+  expect(combined).not.toContain('ReactMarkdown');
+});

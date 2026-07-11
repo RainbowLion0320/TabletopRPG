@@ -22,7 +22,8 @@ const scenes = Object.fromEntries(
       desc: layered.public.desc,
       image: layered.public.image,
       npcs: [...layered.public.npcs],
-      items: [...layered.public.items]
+      items: [...layered.public.items],
+      aliases: layered.public.aliases ? [...layered.public.aliases] : undefined
     } satisfies SceneDefinition
   ])
 ) as StoryData['scenes'];
@@ -35,6 +36,7 @@ const npcs = Object.fromEntries(
       attitude: layered.public.attitude,
       hp: layered.public.hp,
       portrait: layered.public.portrait,
+      aliases: layered.public.aliases ? [...layered.public.aliases] : undefined,
       // 注意：旧 NpcDefinition.notes 字段保留是为了类型兼容；
       // 此处仅放公开外观，不再放剧情内幕。
       notes: layered.public.appearance
@@ -50,7 +52,8 @@ const items = Object.fromEntries(
       name: layered.public.name,
       scene: layered.public.scene,
       // 旧 StoryItem.desc 同样收敛为公开外观；KP 解读藏在 secrets 里。
-      desc: layered.public.appearance
+      desc: layered.public.appearance,
+      aliases: layered.public.aliases ? [...layered.public.aliases] : undefined
     } satisfies StoryItem
   ])
 ) as StoryData['items'];

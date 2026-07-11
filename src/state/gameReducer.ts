@@ -1,5 +1,6 @@
 import type { AiResponse, AtomicFact, Attributes, CaseBoardCertainty, CaseBoardPatch, CheckRequest, DiceResult, DynamicCaseBoardEdge, DynamicCaseBoardNode, EpisodicMemoryRecord, EpisodicMemorySource, EpisodicMemoryVisibility, FactPredicate, GameState, Investigator, NarrativeMessage, NpcMindModel, PersistedDMEvent, PersistedPendingConsequence, ProspectiveIntent, SceneId, SkillValue, StoryItem } from '../types/game';
 import { storyData } from '../data/storyData';
+import { normalizeNarrativeKeywordHints } from '../services/narrativeKeywords';
 import { allSkills } from '../data/skills';
 import { deriveInvestigatorStats, gameRules, resolveSkillBase } from '../data/gameRules';
 
@@ -189,17 +190,22 @@ function normalizeConversationHistory(value: unknown): GameState['conversationHi
   });
 }
 
-function narrativeFromHistoryContent(content: string) {
+function narrativeMessageFromHistoryContent(content: string) {
   try {
     const match = content.match(/\{[\s\S]*\}/);
     if (match) {
-      const parsed = JSON.parse(match[0]) as { narrative?: unknown };
-      if (typeof parsed.narrative === 'string' && parsed.narrative.trim()) return parsed.narrative;
+      const parsed = JSON.parse(match[0]) as { narrative?: unknown; keywords?: unknown };
+      if (typeof parsed.narrative === 'string' && parsed.narrative.trim()) {
+        return {
+          text: parsed.narrative,
+          keywords: normalizeNarrativeKeywordHints(parsed.keywords, parsed.narrative)
+        };
+      }
     }
   } catch {
     // Keep the raw content if the assistant turn was not strict JSON.
   }
-  return content;
+  return { text: content, keywords: [] };
 }
 
 function normalizeMessages(value: unknown, history: GameState['conversationHistory'], players: Investigator[], fallback: NarrativeMessage[]) {
@@ -209,25 +215,35 @@ function normalizeMessages(value: unknown, history: GameState['conversationHisto
       const text = typeof item.text === 'string' ? item.text : '';
       if (!text) return [];
       const type: NarrativeMessage['type'] = item.type === 'player' || item.type === 'system' ? item.type : 'dm';
+      const keywords = type === 'dm'
+        ? normalizeNarrativeKeywordHints(item.keywords, text)
+        : [];
       return [{
         id: stringValue(item.id, id()),
         type,
         text,
         playerName: typeof item.playerName === 'string' ? item.playerName : undefined,
-        npcName: typeof item.npcName === 'string' ? item.npcName : null
+        npcName: typeof item.npcName === 'string' ? item.npcName : null,
+        keywords: keywords.length ? keywords : undefined
       }];
     });
     if (messages.length) return messages;
   }
 
   if (history.length) {
-    return history.map((turn): NarrativeMessage => ({
-      id: id(),
-      type: turn.role === 'assistant' ? 'dm' : 'player',
-      text: turn.role === 'assistant' ? narrativeFromHistoryContent(turn.content) : turn.content,
-      playerName: turn.role === 'user' ? players[0]?.name : undefined,
-      npcName: null
-    }));
+    return history.map((turn): NarrativeMessage => {
+      const parsed = turn.role === 'assistant'
+        ? narrativeMessageFromHistoryContent(turn.content)
+        : { text: turn.content, keywords: [] };
+      return {
+        id: id(),
+        type: turn.role === 'assistant' ? 'dm' : 'player',
+        text: parsed.text,
+        playerName: turn.role === 'user' ? players[0]?.name : undefined,
+        npcName: null,
+        keywords: parsed.keywords.length ? parsed.keywords : undefined
+      };
+    });
   }
 
   return fallback;
@@ -940,7 +956,8 @@ function normalizeAiResponse(value: AiResponse, state: GameState): AiResponse {
       triggeredConsequenceIds: normalizeTriggeredIds(stateUpdate.triggeredConsequenceIds)
     },
     nextPrompt: typeof response.nextPrompt === 'string' ? response.nextPrompt : undefined,
-    playerChoices
+    playerChoices,
+    keywords: normalizeNarrativeKeywordHints(response.keywords, typeof response.narrative === 'string' ? response.narrative : '')
   };
 
   if (hasOwn(response, 'activeNpc')) {
@@ -1169,7 +1186,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         pendingConsequences: merged
       };
       if (response.narrative) {
-        nextState = addMessage(nextState, { type: 'dm', text: response.narrative, npcName: response.activeNpc ?? null });
+        nextState = addMessage(nextState, {
+          type: 'dm',
+          text: response.narrative,
+          npcName: response.activeNpc ?? null,
+          keywords: response.keywords?.length ? response.keywords : undefined
+        });
       }
       return addLog(nextState, response.narrative?.slice(0, 60) || 'AI DM 响应');
     }

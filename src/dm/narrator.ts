@@ -11,9 +11,10 @@
  * 只做"把 context 翻译成 prompt"和"把响应翻译成结构化数据"。
  */
 
-import type { ApiConfig, ExploreMode } from '../types/game';
+import type { ApiConfig, ExploreMode, NarrativeKeywordHint } from '../types/game';
 import { jsonrepair } from 'jsonrepair';
 import type { PlayerAction } from '../services/aiDm';
+import { normalizeNarrativeKeywordHints } from '../services/narrativeKeywords';
 import type { DmContext } from './contextBuilder';
 import { DM_TOOLS, parseResponseToolCalls } from './tools';
 import type { DmToolCall, DmToolName } from './types';
@@ -39,6 +40,8 @@ export interface NarratorOutput {
   nextPrompt: string;
   /** 玩家名 -> 推荐行动 3 条 */
   playerChoices: Record<string, string[]>;
+  /** 自由叙事中的临时语义关键词；非法值会被本地静默丢弃 */
+  keywords: NarrativeKeywordHint[];
   /** 已经形态合法的工具调用；规则校验交给 Director */
   toolCalls: DmToolCall[];
   /** 调试用：模型是否原生返回了 function_call items */
@@ -76,9 +79,12 @@ const NARRATOR_SYSTEM_PROMPT_HEAD = `你是 COC 第七版 AI DM Agent，主持�
   "playerChoices": {
     "玩家A姓名": ["只适合玩家A当前处境的建议1", "建议2", "建议3"],
     "玩家B姓名": ["只适合玩家B当前处境的建议1", "建议2", "建议3"]
-  }
+  },
+  "keywords": [{ "text": "正文中连续出现的临时关键词", "kind": "clue" }]
 }
 - playerChoices 必须按玩家姓名分组；每名玩家 2-3 条，结合其职业、位置、状态、已知线索和本轮行动，不要给所有玩家返回完全相同的建议。
+- keywords 最多 6 个，每个 2-24 字，text 必须是 narrative 中连续存在的原文；kind 只能是 clue、danger、state。
+- keywords 只标注本轮自由叙事中新出现、前端词典无法确定的线索、危险或状态。不要标人物、已知地点、物品、技能，不要输出 HTML、Markdown、颜色、字符坐标或展示标记。
 其余规则裁决（检定 / 状态变更 / 场景切换 / 内幕解锁）一律通过工具调用，不要写在 narrative 里描述具体数值。`;
 
 function formatRules(rules: DmContext['static']['rules']): string {
@@ -263,6 +269,7 @@ interface NarratorJsonShape {
   activeNpc?: unknown;
   nextPrompt?: unknown;
   playerChoices?: unknown;
+  keywords?: unknown;
 }
 
 function stripReasoningBlocks(raw: string): string {
@@ -402,6 +409,7 @@ function shapeNarratorJson(raw: string, playerNames: string[] = ['调查员']): 
   activeNpc: string | null;
   nextPrompt: string;
   playerChoices: Record<string, string[]>;
+  keywords: NarrativeKeywordHint[];
 } {
   const obj = parseNarratorJson(raw);
   const narrative = typeof obj.narrative === 'string' ? obj.narrative : '';
@@ -416,7 +424,8 @@ function shapeNarratorJson(raw: string, playerNames: string[] = ['调查员']): 
       : null;
   const nextPrompt = typeof obj.nextPrompt === 'string' ? obj.nextPrompt : '';
   const playerChoices = coercePlayerChoices(obj.playerChoices, playerNames);
-  return { narrative, activeNpc, nextPrompt, playerChoices };
+  const keywords = normalizeNarrativeKeywordHints(obj.keywords, narrative);
+  return { narrative, activeNpc, nextPrompt, playerChoices, keywords };
 }
 
 // ---------- HTTP ----------
@@ -449,9 +458,22 @@ const NARRATOR_RESPONSE_SCHEMA = {
         type: 'array',
         items: { type: 'string' }
       }
+    },
+    keywords: {
+      type: 'array',
+      maxItems: 6,
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          text: { type: 'string' },
+          kind: { type: 'string', enum: ['clue', 'danger', 'state'] }
+        },
+        required: ['text', 'kind']
+      }
     }
   },
-  required: ['narrative', 'activeNpc', 'nextPrompt', 'playerChoices']
+  required: ['narrative', 'activeNpc', 'nextPrompt', 'playerChoices', 'keywords']
 } satisfies Record<string, unknown>;
 
 const MAX_REPAIR_CONTEXT_CHARS = 3000;
@@ -470,7 +492,8 @@ Return exactly one valid JSON object with these fields only:
   "narrative": "player-facing narration",
   "activeNpc": null,
   "nextPrompt": "next prompt",
-  "playerChoices": { "player name": ["choice 1", "choice 2", "choice 3"] }
+  "playerChoices": { "player name": ["choice 1", "choice 2", "choice 3"] },
+  "keywords": [{ "text": "exact phrase from narrative", "kind": "clue" }]
 }
 Do not use Markdown or extra text. Escape quotes inside strings and keep commas between properties.
 Previous raw response:
@@ -629,6 +652,7 @@ export async function callNarrator(
           activeNpc: shaped.activeNpc,
           nextPrompt: shaped.nextPrompt,
           playerChoices: shaped.playerChoices,
+          keywords: shaped.keywords,
           // lookup_entity 已被回填不返还给上层，避免被 Resolver 误记为疑似事件。
           toolCalls: parsedCalls.filter((c) => c.name !== 'lookup_entity'),
           usedFunctionCalling:

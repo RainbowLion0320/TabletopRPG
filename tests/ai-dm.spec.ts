@@ -122,6 +122,78 @@ test('AI DM repairs unescaped dialogue quotes locally without interrupting the t
   expect(narratorAttempts).toBe(1);
 });
 
+test('narrative highlights remain safe, clickable and stable across desktop and narrow layouts', async ({ page }) => {
+  const narrator = JSON.stringify({
+    narrative: '伊莎贝拉·摩勒指向水里的东西，建议进行心理学检定。',
+    activeNpc: '伊莎贝拉·摩勒',
+    nextPrompt: '要继续追问吗？',
+    playerChoices: {
+      '亨利·格雷': ['追问细节', '检查书房'],
+      '艾达·华莱士': ['观察她的反应', '查看求助信']
+    },
+    keywords: [{ text: '水里的东西', kind: 'clue' }]
+  });
+  let narratorAttempts = 0;
+
+  await page.route('https://api.openai.com/v1/responses', async (route) => {
+    const body = JSON.parse(route.request().postData() ?? '{}') as { instructions?: string };
+    const system = body.instructions ?? '';
+    let content = JSON.stringify({ facts: [] });
+    if (system.includes('COC 第七版 AI DM Agent')) {
+      narratorAttempts += 1;
+      content = narrator;
+    } else if (system.includes('案件板合成助手')) {
+      content = JSON.stringify({ nodes: [], edges: [] });
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(responseBody(content))
+    });
+  });
+
+  await startGameWithApi(page);
+  const openingMessage = page.locator('.story-message.dm').first();
+  const isabella = openingMessage.getByRole('button', { name: '查看伊莎贝拉·摩勒详情' });
+  const eric = openingMessage.getByRole('button', { name: '查看埃里克·摩勒详情' });
+  const [isabellaColor, ericColor] = await Promise.all([
+    isabella.evaluate((element) => getComputedStyle(element).color),
+    eric.evaluate((element) => getComputedStyle(element).color)
+  ]);
+  expect(isabellaColor).not.toBe(ericColor);
+
+  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('询问伊莎贝拉父亲的近况。');
+  await page.getByRole('button', { name: '下一位' }).click();
+  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('观察伊莎贝拉的反应。');
+  await page.getByRole('button', { name: '提交' }).click();
+
+  await expect.poll(() => narratorAttempts).toBe(1);
+  const response = page.locator('.story-message.dm', { hasText: '水里的东西' });
+  const clueMark = response.getByRole('button', { name: '查看水里的东西详情' });
+  await expect(clueMark).toHaveClass(/narrative-mark-inferred/);
+  await clueMark.click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText('本轮线索标记');
+  await expect(dialog).toContainText('伊莎贝拉·摩勒指向水里的东西');
+  await expect(dialog).not.toContainText('条信息待探索');
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(clueMark).toBeFocused();
+
+  await page.setViewportSize({ width: 390, height: 700 });
+  const overflow = await page.evaluate(() => ({
+    body: document.body.scrollWidth - document.body.clientWidth,
+    panel: document.querySelector('.narrative-panel')
+      ? document.querySelector('.narrative-panel')!.scrollWidth - document.querySelector('.narrative-panel')!.clientWidth
+      : 0
+  }));
+  expect(overflow.body).toBeLessThanOrEqual(1);
+  expect(overflow.panel).toBeLessThanOrEqual(1);
+  await clueMark.click();
+  const box = await page.getByRole('dialog').boundingBox();
+  expect(box?.width ?? 999).toBeLessThanOrEqual(390);
+});
+
 test('AI DM handles first player action through a chat-compatible provider', async ({ page }) => {
   const narrator = JSON.stringify({
     narrative: 'The chat-compatible narrator response is shown.',

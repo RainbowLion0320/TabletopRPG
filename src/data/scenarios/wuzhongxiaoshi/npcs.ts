@@ -17,6 +17,7 @@ export const npcs: Record<string, LayeredEntity<NpcPublic>> = {
   '伊莎贝拉·摩勒': {
     public: {
       name: '伊莎贝拉·摩勒',
+      aliases: ['伊莎贝拉', '摩勒小姐'],
       role: '委托人',
       attitude: '友好',
       appearance: '约二十出头的年轻女子，神情焦虑，反复整理桌上的文件。其父埃里克·摩勒于7月10日失踪，她以重金请求调查员查明下落。',
@@ -28,6 +29,7 @@ export const npcs: Record<string, LayeredEntity<NpcPublic>> = {
   '洛夫·蒙特利尔': {
     public: {
       name: '洛夫·蒙特利尔',
+      aliases: ['蒙特利尔', '蒙特利尔局长', '局长'],
       role: '警察局长',
       attitude: '警惕',
       appearance: '中年男子，制服笔挺，眼神锐利。对外人态度礼貌但保留，谈到摩勒一案时眉头紧锁。',
@@ -40,6 +42,7 @@ export const npcs: Record<string, LayeredEntity<NpcPublic>> = {
   '埃里克·摩勒': {
     public: {
       name: '埃里克·摩勒',
+      aliases: ['埃里克', '摩勒先生'],
       role: '失踪者',
       attitude: '未知',
       appearance: '中年绅士，西装考究，伊莎贝拉书房里有他的肖像。',
@@ -52,6 +55,7 @@ export const npcs: Record<string, LayeredEntity<NpcPublic>> = {
   '老赫特之家酒保': {
     public: {
       name: '老赫特之家酒保',
+      aliases: ['酒保', '酒吧老板'],
       role: '酒吧老板',
       attitude: '中立',
       appearance: '皮肤粗糙的中年男子，擦着永远擦不干净的酒杯。客人不少但他基本沉默。',
@@ -64,6 +68,7 @@ export const npcs: Record<string, LayeredEntity<NpcPublic>> = {
   '深潜者（混种）': {
     public: {
       name: '深潜者（混种）',
+      aliases: ['深潜者混种', '斗篷人'],
       role: '不明生物',
       attitude: '敌对',
       appearance: '披着潮湿斗篷的人形身影，脸藏在阴影里，行动异常迅捷。',
@@ -76,6 +81,7 @@ export const npcs: Record<string, LayeredEntity<NpcPublic>> = {
   '深潜者×4': {
     public: {
       name: '深潜者×4',
+      aliases: ['深潜者群体'],
       role: '不明群体',
       attitude: '敌对',
       appearance: '从浓雾中缓步走出的若干人形剪影，身高异于常人，皮肤反射着鱼鳞般的光泽。',

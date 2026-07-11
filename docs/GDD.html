@@ -235,7 +235,7 @@ footer {
 <main>
   <div class="content">
 <header class="doc-header"><h1>《雾中消逝》AI跑团 游戏设计文档 (GDD)</h1><p class="doc-subtitle">Full GDD mirror - Source: docs/GDD.md - Updated 2026-05-29</p></header>
-<blockquote><p>设计版本：v0.6 | 原始基线：2026-05-15</p><p>实现对齐补充：2026-07-11</p><p>规则体系：COC 第7版 | 首发模组：《雾中消逝》| 作者：舒爾茲上尉</p></blockquote>
+<blockquote><p>设计版本：v0.7 | 原始基线：2026-05-15</p><p>实现对齐补充：2026-07-11</p><p>规则体系：COC 第7版 | 首发模组：《雾中消逝》| 作者：舒爾茲上尉</p></blockquote>
 <hr>
 <h2 id="s0">0. 当前实现状态（2026-07-11 对齐补充）</h2>
 <blockquote><p>本文是完整 GDD，包含当前已实现内容、未开发模块、后续设计目标和细节规则。</p><p>当前可运行产品的产品范围见 <code>docs/PRD.md</code>，技术契约见 <code>docs/SPEC.md</code>。未实现模块不删除，统一按 backlog / 待开发处理。</p></blockquote>
@@ -246,7 +246,7 @@ footer {
 <tr><td>前端架构</td><td>Vite + React + TypeScript 单页应用</td></tr>
 <tr><td>游戏入口</td><td>标题页、AI 设置、继续最近存档</td></tr>
 <tr><td>角色系统</td><td>4 个预设调查员选择，支持 1-4 人开局；选角页展示立绘、完整属性、派生数值、技能和背景摘要</td></tr>
-<tr><td>主界面</td><td>场景图、调查员立绘、叙事区、行动输入、队伍状态、全屏资料界面、菜单</td></tr>
+<tr><td>主界面</td><td>场景图、调查员立绘、可交互富文本叙事区、行动输入、队伍状态、全屏资料界面、菜单</td></tr>
 <tr><td>探索模式</td><td>一起行动 / 分头探索</td></tr>
 <tr><td>AI DM</td><td>OpenAI Responses / MiMo / Chat-compatible 自定义端点，严格 JSON 输出 + 工具校验 + 一次修复重试</td></tr>
 <tr><td>检定</td><td>前端 D100，核心数值规则集中在 <code>src/data/gameRules.ts</code>，AI 只请求检定并根据结果继续叙事</td></tr>
@@ -589,6 +589,7 @@ AI DM解析：
 │  [快捷] 侦查周围 | 询问NPC | 查看道具 | 等待 | 骰骰子   │
 └─────────────────────────────────────────────────────────┘</code></pre>
 <p>当前实现中，【资料】不再是窄版线索/NPC 抽屉，而是全屏资料界面。默认页签为“案件板”，以玩家已知的 NPC、地点、物证、事件、推理卡片和关系线展示案件进展；未发现内容不显示，避免剧透。案件板由静态主线骨架和 AI 动态提议层合成：AI 只能基于玩家已见叙事、facts、events 和已发现线索提出卡片/连线，最终必须经过系统的来源锚定、去重、反剧透和容量规则审核后才会写入存档。若模型对明显的新事实返回空或无效 patch，系统会从本轮 fact 或高信息量 narrative event 生成保守的来源锚定卡片；普通重复叙事不会机械加卡。辅助页签只保留“日志”，用于回看行动记录。</p>
+<p>叙事区采用安全的混合富文本层：人物、地点、物证、技能、检定结果和关键状态由前端剧本词典确定性识别，人物按规范化姓名获得全局稳定颜色；Narrator 只可补充本轮自由叙事中最多 6 个 <code>clue</code> / <code>danger</code> / <code>state</code> 原文短语。模型不输出 HTML、Markdown、颜色或坐标，所有标记由 React 按纯文本区间渲染。点击标记打开统一资料弹窗，未正式获得的实体只显示公开描述，已解锁信息可显示，但永不提示仍有多少条秘密。</p>
 <h3 id="s5-2">5.2 场景图规划</h3>
 <div class="table-wrap"><table>
 <thead><tr><th>场景ID</th><th>图片描述</th><th>风格</th></tr></thead>
@@ -707,12 +708,14 @@ AI DM输出结构（JSON）
   &quot;playerChoices&quot;: {
     &quot;亨利·格雷&quot;: [&quot;仅适合亨利的建议1&quot;, &quot;建议2&quot;],
     &quot;艾达·华莱士&quot;: [&quot;仅适合艾达的建议1&quot;, &quot;建议2&quot;]
-  }
+  },
+  &quot;keywords&quot;: [{ &quot;text&quot;: &quot;水里的东西&quot;, &quot;kind&quot;: &quot;clue&quot; }]
 }</code></pre>
 <p>检定、状态更新、场景变化和内幕解锁不写入 Narrator JSON，而是通过工具调用提议；Director 校验后才由 StateResolver 转为游戏事件和 reducer 可消费状态。</p>
 <p>运行时格式规则：</p>
 <ul>
 <li>AI DM 输出必须能解析为符合上述契约的 JSON 对象。</li>
+<li><code>keywords</code> 为兼容旧模型的可选增强字段；非法或不在 narrative 原文中的标记静默丢弃，不触发重试，也不影响叙事正文。</li>
 <li>完整 Markdown JSON 代码块可以被提取解析，但 system prompt 要求模型不要返回代码块。</li>
 <li>第一次输出语法无效时，前端先用本地确定性 JSON repair 修复，并重新验证完整 Narrator 字段；截断或缺字段内容不能直接展示。</li>
 <li>本地无法修复时，前端才向同一 Provider 发送一次格式修复请求；重试结果再次经过严格解析和本地修复。</li>

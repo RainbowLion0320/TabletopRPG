@@ -86,6 +86,7 @@ export interface SceneDefinition {
   image: string;
   npcs: string[];
   items: string[];
+  aliases?: string[];
 }
 
 export interface NpcDefinition {
@@ -94,6 +95,7 @@ export interface NpcDefinition {
   hp: number;
   portrait?: string;
   notes: string;
+  aliases?: string[];
 }
 
 export interface StoryItem {
@@ -102,6 +104,7 @@ export interface StoryItem {
   scene: SceneId;
   desc: string;
   found?: boolean;
+  aliases?: string[];
 }
 
 export interface StoryData {
@@ -205,6 +208,14 @@ export interface NarrativeMessage {
   text: string;
   playerName?: string;
   npcName?: string | null;
+  keywords?: NarrativeKeywordHint[];
+}
+
+export type NarrativeKeywordKind = 'clue' | 'danger' | 'state';
+
+export interface NarrativeKeywordHint {
+  text: string;
+  kind: NarrativeKeywordKind;
 }
 
 export interface CheckRequest {
@@ -420,6 +431,7 @@ export interface AiResponse {
   };
   nextPrompt?: string;
   playerChoices?: string[] | Record<string, string[]>;
+  keywords?: NarrativeKeywordHint[];
 }
 
 export type AiProvider = 'openai' | 'mimo' | 'custom';

@@ -12,6 +12,7 @@ export const items: Record<string, LayeredEntity<ItemPublic>> = {
     public: {
       id: 'I01',
       name: '便签',
+      aliases: ['求助便签'],
       scene: 'S01',
       appearance: '书房桌面上写有"别来找我"的便签，纸张普通，墨迹未干透。'
     },
@@ -21,6 +22,7 @@ export const items: Record<string, LayeredEntity<ItemPublic>> = {
     public: {
       id: 'I02',
       name: '合影照片',
+      aliases: ['合影', '旧合影'],
       scene: 'S01',
       appearance: '相框里是一张旧合影，画面中是一名中年男子与一位身着制服的人。'
     },
@@ -30,6 +32,7 @@ export const items: Record<string, LayeredEntity<ItemPublic>> = {
     public: {
       id: 'I03',
       name: '名片',
+      aliases: ['旧名片'],
       scene: 'S01',
       appearance: '一张旧公司名片，印刷精致但纸张泛黄，信息看起来已过时多年。'
     }
@@ -38,6 +41,7 @@ export const items: Record<string, LayeredEntity<ItemPublic>> = {
     public: {
       id: 'I04',
       name: '小册子',
+      aliases: ['册子'],
       scene: 'S01',
       appearance: '夹在书架缝隙里的小册子，封面普通看不出特别之处。'
     },
@@ -47,6 +51,7 @@ export const items: Record<string, LayeredEntity<ItemPublic>> = {
     public: {
       id: 'I05',
       name: '白色粉末样品',
+      aliases: ['白色粉末', '粉末样品'],
       scene: 'S01',
       appearance: '车库一处暗格中发现的小袋白色粉末样品，颗粒细腻，气味淡苦。'
     },
@@ -56,6 +61,7 @@ export const items: Record<string, LayeredEntity<ItemPublic>> = {
     public: {
       id: 'I06',
       name: '报纸残片',
+      aliases: ['报纸碎片'],
       scene: 'S01',
       appearance: '书房垃圾桶里的报纸残片，可见标题与一段被撕掉的人物照片。'
     },
@@ -65,6 +71,7 @@ export const items: Record<string, LayeredEntity<ItemPublic>> = {
     public: {
       id: 'I07',
       name: '潮湿的地图笔记',
+      aliases: ['地图笔记', '手绘地图'],
       scene: 'S04',
       appearance: '用油布包裹的手绘地图，纸张潮湿带有水渍，标注潦草。'
     },
@@ -74,6 +81,7 @@ export const items: Record<string, LayeredEntity<ItemPublic>> = {
     public: {
       id: 'I08',
       name: '雪茄头',
+      aliases: ['雪茄烟头'],
       scene: 'S04',
       appearance: '柜台附近残留的雪茄头，仍带有未燃尽的香气，品牌标记清晰。'
     },

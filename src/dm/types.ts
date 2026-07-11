@@ -73,6 +73,8 @@ export interface ScenePublic {
   npcs: string[];
   /** 该场景可调查的物品 id（具体描述按 secret 解锁规则） */
   items: string[];
+  /** 玩家叙事中可安全映射回该场景的别名。 */
+  aliases?: string[];
 }
 
 export interface NpcPublic {
@@ -83,6 +85,8 @@ export interface NpcPublic {
   appearance: string;
   hp: number;
   portrait?: string;
+  /** 玩家叙事中可安全映射回该人物的别名。 */
+  aliases?: string[];
 }
 
 export interface ItemPublic {
@@ -91,6 +95,8 @@ export interface ItemPublic {
   scene: SceneId;
   /** 玩家拿到/看到该物时的外观描述，不含解谜答案 */
   appearance: string;
+  /** 玩家叙事中可安全映射回该物品的别名。 */
+  aliases?: string[];
 }
 
 // ---------- 工作记忆（Phase 2 填充） ----------

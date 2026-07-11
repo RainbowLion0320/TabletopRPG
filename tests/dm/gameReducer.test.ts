@@ -225,6 +225,24 @@ describe('gameReducer actor selection', () => {
 });
 
 describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
+  it('hydrates valid narrative keywords and drops malformed hints', () => {
+    const hydrated = hydrateGameState({
+      players: [],
+      messages: [{
+        id: 'rich-message',
+        type: 'dm',
+        text: '水里的东西正在接近。',
+        keywords: [
+          { text: '水里的东西', kind: 'clue' },
+          { text: '并不存在', kind: 'danger' },
+          { text: '<b>', kind: 'state' }
+        ]
+      }]
+    });
+
+    expect(hydrated.messages[0].keywords).toEqual([{ text: '水里的东西', kind: 'clue' }]);
+  });
+
   it('hydrates a save without eventLog/pendingConsequences with empty arrays', () => {
     const stateLikeV2 = {
       players: [

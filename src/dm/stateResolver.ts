@@ -270,7 +270,8 @@ export function resolveDmTurn(input: ResolveInput): ResolveOutput {
       triggeredConsequenceIds
     },
     nextPrompt: narrator.nextPrompt || '',
-    playerChoices: narrator.playerChoices ?? []
+    playerChoices: narrator.playerChoices ?? [],
+    keywords: narrator.keywords
   };
 
   return { legacyResponse, events, mindUpdates: mindUpdates.length ? mindUpdates : undefined };

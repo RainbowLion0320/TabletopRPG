@@ -1,13 +1,18 @@
+import { useCallback, useState } from 'react';
 import { ActionDock } from '../components/game/ActionDock';
 import { DmDebugDrawer } from '../components/game/DmDebugDrawer';
 import { DmJournalModal } from '../components/game/DmJournalModal';
 import { GameMenu } from '../components/game/GameMenu';
 import { InfoDrawer } from '../components/game/InfoDrawer';
 import { NarrativePanel } from '../components/game/NarrativePanel';
+import { EntityDetailModal } from '../components/game/EntityDetailModal';
 import { SaveManagerModal } from '../components/game/SaveManagerModal';
 import { SceneStage } from '../components/game/SceneStage';
 import { TopBar } from '../components/game/TopBar';
 import { ApiConfigModal } from '../components/shared/ApiConfigModal';
+import type { EntityDetail } from '../dm/entityDetail';
+import { getNarrativeMarkDetail } from '../dm/entityDetail';
+import type { NarrativeMarkTarget } from '../services/narrativeMarkup';
 import type { SceneId } from '../types/game';
 import type { GameController } from './useGameController';
 
@@ -19,6 +24,11 @@ interface GameScreenProps {
 
 export function GameScreen({ controller, onHome, onRestart }: GameScreenProps) {
   const { state } = controller;
+  const [narrativeDetail, setNarrativeDetail] = useState<EntityDetail | null>(null);
+
+  const handleNarrativeMarkOpen = useCallback((target: NarrativeMarkTarget, sourceText: string) => {
+    setNarrativeDetail(getNarrativeMarkDetail(target, state, sourceText));
+  }, [state]);
 
   function handleHome() {
     controller.returnHome();
@@ -64,7 +74,7 @@ export function GameScreen({ controller, onHome, onRestart }: GameScreenProps) {
         onClose={() => controller.setDrawerOpen(false)}
         onOpen={() => controller.setDrawerOpen(true)}
       />
-      <NarrativePanel state={state} />
+      <NarrativePanel state={state} onMarkOpen={handleNarrativeMarkOpen} />
       <ActionDock
         state={state}
         onActorChange={controller.setCurrentActor}
@@ -76,6 +86,7 @@ export function GameScreen({ controller, onHome, onRestart }: GameScreenProps) {
         onSuggestion={controller.applySuggestion}
       />
       <ApiConfigModal open={controller.apiOpen} onClose={() => controller.setApiOpen(false)} onSave={controller.saveApi} />
+      <EntityDetailModal detail={narrativeDetail} onClose={() => setNarrativeDetail(null)} />
       {controller.toast ? <div className="toast">{controller.toast}</div> : null}
       <DmDebugDrawer />
     </main>

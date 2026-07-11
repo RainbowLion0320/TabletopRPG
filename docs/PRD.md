@@ -1,6 +1,6 @@
 # TabletopRPG PRD
 
-> Version: v0.6
+> Version: v0.7
 > Updated: 2026-07-11
 > Product baseline: Vite + React + TypeScript MVP
 
@@ -23,6 +23,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 - Title screen with new game, continue game, and AI settings.
 - Preset investigator selection for 1-4 investigators, with portraits, full attributes, derived stats, skill values, and background cues.
 - Main game screen with scene art, narrative feed, action dock, investigator party portraits/status, menu, and a fullscreen reference panel centered on a player-known case board.
+- Safe interactive narrative highlighting for people, locations, evidence, skills, checks, and temporary model-suggested clue/danger/state phrases.
 - Together mode: all selected investigators submit one action round together.
 - Split mode: one investigator acts in a selected scene at a time.
 - AI DM integration through OpenAI Responses, MiMo, or a custom OpenAI-compatible Chat Completions endpoint.
@@ -87,6 +88,8 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 | AI response | Malformed model output is retried once and never displayed as DM narrative |
 | AI lifecycle | Narrator is player-visible before optional cognition jobs finish; background results are ordered and stale sessions cannot write state |
 | AI response | Invalid scene names, unknown NPCs, string numeric deltas, and clue names are normalized or ignored safely after format validation |
+| Narrative reading | Names use stable per-person colors; semantic marks preserve the exact source text and open player-safe details without rendering model HTML or exposing locked secret counts |
+| Narrative keywords | Optional model hints are exact narrative substrings, limited to 6 clue/danger/state phrases, and invalid hints are dropped without retrying Narrator |
 | Case board | Reference panel combines the static scenario spine with AI-proposed dynamic cards/edges only after system review, source anchoring, dedupe, and anti-spoiler checks |
 | Case board | Meaningful new facts still produce a conservative source-anchored card when the AI proposal is empty or invalid; generic continuation turns do not add noise |
 | Dice | 96-100 is treated as fumble before success levels |
