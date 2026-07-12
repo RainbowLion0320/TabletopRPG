@@ -4,7 +4,7 @@ title: 存档系统
 tags: [save, storage, localStorage]
 sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-18
-updated: 2026-07-11
+updated: 2026-07-12
 ---
 
 # 存档系统
@@ -29,7 +29,10 @@ interface SaveSlot {
   scene: string;
   players: string;
   gameState: GameState;
-  version: 7;
+  moduleId: string;
+  moduleVersion: string;
+  contentHash: string;
+  version: 8;
 }
 ```
 
@@ -40,6 +43,10 @@ interface SaveSlot {
 - 非法场景、NPC、线索等引用。
 - v7 案件板的稳定语义键、关系键和实体 insights。
 - v6 案件板在读档时确定性折叠原子事实卡、重定向关系端点并归档低价值孤立卡；迁移不调用模型。
+- v1-v7 根据场景、线索、flags 和事件历史恢复 `ScenarioProgress`；S04/S05 不补发 SAN、入场事件或奖励。
+- 内容哈希不匹配且没有模组迁移函数时拒绝载入。
+
+模组版本与推进状态定义详见 [[concepts/scenario_engine]]。
 
 ## 功能特性
 

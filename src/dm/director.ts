@@ -12,10 +12,15 @@
  */
 
 import type { ExploreMode, GameState, SceneId } from '../types/game';
-import { getReachableScenes } from './knowledgeBase';
 import type { ClassifiedIntent } from './intentClassifier';
 import type { KnowledgeBase, DmToolCall, DmToolName } from './types';
 import { validateToolCallShape } from './tools';
+import {
+  getAvailableSceneExits,
+  getAvailableStoryEvents,
+  getScenarioProgressForState,
+  isDeclaredScenarioVariable
+} from '../scenario/engine';
 
 export interface DirectorRejection {
   call: DmToolCall;
@@ -39,6 +44,7 @@ export interface AllowedToolsOptions {
 
 const BASELINE_TOOLS: DmToolName[] = [
   'request_check',
+  'propose_story_event',
   'propose_state_update',
   'reveal_secret',
   'lookup_entity',
@@ -120,6 +126,8 @@ interface SemanticResult {
 
 function validateSemantics(call: DmToolCall, ctx: DirectorContext): SemanticResult {
   switch (call.name) {
+    case 'propose_story_event':
+      return validateStoryEvent(call, ctx);
     case 'request_check':
       return validateCheckPlayer(call, ctx);
     case 'propose_state_update':
@@ -152,9 +160,18 @@ function validateSceneChange(call: DmToolCall, ctx: DirectorContext): SemanticRe
     return { ok: false, reason: `propose_scene_change.targetSceneId 不存在：${target}` };
   }
   if (target === ctx.state.currentScene) return { ok: true };
-  const reachable = getReachableScenes(ctx.kb, ctx.state.currentScene);
+  const reachable = getAvailableSceneExits(getScenarioProgressForState(ctx.state), ctx.state.currentScene).map((exit) => exit.sceneId);
   if (!reachable.includes(target as SceneId)) {
     return { ok: false, reason: `${target} 不是 ${ctx.state.currentScene} 的邻接场景` };
+  }
+  return { ok: true };
+}
+
+function validateStoryEvent(call: DmToolCall, ctx: DirectorContext): SemanticResult {
+  const eventId = String(call.arguments.eventId ?? '');
+  const allowed = getAvailableStoryEvents(getScenarioProgressForState(ctx.state), ctx.state.currentScene);
+  if (!allowed.some((event) => event.id === eventId)) {
+    return { ok: false, reason: `剧情事件 ${eventId} 不属于当前活动节点或条件尚未满足` };
   }
   return { ok: true };
 }
@@ -204,9 +221,12 @@ function validateStateUpdate(call: DmToolCall, ctx: DirectorContext): SemanticRe
     }
   }
   if (Array.isArray(args.newItems)) {
-    for (const id of args.newItems as string[]) {
-      if (!ctx.kb.items[id]) {
-        return { ok: false, reason: `newItems 中的物品 id 未在 KB 中：${id}` };
+    if (args.newItems.length) return { ok: false, reason: '权威线索只能通过 propose_story_event 发现' };
+  }
+  if (args.flags && typeof args.flags === 'object' && !Array.isArray(args.flags)) {
+    for (const key of Object.keys(args.flags as Record<string, unknown>)) {
+      if (isDeclaredScenarioVariable(key)) {
+        return { ok: false, reason: `剧情变量 ${key} 只能由模组 Effect 修改` };
       }
     }
   }
@@ -215,7 +235,7 @@ function validateStateUpdate(call: DmToolCall, ctx: DirectorContext): SemanticRe
       return { ok: false, reason: `sceneChange 场景未定义：${args.sceneChange}` };
     }
     if (args.sceneChange !== ctx.state.currentScene) {
-      const reachable = getReachableScenes(ctx.kb, ctx.state.currentScene);
+      const reachable = getAvailableSceneExits(getScenarioProgressForState(ctx.state), ctx.state.currentScene).map((exit) => exit.sceneId);
       if (!reachable.includes(args.sceneChange as SceneId)) {
         return {
           ok: false,

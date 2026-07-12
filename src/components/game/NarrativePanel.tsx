@@ -50,10 +50,14 @@ function RichNarrativeText({ message, onMarkOpen, state }: RichNarrativeTextProp
 
 export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const latestMessageRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
-    ref.current?.scrollTo({ top: ref.current.scrollHeight, behavior: 'smooth' });
+    const panel = ref.current;
+    const latest = latestMessageRef.current;
+    if (!panel || !latest) return;
+    panel.scrollTo({ top: Math.max(0, latest.offsetTop - 56), behavior: 'smooth' });
   }, [state.messages.length]);
 
   const activeNpc = state.activeNpcName ? storyData.npcs[state.activeNpcName] : null;
@@ -89,8 +93,12 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
           {expanded ? <Shrink size={16} /> : <Expand size={16} />}
         </button>
       </div>
-      {state.messages.map((message) => (
-        <div className={`story-message ${message.type}`} key={message.id}>
+      {state.messages.map((message, index) => (
+        <div
+          className={`story-message ${message.type}`}
+          key={message.id}
+          ref={index === state.messages.length - 1 ? latestMessageRef : undefined}
+        >
           {message.type === 'dm' ? <div className="message-label">AI DM</div> : null}
           {message.type === 'player' ? (
             <p className="player-message-line">

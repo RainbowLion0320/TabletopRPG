@@ -193,13 +193,7 @@ footer {
 <a href="#s3-3" class="sub">3.3 《雾中消逝》常用技能初始值</a>
 <a href="#s3-4" class="sub">3.4 战斗系统</a>
 <a href="#s3-5" class="sub">3.5 SAN值系统</a>
-<a href="#s4" class="">四、剧本模组：《雾中消逝》完整数据</a>
-<a href="#s4-1" class="sub">4.1 基本信息</a>
-<a href="#s4-2" class="sub">4.2 场景一览</a>
-<a href="#s4-3" class="sub">4.3 线索物品数据</a>
-<a href="#s4-4" class="sub">4.4 NPC完整数据</a>
-<a href="#s4-5" class="sub">4.5 场景触发逻辑（AI DM状态机）</a>
-<a href="#s4-6" class="sub">4.6 结局数据</a>
+<a href="#s4" class="">四、剧本模组：《雾中消逝》</a>
 <a href="#s5" class="">五、展示层设计</a>
 <a href="#s5-1" class="sub">5.1 界面布局</a>
 <a href="#s5-2" class="sub">5.2 场景图规划</a>
@@ -425,142 +419,15 @@ AI DM解析：
 <li>完整规则目标：SAN = 0 → 永久疯狂；当前 MVP 先按 7.8 处理为短期失控/剧情代价</li>
 </ul>
 <hr>
-<h2 id="s4">四、剧本模组：《雾中消逝》完整数据</h2>
-<h3 id="s4-1">4.1 基本信息</h3>
-<div class="table-wrap"><table>
-<thead><tr><th>项目</th><th>内容</th></tr></thead>
-<tbody>
-<tr><td>时间</td><td>1920年7月13日</td></tr>
-<tr><td>地点</td><td>英国伦敦</td></tr>
-<tr><td>委托人</td><td>伊莎贝拉·摩勒（20余岁，苍白虚弱）</td></tr>
-<tr><td>目标</td><td>寻找失踪的埃里克·摩勒（其父）</td></tr>
-<tr><td>真相</td><td>深潜者混种藏于废弃药店，7月14日将乘船北归，埃里克被绑架随行</td></tr>
-</tbody></table></div>
-<h3 id="s4-2">4.2 场景一览</h3>
-<div class="table-wrap"><table>
-<thead><tr><th>场景ID</th><th>场景名</th><th>地点</th><th>主要线索</th></tr></thead>
-<tbody>
-<tr><td>S01</td><td>摩勒住宅</td><td>纽伦上街101-102号</td><td>便签、照片、名片、小册子、车库暗格</td></tr>
-<tr><td>S02</td><td>上城区第二分局</td><td>步行距S01约10分钟</td><td>蒙特利尔的反应、字迹对比</td></tr>
-<tr><td>S03</td><td>老赫特之家（酒吧）</td><td>本街区</td><td>醉汉战斗、&quot;老鼠&quot;信息</td></tr>
-<tr><td>S04</td><td>卡森其药店</td><td>贝尔街14号</td><td>血迹、深潜者痕迹、地图笔记</td></tr>
-<tr><td>S05</td><td>泰晤士港·扶桑花号</td><td>港口偏僻角落</td><td>最终决战/交涉</td></tr>
-</tbody></table></div>
-<h3 id="s4-3">4.3 线索物品数据</h3>
-<div class="table-wrap"><table>
-<thead><tr><th>物品ID</th><th>名称</th><th>获取地点</th><th>作用</th></tr></thead>
-<tbody>
-<tr><td>I01</td><td>便签</td><td>书房桌面</td><td>关键：侦查发现&quot;别来找我&quot;笔触加重</td></tr>
-<tr><td>I02</td><td>合影照片</td><td>书桌右抽屉</td><td>关联：蒙特利尔与埃里克的合作</td></tr>
-<tr><td>I03</td><td>名片</td><td>书桌右抽屉</td><td>表面公司信息</td></tr>
-<tr><td>I04</td><td>小册子</td><td>书架夹缝</td><td>隐写：火烤破译→毒品记录+&quot;南方乡巴佬&quot;</td></tr>
-<tr><td>I05</td><td>鸦片样品</td><td>车库暗格</td><td>医学检定：确认毒品</td></tr>
-<tr><td>I06</td><td>报纸残片</td><td>书房垃圾桶</td><td>附件图，含蒙特利尔信息（灵感检定识别）</td></tr>
-<tr><td>I07</td><td>深潜者地图笔记</td><td>卡森其后厅</td><td>扶桑花号位置</td></tr>
-<tr><td>I08</td><td>雪茄头</td><td>卡森其柜台</td><td>侦查：确认埃里克在此停留</td></tr>
-</tbody></table></div>
-<h3 id="s4-4">4.4 NPC完整数据</h3>
-<h4 id="h-2">伊莎贝拉·摩勒（委托人）</h4>
+<h2 id="s4">四、剧本模组：《雾中消逝》</h2>
+<p>本章只保留产品设计摘要。模组的场景、NPC、事实、线索、节点、事件、规则、结局与奖励均以 <code>scenarios/wuzhongxiaoshi/*.yaml</code> 为唯一人工维护事实源。</p>
 <ul>
-<li><strong>性格</strong>：苍白虚弱，礼仪良好，忧心忡忡</li>
-<li><strong>提供信息</strong>：父亲7月10日失踪；不知老赫特以外的卡森其药店；认识警局周边地理</li>
-<li><strong>战斗数据</strong>：无（剧情NPC）</li>
+<li>完整 KP 手册、剧情图、线索依赖图和规则矩阵：<a href="scenarios/wuzhongxiaoshi.md">《雾中消逝》生成手册</a></li>
+<li>模组作者工作流：<a href="scenarios/authoring-guide.md">模组作者指南</a></li>
+<li>严格字段契约：<a href="scenarios/schema-reference.md">Schema 字段参考</a></li>
+<li>v8 存档兼容：<a href="scenarios/save-migration.md">模组存档迁移说明</a></li>
 </ul>
-<h4 id="h-3">埃里克·摩勒（52岁，失踪目标）</h4>
-<ul>
-<li><strong>真实身份</strong>：毒品运输商，洛夫蒙特利尔的下线</li>
-<li><strong>战斗数据</strong>：无（剧情NPC，被绑架于扶桑花号）</li>
-</ul>
-<h4 id="h-4">洛夫·蒙特利尔（48岁，警察局长）</h4>
-<div class="table-wrap"><table>
-<thead><tr><th>属性</th><th>STR</th><th>CON</th><th>SIZ</th><th>DEX</th><th>INT</th><th>POW</th><th>APP</th></tr></thead>
-<tbody>
-<tr><td>数值</td><td>70</td><td>70</td><td>65</td><td>50</td><td>75</td><td>50</td><td>60</td></tr>
-</tbody></table></div>
-<div class="table-wrap"><table>
-<thead><tr><th>技能</th><th>数值</th><th>备注</th></tr></thead>
-<tbody>
-<tr><td>心理学</td><td>60%（30/12）</td><td>—</td></tr>
-<tr><td>法律</td><td>65%（32/13）</td><td>—</td></tr>
-<tr><td>射击</td><td>60%（30/12）</td><td>—</td></tr>
-<tr><td>侦查</td><td>50%（25/10）</td><td>—</td></tr>
-</tbody></table></div>
-<blockquote><p>⚠️ <strong>对其使用语言类技能默认失败；心理学降为困难难度</strong></p><p>⚠️ <strong>调查员离开后，会派3名暴徒前往贝尔街</strong></p></blockquote>
-<h4 id="h-5">混种深潜者（共4名）</h4>
-<div class="table-wrap"><table>
-<thead><tr><th>属性</th><th>STR</th><th>CON</th><th>SIZ</th><th>DEX</th><th>INT</th><th>POW</th><th>APP</th></tr></thead>
-<tbody>
-<tr><td>数值</td><td>65</td><td>65</td><td>50</td><td>65</td><td>65</td><td>50</td><td>35</td></tr>
-</tbody></table></div>
-<ul>
-<li><strong>HP：11</strong> | <strong>DB：无</strong> | <strong>体格：0</strong> | <strong>MP：10</strong> | <strong>移动：8/8（游泳）</strong></li>
-</ul>
-<div class="table-wrap"><table>
-<thead><tr><th>攻击方式</th><th>技能值</th><th>伤害</th></tr></thead>
-<tbody>
-<tr><td>格斗</td><td>45%（22/9）</td><td>1d3+DB</td></tr>
-<tr><td>射击（.32手枪）</td><td>45%（22/9）</td><td>1d8，弹数8，每轮1(3)</td></tr>
-<tr><td>闪避</td><td>30%（15/6）</td><td>—</td></tr>
-</tbody></table></div>
-<div class="table-wrap"><table>
-<thead><tr><th>技能</th><th>数值</th></tr></thead>
-<tbody>
-<tr><td>跳跃</td><td>45%</td></tr>
-<tr><td>聆听</td><td>50%</td></tr>
-<tr><td>隐秘行动</td><td>46%</td></tr>
-<tr><td>游泳</td><td>60%</td></tr>
-</tbody></table></div>
-<blockquote><p>⚠️ <strong>可使用咒术召唤浓雾（SAN 1/1d2）</strong></p><p>⚠️ <strong>扶桑花号启动倒计时：6-7轮战斗后逃脱</strong></p></blockquote>
-<h4 id="h-6">暴徒（洛夫雇佣，共3名）</h4>
-<div class="table-wrap"><table>
-<thead><tr><th>属性</th><th>STR</th><th>CON</th><th>SIZ</th><th>DEX</th><th>INT</th><th>POW</th><th>APP</th></tr></thead>
-<tbody>
-<tr><td>数值</td><td>75</td><td>75</td><td>80</td><td>70</td><td>40</td><td>50</td><td>40</td></tr>
-</tbody></table></div>
-<ul>
-<li><strong>HP：15</strong> | <strong>DB：+1d4</strong> | <strong>体格：1</strong> | <strong>移动：8</strong></li>
-</ul>
-<div class="table-wrap"><table>
-<thead><tr><th>攻击方式</th><th>技能值</th><th>伤害</th></tr></thead>
-<tbody>
-<tr><td>格斗</td><td>60%（30/12）</td><td>1d3+DB</td></tr>
-<tr><td>射击（12号霰弹枪双管）</td><td>30%（15/6）</td><td>2d6，弹数5</td></tr>
-<tr><td>闪避</td><td>30%（15/6）</td><td>—</td></tr>
-</tbody></table></div>
-<blockquote><p>⚠️ <strong>触发条件：调查员见过蒙特利尔后，晚上到达贝尔街必触发</strong></p></blockquote>
-<h3 id="s4-5">4.5 场景触发逻辑（AI DM状态机）</h3>
-<pre><code>[S01 摩勒住宅]
-  线索解锁 →
-    I04小册子 → 解锁 S03(老赫特) + S04(卡森其药店)
-    I02照片 → 解锁 S02(警察局)
-
-[S02 警察局]
-  后续触发 → 暴徒事件（若调查员晚上去贝尔街）
-
-[S03 老赫特]
-  可选支线/替代信息源：提供“老鼠”信息和卡森其方向，但不是唯一主线入口
-
-[S04 卡森其药店] ← 核心场景，必经
-  到达时间：约下午7点
-  必触发事件：
-    ① 深潜者出逃（无论之前是否惊动）
-    ② 浓雾咒术（SAN 1/1d2）
-    ③ 发现I07地图笔记 → 解锁 S05
-  可选触发：
-    ④ 暴徒到来（若见过蒙特利尔）
-
-[S05 泰晤士港·扶桑花号] ← 终幕
-  分支判定：
-    ① 强制战斗路线 → 结局A/B
-    ② 聆听+说服 → 结局C</code></pre>
-<h3 id="s4-6">4.6 结局数据</h3>
-<div class="table-wrap"><table>
-<thead><tr><th>结局</th><th>触发条件</th><th>SAN奖励</th><th>金钱奖励</th><th>克苏鲁神话</th></tr></thead>
-<tbody>
-<tr><td>A·击败深潜者</td><td>击杀4名深潜者</td><td>+1d3</td><td>200英镑/人</td><td>+1d6</td></tr>
-<tr><td>B·深潜者逃脱</td><td>扶桑花号6-7轮后逃脱</td><td>无</td><td>无</td><td>—</td></tr>
-<tr><td>C·交涉成功</td><td>聆听检定+说服检定通过</td><td>+1d6</td><td>100英镑/人</td><td>+1d6</td></tr>
-</tbody></table></div>
+<p>产品层固定原则为“硬主线、软过程”：AI 可自由回应节点内行动，但权威地点、人物、线索、事实、剧情结果和奖励只能由已校验的模组事件产生。普通回合与移动推进统一世界时间；必经节点在连续 3 回合无进展时提示，在 6 回合无进展时执行作者定义的失败推进。</p>
 <hr>
 <h2 id="s5">五、展示层设计</h2>
 <h3 id="s5-1">5.1 界面布局</h3>

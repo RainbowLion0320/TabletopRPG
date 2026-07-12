@@ -34,11 +34,12 @@ describe('InfoDrawer v7 investigation workspace', () => {
     const state = makeState({ activeNpcName: '伊莎贝拉·摩勒' });
     state.clues = [{ ...storyData.items.I04, found: true }];
     renderDrawer(state);
-    expect((await screen.findAllByText('卡森其药店')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('小册子')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('卡森其药店')).not.toBeInTheDocument();
     fireEvent.change(screen.getByRole('combobox', { name: '资料类型' }), { target: { value: 'item' } });
     const mobileList = screen.getByLabelText('案件资料列表');
     await waitFor(() => expect(within(mobileList).queryByText('伊莎贝拉·摩勒')).not.toBeInTheDocument());
-    expect(within(mobileList).getByText('小册子')).toBeInTheDocument();
+    expect(within(mobileList).getAllByText('小册子').length).toBeGreaterThan(0);
   });
 
   it('shows connected dynamic nodes and readable inspector sources', async () => {

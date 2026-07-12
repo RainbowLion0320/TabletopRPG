@@ -59,7 +59,7 @@ describe('contextBuilder', () => {
     const state = makeState({ currentScene: 'S01' });
     const ctx = buildDmContext(state, kb, { mode: 'together' });
     expect(ctx.dynamic.currentScene.public.id).toBe('S01');
-    expect(ctx.dynamic.reachableScenes.map((s) => s.id).sort()).toEqual(['S02', 'S03', 'S04']);
+    expect(ctx.dynamic.reachableScenes.map((s) => s.id)).toEqual([]);
     // single default fixture player should be located in S01
     const playerName = state.players[0].name;
     expect(ctx.dynamic.playerLocations[playerName]).toBe('摩勒住宅');

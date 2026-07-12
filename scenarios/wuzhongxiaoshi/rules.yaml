@@ -1,0 +1,43 @@
+entries:
+  - id: RULE_MONTREAL_LANGUAGE
+    trigger: checkRequested
+    support: enforced
+    description: 对蒙特利尔使用语言类技能默认失败；心理学提高为困难难度。
+    when: { all: [{ sceneIs: S02 }, { variable: metMontreal, op: eq, value: true }] }
+    effects: []
+  - id: RULE_TURN_TIME
+    trigger: afterAction
+    support: enforced
+    description: 每个完成的正式DM回合推进五分钟世界时间。
+    when: { always: true }
+    effects: [{ advanceTime: 5 }]
+  - id: RULE_S04_ENTRY
+    trigger: sceneEnter
+    support: enforced
+    description: S04首次进入触发深潜者撤离、浓雾和地图笔记事件。
+    when: { sceneIs: S04 }
+    effects: []
+  - id: RULE_S04_THUGS
+    trigger: sceneEnter
+    support: enforced
+    description: 见过蒙特利尔且19:00后进入S04时触发暴徒伏击。
+    when: { all: [{ sceneIs: S04 }, { variable: metMontreal, op: eq, value: true }, { worldTime: true, op: gte, value: 1920-07-13T19:00 }] }
+    effects: []
+  - id: RULE_HYBRID_SAN
+    trigger: sceneEnter
+    support: enforced
+    description: 首次清楚目睹深潜者或浓雾咒术时，全队最低损失1点SAN。
+    when: { all: [{ sceneIs: S04 }, { not: { eventFired: EV_S04_FOG } }] }
+    effects: []
+  - id: RULE_FUSANG_TIMER
+    trigger: clockTick
+    support: enforced
+    description: 战斗路线第七轮结束时扶桑花号逃脱并进入结局B。
+    when: { clock: fusangEscape, op: gte, value: 7 }
+    effects: [{ setEnding: END_B }]
+  - id: RULE_LIGHT_COMBAT
+    trigger: combatStart
+    support: narrator_assisted
+    description: 当前仅结构化敌方HP、击败数量和回合时钟；先攻、弹药与战术移动由Narrator辅助裁决。
+    when: { encounter: ENC01, state: active }
+    effects: []

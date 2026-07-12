@@ -44,11 +44,19 @@ describe('intentClassifier', () => {
     expect(result.relevantSkills).toEqual(expect.arrayContaining(['侦查', '聆听']));
   });
 
-  it('intentKind locks to first non-other hit', () => {
-    // first action is observe, second is combat; intentKind should remain observe
+  it('uses the highest-priority intent across all players', () => {
     const result = classifyIntent([action('我搜寻地面'), action('我开枪还击', '艾达')]);
-    expect(result.intentKind).toBe('observe');
-    expect(result.hasConflict).toBe(true); // combat raises conflict regardless
+    expect(result.intentKind).toBe('combat');
+    expect(result.hasConflict).toBe(true);
+  });
+
+  it('does not let one player observing hide another player moving', () => {
+    const result = classifyIntent([
+      action('我检查已经收集的文件'),
+      action('我开车前往药房', '艾达')
+    ]);
+    expect(result.intentKind).toBe('move');
+    expect(result.relevantSkills).toEqual(expect.arrayContaining(['侦查', '驾驶（汽车）']));
   });
 
   it('case-insensitive matching is OK because dictionary is Chinese', () => {

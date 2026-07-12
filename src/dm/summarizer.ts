@@ -11,6 +11,7 @@
 import type { ApiConfig, ConversationTurn, GameState } from '../types/game';
 import { generateJson } from './llm/client';
 import { AiResponseFormatError } from './llm/errors';
+import { jsonrepair } from 'jsonrepair';
 
 /** 近 N 对（user/assistant）原文不被总结。8 对 = 16 条。 */
 export const RECENT_TURN_PAIRS_KEEP = 8;
@@ -82,6 +83,8 @@ const SUMMARIZE_SYSTEM_PROMPT = `你是 KP（守密人）。任务：把若干�
 要求：
 - 第一人称（KP 视角）的备忘，写"我让玩家……他们……NPC……发生了……"。
 - 必须保留：场景切换、人物互动、获得线索、检定结果、NPC 态度变化、剧情后果。
+- 把已确认的物品归属与位置、伤势和 SAN、NPC 身份与态度、玩家承诺、尚未兑现的后果写成稳定事实；后文不得擅自改写。
+- 检定失败只能记录“未确认/未发现”，不得把失败时的猜测总结成已确认事实。
 - 略去玩家原话和 AI 原叙述的修辞，保留事实核。
 - 如已有"前情提要"，把它整合进新版日志，不要重复列举。
 - 输出严格 JSON 对象：{"summary":"<日志正文>"}，不要 Markdown，不要注释，不要前后缀。`;
@@ -129,7 +132,7 @@ function buildSummarizerUserMessage(chunk: ConversationTurn[], previousSummary: 
   return `${head}\n\n以下是需要压缩的回合原文：\n${body}`;
 }
 
-function parseSummary(raw: string): string {
+export function parseSummary(raw: string): string {
   const stripped = raw
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
     .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
@@ -140,7 +143,7 @@ function parseSummary(raw: string): string {
   if (start >= 0 && end > start) candidates.push(stripped.slice(start, end + 1));
   for (const c of candidates) {
     try {
-      const parsed = JSON.parse(c) as SummarizerJson;
+      const parsed = JSON.parse(jsonrepair(c)) as SummarizerJson;
       if (typeof parsed.summary === 'string' && parsed.summary.trim()) {
         return parsed.summary.trim();
       }
@@ -148,5 +151,16 @@ function parseSummary(raw: string): string {
       // try next candidate
     }
   }
+  const plain = stripped
+    .replace(/^```(?:text|markdown)?\s*/i, '')
+    .replace(/```$/i, '')
+    .replace(/^(?:summary|摘要|日志)[：:]\s*/i, '')
+    .trim();
+  if (
+    plain.length >= 20
+    && plain.length <= 5000
+    && /[\u3400-\u9fff]/.test(plain)
+    && !plain.startsWith('{')
+  ) return plain;
   throw new AiResponseFormatError('Summarizer 返回的 summary 不是有效的非空 JSON 字段');
 }

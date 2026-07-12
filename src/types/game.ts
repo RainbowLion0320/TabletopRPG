@@ -1,4 +1,9 @@
-export type SceneId = 'S01' | 'S02' | 'S03' | 'S04' | 'S05';
+/** Scenario entity ids are validated against the compiled module at runtime. */
+export type SceneId = string;
+export type NpcId = string;
+export type ItemId = string;
+export type BeatId = string;
+export type FactId = string;
 
 export type ExploreMode = 'together' | 'split';
 
@@ -151,6 +156,8 @@ export interface CaseBoardNode {
   subtitle?: string;
   importance?: CaseBoardImportance;
   revealWhen: CaseBoardRevealRule;
+  /** Canonical YAML condition; present on generated scenario board entries. */
+  scenarioCondition?: import('../scenario/generated/scenario-schema').Condition;
 }
 
 export interface CaseBoardEdge {
@@ -160,6 +167,8 @@ export interface CaseBoardEdge {
   label?: string;
   tone: CaseBoardEdgeTone;
   revealWhen: 'bothNodesVisible' | CaseBoardRevealRule;
+  /** Canonical YAML condition; present on generated scenario board entries. */
+  scenarioCondition?: import('../scenario/generated/scenario-schema').Condition;
 }
 
 export interface CaseBoardDefinition {
@@ -259,12 +268,56 @@ export interface CheckRequest {
   reason?: string;
   threshold?: number;
   skillVal?: number;
+  /** Stable scenario check id when the request came from a structured effect. */
+  scenarioCheckId?: string;
+  /** 骰点后需要恢复的原始共同调查行动；仅由本地规则层写入。 */
+  continuationActions?: Array<{ player: string; action: string; scene?: string }>;
 }
 
 export interface DiceResult {
   roll: number;
   level: 'crit' | 'hard' | 'success' | 'fail' | 'fumble';
   label: string;
+}
+
+export type ScenarioStepStatus = 'locked' | 'active' | 'completed' | 'failed';
+export type ScenarioClueStatus = 'unknown' | 'discovered' | 'analyzed' | 'destroyed';
+
+export interface ScenarioClockState {
+  value: number;
+  active: boolean;
+  visible: boolean;
+}
+
+export interface ScenarioEncounterState {
+  state: 'inactive' | 'active' | 'won' | 'lost' | 'resolved';
+  route?: string;
+  round: number;
+  defeated: number;
+  opponentHp: number;
+}
+
+export interface ScenarioProgress {
+  moduleId: string;
+  moduleVersion: string;
+  contentHash: string;
+  worldTime: string;
+  activeActId: string;
+  beatStates: Record<string, ScenarioStepStatus>;
+  objectiveStates: Record<string, ScenarioStepStatus>;
+  knownFactIds: string[];
+  clueStates: Record<string, ScenarioClueStatus>;
+  firedEventIds: string[];
+  settledEndingIds: string[];
+  variables: Record<string, string | number | boolean>;
+  clocks: Record<string, ScenarioClockState>;
+  encounters: Record<string, ScenarioEncounterState>;
+  lastCheckOutcomes: Record<string, DiceResult['level']>;
+  visitedSceneIds: SceneId[];
+  lastProgressTurn: number;
+  idleTurns: number;
+  endingId: string | null;
+  migrationLog: string[];
 }
 
 export interface ConversationTurn {
@@ -419,6 +472,8 @@ export interface GameState {
   declarations: Record<string, string>;
   pendingCheck: CheckRequest | null;
   currentScene: SceneId;
+  /** Canonical stable NPC id. activeNpcName remains a compatibility projection. */
+  activeNpcId: NpcId | null;
   activeNpcName: string | null;
   clues: StoryItem[];
   flags: Record<string, unknown>;
@@ -446,6 +501,8 @@ export interface GameState {
   episodicMemory?: EpisodicMemoryRecord[];
   /** 玩家可见案件板动态层；静态剧本骨架仍由 scenario caseBoard 提供 */
   caseBoard?: CaseBoardState;
+  /** Authoritative structured scenario progression state (save format v8). */
+  scenarioProgress: ScenarioProgress;
 }
 
 export interface AiResponse {
@@ -458,6 +515,8 @@ export interface AiResponse {
     flags?: Record<string, unknown>;
     newItems?: string[];
     sceneChange?: SceneId | null;
+    /** Validated scenario events proposed through propose_story_event. */
+    storyEventIds?: string[];
     /** 本轮新调度的后果（仅 phase 8+ 管线使用） */
     scheduledConsequences?: PersistedPendingConsequence[];
     /** 本轮被触发的 pending id（仅 phase 8+ 管线使用） */
@@ -486,6 +545,9 @@ export interface SaveSlot {
   scene: string;
   players: string;
   gameState: GameState;
-  /** 存档格式版本；v7 起案件板增加实体 insight 与稳定语义键。 */
-  version?: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  moduleId?: string;
+  moduleVersion?: string;
+  contentHash?: string;
+  /** 存档格式版本；v8 起包含模组版本、内容哈希和 ScenarioProgress。 */
+  version?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 }

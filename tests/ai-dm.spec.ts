@@ -114,7 +114,7 @@ test('AI DM repairs unescaped dialogue quotes locally without interrupting the t
   await startGameWithApi(page);
   await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('追问那句话。');
   await page.getByRole('button', { name: '下一位' }).click();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('观察她的反应。');
+  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('记录她的反应。');
   await page.getByRole('button', { name: '提交' }).click();
 
   await expect(page.getByText('伊莎贝拉说父亲总提到"水里的东西"，随后沉默下来。')).toBeVisible();
@@ -164,7 +164,7 @@ test('narrative highlights remain safe, clickable and stable across desktop and 
 
   await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('询问伊莎贝拉父亲的近况。');
   await page.getByRole('button', { name: '下一位' }).click();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('观察伊莎贝拉的反应。');
+  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('记录伊莎贝拉的反应。');
   await page.getByRole('button', { name: '提交' }).click();
 
   await expect.poll(() => narratorAttempts).toBe(1);
@@ -331,9 +331,9 @@ test('case board records a meaningful fact when the AI proposes an empty patch',
   });
 
   await startGameWithApi(page);
-  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('检查门廊。');
+  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('留意门廊。');
   await page.getByRole('button', { name: '下一位' }).click();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('观察周围。');
+  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('守在一旁。');
   await page.getByRole('button', { name: '提交' }).click();
   await expect(page.getByText('亨利在门廊发现几道新鲜的拖拽刮痕，像是有人搬运过重物。')).toBeVisible();
 

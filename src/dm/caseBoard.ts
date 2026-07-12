@@ -8,6 +8,8 @@ import type {
   GameState,
   SceneId
 } from '../types/game';
+import { deriveRevealContext } from './knowledgeBase';
+import { evaluateScenarioCondition, getScenarioProgressForState } from '../scenario/engine';
 
 export interface VisibleCaseBoard {
   nodes: CaseBoardNode[];
@@ -19,9 +21,7 @@ function collectFoundItemIds(state: GameState): Set<string> {
 }
 
 function collectVisitedScenes(state: GameState): Set<SceneId> {
-  const visited = new Set<SceneId>(['S01', state.currentScene]);
-  state.clues.forEach((clue) => visited.add(clue.scene));
-  return visited;
+  return new Set(deriveRevealContext(state).visitedScenes);
 }
 
 export function collectKnownNpcNames(state: GameState): string[] {
@@ -31,7 +31,9 @@ export function collectKnownNpcNames(state: GameState): string[] {
   };
 
   add(state.activeNpcName);
-  storyData.scenes[state.currentScene]?.npcs.forEach(add);
+  for (const sceneId of deriveRevealContext(state).visitedScenes) {
+    storyData.scenes[sceneId]?.npcs.forEach(add);
+  }
   Object.keys(state.npcMindModels ?? {}).forEach(add);
   for (const fact of state.atomicFacts ?? []) {
     add(fact.actor);
@@ -76,12 +78,18 @@ export function getVisibleCaseBoard(
   const foundItems = collectFoundItemIds(state);
   const knownNpcs = new Set(collectKnownNpcNames(state));
   const visitedScenes = collectVisitedScenes(state);
+  const scenarioProgress = getScenarioProgressForState(state);
   const nodes = definition.nodes.filter((node) =>
-    revealRuleMatches(node.revealWhen, state, foundItems, knownNpcs, visitedScenes)
+    node.scenarioCondition
+      ? evaluateScenarioCondition(node.scenarioCondition, scenarioProgress, state.currentScene)
+        || revealRuleMatches(node.revealWhen, state, foundItems, knownNpcs, visitedScenes)
+      : revealRuleMatches(node.revealWhen, state, foundItems, knownNpcs, visitedScenes)
   );
   const visibleIds = new Set(nodes.map((node) => node.id));
   const edges = definition.edges.filter((edge) => {
     if (!visibleIds.has(edge.from) || !visibleIds.has(edge.to)) return false;
+    if (edge.scenarioCondition
+      && !evaluateScenarioCondition(edge.scenarioCondition, scenarioProgress, state.currentScene)) return false;
     if (edge.revealWhen === 'bothNodesVisible') return true;
     return revealRuleMatches(edge.revealWhen, state, foundItems, knownNpcs, visitedScenes);
   });

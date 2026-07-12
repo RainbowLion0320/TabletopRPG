@@ -71,6 +71,22 @@ export const DM_TOOLS: OpenAiTool[] = [
   {
     type: 'function',
     function: {
+      name: 'propose_story_event',
+      description: '提议触发当前活动剧情节点中由模组定义的事件。只能提交 eventId，效果由前端从 YAML 读取。',
+      parameters: {
+        type: 'object',
+        properties: {
+          eventId: { type: 'string', description: '当前上下文列出的可触发剧情事件 id' },
+          reason: { type: 'string', description: '玩家行动如何满足事件条件' }
+        },
+        required: ['eventId'],
+        additionalProperties: false
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
       name: 'propose_state_update',
       description:
         '提议修改游戏状态。前端会再校验一次后落地。所有字段都是可选 delta。',
@@ -221,6 +237,7 @@ interface OpenAiResponseFunctionCallPayload {
 
 const TOOL_NAME_SET = new Set<DmToolName>([
   'request_check',
+  'propose_story_event',
   'propose_state_update',
   'reveal_secret',
   'lookup_entity',
@@ -273,6 +290,8 @@ export interface ToolValidationResult {
 
 export function validateToolCallShape(call: DmToolCall): ToolValidationResult {
   switch (call.name) {
+    case 'propose_story_event':
+      return validateProposeStoryEvent(call.arguments);
     case 'request_check':
       return validateRequestCheck(call.arguments);
     case 'propose_state_update':
@@ -290,6 +309,14 @@ export function validateToolCallShape(call: DmToolCall): ToolValidationResult {
     default:
       return { ok: false, reason: `未知工具：${(call as { name: string }).name}` };
   }
+}
+
+function validateProposeStoryEvent(args: Record<string, unknown>): ToolValidationResult {
+  if (!isString(args.eventId)) return { ok: false, reason: 'eventId 必须是非空字符串' };
+  if (args.reason !== undefined && typeof args.reason !== 'string') {
+    return { ok: false, reason: 'reason 必须是字符串' };
+  }
+  return { ok: true };
 }
 
 function isString(v: unknown): v is string {

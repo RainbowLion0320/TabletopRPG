@@ -83,6 +83,19 @@ describe('knowledgeBase secret reveal', () => {
     expect(ctx.visitedScenes.has('S01')).toBe(true);
   });
 
+  it('keeps previously visited scenes through persistent flags and legacy event logs', () => {
+    const flagged = makeState({ currentScene: 'S03', flags: { 'sceneVisited.S04': true } });
+    expect([...deriveRevealContext(flagged).visitedScenes]).toEqual(
+      expect.arrayContaining(['S01', 'S03', 'S04'])
+    );
+
+    const legacy = makeState({
+      currentScene: 'S03',
+      eventLog: [{ id: 'scene-1', turn: 1, kind: 'scene_change', description: '切换到 S04' }]
+    });
+    expect(deriveRevealContext(legacy).visitedScenes.has('S04')).toBe(true);
+  });
+
   it('empty revealOn means never revealed', () => {
     const secret: SecretDefinition = { id: 'never', content: 'x', revealOn: [] };
     const ctx = deriveRevealContext(makeState({ flags: { anything: true } }));

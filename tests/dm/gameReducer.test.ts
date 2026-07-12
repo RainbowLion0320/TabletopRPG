@@ -19,6 +19,36 @@ describe('gameReducer start opening message', () => {
 });
 
 describe('gameReducer applyAiResponse pendingConsequences merge', () => {
+  it('keeps original party actions on a pending check for dice continuation', () => {
+    const state = makeState({ players: [makeInvestigator({ name: '亨利' })] });
+    const continuationActions = [{ player: '亨利', action: '搜查书房' }];
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: {
+        check: { player: '亨利', skill: '侦查', difficulty: '普通', continuationActions }
+      },
+      raw: '{}'
+    });
+    expect(next.pendingCheck?.continuationActions).toEqual(continuationActions);
+  });
+
+  it('moves every investigator location when together-mode scene state changes', () => {
+    const henry = makeInvestigator({ id: 'p-henry', name: '亨利' });
+    const ada = makeInvestigator({ id: 'p-ada', name: '艾达' });
+    const state = makeState({
+      players: [henry, ada], currentScene: 'S01', activeNpcName: '伊莎贝拉·摩勒'
+    });
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: { narrative: '你们抵达药店。', stateUpdate: { sceneChange: 'S04' } },
+      raw: '{}'
+    });
+
+    expect(next.currentScene).toBe('S04');
+    expect(next.playerLocations).toEqual({ 'p-henry': 'S04', 'p-ada': 'S04' });
+    expect(next.activeNpcName).toBeNull();
+  });
+
   it('stores player-specific choices by player id without collapsing them into global suggestions', () => {
     const henry = makeInvestigator({ id: 'p-henry', name: '亨利' });
     const ada = makeInvestigator({ id: 'p-ada', name: '艾达' });
@@ -179,6 +209,18 @@ describe('gameReducer appendEvents', () => {
     const state = makeState({ eventLog: [{ id: 'a', turn: 0, kind: 'narrative', description: 'x' }] });
     const next = gameReducer(state, { type: 'appendEvents', events: [] });
     expect(next).toBe(state);
+  });
+});
+
+describe('gameReducer action log retention', () => {
+  it('keeps a 100-turn play session instead of truncating at 40 entries', () => {
+    let state = makeState();
+    for (let index = 0; index < 100; index += 1) {
+      state = gameReducer(state, { type: 'addLog', text: `turn-${index}` });
+    }
+    expect(state.actionLog).toHaveLength(100);
+    expect(state.actionLog[0].text).toBe('turn-99');
+    expect(state.actionLog[99].text).toBe('turn-0');
   });
 });
 

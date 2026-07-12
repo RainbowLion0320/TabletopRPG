@@ -32,6 +32,7 @@ function normalizeSaveSlot(value: unknown): SaveSlot | null {
     : new Date(id).toLocaleString('zh-CN');
 
   const version: SaveSlot['version'] =
+    value.version === 8 ? 8 :
     value.version === 7 ? 7 :
     value.version === 6 ? 6 :
     value.version === 5 ? 5 :
@@ -45,6 +46,9 @@ function normalizeSaveSlot(value: unknown): SaveSlot | null {
     scene: storyData.scenes[gameState.currentScene].name,
     players: gameState.players.map((player) => player.name).join('、'),
     gameState,
+    moduleId: gameState.scenarioProgress.moduleId,
+    moduleVersion: gameState.scenarioProgress.moduleVersion,
+    contentHash: gameState.scenarioProgress.contentHash,
     version
   };
 }
@@ -52,8 +56,13 @@ function normalizeSaveSlot(value: unknown): SaveSlot | null {
 export function readSaves(): SaveSlot[] {
   const merged = parseArray(SAVE_KEY)
     .flatMap((slot) => {
-      const normalized = normalizeSaveSlot(slot);
-      return normalized ? [normalized] : [];
+      try {
+        const normalized = normalizeSaveSlot(slot);
+        return normalized ? [normalized] : [];
+      } catch (error) {
+        console.warn('[storage] 存档因模组版本不兼容而拒绝载入：', error instanceof Error ? error.message : error);
+        return [];
+      }
     })
     .sort((a, b) => b.id - a.id);
 
@@ -74,7 +83,10 @@ export function saveGameState(gameState: GameState) {
     scene: storyData.scenes[normalizedState.currentScene].name,
     players: normalizedState.players.map((player) => player.name).join('、'),
     gameState: normalizedState,
-    version: 7
+    moduleId: normalizedState.scenarioProgress.moduleId,
+    moduleVersion: normalizedState.scenarioProgress.moduleVersion,
+    contentHash: normalizedState.scenarioProgress.contentHash,
+    version: 8
   };
   localStorage.setItem(SAVE_KEY, JSON.stringify([slot, ...saves.filter((save) => save.id !== slot.id)].slice(0, MAX_SAVES)));
   return slot;

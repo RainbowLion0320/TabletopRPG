@@ -116,8 +116,13 @@ const DICTIONARY: DictEntry[] = [
     kind: 'move'
   },
   {
-    keywords: ['开车', '驾车', '驾驶', '驾驶汽车', '开汽车', '加速', '甩开'],
+    keywords: ['开车', '驾车', '驾驶', '驾驶汽车', '开汽车', '驱车', '驶向', '加速', '甩开'],
     skills: ['驾驶（汽车）'],
+    kind: 'move'
+  },
+  {
+    keywords: ['前往', '赶往', '出发', '动身', '返回', '离开', '抵达'],
+    skills: [],
     kind: 'move'
   },
   // ---- 使用 / 操作 ----
@@ -178,13 +183,23 @@ const DICTIONARY: DictEntry[] = [
 
 /**
  * 对一组玩家行动做意图分类。
- * 多个动作的 relevantSkills 取并集；conflict 取或；intentKind 取首次命中的非 other。
+ * 多个动作的 relevantSkills 取并集；conflict 取或；intentKind 取最高优先级命中。
+ * 多人共同调查时，移动或战斗不能被另一名玩家先说出的“检查”吞掉。
  */
 export function classifyIntent(actions: PlayerAction[]): ClassifiedIntent {
   const skillSet = new Set<string>();
   let hasConflict = false;
   let intentKind: IntentKind = 'other';
-  let intentLocked = false;
+
+  const priority: Record<IntentKind, number> = {
+    other: 0,
+    observe: 1,
+    social: 2,
+    research: 3,
+    use: 4,
+    move: 5,
+    combat: 6
+  };
 
   for (const a of actions) {
     const text = (a.action || '').toLowerCase();
@@ -195,9 +210,8 @@ export function classifyIntent(actions: PlayerAction[]): ClassifiedIntent {
       if (!hit) continue;
       for (const skill of entry.skills) skillSet.add(skill);
       if (entry.conflict) hasConflict = true;
-      if (!intentLocked && entry.kind !== 'other') {
+      if (priority[entry.kind] > priority[intentKind]) {
         intentKind = entry.kind;
-        intentLocked = true;
       }
     }
   }

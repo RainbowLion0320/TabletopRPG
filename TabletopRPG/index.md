@@ -4,7 +4,7 @@ title: Wiki 内容目录
 tags: [index, aligned]
 sources: [../../docs/PRD.md, ../../docs/SPEC.md, ../../docs/GDD.md]
 created: 2026-05-14
-updated: 2026-07-11
+updated: 2026-07-12
 ---
 
 # TabletopRPG Wiki · 内容目录
@@ -34,6 +34,7 @@ updated: 2026-07-11
 | [提示词工程](concepts/prompt_engineering.md) | 当前内嵌提示词结构与外部化计划 | ✅ |
 | [技术选型](concepts/tech_stack.md) | React/Vite/TypeScript、多 Provider、localStorage、数值规则配置 | ✅ |
 | [动态案件板与调查台](concepts/case_board.md) | v7 核心关系、实体档案、审核规则、自动布局与 v6 迁移 | ✅ 已实现 |
+| [模组规范与剧情推进引擎](concepts/scenario_engine.md) | YAML 唯一事实源、Condition/Effect、节点推进、v8 迁移 | ✅ 已实现 |
 
 ## 决策记录（decisions/）
 

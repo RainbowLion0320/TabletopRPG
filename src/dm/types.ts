@@ -162,6 +162,7 @@ export interface DMEvent {
 
 export type DmToolName =
   | 'request_check'
+  | 'propose_story_event'
   | 'propose_state_update'
   | 'reveal_secret'
   | 'lookup_entity'

@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tabletop-rpg.local/schema/scenario-v1.json",
+  "title": "ScenarioModule",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifest", "world", "progression", "rules", "presentation"],
+  "properties": {
+    "manifest": { "$ref": "#/$defs/manifest" },
+    "world": { "$ref": "#/$defs/world" },
+    "progression": { "$ref": "#/$defs/progression" },
+    "rules": { "$ref": "#/$defs/rules" },
+    "presentation": { "$ref": "#/$defs/presentation" }
+  },
+  "$defs": {
+    "id": { "type": "string", "minLength": 1, "pattern": "^[A-Za-z][A-Za-z0-9._-]*$" },
+    "text": { "type": "string", "minLength": 1 },
+    "stringList": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+    "condition": {
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["all"], "properties": { "all": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/condition" } } } },
+        { "type": "object", "additionalProperties": false, "required": ["any"], "properties": { "any": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/condition" } } } },
+        { "type": "object", "additionalProperties": false, "required": ["not"], "properties": { "not": { "$ref": "#/$defs/condition" } } },
+        { "type": "object", "additionalProperties": false, "required": ["sceneIs"], "properties": { "sceneIs": { "$ref": "#/$defs/id" } } },
+        { "type": "object", "additionalProperties": false, "required": ["sceneVisited"], "properties": { "sceneVisited": { "$ref": "#/$defs/id" } } },
+        { "type": "object", "additionalProperties": false, "required": ["beat", "status"], "properties": { "beat": { "$ref": "#/$defs/id" }, "status": { "enum": ["locked", "active", "completed", "failed"] } } },
+        { "type": "object", "additionalProperties": false, "required": ["objective", "status"], "properties": { "objective": { "$ref": "#/$defs/id" }, "status": { "enum": ["locked", "active", "completed", "failed"] } } },
+        { "type": "object", "additionalProperties": false, "required": ["clue", "status"], "properties": { "clue": { "$ref": "#/$defs/id" }, "status": { "enum": ["unknown", "discovered", "analyzed", "destroyed"] } } },
+        { "type": "object", "additionalProperties": false, "required": ["factKnown"], "properties": { "factKnown": { "$ref": "#/$defs/id" } } },
+        { "type": "object", "additionalProperties": false, "required": ["eventFired"], "properties": { "eventFired": { "$ref": "#/$defs/id" } } },
+        { "type": "object", "additionalProperties": false, "required": ["variable", "op", "value"], "properties": { "variable": { "$ref": "#/$defs/id" }, "op": { "enum": ["eq", "neq", "gt", "gte", "lt", "lte"] }, "value": { "type": ["string", "number", "boolean"] } } },
+        { "type": "object", "additionalProperties": false, "required": ["worldTime", "op", "value"], "properties": { "worldTime": { "const": true }, "op": { "enum": ["gt", "gte", "lt", "lte"] }, "value": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$" } } },
+        { "type": "object", "additionalProperties": false, "required": ["clock", "op", "value"], "properties": { "clock": { "$ref": "#/$defs/id" }, "op": { "enum": ["eq", "neq", "gt", "gte", "lt", "lte"] }, "value": { "type": "number" } } },
+        { "type": "object", "additionalProperties": false, "required": ["check", "outcome"], "properties": { "check": { "$ref": "#/$defs/id" }, "outcome": { "enum": ["crit", "hard", "success", "fail", "fumble"] } } },
+        { "type": "object", "additionalProperties": false, "required": ["encounter", "state"], "properties": { "encounter": { "$ref": "#/$defs/id" }, "state": { "enum": ["inactive", "active", "won", "lost", "resolved"] } } },
+        { "type": "object", "additionalProperties": false, "required": ["always"], "properties": { "always": { "const": true } } }
+      ]
+    },
+    "effect": {
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["activateBeat"], "properties": { "activateBeat": { "$ref": "#/$defs/id" } } },
+        { "type": "object", "additionalProperties": false, "required": ["completeBeat"], "properties": { "completeBeat": { "$ref": "#/$defs/id" } } },
+        { "type": "object", "additionalProperties": false, "required": ["failBeat"], "properties": { "failBeat": { "$ref": "#/$defs/id" } } },
+        { "type": "object", "additionalProperties": false, "required": ["activateObjective"], "properties": { "activateObjective": { "$ref": "#/$defs/id" } } },
+        { "type": "object", "additionalProperties": false, "required": ["completeObjective"], "properties": { "completeObjective": { "$ref": "#/$defs/id" } } },
+        { "type": "object", "additionalProperties": false, "required": ["failObjective"], "properties": { "failObjective": { "$ref": "#/$defs/id" } } },
+        { "type": "object", "additionalProperties": false, "required": ["revealFact"], "properties": { "revealFact": { "$ref": "#/$defs/id" } } },
+        { "type": "object", "additionalProperties": false, "required": ["discoverClue"], "properties": { "discoverClue": { "$ref": "#/$defs/id" } } },
+        { "type": "object", "additionalProperties": false, "required": ["analyzeClue"], "properties": { "analyzeClue": { "$ref": "#/$defs/id" } } },
+        { "type": "object", "additionalProperties": false, "required": ["destroyClue"], "properties": { "destroyClue": { "$ref": "#/$defs/id" } } },
+        { "type": "object", "additionalProperties": false, "required": ["setVariable", "value"], "properties": { "setVariable": { "$ref": "#/$defs/id" }, "value": { "type": ["string", "number", "boolean"] } } },
+        { "type": "object", "additionalProperties": false, "required": ["advanceTime"], "properties": { "advanceTime": { "type": "integer", "minimum": 0 } } },
+        { "type": "object", "additionalProperties": false, "required": ["startClock", "value"], "properties": { "startClock": { "$ref": "#/$defs/id" }, "value": { "type": "number" }, "visible": { "type": "boolean" } } },
+        { "type": "object", "additionalProperties": false, "required": ["tickClock", "amount"], "properties": { "tickClock": { "$ref": "#/$defs/id" }, "amount": { "type": "number" } } },
+        { "type": "object", "additionalProperties": false, "required": ["stopClock"], "properties": { "stopClock": { "$ref": "#/$defs/id" } } },
+        { "type": "object", "additionalProperties": false, "required": ["requestCheck", "skill", "difficulty"], "properties": { "requestCheck": { "$ref": "#/$defs/id" }, "skill": { "$ref": "#/$defs/text" }, "difficulty": { "enum": ["普通", "困难", "极难"] }, "player": { "type": "string" }, "reason": { "type": "string" } } },
+        { "type": "object", "additionalProperties": false, "required": ["applyDelta", "target", "value"], "properties": { "applyDelta": { "enum": ["hp", "san", "money", "mythos"] }, "target": { "enum": ["actor", "party"] }, "value": { "type": ["number", "string"], "pattern": "^[+-]?(?:\\d+|\\d*d\\d+(?:[+-]\\d+)?)$" } } },
+        { "type": "object", "additionalProperties": false, "required": ["startEncounter"], "properties": { "startEncounter": { "$ref": "#/$defs/id" }, "route": { "type": "string" } } },
+        { "type": "object", "additionalProperties": false, "required": ["updateEncounter", "field", "amount"], "properties": { "updateEncounter": { "$ref": "#/$defs/id" }, "field": { "enum": ["round", "defeated", "opponentHp"] }, "amount": { "type": "number" } } },
+        { "type": "object", "additionalProperties": false, "required": ["resolveEncounter", "state"], "properties": { "resolveEncounter": { "$ref": "#/$defs/id" }, "state": { "enum": ["won", "lost", "resolved"] } } },
+        { "type": "object", "additionalProperties": false, "required": ["setEnding"], "properties": { "setEnding": { "$ref": "#/$defs/id" } } }
+      ]
+    },
+    "manifest": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "contentVersion", "id", "title", "system", "era", "startTime", "playerCount", "expectedDurationMinutes", "tone", "authors", "source", "startSceneId", "startBeatId", "turnMinutes", "assets"],
+      "properties": {
+        "schemaVersion": { "const": 1 }, "contentVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "id": { "$ref": "#/$defs/id" }, "title": { "$ref": "#/$defs/text" }, "system": { "$ref": "#/$defs/text" }, "era": { "$ref": "#/$defs/text" },
+        "startTime": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$" },
+        "playerCount": { "type": "object", "additionalProperties": false, "required": ["min", "max"], "properties": { "min": { "type": "integer", "minimum": 1 }, "max": { "type": "integer", "minimum": 1 } } },
+        "expectedDurationMinutes": { "type": "integer", "minimum": 1 }, "tone": { "$ref": "#/$defs/text" }, "contentWarnings": { "$ref": "#/$defs/stringList" },
+        "authors": { "$ref": "#/$defs/stringList" }, "source": { "$ref": "#/$defs/text" }, "credits": { "$ref": "#/$defs/stringList" },
+        "startSceneId": { "$ref": "#/$defs/id" }, "startBeatId": { "$ref": "#/$defs/id" }, "turnMinutes": { "type": "integer", "minimum": 0 },
+        "assets": { "type": "object", "additionalProperties": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "world": {
+      "type": "object", "additionalProperties": false, "required": ["facts", "scenes", "npcs", "encounters", "items"],
+      "properties": {
+        "facts": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["id", "category", "statement", "scope"], "properties": { "id": { "$ref": "#/$defs/id" }, "category": { "enum": ["truth", "testimony", "evidence", "location", "threat", "outcome"] }, "statement": { "$ref": "#/$defs/text" }, "scope": { "enum": ["dm", "player"] }, "immutable": { "type": "boolean" } } } },
+        "scenes": { "type": "array", "items": { "$ref": "#/$defs/scene" } },
+        "npcs": { "type": "array", "items": { "$ref": "#/$defs/npc" } },
+        "encounters": { "type": "array", "items": { "$ref": "#/$defs/encounter" } },
+        "items": { "type": "array", "items": { "$ref": "#/$defs/item" } }
+      }
+    },
+    "scene": {
+      "type": "object", "additionalProperties": false, "required": ["id", "name", "chapterTitle", "description", "aliases", "assetId", "npcIds", "itemIds", "exits"],
+      "properties": { "id": { "$ref": "#/$defs/id" }, "name": { "$ref": "#/$defs/text" }, "chapterTitle": { "$ref": "#/$defs/text" }, "description": { "$ref": "#/$defs/text" }, "aliases": { "$ref": "#/$defs/stringList" }, "assetId": { "$ref": "#/$defs/id" }, "npcIds": { "$ref": "#/$defs/stringList" }, "itemIds": { "$ref": "#/$defs/stringList" }, "dmFactIds": { "$ref": "#/$defs/stringList" }, "exits": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["to", "travelMinutes", "when", "blockedText"], "properties": { "to": { "$ref": "#/$defs/id" }, "travelMinutes": { "type": "integer", "minimum": 0 }, "when": { "$ref": "#/$defs/condition" }, "blockedText": { "$ref": "#/$defs/text" } } } } }
+    },
+    "npc": {
+      "type": "object", "additionalProperties": false, "required": ["id", "name", "role", "attitude", "appearance", "aliases", "hp", "knowledgeFactIds", "dmFactIds"],
+      "properties": { "id": { "$ref": "#/$defs/id" }, "name": { "$ref": "#/$defs/text" }, "role": { "$ref": "#/$defs/text" }, "attitude": { "enum": ["友好", "中立", "警惕", "敌对", "未知"] }, "appearance": { "$ref": "#/$defs/text" }, "aliases": { "$ref": "#/$defs/stringList" }, "hp": { "type": "integer", "minimum": 0 }, "assetId": { "$ref": "#/$defs/id" }, "knowledgeFactIds": { "$ref": "#/$defs/stringList" }, "dmFactIds": { "$ref": "#/$defs/stringList" } }
+    },
+    "encounter": {
+      "type": "object", "additionalProperties": false, "required": ["id", "name", "count", "hpEach", "skills", "attacks", "resolutionMode"],
+      "properties": { "id": { "$ref": "#/$defs/id" }, "name": { "$ref": "#/$defs/text" }, "count": { "type": "integer", "minimum": 1 }, "hpEach": { "type": "integer", "minimum": 1 }, "skills": { "type": "object", "additionalProperties": { "type": "number" } }, "attacks": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["name", "skill", "damage"], "properties": { "name": { "$ref": "#/$defs/text" }, "skill": { "type": "number" }, "damage": { "type": "string" } } } }, "resolutionMode": { "enum": ["enforced", "narrator_assisted"] } }
+    },
+    "item": {
+      "type": "object", "additionalProperties": false, "required": ["id", "name", "sceneId", "appearance", "aliases", "factIds", "discovery", "fallbackEventId"],
+      "properties": { "id": { "$ref": "#/$defs/id" }, "name": { "$ref": "#/$defs/text" }, "sceneId": { "$ref": "#/$defs/id" }, "appearance": { "$ref": "#/$defs/text" }, "aliases": { "$ref": "#/$defs/stringList" }, "factIds": { "$ref": "#/$defs/stringList" }, "discovery": { "type": "object", "additionalProperties": false, "required": ["skill", "difficulty", "failForward"], "properties": { "skill": { "type": "string" }, "difficulty": { "enum": ["自动", "普通", "困难", "极难"] }, "failForward": { "$ref": "#/$defs/text" } } }, "fallbackEventId": { "$ref": "#/$defs/id" } }
+    },
+    "progression": {
+      "type": "object", "additionalProperties": false, "required": ["variables", "acts", "objectives", "beats", "storyEvents", "endings"],
+      "properties": {
+        "variables": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["id", "type", "default"], "properties": { "id": { "$ref": "#/$defs/id" }, "type": { "enum": ["boolean", "number", "string"] }, "default": { "type": ["boolean", "number", "string"] } } } },
+        "acts": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["id", "title", "order"], "properties": { "id": { "$ref": "#/$defs/id" }, "title": { "$ref": "#/$defs/text" }, "order": { "type": "integer", "minimum": 1 } } } },
+        "objectives": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["id", "beatId", "title", "playerText", "required"], "properties": { "id": { "$ref": "#/$defs/id" }, "beatId": { "$ref": "#/$defs/id" }, "title": { "$ref": "#/$defs/text" }, "playerText": { "$ref": "#/$defs/text" }, "required": { "type": "boolean" } } } },
+        "beats": { "type": "array", "items": { "$ref": "#/$defs/beat" } },
+        "storyEvents": { "type": "array", "items": { "$ref": "#/$defs/storyEvent" } },
+        "endings": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["id", "title", "summary", "when", "effects", "priority"], "properties": { "id": { "$ref": "#/$defs/id" }, "title": { "$ref": "#/$defs/text" }, "summary": { "$ref": "#/$defs/text" }, "when": { "$ref": "#/$defs/condition" }, "effects": { "type": "array", "items": { "$ref": "#/$defs/effect" } }, "priority": { "type": "integer" } } } }
+      }
+    },
+    "beat": {
+      "type": "object", "additionalProperties": false, "required": ["id", "actId", "title", "kind", "sceneIds", "activation", "completion", "objectiveIds", "dmFactIds", "allowedEventIds", "softEscalationAfter", "hardRecoveryAfter", "softPrompt", "recoveryEventId", "nextBeatIds"],
+      "properties": { "id": { "$ref": "#/$defs/id" }, "actId": { "$ref": "#/$defs/id" }, "title": { "$ref": "#/$defs/text" }, "kind": { "enum": ["mandatory", "optional", "recovery", "finale"] }, "sceneIds": { "$ref": "#/$defs/stringList" }, "activation": { "$ref": "#/$defs/condition" }, "completion": { "$ref": "#/$defs/condition" }, "objectiveIds": { "$ref": "#/$defs/stringList" }, "dmFactIds": { "$ref": "#/$defs/stringList" }, "allowedEventIds": { "$ref": "#/$defs/stringList" }, "softEscalationAfter": { "type": "integer", "minimum": 0 }, "hardRecoveryAfter": { "type": "integer", "minimum": 0 }, "softPrompt": { "$ref": "#/$defs/text" }, "recoveryEventId": { "type": "string" }, "nextBeatIds": { "$ref": "#/$defs/stringList" } }
+    },
+    "storyEvent": {
+      "type": "object", "additionalProperties": false, "required": ["id", "beatId", "title", "trigger", "when", "effects", "once", "playerVisible", "narrativeCue"],
+      "properties": { "id": { "$ref": "#/$defs/id" }, "beatId": { "$ref": "#/$defs/id" }, "title": { "$ref": "#/$defs/text" }, "trigger": { "enum": ["manual", "automatic", "sceneEnter", "turnEnd", "checkResolved"] }, "when": { "$ref": "#/$defs/condition" }, "effects": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/effect" } }, "once": { "type": "boolean" }, "playerVisible": { "type": "boolean" }, "narrativeCue": { "$ref": "#/$defs/text" } }
+    },
+    "rules": {
+      "type": "object", "additionalProperties": false, "required": ["entries"], "properties": { "entries": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["id", "trigger", "support", "description", "when", "effects"], "properties": { "id": { "$ref": "#/$defs/id" }, "trigger": { "enum": ["turnStart", "beforeAction", "afterAction", "checkRequested", "checkResolved", "sceneEnter", "sceneExit", "combatStart", "combatEnd", "clockTick"] }, "support": { "enum": ["enforced", "narrator_assisted", "reference"] }, "description": { "$ref": "#/$defs/text" }, "when": { "$ref": "#/$defs/condition" }, "effects": { "type": "array", "items": { "$ref": "#/$defs/effect" } } } } } }
+    },
+    "presentation": {
+      "type": "object", "additionalProperties": false, "required": ["openingNarrative", "initialSuggestions", "caseBoard"],
+      "properties": { "openingNarrative": { "$ref": "#/$defs/text" }, "initialSuggestions": { "$ref": "#/$defs/stringList" }, "caseBoard": { "type": "object", "additionalProperties": false, "required": ["summary", "nodes", "edges"], "properties": { "summary": { "$ref": "#/$defs/text" }, "nodes": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["id", "type", "refId", "title", "subtitle", "importance", "when"], "properties": { "id": { "$ref": "#/$defs/id" }, "type": { "enum": ["npc", "item", "scene", "theory"] }, "refId": { "type": "string" }, "title": { "$ref": "#/$defs/text" }, "subtitle": { "$ref": "#/$defs/text" }, "importance": { "type": "integer", "minimum": 1, "maximum": 5 }, "when": { "$ref": "#/$defs/condition" } } } }, "edges": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["id", "from", "to", "label", "tone", "when"], "properties": { "id": { "$ref": "#/$defs/id" }, "from": { "$ref": "#/$defs/id" }, "to": { "$ref": "#/$defs/id" }, "label": { "$ref": "#/$defs/text" }, "tone": { "enum": ["evidence", "suspicion", "route", "danger"] }, "when": { "$ref": "#/$defs/condition" } } } } } } }
+    }
+  }
+}

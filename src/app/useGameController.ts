@@ -161,7 +161,7 @@ export function useGameController() {
     }
   }
 
-  async function runAi(actions: PlayerAction[]) {
+  async function runAi(actions: PlayerAction[], turnState: GameState = state) {
     const config = readApiConfig();
     if (!config?.apiKey) {
       dispatch({ type: 'appendMessage', message: { type: 'system', text: '请先在菜单中配置 AI API Key。' } });
@@ -172,7 +172,7 @@ export function useGameController() {
     const task = coordinator.begin(AI_DM_TIMEOUT_MS);
     try {
       dispatch({ type: 'setThinking', value: true });
-      const sourceHistoryLength = state.conversationHistory.length;
+      const sourceHistoryLength = turnState.conversationHistory.length;
       const {
         raw,
         legacyResponse,
@@ -180,7 +180,7 @@ export function useGameController() {
         decayIntents,
         backgroundUpdate
       } = await runDmTurn(config, {
-        state,
+        state: turnState,
         actions,
         signal: task.controller.signal
       });
@@ -196,7 +196,7 @@ export function useGameController() {
         throw new Error('DM 引擎未返回可用响应');
       }
       const prepared = legacyResponse.check
-        ? { ...legacyResponse, check: prepareCheck(legacyResponse.check, state.players) }
+        ? { ...legacyResponse, check: prepareCheck(legacyResponse.check, turnState.players) }
         : legacyResponse;
       dispatch({ type: 'applyAiResponse', response: prepared, raw });
       if (events && events.length) {
@@ -260,10 +260,16 @@ export function useGameController() {
     const result = rollD100(check);
     const checkMessage = buildDiceResultMessage(check, result);
 
+    const rolledState = gameReducer(state, { type: 'applyDiceResult', result });
+    const clearedState = gameReducer(rolledState, { type: 'setPendingCheck', check: null });
+    const continuationState = gameReducer(clearedState, { type: 'appendHistory', role: 'user', content: checkMessage });
     dispatch({ type: 'applyDiceResult', result });
     dispatch({ type: 'setPendingCheck', check: null });
     dispatch({ type: 'appendHistory', role: 'user', content: checkMessage });
-    runAi([buildDiceResultAction(state, check, checkMessage)]);
+    runAi([
+      ...(check.continuationActions ?? []),
+      buildDiceResultAction(state, check, checkMessage)
+    ], continuationState);
   }
 
   function applySuggestion(text: string) {

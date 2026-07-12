@@ -24,7 +24,7 @@ import {
   getNpcSnapshot,
   getSceneSnapshot
 } from './knowledgeBase';
-import { callNarrator, NarratorError } from './narrator';
+import { callNarrator, NarratorError, NarratorSemanticError } from './narrator';
 import { allowedTools, validateToolCalls } from './director';
 import { resolveDmTurn } from './stateResolver';
 import { maybeConsolidateMemory, SUMMARIZE_TRIGGER_PAIRS } from './summarizer';
@@ -41,6 +41,14 @@ import {
   shouldRetrieveEpisodicMemory
 } from './memory/episodicMemory';
 import { pushTrace, updateTrace } from './debugTrace';
+import {
+  buildRequiredCheck,
+  inferStoryEventFromActions,
+  inferNarrativeConsequences,
+  inferSceneChangeFromActions,
+  sanitizePlayerChoices,
+  validateNarratorSemantics
+} from './turnGuards';
 import { DEFAULT_MEMORY_OPTIONS } from './types';
 import type {
   DmBackgroundUpdate,
@@ -287,7 +295,7 @@ async function runDmBackgroundUpdate(params: BackgroundUpdateParams): Promise<Dm
 
     const episode = buildEpisodicMemoryRecord({
       turn,
-      sceneId: input.state.currentScene,
+      sceneId: resolved.legacyResponse.stateUpdate?.sceneChange ?? input.state.currentScene,
       actions: input.actions,
       narrative,
       events: resolved.events ?? [],
@@ -362,6 +370,44 @@ export async function runDmTurn(
 
   // 0) 意图分类（规则版）
   const intent = classifyIntent(input.actions);
+  const requiredCheck = buildRequiredCheck(input.actions, input.state);
+  if (requiredCheck) {
+    const narrative = `${requiredCheck.player}的行动存在明确失败风险，需要先进行${requiredCheck.skill}检定。`;
+    const narrator = {
+      raw: JSON.stringify({
+        narrative,
+        activeNpc: input.state.activeNpcName,
+        nextPrompt: '请掷骰结算检定。',
+        playerChoices: {},
+        keywords: []
+      }),
+      narrative,
+      activeNpc: input.state.activeNpcName,
+      nextPrompt: '请掷骰结算检定。',
+      playerChoices: {},
+      keywords: [],
+      toolCalls: [],
+      usedFunctionCalling: false
+    };
+    const resolved = resolveDmTurn({
+      narrator,
+      acceptedCalls: [{ name: 'request_check', arguments: { ...requiredCheck } }],
+      turn: currentTurn,
+      pendingBefore: input.state.pendingConsequences ?? []
+    });
+    resolved.legacyResponse.check = {
+      ...requiredCheck,
+      continuationActions: input.actions.map((action) => ({ ...action }))
+    };
+    timings.totalForeground = elapsedMs(foregroundStart);
+    return {
+      raw: narrator.raw,
+      legacyResponse: resolved.legacyResponse,
+      events: resolved.events,
+      decayIntents: true,
+      timings
+    };
+  }
   const retrievedMemories = DEFAULT_MEMORY_OPTIONS.enableEpisodicRetrieval
     && shouldRetrieveEpisodicMemory(intent.intentKind, input.actions)
     ? searchEpisodicMemory(input.state.episodicMemory ?? [], {
@@ -397,6 +443,10 @@ export async function runDmTurn(
   // 3) 计算本轮允许工具集 + lookup 解析器，调主 LLM
   const directorCtx = { state: input.state, kb };
   const allowed = allowedTools(directorCtx, { intent, mode: input.state.exploreMode });
+  const inferredSceneCall = allowed.includes('propose_scene_change')
+    ? inferSceneChangeFromActions(input.actions, input.state, kb)
+    : null;
+  const inferredStoryCall = inferStoryEventFromActions(input.actions, input.state);
   const revealCtx = deriveRevealContext(input.state);
   const revealedSet = computeRevealedSecretIds(kb, revealCtx);
 
@@ -456,18 +506,46 @@ export async function runDmTurn(
       history,
       allowedToolNames: allowed,
       lookupResolver,
+      validateOutput: (output, toolCalls) => validateNarratorSemantics(
+        output,
+        [inferredSceneCall, inferredStoryCall, ...toolCalls].filter((call): call is NonNullable<typeof call> => Boolean(call)),
+        input.state,
+        kb
+      ),
       signal: input.signal
     });
   } catch (err) {
-    if (err instanceof NarratorError) {
+    if (err instanceof NarratorSemanticError) {
+      const sceneName = kb.scenes[input.state.currentScene]?.public.name ?? input.state.currentScene;
+      const narrative = `你们尝试执行声明的行动，但当前信息不足以确认新的地点或剧情结果。你们仍在${sceneName}，可以换一种调查方式或核对已知线索。`;
+      narrator = {
+        raw: JSON.stringify({ narrative, activeNpc: input.state.activeNpcName, nextPrompt: '请根据当前目标继续行动。', playerChoices: {} }),
+        narrative,
+        activeNpc: input.state.activeNpcName,
+        nextPrompt: '请根据当前目标继续行动。',
+        playerChoices: {},
+        keywords: [],
+        toolCalls: [],
+        usedFunctionCalling: false
+      };
+    } else if (err instanceof NarratorError) {
       throw new AiResponseFormatError(err.message);
+    } else {
+      throw err;
     }
-    throw err;
   }
   timings.narrator = elapsedMs(narratorStart);
 
   // 4) 出口护栏：逐个语义校验工具调用，同时检查是否越出 allowed 集
-  const directorResult = validateToolCalls(narrator.toolCalls, directorCtx, allowed);
+  const candidateCalls = [
+    ...(inferredSceneCall ? [inferredSceneCall] : []),
+    ...(inferredStoryCall ? [inferredStoryCall] : []),
+    ...narrator.toolCalls.filter((call) =>
+      call.name !== 'propose_scene_change'
+      && !(call.name === 'propose_story_event' && call.arguments.eventId === inferredStoryCall?.arguments.eventId)
+    )
+  ];
+  const directorResult = validateToolCalls(candidateCalls, directorCtx, allowed);
 
   if (import.meta.env.DEV && directorResult.rejected.length) {
     // eslint-disable-next-line no-console
@@ -484,6 +562,19 @@ export async function runDmTurn(
     turn: ctx.dynamic.workingMemory.turnCount + 1,
     pendingBefore: input.state.pendingConsequences ?? []
   });
+  const targetScene = resolved.legacyResponse.stateUpdate?.sceneChange ?? input.state.currentScene;
+  const knownItems = new Set([
+    ...input.state.clues.map((clue) => clue.id),
+    ...(resolved.legacyResponse.stateUpdate?.newItems ?? [])
+  ]);
+  resolved.legacyResponse = inferNarrativeConsequences({
+    ...resolved.legacyResponse,
+    stateUpdate: {
+      ...resolved.legacyResponse.stateUpdate,
+      newItems: resolved.legacyResponse.stateUpdate?.newItems ?? []
+    },
+    playerChoices: sanitizePlayerChoices(narrator.playerChoices, knownItems, kb, targetScene)
+  }, input.actions, input.state);
 
   timings.totalForeground = elapsedMs(foregroundStart);
   const traceId = import.meta.env.DEV

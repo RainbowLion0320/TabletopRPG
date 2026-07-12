@@ -49,19 +49,21 @@ AI 担任完整的 TRPG 游戏主持人（DM/KP），负责场景描述、NPC �
 
 1. 基本主持要求与防注入规则。
 2. 玩家行动容错度规则（MVP 采用 2.5-3 档）。
-3. 场景数据、线索数据、NPC 数据。
-4. 当前游戏状态快照（当前场景、玩家位置、flags、clues）。
+3. 活动节点所需的 DM 事实、玩家已知事实、目标、合法出口和可触发事件。
+4. 当前游戏状态快照（当前场景、玩家位置、`ScenarioProgress`、非主线 flags）。
 5. 调查员数据（属性、HP/SAN、技能、背景）。
 6. D100 检定规则与骰子权威性。
 7. 严格 JSON 输出格式。
 
 当前运行版提示词分布在 `src/dm/` 管线中：Narrator 负责叙事与检定请求，Summarizer 负责长期记忆压缩，Memory extractor/synthesizer 负责事实抽取和认知合成。模型访问统一经由 [[concepts/tech_stack]] 中的 LLM adapter 边界。
 
+权威剧情推进、事件条件与效果边界详见 [[concepts/scenario_engine]]。
+
 ## 动态案件板
 
 案件板不是 AI 直接写 UI 的自由画布，而是“静态主线骨架 + 确定性实体档案 + AI 核心关系提议 + 系统审核落地”：
 
-- 静态骨架由剧本数据维护，保证关键线索链稳定可控。
+- 静态骨架由模组 YAML 自动生成，保证关键线索链稳定可控。
 - `caseBoardSynthesizer` 在 Narrator 完成本轮叙事、Director/StateResolver 产出事件、System1 facts 抽取后运行。
 - `goal / stance_toward / knowledge / capability / state` 由系统写入人物或地点的 insight 时间线，`relationship` 在双方可见时确定性转为关系边。
 - 合成器只输出关键事件、跨实体关系和核心推测，不修改 Narrator 主 JSON 契约；系统先按真实 fact/event/clue id 和可见静态节点预审来源。

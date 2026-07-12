@@ -139,7 +139,7 @@ Current formulas:
 
 Current UI loads the latest valid save from the title/menu shortcuts. Save Manager lists valid slots, loads a selected slot, and deletes a selected slot.
 
-Save payload version `7` adds case-board entity insights plus stable `semanticKey` and `relationKey` identities. v6 case-board cards migrate deterministically during `hydrateGameState()`: entity facts fold into dossier insights, valid relationships retain redirected endpoints, and unsupported low-value orphan cards are archived. No model call is made during save migration. Older saves without a case board receive an empty v7 dynamic layer while the static scenario board remains authored data.
+Save payload version `8` records `moduleId`, `moduleVersion`, `contentHash`, and authoritative `ScenarioProgress`. v1-v7 saves migrate deterministically from scene, clues, flags, and event history; S04/S05 migrations never replay entry SAN, encounters, or rewards. A content hash mismatch without a module migration is rejected. v7 case-board migration remains deterministic and does not call a model.
 
 ## 8. AI DM Contract
 
@@ -248,11 +248,21 @@ Irreversible story-breaking acts, such as killing a key NPC or destroying key ev
 - `newItems` accepts item ids and known item names.
 - Difficulty text containing `极` -> `极难`, containing `困` -> `困难`, otherwise `普通`.
 
+### Scenario Runtime Contract
+
+The five YAML files under `scenarios/wuzhongxiaoshi/` are the only authored scenario source. JSON Schema rejects unknown fields. `scenario:validate`, `scenario:build`, `scenario:docs`, and `scenario:check` validate references/assets/reachability, generate runtime TypeScript and types, and verify generated files are current.
+
+`ScenarioProgress` owns beats, objectives, known facts, clue discovery/analysis/destruction, declared variables, world time, clocks, encounters, fired event ids, and ending state. Every `once` event is idempotent. Scene travel requires both a spatial exit and its Condition. Required beats issue an authored soft hint after three idle turns and execute fail-forward after six.
+
+The AI may propose only an authored `eventId` through `propose_story_event`. Director verifies the event belongs to an active beat and its Condition is true; effects are loaded exclusively from YAML. Direct writes to declared story variables or authoritative clues are rejected.
+
+An explicit player declaration may also create a deterministic `propose_story_event` candidate for the same Director review, preventing a tool-omitting model from discarding clear intent. If Narrator violates semantic scene rules twice, the pipeline emits a local no-progress narrative in the authoritative current scene; required-beat idle escalation then remains responsible for recovery. Unparseable JSON still surfaces as a format error.
+
 ### Dynamic Case Board
 
 The case board is not a free-form AI UI surface. v7 is a mixed investigation workspace with three data responsibilities:
 
-- Static scenario spine from `src/data/scenarios/wuzhongxiaoshi/caseBoard.ts`, used for stable main clues and authored relationships.
+- Static scenario spine generated from `scenarios/wuzhongxiaoshi/presentation.yaml`, used for stable main clues and authored relationships.
 - Dynamic core nodes/edges in `GameState.caseBoard`, limited to meaningful events, cross-entity relationships, and connected theories.
 - Entity dossier `insights`, where goal, stance, knowledge, capability, testimony, and actor-state changes are updated by stable slots instead of becoming graph cards.
 

@@ -86,7 +86,7 @@ describe('runDmTurn cognitive memory outputs', () => {
 
     const output = await runDmTurn(config, {
       state,
-      actions: [{ player: '亨利', action: '继续调查。' }]
+      actions: [{ player: '亨利', action: '整理已有记录。' }]
     });
 
     expect(narratorReturned).toBe(true);
@@ -139,7 +139,7 @@ describe('runDmTurn cognitive memory outputs', () => {
 
     const output = await runDmTurn(config, {
       state,
-      actions: [{ player: '亨利', action: '继续调查。' }]
+      actions: [{ player: '亨利', action: '整理已有记录。' }]
     });
 
     expect(output.legacyResponse?.narrative).toBe('前台仍然可用。');
@@ -480,7 +480,7 @@ describe('runDmTurn cognitive memory outputs', () => {
 
     const output = await runDmTurn(config, {
       state,
-      actions: [{ player: '亨利', action: '检查书房。' }]
+      actions: [{ player: '亨利', action: '整理书房内已有记录。' }]
     });
 
     expect(output.legacyResponse?.narrative).toBe('调查继续推进。');
