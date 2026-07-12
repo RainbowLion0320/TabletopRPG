@@ -11,13 +11,23 @@ import { AiResponseFormatError, buildUserMessage, type PlayerAction } from '../s
 import { prepareCheck, rollD100 } from '../services/dice';
 import { persistApiConfig, readApiConfig } from '../services/storage';
 import { createInitialGameState, gameReducer } from '../state/gameReducer';
-import type { ApiConfig, GameState, Investigator, SceneId } from '../types/game';
+import type { ApiConfig, CheckRequest, DiceResult, GameState, Investigator, SceneId } from '../types/game';
 import { AiProviderConfigError } from '../dm/llm/errors';
 import { runDmTurn } from '../dm/pipeline';
 import type { DmBackgroundUpdate } from '../dm/types';
 import { DmTurnCoordinator } from './dmTurnCoordinator';
 
 const AI_DM_TIMEOUT_MS = 180_000;
+const DICE_ROLL_DURATION_MS = 1_500;
+const DICE_REVEAL_DURATION_MS = 850;
+const REDUCED_DICE_ROLL_DURATION_MS = 350;
+const REDUCED_DICE_REVEAL_DURATION_MS = 450;
+
+export interface DiceRollPresentation {
+  check: CheckRequest;
+  phase: 'rolling' | 'revealed';
+  result: DiceResult;
+}
 
 export function useGameController() {
   const { notify, toast } = useToast();
@@ -28,12 +38,31 @@ export function useGameController() {
   const [apiOpen, setApiOpen] = useState(false);
   const [saveManagerOpen, setSaveManagerOpen] = useState(false);
   const [journalOpen, setJournalOpen] = useState(false);
+  const [diceRoll, setDiceRoll] = useState<DiceRollPresentation | null>(null);
   const dmCoordinatorRef = useRef(new DmTurnCoordinator());
+  const diceResolveTimerRef = useRef<number | null>(null);
+  const diceDismissTimerRef = useRef<number | null>(null);
 
-  useEffect(() => () => dmCoordinatorRef.current.invalidate(), []);
+  useEffect(() => () => {
+    dmCoordinatorRef.current.invalidate();
+    clearDiceRollTimers();
+  }, []);
+
+  function clearDiceRollTimers() {
+    if (diceResolveTimerRef.current !== null) window.clearTimeout(diceResolveTimerRef.current);
+    if (diceDismissTimerRef.current !== null) window.clearTimeout(diceDismissTimerRef.current);
+    diceResolveTimerRef.current = null;
+    diceDismissTimerRef.current = null;
+  }
+
+  function cancelDiceRoll() {
+    clearDiceRollTimers();
+    setDiceRoll(null);
+  }
 
   function startGame(players: Investigator[]) {
     dmCoordinatorRef.current.invalidate();
+    cancelDiceRoll();
     dispatch({ type: 'start', players });
   }
 
@@ -41,6 +70,7 @@ export function useGameController() {
     const latest = saveSlots.getLatestSave();
     if (!latest) return false;
     dmCoordinatorRef.current.invalidate();
+    cancelDiceRoll();
     dispatch({ type: 'restore', state: latest.gameState });
     return true;
   }
@@ -57,6 +87,7 @@ export function useGameController() {
       return;
     }
     dmCoordinatorRef.current.invalidate();
+    cancelDiceRoll();
     dispatch({ type: 'restore', state: latest.gameState });
     setMenuOpen(false);
     notify('已载入最近存档');
@@ -70,6 +101,7 @@ export function useGameController() {
 
   function loadSaveSlot(save: GameState) {
     dmCoordinatorRef.current.invalidate();
+    cancelDiceRoll();
     dispatch({ type: 'restore', state: save });
     setSaveManagerOpen(false);
     setMenuOpen(false);
@@ -255,21 +287,33 @@ export function useGameController() {
   }
 
   function handleRoll() {
-    if (!state.pendingCheck) return;
+    if (!state.pendingCheck || diceRoll) return;
     const check = state.pendingCheck;
     const result = rollD100(check);
     const checkMessage = buildDiceResultMessage(check, result);
+    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    const rollDuration = prefersReducedMotion ? REDUCED_DICE_ROLL_DURATION_MS : DICE_ROLL_DURATION_MS;
+    const revealDuration = prefersReducedMotion ? REDUCED_DICE_REVEAL_DURATION_MS : DICE_REVEAL_DURATION_MS;
 
-    const rolledState = gameReducer(state, { type: 'applyDiceResult', result });
-    const clearedState = gameReducer(rolledState, { type: 'setPendingCheck', check: null });
-    const continuationState = gameReducer(clearedState, { type: 'appendHistory', role: 'user', content: checkMessage });
-    dispatch({ type: 'applyDiceResult', result });
-    dispatch({ type: 'setPendingCheck', check: null });
-    dispatch({ type: 'appendHistory', role: 'user', content: checkMessage });
-    runAi([
-      ...(check.continuationActions ?? []),
-      buildDiceResultAction(state, check, checkMessage)
-    ], continuationState);
+    setDiceRoll({ check, phase: 'rolling', result });
+    diceResolveTimerRef.current = window.setTimeout(() => {
+      diceResolveTimerRef.current = null;
+      const rolledState = gameReducer(state, { type: 'applyDiceResult', result });
+      const clearedState = gameReducer(rolledState, { type: 'setPendingCheck', check: null });
+      const continuationState = gameReducer(clearedState, { type: 'appendHistory', role: 'user', content: checkMessage });
+      dispatch({ type: 'applyDiceResult', result });
+      dispatch({ type: 'setPendingCheck', check: null });
+      dispatch({ type: 'appendHistory', role: 'user', content: checkMessage });
+      setDiceRoll({ check, phase: 'revealed', result });
+      runAi([
+        ...(check.continuationActions ?? []),
+        buildDiceResultAction(state, check, checkMessage)
+      ], continuationState);
+      diceDismissTimerRef.current = window.setTimeout(() => {
+        diceDismissTimerRef.current = null;
+        setDiceRoll(null);
+      }, revealDuration);
+    }, rollDuration);
   }
 
   function applySuggestion(text: string) {
@@ -288,12 +332,14 @@ export function useGameController() {
 
   function returnHome() {
     dmCoordinatorRef.current.invalidate();
+    cancelDiceRoll();
     saveSlots.refreshSaves();
     setMenuOpen(false);
   }
 
   function restartSetup() {
     dmCoordinatorRef.current.invalidate();
+    cancelDiceRoll();
     setMenuOpen(false);
   }
 
@@ -337,6 +383,7 @@ export function useGameController() {
     applySuggestion,
     closeJournal,
     deleteSaveSlot: saveSlots.deleteSaveSlot,
+    diceRoll,
     drawerOpen,
     handleRoll,
     journalOpen,

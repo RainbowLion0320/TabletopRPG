@@ -197,6 +197,20 @@ function createV8EndingSave(): GameState {
   };
 }
 
+function createPendingCheckSave(): GameState {
+  return {
+    ...createDynamicCaseBoardSave(),
+    pendingCheck: {
+      player: '艾达·华莱士',
+      skill: '侦查',
+      difficulty: '普通',
+      skillVal: 60,
+      threshold: 60,
+      continuationActions: []
+    }
+  };
+}
+
 test('new game reaches the main game screen with preset investigators', async ({ page }) => {
   await startNewGame(page);
 
@@ -444,6 +458,20 @@ test('v8 ending save locks the action area and preserves the authored ending', a
   await expect(page.getByText('结局C：和平交涉')).toBeVisible();
   await expect(page.getByText('调查员听懂并说服深潜者释放埃里克，扶桑花号随后和平离港。')).toBeVisible();
   await expect(page.locator('.dock-input')).toHaveCount(0);
+});
+
+test('pending check plays the dice ritual before revealing its result', async ({ page }) => {
+  await gotoWithSave(page, createPendingCheckSave());
+  await page.getByRole('button', { name: '继续游戏' }).click();
+
+  await page.getByRole('button', { name: '掷骰' }).click();
+  const ritual = page.getByRole('status');
+  await expect(ritual).toHaveClass(/rolling/);
+  await expect(ritual.getByText('艾达·华莱士')).toBeVisible();
+  await expect(ritual.getByText('侦查 · 普通难度 · 阈值 60')).toBeVisible();
+  await expect(ritual.getByText('骰声掠过桌面，命运正在落定')).toBeVisible();
+  await expect(page.getByRole('button', { name: '掷骰中' })).toBeDisabled();
+  await expect(page.getByText(/检定结果：/)).toHaveCount(0);
 });
 
 test('reference panel renders saved dynamic case board hypotheses', async ({ page }) => {

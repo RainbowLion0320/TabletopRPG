@@ -4,6 +4,7 @@ import { sceneList, storyData } from '../../data/storyData';
 import { getAvailableSceneExits, getScenarioDefinition, getScenarioProgressForState } from '../../scenario/engine';
 
 interface ActionDockProps {
+  isRolling?: boolean;
   state: GameState;
   onActorChange: (index: number) => void;
   onDeclarationChange: (playerId: string, text: string) => void;
@@ -15,6 +16,7 @@ interface ActionDockProps {
 }
 
 export function ActionDock({
+  isRolling = false,
   onActorChange,
   onDeclarationChange,
   onRoll,
@@ -67,9 +69,9 @@ export function ActionDock({
             <strong>{state.pendingCheck.player} · {state.pendingCheck.skill}</strong>
             <span>{state.pendingCheck.difficulty}难度，阈值 {state.pendingCheck.threshold ?? '-'}</span>
           </div>
-          <button className="secondary-action" onClick={onRoll}>
+          <button className="secondary-action" disabled={isRolling} onClick={onRoll} type="button">
             <Dice5 size={16} />
-            掷骰
+            {isRolling ? '掷骰中' : '掷骰'}
           </button>
         </div>
       ) : null}
@@ -122,6 +124,7 @@ export function ActionDock({
             <input
               className="dock-input"
               autoFocus
+              disabled={isRolling}
               value={state.declarations[currentActor.id] ?? ''}
               placeholder={`${currentActor.name} 想要做什么...`}
               onChange={(event) => onDeclarationChange(currentActor.id, event.target.value)}
@@ -134,7 +137,7 @@ export function ActionDock({
             />
           </>
         ) : null}
-        <button className="primary-action dock-submit" disabled={!allFilled || state.isThinking} onClick={onSubmit}>
+        <button className="primary-action dock-submit" disabled={!allFilled || state.isThinking || isRolling} onClick={onSubmit}>
           <Send size={16} />
           {submitLabel}
         </button>

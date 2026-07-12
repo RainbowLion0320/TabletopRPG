@@ -855,6 +855,237 @@ button {
   }
 }
 
+.dice-roll-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(5, 4, 3, 0.7);
+  backdrop-filter: blur(5px);
+  animation: dice-overlay-in 180ms ease-out both;
+}
+
+.dice-roll-presentation {
+  width: min(420px, calc(100vw - 32px));
+  min-height: 350px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 24px;
+  overflow: hidden;
+  border: 1px solid rgba(216, 189, 122, 0.48);
+  border-radius: 8px;
+  background: rgba(17, 14, 11, 0.98);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.72), inset 0 0 50px rgba(216, 189, 122, 0.035);
+}
+
+.dice-roll-kicker {
+  color: var(--gold-deep);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.dice-roll-context {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  margin-top: 12px;
+  text-align: center;
+}
+
+.dice-roll-context strong {
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.dice-roll-context span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.percentile-dice {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  width: 240px;
+  height: 138px;
+  margin-top: 10px;
+}
+
+.percentile-dice::after {
+  content: '';
+  position: absolute;
+  left: 32px;
+  right: 32px;
+  bottom: 13px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.58);
+  filter: blur(7px);
+}
+
+.percentile-die {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 92px;
+  clip-path: polygon(50% 0, 88% 18%, 100% 58%, 72% 100%, 28% 100%, 0 58%, 12% 18%);
+  background: var(--gold-deep);
+  color: #f0d99d;
+  transform-origin: 50% 72%;
+}
+
+.percentile-die::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  clip-path: inherit;
+  background: #201a13;
+}
+
+.percentile-die::after {
+  content: '';
+  position: absolute;
+  inset: 12px 20px 14px;
+  border-left: 1px solid rgba(216, 189, 122, 0.2);
+  border-right: 1px solid rgba(216, 189, 122, 0.2);
+  transform: skewX(-12deg);
+}
+
+.percentile-die span {
+  position: relative;
+  z-index: 2;
+  min-width: 2ch;
+  color: var(--gold);
+  font-family: Georgia, serif;
+  font-size: 28px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+  text-align: center;
+  text-shadow: 0 2px 10px rgba(216, 189, 122, 0.22);
+}
+
+.dice-roll-overlay.rolling .percentile-die-tens {
+  animation: dice-tumble-left 620ms cubic-bezier(0.36, 0.07, 0.19, 0.97) infinite;
+}
+
+.dice-roll-overlay.rolling .percentile-die-units {
+  animation: dice-tumble-right 540ms cubic-bezier(0.36, 0.07, 0.19, 0.97) 70ms infinite;
+}
+
+.dice-roll-overlay.revealed .percentile-die {
+  animation: dice-settle 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.dice-roll-wait {
+  min-height: 24px;
+  margin: 2px 0 0;
+  color: var(--quiet);
+  font-size: 12px;
+  letter-spacing: 0;
+  animation: dice-wait-pulse 900ms ease-in-out infinite alternate;
+}
+
+.dice-roll-outcome {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12px;
+  min-height: 42px;
+  margin-top: 0;
+  animation: dice-result-in 300ms ease-out both;
+}
+
+.dice-roll-total {
+  color: var(--gold);
+  font-size: 34px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.dice-roll-outcome strong {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.dice-roll-outcome.success strong { color: #83cf94; }
+.dice-roll-outcome.exceptional strong { color: #e8c46d; }
+.dice-roll-outcome.failure strong { color: #ef8f83; }
+
+@keyframes dice-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dice-tumble-left {
+  0% { transform: translate3d(0, 5px, 0) rotate(-8deg) scale(0.94); }
+  32% { transform: translate3d(-12px, -20px, 0) rotate(-42deg) scale(1.03); }
+  68% { transform: translate3d(8px, -8px, 0) rotate(28deg) scale(0.98); }
+  100% { transform: translate3d(0, 5px, 0) rotate(-8deg) scale(0.94); }
+}
+
+@keyframes dice-tumble-right {
+  0% { transform: translate3d(0, 4px, 0) rotate(10deg) scale(0.96); }
+  38% { transform: translate3d(13px, -18px, 0) rotate(48deg) scale(1.04); }
+  72% { transform: translate3d(-7px, -7px, 0) rotate(-24deg) scale(0.99); }
+  100% { transform: translate3d(0, 4px, 0) rotate(10deg) scale(0.96); }
+}
+
+@keyframes dice-settle {
+  from { transform: translateY(-10px) rotate(8deg) scale(1.08); }
+  to { transform: translateY(4px) rotate(0) scale(1); }
+}
+
+@keyframes dice-result-in {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes dice-wait-pulse {
+  from { opacity: 0.48; }
+  to { opacity: 0.9; }
+}
+
+@media (max-width: 520px) {
+  .dice-roll-overlay { padding: 12px; }
+  .dice-roll-presentation {
+    width: min(360px, calc(100vw - 24px));
+    min-height: 320px;
+    padding: 24px 18px;
+  }
+  .percentile-dice {
+    gap: 14px;
+    width: 210px;
+    height: 126px;
+  }
+  .percentile-die {
+    width: 76px;
+    height: 84px;
+  }
+  .percentile-die span { font-size: 25px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dice-roll-overlay,
+  .dice-roll-overlay .percentile-die,
+  .dice-roll-outcome,
+  .dice-roll-wait {
+    animation: none;
+  }
+}
+
 .action-dock {
   position: absolute;
   left: 32px;
