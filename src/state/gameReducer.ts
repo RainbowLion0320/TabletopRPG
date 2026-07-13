@@ -248,6 +248,7 @@ function normalizeMessages(value: unknown, history: GameState['conversationHisto
       const text = typeof item.text === 'string' ? item.text : '';
       if (!text) return [];
       const type: NarrativeMessage['type'] = item.type === 'player' || item.type === 'system' ? item.type : 'dm';
+      if (type === 'system' && /^推进提示[：:]/.test(text.trim())) return [];
       const keywords = type === 'dm'
         ? normalizeNarrativeKeywordHints(item.keywords, text)
         : [];
@@ -1333,9 +1334,6 @@ function applyScenarioTransition(
   };
   for (const cue of transition.narrativeCues) {
     next = addMessage(next, { type: 'system', text: cue });
-  }
-  if (transition.softPrompt) {
-    next = addMessage(next, { type: 'system', text: `推进提示：${transition.softPrompt}` });
   }
   for (const eventId of transition.firedEventIds) next = addLog(next, `剧情事件：${eventId}`);
   return next;

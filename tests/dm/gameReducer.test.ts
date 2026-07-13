@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { gameReducer, hydrateGameState } from '../../src/state/gameReducer';
+import { createScenarioProgress } from '../../src/scenario/engine';
 import type { AiResponse, AtomicFact, EpisodicMemoryRecord, PersistedDMEvent, ProspectiveIntent } from '../../src/types/game';
 import { makeInvestigator, makeState } from './fixtures';
 
@@ -19,6 +20,23 @@ describe('gameReducer start opening message', () => {
 });
 
 describe('gameReducer applyAiResponse pendingConsequences merge', () => {
+  it('keeps authored soft escalation internal instead of adding a player-visible prompt', () => {
+    const state = makeState({ players: [makeInvestigator({ name: '亨利' })] });
+    state.messages = [];
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.idleTurns = 2;
+
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: { narrative: '雨声仍在窗外延续，你们暂时没有新的发现。' },
+      raw: '{}'
+    });
+
+    expect(next.scenarioProgress?.idleTurns).toBe(3);
+    expect(next.messages.some((message) => message.text.startsWith('推进提示'))).toBe(false);
+    expect(next.messages.some((message) => message.type === 'dm')).toBe(true);
+  });
+
   it('keeps original party actions on a pending check for dice continuation', () => {
     const state = makeState({ players: [makeInvestigator({ name: '亨利' })] });
     const continuationActions = [{ player: '亨利', action: '搜查书房' }];
@@ -267,6 +285,19 @@ describe('gameReducer actor selection', () => {
 });
 
 describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
+  it('drops legacy player-visible progression prompts from saved messages', () => {
+    const hydrated = hydrateGameState({
+      players: [makeInvestigator({ id: 'p1', name: '亨利' })],
+      messages: [
+        { id: 'internal-hint', type: 'system', text: '推进提示：检查书桌抽屉。' },
+        { id: 'dice-result', type: 'system', text: '检定结果：普通成功（42）' }
+      ]
+    });
+
+    expect(hydrated.messages.some((message) => message.text.startsWith('推进提示'))).toBe(false);
+    expect(hydrated.messages.some((message) => message.text.startsWith('检定结果'))).toBe(true);
+  });
+
   it('repairs an offstage active NPC to match the persisted scene', () => {
     const hydrated = hydrateGameState({
       players: [makeInvestigator({ id: 'p1', name: '亨利' })],

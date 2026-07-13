@@ -496,6 +496,20 @@ test('pending check plays the dice ritual before revealing its result', async ({
   await expect(page.getByText(/检定结果：/)).toHaveCount(0);
 });
 
+test('legacy internal progression prompts stay hidden after loading a save', async ({ page }) => {
+  const state = createDynamicCaseBoardSave();
+  state.messages.push({
+    id: 'legacy-progression-prompt',
+    type: 'system',
+    text: '推进提示：从书桌抽屉中选择一处给出明确可调查迹象。'
+  });
+  await gotoWithSave(page, state);
+  await page.getByRole('button', { name: '继续游戏' }).click();
+
+  await expect(page.getByText(/推进提示：/)).toHaveCount(0);
+  await expect(page.getByText('浓雾压在摩勒住宅的窗外。')).toBeVisible();
+});
+
 test('second-act scene loads its authored backdrop and NPC portrait together', async ({ page }) => {
   await gotoWithSave(page, createPoliceStationSave());
   await page.getByRole('button', { name: '继续游戏' }).click();

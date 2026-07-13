@@ -52,6 +52,9 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
   const ref = useRef<HTMLDivElement>(null);
   const latestMessageRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
+  const visibleMessages = state.messages.filter((message) =>
+    !(message.type === 'system' && /^推进提示[：:]/.test(message.text.trim()))
+  );
 
   useEffect(() => {
     const panel = ref.current;
@@ -93,11 +96,11 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
           {expanded ? <Shrink size={16} /> : <Expand size={16} />}
         </button>
       </div>
-      {state.messages.map((message, index) => (
+      {visibleMessages.map((message, index) => (
         <div
           className={`story-message ${message.type}`}
           key={message.id}
-          ref={index === state.messages.length - 1 ? latestMessageRef : undefined}
+          ref={index === visibleMessages.length - 1 ? latestMessageRef : undefined}
         >
           {message.type === 'dm' ? <div className="message-label">AI DM</div> : null}
           {message.type === 'player' ? (
