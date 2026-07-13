@@ -6,6 +6,7 @@ import { getAvailableStoryEvents } from '../scenario/engine';
 
 const DICE_RESULT_RE = /【检定结果】|结果[：:]\s*(?:失败|大失败|成功|困难成功|极难成功|大成功)/;
 const MOVE_VERB_RE = /前往|赶往|去往|出发|动身|返回|回到|离开|开车|驾车|驱车|驶向|跟随|追到|抵达|到达/;
+const NPC_ROLE_TERMS = ['店主', '老板', '伙计', '服务生', '医生', '护士', '牧师', '管理员', '警员', '警察', '酒保'];
 
 interface CheckCandidate {
   score: number;
@@ -78,6 +79,30 @@ function sceneTerms(kb: KnowledgeBase, sceneId: SceneId): string[] {
   return scene ? [scene.id, scene.name, ...(scene.aliases ?? [])] : [];
 }
 
+function sceneNpcTerms(kb: KnowledgeBase, sceneId: SceneId): string[] {
+  return (kb.scenes[sceneId]?.public.npcs ?? []).flatMap((name) => {
+    const npc = kb.npcs[name]?.public;
+    return npc ? [npc.name, npc.role, ...(npc.aliases ?? [])] : [name];
+  });
+}
+
+function unavailableNpcRole(text: string, kb: KnowledgeBase, sceneId: SceneId, directInteraction = false) {
+  const availableTerms = sceneNpcTerms(kb, sceneId);
+  return NPC_ROLE_TERMS.find((term) => {
+    if (availableTerms.some((candidate) => candidate.includes(term))) return false;
+    if (directInteraction) {
+      return new RegExp(`(?:问|询问|追问|向|与|说服|观察|拜访|跟随)(?:眼前的|这位|附近的)?${term}`).test(text);
+    }
+    return new RegExp(`${term}[^。！？\\n]{0,10}(?:说|回答|问|告诉|表示|回忆|想了想|开口|承认|点头|摇头)[^。！？\\n]{0,3}[：:“\"]`).test(text);
+  }) ?? null;
+}
+
+function explicitlyRequestsMove(text: string) {
+  if (MOVE_VERB_RE.test(text)) return true;
+  if (!/去/.test(text)) return false;
+  return !/(?:不|别|不要|暂不|要不要|是否|考虑是否)[^，。；！？\n]{0,4}去/.test(text);
+}
+
 export function inferSceneChangeFromActions(
   actions: PlayerAction[],
   state: GameState,
@@ -88,11 +113,10 @@ export function inferSceneChangeFromActions(
     state.currentScene
   ).map((exit) => exit.sceneId);
   for (const action of actions) {
-    if (!MOVE_VERB_RE.test(action.action)) continue;
     const target = reachable.find((sceneId) =>
       sceneTerms(kb, sceneId).some((term) => term && action.action.includes(term))
     );
-    if (target) {
+    if (target && explicitlyRequestsMove(action.action)) {
       return {
         name: 'propose_scene_change',
         arguments: {
@@ -228,6 +252,7 @@ export function sanitizePlayerChoices(
     const safe = list.filter((choice) =>
       !hiddenTerms.some((term) => choice.includes(term))
       && !offstageNpcNames.some((name) => choice.includes(name))
+      && !(sceneId && unavailableNpcRole(choice, kb, sceneId, true))
     );
     for (const item of fallback) {
       if (safe.length >= 3) break;
@@ -281,12 +306,25 @@ export function validateNarratorSemantics(
 
   const acceptedScene = toolCalls.find((call) => call.name === 'propose_scene_change');
   const targetId = acceptedScene ? String(acceptedScene.arguments.targetSceneId ?? '') : '';
+  const outputSceneId = (targetId || state.currentScene) as SceneId;
   if (
-    targetId
-    && output.activeNpc
-    && !kb.scenes[targetId as SceneId]?.public.npcs.includes(output.activeNpc)
+    output.activeNpc
+    && !kb.scenes[outputSceneId]?.public.npcs.includes(output.activeNpc)
   ) {
-    return `切换场景后 activeNpc 仍指向不在新场景的 ${output.activeNpc}`;
+    return `activeNpc 指向不在当前场景的 ${output.activeNpc}`;
+  }
+  const inventedSpeaker = unavailableNpcRole(output.narrative, kb, outputSceneId);
+  if (inventedSpeaker) {
+    return `当前场景没有已登记的${inventedSpeaker}，不得让未授权 NPC 参与对话`;
+  }
+  const unknownVenueArrival = output.narrative.match(
+    /(?:抵达|到达|进入|来到|赶到|回到|走进|拜访)[^。；！？\n]{0,16}(?:贸易行|事务所|诊所|商店|旅馆|餐馆)/
+  )?.[0];
+  if (unknownVenueArrival) {
+    const knownDestination = Object.keys(kb.scenes).some((sceneId) =>
+      sceneTerms(kb, sceneId as SceneId).some((term) => unknownVenueArrival.includes(term))
+    );
+    if (!knownDestination) return `不得把模组未声明地点写成已抵达场景：${unknownVenueArrival}`;
   }
   if (targetId && /与此同时[^。；\n]{0,24}(?:独自|一人|发动汽车|驾车|开车)/.test(output.narrative)) {
     return '共同调查切场时全队同行，不得把移动写成单人分头行动';

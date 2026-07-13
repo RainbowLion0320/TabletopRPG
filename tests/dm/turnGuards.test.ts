@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getActiveKnowledgeBase } from '../../src/dm/knowledgeBase';
+import { createScenarioProgress } from '../../src/scenario/engine';
 import {
   buildRequiredCheck,
   inferDiscoveredItems,
@@ -45,6 +46,22 @@ describe('turnGuards', () => {
     const state = makeState({ currentScene: 'S01' });
     expect(inferSceneChangeFromActions([
       { player: '亨利', action: '直接前往泰晤士港' }
+    ], state, kb)).toBeNull();
+  });
+
+  it('recognizes natural Chinese movement to an unlocked authored scene', () => {
+    const state = makeState({ currentScene: 'S01' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.knownFactIds = ['F05'];
+
+    expect(inferSceneChangeFromActions([
+      { player: '亨利', action: '我们去警局看看。' }
+    ], state, kb)).toEqual(expect.objectContaining({
+      name: 'propose_scene_change',
+      arguments: expect.objectContaining({ targetSceneId: 'S02' })
+    }));
+    expect(inferSceneChangeFromActions([
+      { player: '亨利', action: '我们暂不去警局。' }
     ], state, kb)).toBeNull();
   });
 
@@ -103,6 +120,15 @@ describe('turnGuards', () => {
     expect(result.亨利).toHaveLength(3);
   });
 
+  it('removes suggestions that interact with an NPC role absent from the scene', () => {
+    const result = sanitizePlayerChoices({
+      亨利: ['问店主埃里克来过没有', '询问伊莎贝拉是否认识蒙特利尔']
+    }, new Set(), kb, 'S01');
+
+    expect(result.亨利).not.toContain('问店主埃里克来过没有');
+    expect(result.亨利).toContain('询问伊莎贝拉是否认识蒙特利尔');
+  });
+
   it('rejects invented weapons, unsafe medical advice and arrival without state change', () => {
     const state = makeState({ currentScene: 'S01' });
     expect(validateNarratorSemantics({
@@ -124,6 +150,15 @@ describe('turnGuards', () => {
       narrative: '你们抵达卡森其药店。', activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}
     }, [{ name: 'propose_scene_change', arguments: { targetSceneId: 'S04' } }], state, kb))
       .toMatch(/activeNpc/);
+    expect(validateNarratorSemantics({
+      narrative: '店主想了想：“埃里克十天前来过。”', activeNpc: null, nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/未授权 NPC/);
+    expect(validateNarratorSemantics({
+      narrative: '你们来到一家贸易行，准备询问老板。', activeNpc: null, nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/未声明地点/);
+    expect(validateNarratorSemantics({
+      narrative: '蒙特利尔冷冷地拒绝回答。', activeNpc: '洛夫·蒙特利尔', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/activeNpc/);
   });
 
   it('rejects exact invented clocks and highly repetitive narration', () => {
@@ -137,5 +172,16 @@ describe('turnGuards', () => {
     expect(validateNarratorSemantics({
       narrative: repeated, nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/高度重复/);
+  });
+
+  it('allows an authored NPC role to speak in its declared scene', () => {
+    const state = makeState({ currentScene: 'S03', activeNpcName: '老赫特之家酒保' });
+
+    expect(validateNarratorSemantics({
+      narrative: '酒保想了想：“我听说老鼠最近在贝尔街活动。”',
+      activeNpc: '老赫特之家酒保',
+      nextPrompt: '还要继续追问吗？',
+      playerChoices: {}
+    }, [], state, kb)).toBeNull();
   });
 });

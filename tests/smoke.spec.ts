@@ -211,6 +211,28 @@ function createPendingCheckSave(): GameState {
   };
 }
 
+function createPoliceStationSave(): GameState {
+  const state = createDynamicCaseBoardSave();
+  const progress = createSmokeScenarioProgress();
+  progress.activeActId = 'A02';
+  progress.beatStates.B01 = 'completed';
+  progress.beatStates.B02 = 'completed';
+  progress.beatStates.B03 = 'active';
+  progress.objectiveStates.O01 = 'completed';
+  progress.objectiveStates.O02 = 'completed';
+  progress.objectiveStates.O03 = 'active';
+  progress.knownFactIds = ['F04', 'F05'];
+  progress.visitedSceneIds = ['S01', 'S02'];
+  return {
+    ...state,
+    currentScene: 'S02',
+    playerLocations: { inspector: 'S02', nurse: 'S02' },
+    activeNpcId: 'N03',
+    activeNpcName: '洛夫·蒙特利尔',
+    scenarioProgress: progress
+  };
+}
+
 test('new game reaches the main game screen with preset investigators', async ({ page }) => {
   await startNewGame(page);
 
@@ -472,6 +494,16 @@ test('pending check plays the dice ritual before revealing its result', async ({
   await expect(ritual.getByText('骰声掠过桌面，命运正在落定')).toBeVisible();
   await expect(page.getByRole('button', { name: '掷骰中' })).toBeDisabled();
   await expect(page.getByText(/检定结果：/)).toHaveCount(0);
+});
+
+test('second-act scene loads its authored backdrop and NPC portrait together', async ({ page }) => {
+  await gotoWithSave(page, createPoliceStationSave());
+  await page.getByRole('button', { name: '继续游戏' }).click();
+
+  await expect(page.locator('.brand-title')).toHaveText('第二幕：街区调查');
+  await expect(page.locator('.brand-scene')).toHaveText('上城区第二分局');
+  await expect(page.locator('.scene-backdrop-img')).toHaveAttribute('src', /%E8%AD%A6%E5%B1%80\.png/i);
+  await expect(page.locator('.scene-npc')).toHaveAttribute('src', /montreal\.png/);
 });
 
 test('reference panel renders saved dynamic case board hypotheses', async ({ page }) => {

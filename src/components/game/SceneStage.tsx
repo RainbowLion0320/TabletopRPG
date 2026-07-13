@@ -7,7 +7,10 @@ interface SceneStageProps {
 
 export function SceneStage({ state }: SceneStageProps) {
   const scene = storyData.scenes[state.currentScene];
-  const npc = state.activeNpcName ? storyData.npcs[state.activeNpcName] : null;
+  const activeNpcName = state.activeNpcName && scene.npcs.includes(state.activeNpcName)
+    ? state.activeNpcName
+    : null;
+  const npc = activeNpcName ? storyData.npcs[activeNpcName] : null;
 
   return (
     <div className="scene-stage">

@@ -200,7 +200,7 @@ function buildSceneNpcs(
   const sceneEntry = kb.scenes[sceneId];
   if (!sceneEntry) return [];
   const names = new Set<string>(sceneEntry.public.npcs);
-  if (activeNpcName) names.add(activeNpcName);
+  if (activeNpcName && sceneEntry.public.npcs.includes(activeNpcName)) names.add(activeNpcName);
   const out: NpcSnapshot[] = [];
   for (const name of names) {
     const snap = getNpcSnapshot(kb, name, revealed);

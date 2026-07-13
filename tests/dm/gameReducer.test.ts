@@ -267,6 +267,18 @@ describe('gameReducer actor selection', () => {
 });
 
 describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
+  it('repairs an offstage active NPC to match the persisted scene', () => {
+    const hydrated = hydrateGameState({
+      players: [makeInvestigator({ id: 'p1', name: '亨利' })],
+      currentScene: 'S02',
+      activeNpcId: 'N01',
+      activeNpcName: '伊莎贝拉·摩勒'
+    });
+
+    expect(hydrated.activeNpcId).toBe('N03');
+    expect(hydrated.activeNpcName).toBe('洛夫·蒙特利尔');
+  });
+
   it('hydrates valid narrative keywords and drops malformed hints', () => {
     const hydrated = hydrateGameState({
       players: [],

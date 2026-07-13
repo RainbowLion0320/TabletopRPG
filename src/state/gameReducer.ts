@@ -6,6 +6,7 @@ import {
   getScenarioProgressForState,
   hydrateScenarioProgress,
   npcIdFromName,
+  npcNameFromId,
   processScenarioTurn
 } from '../scenario/engine';
 import { normalizeNarrativeKeywordHints } from '../services/narrativeKeywords';
@@ -414,11 +415,12 @@ function resolveActiveNpcName(
 ) {
   if (hasOwn(response, 'activeNpc')) {
     const candidate = normalizeNpcName(response.activeNpc);
-    if (sceneChanged && candidate && !storyData.scenes[currentScene].npcs.includes(candidate)) return null;
-    return candidate;
+    return candidate && storyData.scenes[currentScene].npcs.includes(candidate) ? candidate : null;
   }
   if (sceneChanged) return storyData.scenes[currentScene].npcs[0] ?? null;
-  return previous && storyData.npcs[previous] ? previous : storyData.scenes[currentScene].npcs[0] ?? null;
+  return previous && storyData.scenes[currentScene].npcs.includes(previous)
+    ? previous
+    : storyData.scenes[currentScene].npcs[0] ?? null;
 }
 
 function normalizeEventLog(value: unknown): PersistedDMEvent[] {
@@ -1218,6 +1220,12 @@ export function hydrateGameState(value: unknown): GameState {
     flags: isRecord(source.flags) ? source.flags : {},
     turn: history.filter((turn) => turn.role === 'user').length
   });
+  const persistedNpcName = typeof source.activeNpcId === 'string'
+    ? npcNameFromId(source.activeNpcId)
+    : normalizeNpcName(source.activeNpcName);
+  const activeNpcName = persistedNpcName && storyData.scenes[currentScene].npcs.includes(persistedNpcName)
+    ? persistedNpcName
+    : storyData.scenes[currentScene].npcs[0] ?? null;
 
   const hydrated: GameState = {
     ...base,
@@ -1232,10 +1240,8 @@ export function hydrateGameState(value: unknown): GameState {
     declarations: normalizeDeclarations(source.declarations, players),
     pendingCheck: normalizeCheck(source.pendingCheck, players),
     currentScene,
-    activeNpcId: typeof source.activeNpcId === 'string'
-      ? source.activeNpcId
-      : npcIdFromName(normalizeNpcName(source.activeNpcName) ?? storyData.scenes[currentScene].npcs[0] ?? null),
-    activeNpcName: normalizeNpcName(source.activeNpcName) ?? storyData.scenes[currentScene].npcs[0] ?? null,
+    activeNpcId: npcIdFromName(activeNpcName),
+    activeNpcName,
     clues: normalizeClues(source.clues),
     flags: isRecord(source.flags) ? source.flags : {},
     actionLog: normalizeActionLog(source.actionLog, base.actionLog),
