@@ -604,6 +604,17 @@ AI DM解析：
 <tr><td>S05</td><td>泰晤士港夜晚，扶桑花号停泊，一穿斗篷的身影</td><td>紧张氛围</td></tr>
 </tbody></table></div>
 <h3 id="s5-3">5.3 立绘规划</h3>
+<h4 id="h-7">玩家调查员（正式基础立绘已交付）</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>角色</th><th>运行时资源</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td>亨利·格雷</td><td><code>assets/investigators/henry_gray.png</code></td><td>选角卡、队伍状态、行动栏与调查员详情</td></tr>
+<tr><td>艾达·华莱士</td><td><code>assets/investigators/ada_wallace.png</code></td><td>选角卡、队伍状态、行动栏与调查员详情</td></tr>
+<tr><td>托马斯·贝尔</td><td><code>assets/investigators/thomas_bell.png</code></td><td>选角卡、队伍状态、行动栏与调查员详情</td></tr>
+<tr><td>罗伯特·肖</td><td><code>assets/investigators/robert_shaw.png</code></td><td>选角卡、队伍状态、行动栏与调查员详情</td></tr>
+</tbody></table></div>
+<p>四张运行时立绘统一使用 1600×2000 透明底 PNG，与 <code>assets/avatars/</code> 下的 NPC 资源严格分离。带场景背景的美术原稿不进入运行时仓库。</p>
+<h4 id="h-8">NPC 立绘与后续状态变体</h4>
 <div class="table-wrap"><table>
 <thead><tr><th>角色</th><th>状态变体</th><th>说明</th></tr></thead>
 <tbody>
@@ -983,13 +994,13 @@ AI代理：服务端统一调用（隐藏密钥）
 <hr>
 <h2 id="s11">十一、待确认事项</h2>
 <ol>
-<li><strong>立绘素材升级路线</strong>——现有素材继续使用；正式版是写实、插画、AI 生成还是手绘仍待定。</li>
+<li><strong>立绘状态变体扩展</strong>——四名玩家调查员的正式基础立绘已接入；受伤、低 SAN 与剧情状态变体，以及 NPC 状态变体仍待制作。</li>
 <li><strong>场景图升级路线</strong>——<code>scene_main_fog_london.gif</code> 作为高表现力主视觉保留；其余场景最终美术制作方式待定。</li>
 <li><strong>本地模型支持</strong>——当前支持 OpenAI Responses、MiMo 与自定义 Chat-compatible endpoint；是否投入本地模型路线仍待评估。</li>
 <li><strong>游戏正式名称</strong>——暂定“《雾中消逝》AI跑团”。</li>
 </ol>
 <hr>
-<p><em>GDD v0.8 | 2026-07-11 | 基于当前代码、PRD、SPEC 和保留设计目标整理</em> <em>剧本原作：舒爾茲上尉（790086893@qq.com）</em></p>
+<p><em>GDD v0.9 | 2026-08-05 | 基于当前代码、PRD、SPEC 和保留设计目标整理</em> <em>剧本原作：舒爾茲上尉（790086893@qq.com）</em></p>
 
     <footer>GDD HTML mirror - Source: docs/GDD.md - Updated 2026-05-29</footer>
   </div>

@@ -208,6 +208,21 @@ test('investigator setup shows portraits and full attribute blocks', async ({ pa
 
   await expect(page.getByRole('heading', { name: '选择调查员' })).toBeVisible();
   await expect(page.locator('.preset-card-modern img')).toHaveCount(4);
+  const portraitAssets = await page.locator('.preset-card-modern img').evaluateAll((images) => images.map((image) => {
+    const portrait = image as HTMLImageElement;
+    return {
+      alt: portrait.alt,
+      file: new URL(portrait.currentSrc).pathname.split('/').pop(),
+      naturalWidth: portrait.naturalWidth,
+      naturalHeight: portrait.naturalHeight
+    };
+  }));
+  expect(portraitAssets).toEqual([
+    { alt: '亨利·格雷 立绘', file: 'henry_gray.png', naturalWidth: 1600, naturalHeight: 2000 },
+    { alt: '艾达·华莱士 立绘', file: 'ada_wallace.png', naturalWidth: 1600, naturalHeight: 2000 },
+    { alt: '托马斯·贝尔 立绘', file: 'thomas_bell.png', naturalWidth: 1600, naturalHeight: 2000 },
+    { alt: '罗伯特·肖 立绘', file: 'robert_shaw.png', naturalWidth: 1600, naturalHeight: 2000 }
+  ]);
   const layoutMetrics = await page.locator('.preset-grid-modern').evaluate((grid) => {
     const cards = Array.from(grid.querySelectorAll('.preset-card-modern')).slice(0, 2);
     const gridRect = grid.getBoundingClientRect();
