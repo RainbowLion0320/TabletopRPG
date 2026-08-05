@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { ActionDock } from '../components/game/ActionDock';
 import { DmDebugDrawer } from '../components/game/DmDebugDrawer';
+import { DiceRollOverlay } from '../components/game/DiceRollOverlay';
 import { DmJournalModal } from '../components/game/DmJournalModal';
 import { GameMenu } from '../components/game/GameMenu';
 import { InfoDrawer } from '../components/game/InfoDrawer';
@@ -76,6 +77,7 @@ export function GameScreen({ controller, onHome, onRestart }: GameScreenProps) {
       />
       <NarrativePanel state={state} onMarkOpen={handleNarrativeMarkOpen} />
       <ActionDock
+        isDiceRolling={Boolean(controller.diceRoll)}
         state={state}
         onActorChange={controller.setCurrentActor}
         onDeclarationChange={controller.setDeclaration}
@@ -85,6 +87,7 @@ export function GameScreen({ controller, onHome, onRestart }: GameScreenProps) {
         onSubmit={controller.submitAction}
         onSuggestion={controller.applySuggestion}
       />
+      <DiceRollOverlay roll={controller.diceRoll} />
       <ApiConfigModal open={controller.apiOpen} onClose={() => controller.setApiOpen(false)} onSave={controller.saveApi} />
       <EntityDetailModal detail={narrativeDetail} onClose={() => setNarrativeDetail(null)} />
       {controller.toast ? <div className="toast">{controller.toast}</div> : null}

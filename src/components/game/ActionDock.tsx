@@ -3,6 +3,7 @@ import type { GameState, SceneId } from '../../types/game';
 import { sceneList, storyData } from '../../data/storyData';
 
 interface ActionDockProps {
+  isDiceRolling: boolean;
   state: GameState;
   onActorChange: (index: number) => void;
   onDeclarationChange: (playerId: string, text: string) => void;
@@ -14,6 +15,7 @@ interface ActionDockProps {
 }
 
 export function ActionDock({
+  isDiceRolling,
   onActorChange,
   onDeclarationChange,
   onRoll,
@@ -49,9 +51,9 @@ export function ActionDock({
             <strong>{state.pendingCheck.player} · {state.pendingCheck.skill}</strong>
             <span>{state.pendingCheck.difficulty}难度，阈值 {state.pendingCheck.threshold ?? '-'}</span>
           </div>
-          <button className="secondary-action" onClick={onRoll}>
+          <button className="secondary-action" disabled={isDiceRolling || state.isThinking} onClick={onRoll}>
             <Dice5 size={16} />
-            掷骰
+            {isDiceRolling ? '掷骰中' : '掷骰'}
           </button>
         </div>
       ) : null}

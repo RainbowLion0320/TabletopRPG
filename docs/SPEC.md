@@ -296,6 +296,14 @@ Dice authority rules:
 - Plot continuity must be handled through consequence paths or new independent checks, not by invalidating a rolled result.
 - Player requests to edit, ignore, or override a dice result are invalid inputs for the AI DM.
 
+Dice presentation rules:
+
+- `useGameController` computes the authoritative D100 result exactly once before starting the presentation and blocks duplicate roll input while it is active.
+- `DiceRollOverlay` first shows approximately 1.25 seconds of visual-only face cycling, then approximately 1.05 seconds of the locked result. Cycling values never enter game state or the AI request.
+- Only after the reveal finishes does the controller apply the result, append the user-visible roll message, and start the AI continuation turn.
+- Starting or loading a game, returning home, restarting, or unmounting invalidates timers so a stale reveal cannot mutate another session.
+- The overlay supports narrow viewports and `prefers-reduced-motion`; the settled die faces are rendered directly from the authoritative result.
+
 ## 10. Story Data Contract
 
 `src/data/storyData.ts` contains one bundled module:

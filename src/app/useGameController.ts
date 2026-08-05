@@ -16,6 +16,11 @@ import { AiProviderConfigError } from '../dm/llm/errors';
 import { runDmTurn } from '../dm/pipeline';
 import type { DmBackgroundUpdate } from '../dm/types';
 import { DmTurnCoordinator } from './dmTurnCoordinator';
+import {
+  DICE_RESULT_HOLD_MS,
+  DICE_ROLL_DURATION_MS,
+  type DiceRollPresentation
+} from './diceRollAnimation';
 
 const AI_DM_TIMEOUT_MS = 180_000;
 
@@ -28,11 +33,30 @@ export function useGameController() {
   const [apiOpen, setApiOpen] = useState(false);
   const [saveManagerOpen, setSaveManagerOpen] = useState(false);
   const [journalOpen, setJournalOpen] = useState(false);
+  const [diceRoll, setDiceRoll] = useState<DiceRollPresentation | null>(null);
   const dmCoordinatorRef = useRef(new DmTurnCoordinator());
+  const diceRollTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+  const diceRollGenerationRef = useRef(0);
+  const diceRollInFlightRef = useRef(false);
 
-  useEffect(() => () => dmCoordinatorRef.current.invalidate(), []);
+  useEffect(() => () => {
+    dmCoordinatorRef.current.invalidate();
+    diceRollGenerationRef.current += 1;
+    diceRollInFlightRef.current = false;
+    diceRollTimersRef.current.forEach((timerId) => clearTimeout(timerId));
+    diceRollTimersRef.current = [];
+  }, []);
+
+  function cancelDiceRoll() {
+    diceRollGenerationRef.current += 1;
+    diceRollInFlightRef.current = false;
+    diceRollTimersRef.current.forEach((timerId) => clearTimeout(timerId));
+    diceRollTimersRef.current = [];
+    setDiceRoll(null);
+  }
 
   function startGame(players: Investigator[]) {
+    cancelDiceRoll();
     dmCoordinatorRef.current.invalidate();
     dispatch({ type: 'start', players });
   }
@@ -40,6 +64,7 @@ export function useGameController() {
   function loadLatest() {
     const latest = saveSlots.getLatestSave();
     if (!latest) return false;
+    cancelDiceRoll();
     dmCoordinatorRef.current.invalidate();
     dispatch({ type: 'restore', state: latest.gameState });
     return true;
@@ -56,6 +81,7 @@ export function useGameController() {
       notify('暂无存档');
       return;
     }
+    cancelDiceRoll();
     dmCoordinatorRef.current.invalidate();
     dispatch({ type: 'restore', state: latest.gameState });
     setMenuOpen(false);
@@ -69,6 +95,7 @@ export function useGameController() {
   }
 
   function loadSaveSlot(save: GameState) {
+    cancelDiceRoll();
     dmCoordinatorRef.current.invalidate();
     dispatch({ type: 'restore', state: save });
     setSaveManagerOpen(false);
@@ -255,15 +282,30 @@ export function useGameController() {
   }
 
   function handleRoll() {
-    if (!state.pendingCheck) return;
+    if (!state.pendingCheck || diceRollInFlightRef.current) return;
     const check = state.pendingCheck;
     const result = rollD100(check);
     const checkMessage = buildDiceResultMessage(check, result);
-
-    dispatch({ type: 'applyDiceResult', result });
+    const generation = diceRollGenerationRef.current + 1;
+    diceRollGenerationRef.current = generation;
+    diceRollInFlightRef.current = true;
+    setDiceRoll({ check, result, phase: 'rolling' });
     dispatch({ type: 'setPendingCheck', check: null });
-    dispatch({ type: 'appendHistory', role: 'user', content: checkMessage });
-    runAi([buildDiceResultAction(state, check, checkMessage)]);
+
+    const revealTimer = setTimeout(() => {
+      if (diceRollGenerationRef.current !== generation) return;
+      setDiceRoll({ check, result, phase: 'revealed' });
+    }, DICE_ROLL_DURATION_MS);
+    const settleTimer = setTimeout(() => {
+      if (diceRollGenerationRef.current !== generation) return;
+      diceRollInFlightRef.current = false;
+      diceRollTimersRef.current = [];
+      setDiceRoll(null);
+      dispatch({ type: 'applyDiceResult', result });
+      dispatch({ type: 'appendHistory', role: 'user', content: checkMessage });
+      runAi([buildDiceResultAction(state, check, checkMessage)]);
+    }, DICE_ROLL_DURATION_MS + DICE_RESULT_HOLD_MS);
+    diceRollTimersRef.current = [revealTimer, settleTimer];
   }
 
   function applySuggestion(text: string) {
@@ -281,12 +323,14 @@ export function useGameController() {
   }
 
   function returnHome() {
+    cancelDiceRoll();
     dmCoordinatorRef.current.invalidate();
     saveSlots.refreshSaves();
     setMenuOpen(false);
   }
 
   function restartSetup() {
+    cancelDiceRoll();
     dmCoordinatorRef.current.invalidate();
     setMenuOpen(false);
   }
@@ -331,6 +375,7 @@ export function useGameController() {
     applySuggestion,
     closeJournal,
     deleteSaveSlot: saveSlots.deleteSaveSlot,
+    diceRoll,
     drawerOpen,
     handleRoll,
     journalOpen,

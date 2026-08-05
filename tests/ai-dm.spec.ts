@@ -195,6 +195,92 @@ test('AI DM scene changes update the chapter, backdrop, party location, and resi
   expect(sceneToolWasAvailable).toBe(true);
 });
 
+test('D100 check plays a locked-result roll and reveal before continuing the AI turn', async ({ page }) => {
+  const checkNarrative = JSON.stringify({
+    narrative: '门锁结构复杂，需要一次细致的侦查检定。',
+    activeNpc: null,
+    nextPrompt: '掷骰决定能否看出异常。',
+    playerChoices: {
+      '亨利·格雷': ['仔细检查锁芯'],
+      '艾达·华莱士': ['留意门外动静']
+    },
+    keywords: []
+  });
+  const resolvedNarrative = JSON.stringify({
+    narrative: '骰子结果已经落定，门锁上的细小刮痕显露出来。',
+    activeNpc: null,
+    nextPrompt: '继续检查刮痕。',
+    playerChoices: {
+      '亨利·格雷': ['判断刮痕方向'],
+      '艾达·华莱士': ['检查残留金属屑']
+    },
+    keywords: []
+  });
+  let narratorAttempt = 0;
+  let resultTurnBody = '';
+
+  await page.route('https://api.openai.com/v1/responses', async (route) => {
+    const postData = route.request().postData() ?? '{}';
+    const body = JSON.parse(postData) as { instructions?: string };
+    const system = body.instructions ?? '';
+    let response = responseBody(JSON.stringify({ facts: [] }));
+    if (system.includes('COC 第七版 AI DM Agent')) {
+      narratorAttempt += 1;
+      if (narratorAttempt === 1) {
+        response = responseBodyWithToolCall(checkNarrative, 'request_check', {
+          player: '亨利·格雷',
+          skill: '侦查',
+          difficulty: '普通',
+          reason: '检查锁芯上的异常痕迹'
+        });
+      } else {
+        resultTurnBody = postData;
+        response = responseBody(resolvedNarrative);
+      }
+    } else if (system.includes('案件板合成助手')) {
+      response = responseBody(JSON.stringify({ nodes: [], edges: [] }));
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(response)
+    });
+  });
+
+  await startGameWithApi(page);
+  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('检查门锁。');
+  await page.getByRole('button', { name: '下一位' }).click();
+  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('在旁观察。');
+  await page.getByRole('button', { name: '提交' }).click();
+
+  await expect(page.getByText('亨利·格雷 · 侦查')).toBeVisible();
+  await expect(page.getByText('普通难度，阈值 75')).toBeVisible();
+  await page.evaluate(() => {
+    Math.random = () => 0.41;
+  });
+  await page.getByRole('button', { name: '掷骰' }).click();
+
+  const diceDialog = page.getByRole('dialog', { name: '命运检定' });
+  await expect(diceDialog).toBeVisible();
+  await expect(diceDialog).toHaveClass(/rolling/);
+  await expect(diceDialog.getByText('骰面翻滚中')).toBeVisible();
+  await expect(diceDialog.locator('.dice-roll-total')).toHaveCount(0);
+
+  await page.setViewportSize({ width: 390, height: 700 });
+  const fitsNarrowViewport = await diceDialog.evaluate((element) => (
+    element.scrollWidth <= window.innerWidth && element.scrollHeight <= window.innerHeight
+  ));
+  expect(fitsNarrowViewport).toBe(true);
+
+  await expect(diceDialog).toHaveClass(/revealed/, { timeout: 3_000 });
+  await expect(diceDialog.locator('.dice-roll-total')).toHaveText('42');
+  await expect(diceDialog.getByRole('heading', { name: '普通成功' })).toBeVisible();
+  await expect(diceDialog).toHaveCount(0, { timeout: 3_000 });
+  await expect(page.getByText('骰子结果已经落定，门锁上的细小刮痕显露出来。')).toBeVisible();
+  expect(resultTurnBody).toContain('掷出 42');
+  expect(resultTurnBody).toContain('普通成功');
+});
+
 test('narrative highlights remain safe, clickable and stable across desktop and narrow layouts', async ({ page }) => {
   const narrator = JSON.stringify({
     narrative: '伊莎贝拉·摩勒指向水里的东西，建议进行心理学检定。',
