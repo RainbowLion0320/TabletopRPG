@@ -42,6 +42,7 @@ import {
 } from './memory/episodicMemory';
 import { pushTrace, updateTrace } from './debugTrace';
 import { DEFAULT_MEMORY_OPTIONS } from './types';
+import { resolveActiveNpcForScene } from '../state/sceneFocus';
 import type {
   DmBackgroundUpdate,
   DmMemoryUpdate,
@@ -247,10 +248,18 @@ async function runDmBackgroundUpdate(params: BackgroundUpdateParams): Promise<Dm
       const clue = storyData.items[clueId];
       if (clue) clueById.set(clue.id, { ...clue, found: true });
     }
+    const projectedScene = resolved.legacyResponse.stateUpdate?.sceneChange ?? input.state.currentScene;
+    const projectedActiveNpc = resolveActiveNpcForScene({
+      previousScene: input.state.currentScene,
+      nextScene: projectedScene,
+      previousActiveNpc: input.state.activeNpcName,
+      requestedActiveNpc: resolved.legacyResponse.activeNpc,
+      requestedActiveNpcProvided: Object.prototype.hasOwnProperty.call(resolved.legacyResponse, 'activeNpc')
+    });
     const projectedState: GameState = {
       ...input.state,
-      currentScene: resolved.legacyResponse.stateUpdate?.sceneChange ?? input.state.currentScene,
-      activeNpcName: resolved.legacyResponse.activeNpc ?? input.state.activeNpcName,
+      currentScene: projectedScene,
+      activeNpcName: projectedActiveNpc,
       clues: Array.from(clueById.values()),
       atomicFacts: [...(input.state.atomicFacts ?? []), ...(factsToAppend ?? [])],
       eventLog: [...(input.state.eventLog ?? []), ...(resolved.events ?? [])]
@@ -287,12 +296,12 @@ async function runDmBackgroundUpdate(params: BackgroundUpdateParams): Promise<Dm
 
     const episode = buildEpisodicMemoryRecord({
       turn,
-      sceneId: input.state.currentScene,
+      sceneId: projectedScene,
       actions: input.actions,
       narrative,
       events: resolved.events ?? [],
       facts: factsToAppend ?? [],
-      activeNpcName: resolved.legacyResponse.activeNpc ?? narrator.activeNpc ?? input.state.activeNpcName
+      activeNpcName: projectedActiveNpc
     });
 
     return {

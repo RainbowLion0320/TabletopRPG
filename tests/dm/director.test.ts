@@ -19,6 +19,7 @@ function intent(partial: Partial<ClassifiedIntent> = {}): ClassifiedIntent {
   return {
     relevantSkills: partial.relevantSkills ?? [],
     hasConflict: partial.hasConflict ?? false,
+    hasMovement: partial.hasMovement ?? false,
     intentKind: partial.intentKind ?? 'other'
   };
 }
@@ -50,6 +51,12 @@ describe('director.allowedTools', () => {
 
     const t4 = allowedTools(ctx(), { intent: intent({ intentKind: 'social' }), mode: 'together' });
     expect(t4).not.toContain('propose_scene_change');
+
+    const mixed = allowedTools(ctx(), {
+      intent: intent({ intentKind: 'observe', hasMovement: true }),
+      mode: 'together'
+    });
+    expect(mixed).toContain('propose_scene_change');
   });
 
   it('grants update_npc_mind only for interaction-heavy intents', () => {

@@ -8,7 +8,7 @@ function action(text: string, player = '亨利') {
 describe('intentClassifier', () => {
   it('returns "other" + no skills + no conflict for empty input', () => {
     const result = classifyIntent([]);
-    expect(result).toEqual({ relevantSkills: [], hasConflict: false, intentKind: 'other' });
+    expect(result).toEqual({ relevantSkills: [], hasConflict: false, hasMovement: false, intentKind: 'other' });
   });
 
   it('classifies 观察 keywords as observe and pulls 侦查/聆听', () => {
@@ -44,6 +44,31 @@ describe('intentClassifier', () => {
     expect(result.relevantSkills).toEqual(expect.arrayContaining(['侦查', '聆听']));
   });
 
+  it('detects ordinary travel language even when another intent remains primary', () => {
+    const result = classifyIntent([action('我们去警察局调查案卷')]);
+
+    expect(result.intentKind).toBe('observe');
+    expect(result.hasMovement).toBe(true);
+    expect(result.relevantSkills).not.toContain('潜行');
+  });
+
+  it('retains movement when an earlier action owns the primary intent', () => {
+    const result = classifyIntent([
+      action('我搜寻地面'),
+      action('我逃走返回摩勒住宅', '艾达')
+    ]);
+
+    expect(result.intentKind).toBe('observe');
+    expect(result.hasMovement).toBe(true);
+  });
+
+  it('classifies a direct destination change as movement', () => {
+    const result = classifyIntent([action('前往老赫特酒吧')]);
+
+    expect(result.intentKind).toBe('move');
+    expect(result.hasMovement).toBe(true);
+  });
+
   it('intentKind locks to first non-other hit', () => {
     // first action is observe, second is combat; intentKind should remain observe
     const result = classifyIntent([action('我搜寻地面'), action('我开枪还击', '艾达')]);
@@ -60,6 +85,7 @@ describe('intentClassifier', () => {
   it('unknown action falls back to other', () => {
     const result = classifyIntent([action('asdfqwer')]);
     expect(result.intentKind).toBe('other');
+    expect(result.hasMovement).toBe(false);
     expect(result.relevantSkills).toEqual([]);
   });
 });

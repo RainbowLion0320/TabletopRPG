@@ -31,6 +31,29 @@ function responseBody(content: string) {
   };
 }
 
+function responseBodyWithToolCall(
+  content: string,
+  name: string,
+  args: Record<string, unknown>
+) {
+  return {
+    output_text: content,
+    output: [
+      {
+        type: 'message',
+        content: [{ type: 'output_text', text: content }]
+      },
+      {
+        type: 'function_call',
+        id: 'fc-scene-change',
+        call_id: 'call-scene-change',
+        name,
+        arguments: JSON.stringify(args)
+      }
+    ]
+  };
+}
+
 function chatBody(content: string) {
   return {
     choices: [
@@ -120,6 +143,56 @@ test('AI DM repairs unescaped dialogue quotes locally without interrupting the t
   await expect(page.getByText('伊莎贝拉说父亲总提到"水里的东西"，随后沉默下来。')).toBeVisible();
   await expect(page.getByText(/AI DM 返回格式无效/)).toHaveCount(0);
   expect(narratorAttempts).toBe(1);
+});
+
+test('AI DM scene changes update the chapter, backdrop, party location, and resident NPC together', async ({ page }) => {
+  const narrator = JSON.stringify({
+    narrative: '你们穿过雾气，抵达上城区第二分局。',
+    activeNpc: null,
+    nextPrompt: '蒙特利尔局长正在办公室里。',
+    playerChoices: {
+      '亨利·格雷': ['询问案件进展'],
+      '艾达·华莱士': ['观察局长反应']
+    },
+    keywords: []
+  });
+  let sceneToolWasAvailable = false;
+
+  await page.route('https://api.openai.com/v1/responses', async (route) => {
+    const body = JSON.parse(route.request().postData() ?? '{}') as {
+      instructions?: string;
+      tools?: Array<{ name?: string }>;
+    };
+    const system = body.instructions ?? '';
+    let response = responseBody(JSON.stringify({ facts: [] }));
+    if (system.includes('COC 第七版 AI DM Agent')) {
+      sceneToolWasAvailable = body.tools?.some((tool) => tool.name === 'propose_scene_change') ?? false;
+      response = responseBodyWithToolCall(narrator, 'propose_scene_change', {
+        targetSceneId: 'S02',
+        reason: '调查员明确前往警察局'
+      });
+    } else if (system.includes('案件板合成助手')) {
+      response = responseBody(JSON.stringify({ nodes: [], edges: [] }));
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(response)
+    });
+  });
+
+  await startGameWithApi(page);
+  const initialBackdrop = await page.locator('.scene-backdrop-img').getAttribute('src');
+  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('我们去警察局调查案卷。');
+  await page.getByRole('button', { name: '下一位' }).click();
+  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('一起前往上城区第二分局。');
+  await page.getByRole('button', { name: '提交' }).click();
+
+  await expect(page.locator('.brand-title')).toHaveText('第二幕：街区调查');
+  await expect(page.locator('.brand-scene')).toHaveText('上城区第二分局');
+  await expect(page.locator('.npc-nameplate')).toContainText('洛夫·蒙特利尔');
+  await expect(page.locator('.scene-backdrop-img')).not.toHaveAttribute('src', initialBackdrop ?? '');
+  expect(sceneToolWasAvailable).toBe(true);
 });
 
 test('narrative highlights remain safe, clickable and stable across desktop and narrow layouts', async ({ page }) => {

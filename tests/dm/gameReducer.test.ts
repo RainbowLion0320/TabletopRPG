@@ -224,7 +224,85 @@ describe('gameReducer actor selection', () => {
   });
 });
 
+describe('gameReducer scene focus synchronization', () => {
+  it('updates chapter scene, resident NPC, and all together-mode locations on a scene change', () => {
+    const henry = makeInvestigator({ id: 'p-henry', name: '亨利' });
+    const ada = makeInvestigator({ id: 'p-ada', name: '艾达' });
+    const state = makeState({
+      players: [henry, ada],
+      currentScene: 'S01',
+      activeNpcName: '伊莎贝拉·摩勒'
+    });
+
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: {
+        narrative: '你们抵达上城区第二分局。',
+        activeNpc: null,
+        stateUpdate: { sceneChange: 'S02' }
+      },
+      raw: '{}'
+    });
+
+    expect(next.currentScene).toBe('S02');
+    expect(next.activeNpcName).toBe('洛夫·蒙特利尔');
+    expect(next.playerLocations).toEqual({ 'p-henry': 'S02', 'p-ada': 'S02' });
+  });
+
+  it('keeps explicit null meaningful when the scene did not change', () => {
+    const state = makeState({ currentScene: 'S01', activeNpcName: '伊莎贝拉·摩勒' });
+
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: { narrative: '房间里暂时无人说话。', activeNpc: null },
+      raw: '{}'
+    });
+
+    expect(next.activeNpcName).toBeNull();
+  });
+
+  it('moves the visible stage with the selected investigator in split mode', () => {
+    const henry = makeInvestigator({ id: 'p-henry', name: '亨利' });
+    const ada = makeInvestigator({ id: 'p-ada', name: '艾达' });
+    const state = makeState({
+      players: [henry, ada],
+      currentScene: 'S01',
+      activeNpcName: '伊莎贝拉·摩勒'
+    });
+    state.exploreMode = 'split';
+    state.playerLocations = { 'p-henry': 'S01', 'p-ada': 'S03' };
+
+    const moved = gameReducer(state, { type: 'setPlayerScene', playerIndex: 0, sceneId: 'S02' });
+    expect(moved.currentScene).toBe('S02');
+    expect(moved.activeNpcName).toBe('洛夫·蒙特利尔');
+
+    const switched = gameReducer(moved, { type: 'setCurrentSplitPlayer', index: 1 });
+    expect(switched.currentScene).toBe('S03');
+    expect(switched.activeNpcName).toBe('老赫特之家酒保');
+  });
+});
+
 describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
+  it('repairs legacy split saves whose visible scene lagged behind the selected player location', () => {
+    const hydrated = hydrateGameState({
+      players: [
+        { id: 'p1', name: '亨利', attrs: {}, hp: 12, mp: 12, san: 60, luck: 50, currentHp: 12, currentMp: 12, currentSan: 60, skills: {} },
+        { id: 'p2', name: '艾达', attrs: {}, hp: 12, mp: 12, san: 60, luck: 50, currentHp: 12, currentMp: 12, currentSan: 60, skills: {} }
+      ],
+      exploreMode: 'split',
+      currentSplitPlayer: 1,
+      currentScene: 'S01',
+      activeNpcName: null,
+      playerLocations: { p1: 'S02', p2: 'S03' },
+      flags: {},
+      conversationHistory: []
+    });
+
+    expect(hydrated.currentScene).toBe('S03');
+    expect(hydrated.activeNpcName).toBe('老赫特之家酒保');
+    expect(hydrated.playerLocations).toEqual({ p1: 'S02', p2: 'S03' });
+  });
+
   it('hydrates valid narrative keywords and drops malformed hints', () => {
     const hydrated = hydrateGameState({
       players: [],

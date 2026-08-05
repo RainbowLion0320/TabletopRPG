@@ -10,6 +10,7 @@ import {
   semanticNodeKey,
   visibleCaseBoardNodeIds
 } from '../dm/caseBoardModel';
+import { defaultActiveNpcForScene, resolveActiveNpcForScene } from './sceneFocus';
 
 export type GameAction =
   | { type: 'start'; players: Investigator[] }
@@ -381,9 +382,29 @@ function normalizeNpcName(value: unknown) {
   return text && storyData.npcs[text] ? text : null;
 }
 
-function resolveActiveNpcName(response: AiResponse, currentScene: SceneId, previous: string | null) {
-  if (hasOwn(response, 'activeNpc')) return normalizeNpcName(response.activeNpc);
-  return previous && storyData.npcs[previous] ? previous : storyData.scenes[currentScene].npcs[0] ?? null;
+function resolveActiveNpcAfterResponse(
+  response: AiResponse,
+  previousScene: SceneId,
+  nextScene: SceneId,
+  previousActiveNpc: string | null
+) {
+  return resolveActiveNpcForScene({
+    previousScene,
+    nextScene,
+    previousActiveNpc,
+    requestedActiveNpc: response.activeNpc,
+    requestedActiveNpcProvided: hasOwn(response, 'activeNpc')
+  });
+}
+
+function moveFocusedPlayers(state: GameState, sceneId: SceneId): Record<string, SceneId> {
+  if (state.exploreMode === 'split') {
+    const player = state.players[state.currentSplitPlayer];
+    return player
+      ? { ...state.playerLocations, [player.id]: sceneId }
+      : state.playerLocations;
+  }
+  return Object.fromEntries(state.players.map((player) => [player.id, sceneId])) as Record<string, SceneId>;
 }
 
 function normalizeEventLog(value: unknown): PersistedDMEvent[] {
@@ -1130,7 +1151,7 @@ export function createInitialGameState(players: Investigator[]): GameState {
     declarations: {},
     pendingCheck: null,
     currentScene: 'S01',
-    activeNpcName: '伊莎贝拉·摩勒',
+    activeNpcName: defaultActiveNpcForScene('S01'),
     clues: [],
     flags: {},
     actionLog: [{ time: time(), text: '游戏开始 · 摩勒住宅' }],
@@ -1158,7 +1179,19 @@ export function hydrateGameState(value: unknown): GameState {
     .map((player, index) => normalizeInvestigator(player, index))
     .filter((player): player is Investigator => Boolean(player));
   const base = createInitialGameState(players);
-  const currentScene = normalizeSceneId(source.currentScene, base.currentScene);
+  const persistedScene = normalizeSceneId(source.currentScene, base.currentScene);
+  const exploreMode = source.exploreMode === 'split' ? 'split' : 'together';
+  const currentSplitPlayer = players.length
+    ? clamp(Math.floor(numberValue(source.currentSplitPlayer, 0)), 0, players.length - 1)
+    : 0;
+  const persistedLocations = normalizePlayerLocations(source.playerLocations, players, persistedScene);
+  const splitPlayer = players[currentSplitPlayer];
+  const currentScene = exploreMode === 'split' && splitPlayer
+    ? persistedLocations[splitPlayer.id] ?? persistedScene
+    : persistedScene;
+  const playerLocations = exploreMode === 'together'
+    ? Object.fromEntries(players.map((player) => [player.id, currentScene])) as Record<string, SceneId>
+    : persistedLocations;
   const history = normalizeConversationHistory(source.conversationHistory);
   const suggestionsByPlayerId = normalizeSuggestionsByPlayerId(
     source.suggestionsByPlayerId ?? source.suggestions,
@@ -1176,18 +1209,16 @@ export function hydrateGameState(value: unknown): GameState {
 
   const hydrated: GameState = {
     ...base,
-    exploreMode: source.exploreMode === 'split' ? 'split' : 'together',
-    currentSplitPlayer: players.length
-      ? clamp(Math.floor(numberValue(source.currentSplitPlayer, 0)), 0, players.length - 1)
-      : 0,
+    exploreMode,
+    currentSplitPlayer,
     currentActorIndex: players.length
       ? clamp(Math.floor(numberValue(source.currentActorIndex, 0)), 0, players.length - 1)
       : 0,
-    playerLocations: normalizePlayerLocations(source.playerLocations, players, currentScene),
+    playerLocations,
     declarations: normalizeDeclarations(source.declarations, players),
     pendingCheck: normalizeCheck(source.pendingCheck, players),
     currentScene,
-    activeNpcName: normalizeNpcName(source.activeNpcName) ?? storyData.scenes[currentScene].npcs[0] ?? null,
+    activeNpcName: normalizeNpcName(source.activeNpcName) ?? defaultActiveNpcForScene(currentScene),
     clues: normalizeClues(source.clues),
     flags: isRecord(source.flags) ? source.flags : {},
     actionLog: normalizeActionLog(source.actionLog, base.actionLog),
@@ -1246,22 +1277,67 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return hydrateGameState(action.state);
     case 'setThinking':
       return { ...state, isThinking: action.value };
-    case 'setExploreMode':
-      return addMessage({ ...state, exploreMode: action.mode }, {
+    case 'setExploreMode': {
+      const focusedPlayer = state.players[state.currentSplitPlayer];
+      const currentScene = action.mode === 'split' && focusedPlayer
+        ? state.playerLocations[focusedPlayer.id] ?? state.currentScene
+        : state.currentScene;
+      const playerLocations = action.mode === 'together'
+        ? Object.fromEntries(state.players.map((player) => [player.id, currentScene])) as Record<string, SceneId>
+        : state.playerLocations;
+      return addMessage({
+        ...state,
+        exploreMode: action.mode,
+        currentScene,
+        playerLocations,
+        activeNpcName: resolveActiveNpcForScene({
+          previousScene: state.currentScene,
+          nextScene: currentScene,
+          previousActiveNpc: state.activeNpcName,
+          requestedActiveNpcProvided: false
+        })
+      }, {
         type: 'system',
         text: action.mode === 'split' ? '切换为「分头探索」模式。' : '切换为「一起行动」模式。'
       });
+    }
     case 'setCurrentActor':
       if (state.exploreMode === 'together') return state;
       return { ...state, currentActorIndex: state.players.length ? clamp(action.index, 0, state.players.length - 1) : 0 };
-    case 'setCurrentSplitPlayer':
-      return { ...state, currentSplitPlayer: state.players.length ? clamp(action.index, 0, state.players.length - 1) : 0 };
+    case 'setCurrentSplitPlayer': {
+      const currentSplitPlayer = state.players.length ? clamp(action.index, 0, state.players.length - 1) : 0;
+      if (state.exploreMode !== 'split') return { ...state, currentSplitPlayer };
+      const player = state.players[currentSplitPlayer];
+      const currentScene = player ? state.playerLocations[player.id] ?? state.currentScene : state.currentScene;
+      return {
+        ...state,
+        currentSplitPlayer,
+        currentScene,
+        activeNpcName: resolveActiveNpcForScene({
+          previousScene: state.currentScene,
+          nextScene: currentScene,
+          previousActiveNpc: state.activeNpcName,
+          requestedActiveNpcProvided: false
+        })
+      };
+    }
     case 'setPlayerScene': {
       const player = state.players[action.playerIndex];
       if (!player) return state;
       return {
         ...state,
-        playerLocations: { ...state.playerLocations, [player.id]: action.sceneId }
+        playerLocations: { ...state.playerLocations, [player.id]: action.sceneId },
+        ...(state.exploreMode === 'split' && action.playerIndex === state.currentSplitPlayer
+          ? {
+              currentScene: action.sceneId,
+              activeNpcName: resolveActiveNpcForScene({
+                previousScene: state.currentScene,
+                nextScene: action.sceneId,
+                previousActiveNpc: state.activeNpcName,
+                requestedActiveNpcProvided: false
+              })
+            }
+          : {})
       };
     }
     case 'setDeclaration':
@@ -1326,7 +1402,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         flags: { ...state.flags, ...(response.stateUpdate?.flags ?? {}) },
         clues: appendNewClues(state.clues, response.stateUpdate?.newItems),
         currentScene,
-        activeNpcName: resolveActiveNpcName(response, currentScene, state.activeNpcName),
+        playerLocations: sceneChange ? moveFocusedPlayers(state, currentScene) : state.playerLocations,
+        activeNpcName: resolveActiveNpcAfterResponse(
+          response,
+          state.currentScene,
+          currentScene,
+          state.activeNpcName
+        ),
         pendingCheck: response.check ?? null,
         suggestionsByPlayerId,
         suggestions: firstSuggestionListByPlayerOrder(suggestionsByPlayerId, state.players, state.suggestions),

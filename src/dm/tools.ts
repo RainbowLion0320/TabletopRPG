@@ -97,10 +97,6 @@ export const DM_TOOLS: OpenAiTool[] = [
             description: '本轮被发现/获得的线索 id 列表（必须是 KB 中已知 id）',
             items: { type: 'string' }
           },
-          sceneChange: {
-            type: ['string', 'null'],
-            description: '若本轮发生场景切换，目标场景 id；否则 null'
-          }
         },
         additionalProperties: false
       }

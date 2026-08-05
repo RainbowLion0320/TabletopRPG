@@ -28,6 +28,8 @@ export interface ClassifiedIntent {
   relevantSkills: string[];
   /** 是否包含冲突/战斗类倾向（用于 Director 是否允许 propose_state_update.hp 等） */
   hasConflict: boolean;
+  /** 是否明确表达了移动/转场；独立于主 intent，避免“去警局调查”被 observe 吞掉。 */
+  hasMovement: boolean;
   /** 粗分类，主要服务调试与未来收窄 */
   intentKind: IntentKind;
 }
@@ -45,6 +47,12 @@ interface DictEntry {
   /** 是否表示冲突/战斗 */
   conflict?: boolean;
 }
+
+const MOVEMENT_KEYWORDS = [
+  '去', '前往', '前去', '赶往', '去往', '动身', '出发', '离开', '进入', '走进',
+  '走向', '来到', '抵达', '回到', '返回', '转移到', '换个地方', '潜入', '潜行',
+  '溜', '逃跑', '逃走', '撤退', '后撤'
+] as const;
 
 const DICTIONARY: DictEntry[] = [
   // ---- 观察 / 探查 ----
@@ -110,6 +118,14 @@ const DICTIONARY: DictEntry[] = [
     kind: 'combat'
   },
   // ---- 移动 / 行动 ----
+  {
+    keywords: [
+      '去', '前往', '前去', '赶往', '去往', '动身', '出发', '离开', '进入', '走进',
+      '走向', '来到', '抵达', '回到', '返回', '转移到', '换个地方'
+    ],
+    skills: [],
+    kind: 'move'
+  },
   {
     keywords: ['潜入', '潜行', '溜', '蹑手蹑脚', '蹲伏', '躲藏', '藏身'],
     skills: ['潜行'],
@@ -183,12 +199,14 @@ const DICTIONARY: DictEntry[] = [
 export function classifyIntent(actions: PlayerAction[]): ClassifiedIntent {
   const skillSet = new Set<string>();
   let hasConflict = false;
+  let hasMovement = false;
   let intentKind: IntentKind = 'other';
   let intentLocked = false;
 
   for (const a of actions) {
     const text = (a.action || '').toLowerCase();
     if (!text) continue;
+    if (MOVEMENT_KEYWORDS.some((keyword) => text.includes(keyword))) hasMovement = true;
 
     for (const entry of DICTIONARY) {
       const hit = entry.keywords.some((kw) => text.includes(kw.toLowerCase()));
@@ -205,6 +223,7 @@ export function classifyIntent(actions: PlayerAction[]): ClassifiedIntent {
   return {
     relevantSkills: [...skillSet],
     hasConflict,
+    hasMovement,
     intentKind
   };
 }

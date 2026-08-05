@@ -17,6 +17,7 @@ describe('ApiConfigModal', () => {
     expect(screen.getByLabelText('Endpoint')).toHaveValue('');
     expect(screen.getByLabelText('模型')).toHaveValue('');
 
+    fireEvent.change(screen.getByLabelText('API Key'), { target: { value: 'test-key' } });
     fireEvent.click(screen.getByRole('button', { name: '保存' }));
     expect(screen.getByText(/必须配置 endpoint/)).toBeInTheDocument();
     expect(onSave).not.toHaveBeenCalled();
