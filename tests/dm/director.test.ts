@@ -25,11 +25,12 @@ function intent(partial: Partial<ClassifiedIntent> = {}): ClassifiedIntent {
 }
 
 describe('director.allowedTools', () => {
-  it('always exposes baseline tools (5)', () => {
+  it('always exposes baseline tools including structured story events', () => {
     const tools = allowedTools(ctx(), { intent: intent(), mode: 'together' });
     expect(tools).toEqual(
       expect.arrayContaining([
         'request_check',
+        'propose_story_event',
         'propose_state_update',
         'reveal_secret',
         'lookup_entity',
@@ -116,6 +117,19 @@ describe('director.validateToolCalls', () => {
     expect(result.rejected).toEqual([]);
   });
 
+  it('accepts only an authored event from the current active beat', () => {
+    const accepted = validateToolCalls([
+      { name: 'propose_story_event', arguments: { eventId: 'EV_FIND_I02', reason: '检查抽屉' } }
+    ], ctx());
+    expect(accepted.accepted).toHaveLength(1);
+
+    const rejected = validateToolCalls([
+      { name: 'propose_story_event', arguments: { eventId: 'EV_COMBAT_WIN' } }
+    ], ctx());
+    expect(rejected.accepted).toEqual([]);
+    expect(rejected.rejected[0].reason).toMatch(/不属于当前活动节点|条件尚未满足/);
+  });
+
   it('rejects propose_scene_change to non-adjacent scene', () => {
     const calls: DmToolCall[] = [
       { name: 'propose_scene_change', arguments: { targetSceneId: 'S05' } }
@@ -126,12 +140,13 @@ describe('director.validateToolCalls', () => {
     expect(result.rejected[0].reason).toMatch(/不是.*的邻接场景/);
   });
 
-  it('accepts propose_scene_change to adjacent scene', () => {
+  it('rejects a spatially adjacent scene while its story prerequisite is locked', () => {
     const calls: DmToolCall[] = [
       { name: 'propose_scene_change', arguments: { targetSceneId: 'S02' } }
     ];
     const result = validateToolCalls(calls, ctx('S01'));
-    expect(result.accepted).toHaveLength(1);
+    expect(result.accepted).toHaveLength(0);
+    expect(result.rejected[0].reason).toMatch(/不是|邻接/);
   });
 
   it('rejects reveal_secret with unknown id', () => {
@@ -164,22 +179,31 @@ describe('director.validateToolCalls', () => {
     ];
     const result = validateToolCalls(calls, ctx());
     expect(result.accepted).toEqual([]);
-    expect(result.rejected[0].reason).toMatch(/物品 id 未在 KB/);
+    expect(result.rejected[0].reason).toMatch(/权威线索只能通过/);
   });
 
-  it('accepts propose_state_update with valid hp delta + flag + known item', () => {
+  it('accepts propose_state_update with valid hp delta and non-story flag', () => {
     const calls: DmToolCall[] = [
       {
         name: 'propose_state_update',
         arguments: {
           hp: { 亨利: -2 },
           flags: { met_montreal: true },
-          newItems: ['I01']
+          newItems: []
         }
       }
     ];
     const result = validateToolCalls(calls, ctx());
     expect(result.accepted).toHaveLength(1);
+  });
+
+  it('rejects direct writes to declared scenario variables', () => {
+    const result = validateToolCalls([{
+      name: 'propose_state_update',
+      arguments: { flags: { metMontreal: true } }
+    }], ctx());
+    expect(result.accepted).toEqual([]);
+    expect(result.rejected[0].reason).toContain('只能由模组 Effect 修改');
   });
 
   it('accepts schedule_consequence with proper shape', () => {

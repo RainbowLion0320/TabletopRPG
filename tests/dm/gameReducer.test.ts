@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { gameReducer, hydrateGameState } from '../../src/state/gameReducer';
+import { createScenarioProgress } from '../../src/scenario/engine';
 import type { AiResponse, AtomicFact, EpisodicMemoryRecord, PersistedDMEvent, ProspectiveIntent } from '../../src/types/game';
 import { makeInvestigator, makeState } from './fixtures';
 
@@ -19,6 +20,53 @@ describe('gameReducer start opening message', () => {
 });
 
 describe('gameReducer applyAiResponse pendingConsequences merge', () => {
+  it('keeps authored soft escalation internal instead of adding a player-visible prompt', () => {
+    const state = makeState({ players: [makeInvestigator({ name: '亨利' })] });
+    state.messages = [];
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.idleTurns = 2;
+
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: { narrative: '雨声仍在窗外延续，你们暂时没有新的发现。' },
+      raw: '{}'
+    });
+
+    expect(next.scenarioProgress?.idleTurns).toBe(3);
+    expect(next.messages.some((message) => message.text.startsWith('推进提示'))).toBe(false);
+    expect(next.messages.some((message) => message.type === 'dm')).toBe(true);
+  });
+
+  it('keeps original party actions on a pending check for dice continuation', () => {
+    const state = makeState({ players: [makeInvestigator({ name: '亨利' })] });
+    const continuationActions = [{ player: '亨利', action: '搜查书房' }];
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: {
+        check: { player: '亨利', skill: '侦查', difficulty: '普通', continuationActions }
+      },
+      raw: '{}'
+    });
+    expect(next.pendingCheck?.continuationActions).toEqual(continuationActions);
+  });
+
+  it('moves every investigator location when together-mode scene state changes', () => {
+    const henry = makeInvestigator({ id: 'p-henry', name: '亨利' });
+    const ada = makeInvestigator({ id: 'p-ada', name: '艾达' });
+    const state = makeState({
+      players: [henry, ada], currentScene: 'S01', activeNpcName: '伊莎贝拉·摩勒'
+    });
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: { narrative: '你们抵达药店。', stateUpdate: { sceneChange: 'S04' } },
+      raw: '{}'
+    });
+
+    expect(next.currentScene).toBe('S04');
+    expect(next.playerLocations).toEqual({ 'p-henry': 'S04', 'p-ada': 'S04' });
+    expect(next.activeNpcName).toBeNull();
+  });
+
   it('stores player-specific choices by player id without collapsing them into global suggestions', () => {
     const henry = makeInvestigator({ id: 'p-henry', name: '亨利' });
     const ada = makeInvestigator({ id: 'p-ada', name: '艾达' });
@@ -182,6 +230,18 @@ describe('gameReducer appendEvents', () => {
   });
 });
 
+describe('gameReducer action log retention', () => {
+  it('keeps a 100-turn play session instead of truncating at 40 entries', () => {
+    let state = makeState();
+    for (let index = 0; index < 100; index += 1) {
+      state = gameReducer(state, { type: 'addLog', text: `turn-${index}` });
+    }
+    expect(state.actionLog).toHaveLength(100);
+    expect(state.actionLog[0].text).toBe('turn-99');
+    expect(state.actionLog[99].text).toBe('turn-0');
+  });
+});
+
 describe('gameReducer consolidateMemory', () => {
   it('preserves conversation history appended after the summarized source snapshot', () => {
     const baseHistory = [
@@ -245,6 +305,7 @@ describe('gameReducer scene focus synchronization', () => {
     });
 
     expect(next.currentScene).toBe('S02');
+    expect(next.activeNpcId).toBe('N03');
     expect(next.activeNpcName).toBe('洛夫·蒙特利尔');
     expect(next.playerLocations).toEqual({ 'p-henry': 'S02', 'p-ada': 'S02' });
   });
@@ -274,10 +335,12 @@ describe('gameReducer scene focus synchronization', () => {
 
     const moved = gameReducer(state, { type: 'setPlayerScene', playerIndex: 0, sceneId: 'S02' });
     expect(moved.currentScene).toBe('S02');
+    expect(moved.activeNpcId).toBe('N03');
     expect(moved.activeNpcName).toBe('洛夫·蒙特利尔');
 
     const switched = gameReducer(moved, { type: 'setCurrentSplitPlayer', index: 1 });
     expect(switched.currentScene).toBe('S03');
+    expect(switched.activeNpcId).toBe('N04');
     expect(switched.activeNpcName).toBe('老赫特之家酒保');
   });
 });
@@ -299,8 +362,34 @@ describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
     });
 
     expect(hydrated.currentScene).toBe('S03');
+    expect(hydrated.activeNpcId).toBe('N04');
     expect(hydrated.activeNpcName).toBe('老赫特之家酒保');
     expect(hydrated.playerLocations).toEqual({ p1: 'S02', p2: 'S03' });
+  });
+
+  it('drops legacy player-visible progression prompts from saved messages', () => {
+    const hydrated = hydrateGameState({
+      players: [makeInvestigator({ id: 'p1', name: '亨利' })],
+      messages: [
+        { id: 'internal-hint', type: 'system', text: '推进提示：检查书桌抽屉。' },
+        { id: 'dice-result', type: 'system', text: '检定结果：普通成功（42）' }
+      ]
+    });
+
+    expect(hydrated.messages.some((message) => message.text.startsWith('推进提示'))).toBe(false);
+    expect(hydrated.messages.some((message) => message.text.startsWith('检定结果'))).toBe(true);
+  });
+
+  it('repairs an offstage active NPC to match the persisted scene', () => {
+    const hydrated = hydrateGameState({
+      players: [makeInvestigator({ id: 'p1', name: '亨利' })],
+      currentScene: 'S02',
+      activeNpcId: 'N01',
+      activeNpcName: '伊莎贝拉·摩勒'
+    });
+
+    expect(hydrated.activeNpcId).toBe('N03');
+    expect(hydrated.activeNpcName).toBe('洛夫·蒙特利尔');
   });
 
   it('hydrates valid narrative keywords and drops malformed hints', () => {

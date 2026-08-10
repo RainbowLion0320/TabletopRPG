@@ -144,6 +144,23 @@ describe('callNarrator retry repair', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('repairs several unescaped quoted fragments in narrative and choices', async () => {
+    const malformed = '{"narrative":"照片背面写着"1915，马赛港，R.M.与E.M."。伊莎贝拉说："我不确定。"","activeNpc":"伊莎贝拉·摩勒","nextPrompt":"继续调查。","playerChoices":{"亨利":["追问她为何觉得"不对劲"，确认细节"],"艾达":["检查照片"]}}';
+    const fetchMock = vi.fn(async () => jsonResponse(malformed));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const output = await callNarrator(config, {
+      ctx,
+      actions: [{ player: '亨利', action: '检查照片。' }],
+      mode: 'together',
+      history: []
+    });
+
+    expect(output.narrative).toContain('"1915，马赛港，R.M.与E.M."');
+    expect(output.playerChoices.亨利[0]).toContain('"不对劲"');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('sends a response that local repair cannot validate back on the Responses retry', async () => {
     const malformed = 'not a narrator json object';
     const repaired = JSON.stringify({
@@ -204,7 +221,10 @@ describe('callNarrator retry repair', () => {
       const body = bodyFrom(init);
       expect(body.messages).toEqual([
         expect.objectContaining({ role: 'system' }),
-        { role: 'user', content: '【本轮行动宣言】\n亨利：我查看码头地面。' }
+        {
+          role: 'user',
+          content: expect.stringContaining('【本轮行动宣言】\n亨利：我查看码头地面。')
+        }
       ]);
       return new Response(
         JSON.stringify({

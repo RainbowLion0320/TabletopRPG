@@ -35,10 +35,11 @@ interface MutableStateUpdate {
   flags: Record<string, unknown>;
   newItems: string[];
   sceneChange: SceneId | null;
+  storyEventIds: string[];
 }
 
 function emptyStateUpdate(): MutableStateUpdate {
-  return { hp: {}, san: {}, flags: {}, newItems: [], sceneChange: null };
+  return { hp: {}, san: {}, flags: {}, newItems: [], sceneChange: null, storyEventIds: [] };
 }
 
 function mergeNumberMap(target: Record<string, number>, src: unknown) {
@@ -74,6 +75,18 @@ export function resolveDmTurn(input: ResolveInput): ResolveOutput {
 
   for (const call of acceptedCalls) {
     switch (call.name) {
+      case 'propose_story_event': {
+        const eventId = String(call.arguments.eventId);
+        if (!stateUpdate.storyEventIds.includes(eventId)) stateUpdate.storyEventIds.push(eventId);
+        events.push({
+          id: genEventId(turn, 'story'),
+          turn,
+          kind: 'story_event',
+          description: `提议剧情事件 ${eventId}`,
+          toolName: call.name
+        });
+        break;
+      }
       case 'request_check': {
         const args = call.arguments as Record<string, unknown>;
         // 多个 request_check 时取第一个；其余忽略并记录事件

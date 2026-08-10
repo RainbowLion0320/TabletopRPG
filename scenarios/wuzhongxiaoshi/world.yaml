@@ -1,0 +1,115 @@
+facts:
+  - { id: F01, category: truth, scope: dm, immutable: true, statement: 埃里克·摩勒参与毒品运输，并被同伙绑架在扶桑花号上。 }
+  - { id: F02, category: truth, scope: dm, immutable: true, statement: 洛夫·蒙特利尔与埃里克私下勾连，并会阻挠调查。 }
+  - { id: F03, category: truth, scope: dm, immutable: true, statement: 深潜者混种藏身卡森其药店，并计划于7月14日乘船离开。 }
+  - { id: F04, category: testimony, scope: player, statement: 埃里克于7月10日失踪，警方没有取得进展。 }
+  - { id: F05, category: evidence, scope: player, statement: 合影显示蒙特利尔与埃里克关系异常密切。 }
+  - { id: F06, category: evidence, scope: player, statement: 小册子的隐写内容指向贝尔街14号卡森其药店。 }
+  - { id: F07, category: evidence, scope: player, statement: 白色粉末经医学分析可确认是高纯度鸦片。 }
+  - { id: F08, category: testimony, scope: player, statement: 老赫特酒保掌握“老鼠”线索，可提供贝尔街方向。 }
+  - { id: F09, category: evidence, scope: player, statement: 地图笔记标出泰晤士港扶桑花号的停泊位置。 }
+  - { id: F10, category: evidence, scope: player, statement: 雪茄头能证明埃里克近期到过卡森其药店。 }
+  - { id: F11, category: threat, scope: dm, immutable: true, statement: 调查员见过蒙特利尔后，晚间到贝尔街会遭遇三名暴徒。 }
+  - { id: F12, category: threat, scope: dm, immutable: true, statement: 扶桑花号战斗持续七轮后，深潜者会带船逃脱。 }
+
+scenes:
+  - id: S01
+    name: 摩勒住宅
+    chapterTitle: 第一幕：接受委托
+    description: 纽伦上街101-102号的维多利亚式别墅，伊莎贝拉·摩勒在此等待调查员。
+    aliases: [摩勒家, 住宅, 别墅]
+    assetId: scene.S01
+    npcIds: [N01]
+    itemIds: [I01, I02, I03, I04, I05, I06]
+    dmFactIds: [F01]
+    exits:
+      - { to: S02, travelMinutes: 10, when: { factKnown: F05 }, blockedText: 目前没有足够理由直接质询警察局长。 }
+      - { to: S03, travelMinutes: 10, when: { variable: oldHethLead, op: eq, value: true }, blockedText: 你们还不知道老赫特酒吧与此案的联系。 }
+      - { to: S04, travelMinutes: 20, when: { any: [{ factKnown: F06 }, { factKnown: F08 }] }, blockedText: 你们还没有确认贝尔街14号的具体目标。 }
+  - id: S02
+    name: 上城区第二分局
+    chapterTitle: 第二幕：街区调查
+    description: 距离摩勒住宅约十分钟路程，洛夫·蒙特利尔局长在这里办公。
+    aliases: [第二分局, 警察局, 警局]
+    assetId: scene.S02
+    npcIds: [N03]
+    itemIds: []
+    dmFactIds: [F02, F11]
+    exits:
+      - { to: S01, travelMinutes: 10, when: { always: true }, blockedText: 无法返回摩勒住宅。 }
+      - { to: S03, travelMinutes: 10, when: { variable: oldHethLead, op: eq, value: true }, blockedText: 你们还没有老赫特酒吧的线索。 }
+      - { to: S04, travelMinutes: 15, when: { any: [{ factKnown: F06 }, { factKnown: F08 }] }, blockedText: 你们还没有贝尔街14号的可靠地址。 }
+  - id: S03
+    name: 老赫特酒吧
+    chapterTitle: 第二幕：街区调查
+    description: 街区内昏暗嘈杂的小酒馆，空气里弥漫着烟草和廉价酒气。
+    aliases: [老赫特之家, 酒吧]
+    assetId: scene.S03
+    npcIds: [N04]
+    itemIds: []
+    dmFactIds: [F08]
+    exits:
+      - { to: S01, travelMinutes: 10, when: { always: true }, blockedText: 无法返回摩勒住宅。 }
+      - { to: S02, travelMinutes: 10, when: { factKnown: F05 }, blockedText: 你们还没有质询蒙特利尔的依据。 }
+      - { to: S04, travelMinutes: 10, when: { any: [{ factKnown: F06 }, { factKnown: F08 }] }, blockedText: 酒保还没有透露贝尔街的方向。 }
+  - id: S04
+    name: 卡森其药店
+    chapterTitle: 第二幕：街区调查
+    description: 贝尔街14号一间废弃多年的药店，门面破败，门锁仍在，内部没有营业迹象。
+    aliases: [药店, 废弃药店]
+    assetId: scene.S04
+    npcIds: []
+    itemIds: [I07, I08]
+    dmFactIds: [F03, F11]
+    exits:
+      - { to: S01, travelMinutes: 20, when: { always: true }, blockedText: 无法返回摩勒住宅。 }
+      - { to: S02, travelMinutes: 15, when: { always: true }, blockedText: 无法前往警局。 }
+      - { to: S03, travelMinutes: 10, when: { always: true }, blockedText: 无法前往老赫特酒吧。 }
+      - { to: S05, travelMinutes: 25, when: { factKnown: F09 }, blockedText: 没有地图笔记就无法在浓雾中定位扶桑花号。 }
+  - id: S05
+    name: 泰晤士港·扶桑花号
+    chapterTitle: 终幕：扶桑花号
+    description: 泰晤士港的偏僻泊位，浓雾覆盖水面，扶桑花号正准备离港。
+    aliases: [泰晤士港, 港口, 码头, 码头区, 扶桑花号]
+    assetId: scene.S05
+    npcIds: [N02]
+    itemIds: []
+    dmFactIds: [F01, F03, F12]
+    exits:
+      - { to: S04, travelMinutes: 25, when: { not: { encounter: ENC01, state: active } }, blockedText: 遭遇尚未解决，无法安全离开。 }
+
+npcs:
+  - { id: N01, name: 伊莎贝拉·摩勒, role: 委托人, attitude: 友好, appearance: 二十余岁，面色苍白，衣着得体但明显缺乏休息。, aliases: [伊莎贝拉, 摩勒小姐], hp: 8, assetId: npc.N01, knowledgeFactIds: [F04], dmFactIds: [F01] }
+  - { id: N02, name: 埃里克·摩勒, role: 失踪者, attitude: 未知, appearance: 五十二岁的商人，神情疲惫，留着修整整齐的胡须。, aliases: [埃里克, 摩勒先生], hp: 10, assetId: npc.N02, knowledgeFactIds: [], dmFactIds: [F01] }
+  - { id: N03, name: 洛夫·蒙特利尔, role: 警察局长, attitude: 警惕, appearance: 四十八岁，制服笔挺，目光冷淡而审慎。, aliases: [蒙特利尔, 蒙特利尔局长], hp: 13, assetId: npc.N03, knowledgeFactIds: [F02], dmFactIds: [F02, F11] }
+  - { id: N04, name: 老赫特之家酒保, role: 街区线人, attitude: 中立, appearance: 壮实的中年酒保，总在一边擦杯子一边观察客人。, aliases: [酒保, 老赫特酒保], hp: 12, assetId: npc.N04, knowledgeFactIds: [F08], dmFactIds: [] }
+
+encounters:
+  - id: ENC01
+    name: 扶桑花号深潜者
+    count: 4
+    hpEach: 11
+    skills: { 格斗: 45, 射击: 45, 闪避: 30, 聆听: 50, 游泳: 60 }
+    attacks:
+      - { name: 爪击, skill: 45, damage: 1d3 }
+      - { name: .32手枪, skill: 45, damage: 1d8 }
+    resolutionMode: narrator_assisted
+  - id: ENC02
+    name: 蒙特利尔雇佣的暴徒
+    count: 3
+    hpEach: 15
+    skills: { 格斗: 60, 射击: 30, 闪避: 30 }
+    attacks:
+      - { name: 拳脚, skill: 60, damage: 1d3+1 }
+      - { name: 双管霰弹枪, skill: 30, damage: 2d6 }
+    resolutionMode: narrator_assisted
+
+items:
+  - { id: I01, name: 便签, sceneId: S01, appearance: 书房桌面上写有“别来找我”的便签，墨迹尚未完全干透。, aliases: [求助便签], factIds: [], discovery: { skill: 侦查, difficulty: 普通, failForward: 即使失败也能看到文字，但无法判断笔触异常，并推进5分钟。 }, fallbackEventId: EV_RECOVER_I01 }
+  - { id: I02, name: 合影照片, sceneId: S01, appearance: 书桌抽屉里一张埃里克与蒙特利尔的旧合影。, aliases: [合影, 旧合影], factIds: [F05], discovery: { skill: 侦查, difficulty: 普通, failForward: 失败仍能发现照片，但会惊动伊莎贝拉并推进10分钟。 }, fallbackEventId: EV_RECOVER_I02 }
+  - { id: I03, name: 名片, sceneId: S01, appearance: 一张印有埃里克旧公司信息的泛黄名片。, aliases: [旧名片], factIds: [], discovery: { skill: 侦查, difficulty: 自动, failForward: 公开摆放，无需检定。 }, fallbackEventId: EV_RECOVER_I03 }
+  - { id: I04, name: 小册子, sceneId: S01, appearance: 夹在书架缝隙里的普通小册子，夹页似乎受过特殊处理。, aliases: [册子], factIds: [F06], discovery: { skill: 侦查, difficulty: 普通, failForward: 失败仍发现受潮夹页，艾达可通过加热或医学知识恢复隐写内容，但推进15分钟。 }, fallbackEventId: EV_RECOVER_I04 }
+  - { id: I05, name: 白色粉末样品, sceneId: S01, appearance: 车库暗格中的小袋白色粉末，颗粒细腻，气味淡苦。, aliases: [鸦片样品, 白色粉末, 粉末样品], factIds: [F07], discovery: { skill: 医学, difficulty: 普通, failForward: 失败只能确认其可疑并推进10分钟，之后可由药店记录或蒙特利尔反应补证。 }, fallbackEventId: EV_RECOVER_I05 }
+  - { id: I06, name: 报纸残片, sceneId: S01, appearance: 垃圾桶中的报纸残片，保留着扫毒英雄通稿和人物照片的一部分。, aliases: [报纸碎片], factIds: [F02], discovery: { skill: 侦查, difficulty: 普通, failForward: 失败仍能带走残片，之后可与合影比对。 }, fallbackEventId: EV_RECOVER_I06 }
+  - { id: I07, name: 深潜者地图笔记, sceneId: S04, appearance: 后厅油布包中的潮湿手绘地图，标注了港口偏僻泊位。, aliases: [潮湿的地图笔记, 地图笔记, 手绘地图], factIds: [F09], discovery: { skill: 侦查, difficulty: 普通, failForward: 失败仍能从残片辨认扶桑花号泊位，但暴徒或深潜者警觉度增加。 }, fallbackEventId: EV_RECOVER_I07 }
+  - { id: I08, name: 雪茄头, sceneId: S04, appearance: 柜台附近未燃尽的雪茄头，品牌标记仍然清晰。, aliases: [雪茄烟头], factIds: [F10], discovery: { skill: 侦查, difficulty: 普通, failForward: 失败仍可收集，回看埃里克物品后自动完成比对。 }, fallbackEventId: EV_RECOVER_I08 }

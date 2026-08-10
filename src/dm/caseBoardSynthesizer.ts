@@ -259,6 +259,11 @@ const CASE_SIGNAL_TERMS = [
 ];
 
 function fallbackFromNarrative(input: CaseBoardSynthesizerInput): CaseBoardPatch {
+  if (input.playerActions.some((action) =>
+    /【检定结果】[\s\S]*结果[：:]\s*(?:失败|大失败)/.test(action.action)
+  )) {
+    return { nodes: [], edges: [], insights: [] };
+  }
   const narrativeEvent = [...input.events].reverse().find((event) =>
     event.turn === input.turn && event.kind === 'narrative'
   );
@@ -329,6 +334,12 @@ export async function synthesizeCaseBoardPatch(
   config: ApiConfig,
   input: CaseBoardSynthesizerInput
 ): Promise<CaseBoardPatch> {
+  // 失败检定后的叙事可能包含假设或“没有发现”；不得把它固化为确认案件节点。
+  if (input.playerActions.some((action) =>
+    /【检定结果】[\s\S]*结果[：:]\s*(?:失败|大失败)/.test(action.action)
+  )) {
+    return { nodes: [], edges: [], insights: [] };
+  }
   let proposed: CaseBoardPatch = { nodes: [], edges: [], insights: [] };
   try {
     const result = await generateJson(config, {

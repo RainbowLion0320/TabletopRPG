@@ -84,7 +84,7 @@ AI 响应中的 `playerChoices` 会显示为建议行动按钮。玩家可以点
 
 ## 状态更新
 
-AI 不直接写 reducer。Narrator 通过 `request_check`、`propose_state_update`、`reveal_secret`、`propose_scene_change`、`schedule_consequence` 等工具提出变更，Director 校验后由 StateResolver 转为事件。重开、读档或返回首页会取消旧 session 的请求，防止旧结果污染当前游戏。
+AI 不直接写 reducer。每轮固定执行：规则前置评估 → 玩家行动/检定 → Narrator → Director 工具审核 → 原子状态结算 → 自动目标/节点评估 → 时钟/后果推进 → 上下文与案件板更新。主线只接受 `propose_story_event(eventId)`；Director 校验事件属于活动节点且条件满足，效果只从 YAML 读取。重开、读档或返回首页会取消旧 session 的请求，防止旧结果污染当前游戏。
 - activeNpc。
 - playerChoices。
 
@@ -92,13 +92,7 @@ AI 不直接写 reducer。Narrator 通过 `request_check`、`propose_state_updat
 
 ## 当前剧本模块
 
-| ID | 场景 | 说明 |
-|----|------|------|
-| S01 | 摩勒住宅 | 起始点，委托人和住宅线索 |
-| S02 | 上城区第二分局 | 洛夫·蒙特利尔相关调查 |
-| S03 | 老赫特酒吧 | “老鼠”信息 |
-| S04 | 卡森其药店 | 核心危险场景 |
-| S05 | 泰晤士港 | 终幕地点 |
+《雾中消逝》由 `scenarios/wuzhongxiaoshi/` 五个 YAML 文件维护，运行时、类型、KP 手册和案件板骨架均自动生成。场景移动同时受空间出口与剧情条件约束；必经节点连续 3 回合无进展时提示，6 回合时执行作者定义的失败推进。详见 [[scenario_engine]]。
 
 ## 被引用于
 - [[overview]]

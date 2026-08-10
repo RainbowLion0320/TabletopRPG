@@ -1,7 +1,8 @@
 import { lazy, Suspense, useRef, useState, useCallback, useEffect } from 'react';
-import { BookOpen, GripVertical, X } from 'lucide-react';
+import { BookOpen, Clock3, GripVertical, Target, X } from 'lucide-react';
 import type { GameState } from '../../types/game';
 import { storyData } from '../../data/storyData';
+import { getScenarioDefinition, getScenarioProgressForState, getVisibleScenarioObjectives } from '../../scenario/engine';
 
 const CaseBoard = lazy(() => import('./CaseBoard').then((module) => ({ default: module.CaseBoard })));
 
@@ -13,7 +14,11 @@ interface InfoDrawerProps {
 }
 
 export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
-  const [activeTab, setActiveTab] = useState<'board' | 'log'>('board');
+  const [activeTab, setActiveTab] = useState<'progress' | 'board' | 'log'>('board');
+  const scenario = getScenarioDefinition();
+  const progress = getScenarioProgressForState(state);
+  const objectives = getVisibleScenarioObjectives(progress);
+  const visibleClocks = Object.entries(progress.clocks).filter(([, clock]) => clock.visible);
 
   // 拖拽状态
   const tabRef = useRef<HTMLButtonElement>(null);
@@ -110,11 +115,36 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
             <span>{storyData.scenes[state.currentScene]?.chapterTitle ?? '当前章节'}</span>
           </div>
           <nav className="info-drawer-tabs" aria-label="资料视图">
+            <button className={activeTab === 'progress' ? 'active' : ''} onClick={() => setActiveTab('progress')}>进度</button>
             <button className={activeTab === 'board' ? 'active' : ''} onClick={() => setActiveTab('board')}>案件板</button>
             <button className={activeTab === 'log' ? 'active' : ''} onClick={() => setActiveTab('log')}>日志</button>
           </nav>
           <button aria-label="关闭资料" onClick={onClose} title="关闭"><X size={18} /></button>
         </header>
+
+        {activeTab === 'progress' ? (
+          <section className="drawer-section scenario-progress" aria-label="剧情进度">
+            <h3><Target size={17} />调查目标</h3>
+            <div className="objective-list">
+              {objectives.map((objective) => (
+                <div className={`objective-row ${progress.objectiveStates[objective.id]}`} key={objective.id}>
+                  <span>{progress.objectiveStates[objective.id] === 'completed' ? '已完成' : '进行中'}</span>
+                  <strong>{objective.playerText}</strong>
+                </div>
+              ))}
+            </div>
+            <h3><BookOpen size={17} />线索进度</h3>
+            <p className="progress-stat">
+              已发现 {Object.values(progress.clueStates).filter((status) => status !== 'unknown').length}
+              {' / '}{scenario.world.items.length}
+              {' · '}已分析 {Object.values(progress.clueStates).filter((status) => status === 'analyzed').length}
+            </p>
+            {visibleClocks.length ? <h3><Clock3 size={17} />可见时钟</h3> : null}
+            {visibleClocks.map(([clockId, clock]) => (
+              <div className="clock-row" key={clockId}><strong>{clockId}</strong><span>{clock.value} / 7</span></div>
+            ))}
+          </section>
+        ) : null}
 
         {activeTab === 'board' ? (
           <Suspense fallback={<p className="empty-note">正在整理案件资料...</p>}>

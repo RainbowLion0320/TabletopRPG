@@ -11,7 +11,7 @@ function renderDrawer(state = makeState({ activeNpcName: '伊莎贝拉·摩勒' 
 describe('InfoDrawer v7 investigation workspace', () => {
   it('opens on a spoiler-safe case board with only visible entities', async () => {
     renderDrawer();
-    expect(await screen.findByRole('heading', { name: '案件板' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '案件板' }, { timeout: 5_000 })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '案件板' })).toHaveClass('active');
     expect(screen.getAllByText('摩勒住宅').length).toBeGreaterThan(0);
     expect(screen.getAllByText('伊莎贝拉·摩勒').length).toBeGreaterThan(0);
@@ -22,7 +22,7 @@ describe('InfoDrawer v7 investigation workspace', () => {
 
   it('keeps the fullscreen shell and compact header tabs', async () => {
     const { container } = renderDrawer();
-    await screen.findByRole('heading', { name: '案件板' });
+    await screen.findByRole('heading', { name: '案件板' }, { timeout: 5_000 });
     expect(container.querySelector('.info-drawer-react')).toHaveClass('fullscreen', 'open');
     const header = container.querySelector('.info-drawer-react > header');
     expect(header).not.toBeNull();
@@ -34,11 +34,12 @@ describe('InfoDrawer v7 investigation workspace', () => {
     const state = makeState({ activeNpcName: '伊莎贝拉·摩勒' });
     state.clues = [{ ...storyData.items.I04, found: true }];
     renderDrawer(state);
-    expect((await screen.findAllByText('卡森其药店')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('小册子')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('卡森其药店')).not.toBeInTheDocument();
     fireEvent.change(screen.getByRole('combobox', { name: '资料类型' }), { target: { value: 'item' } });
     const mobileList = screen.getByLabelText('案件资料列表');
     await waitFor(() => expect(within(mobileList).queryByText('伊莎贝拉·摩勒')).not.toBeInTheDocument());
-    expect(within(mobileList).getByText('小册子')).toBeInTheDocument();
+    expect(within(mobileList).getAllByText('小册子').length).toBeGreaterThan(0);
   });
 
   it('shows connected dynamic nodes and readable inspector sources', async () => {

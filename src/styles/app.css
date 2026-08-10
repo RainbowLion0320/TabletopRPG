@@ -873,6 +873,66 @@ button {
   padding: 10px 16px;
 }
 
+.world-time {
+  margin-left: 10px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.scenario-progress h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 18px;
+}
+
+.objective-list {
+  display: grid;
+  gap: 8px;
+}
+
+.objective-row {
+  display: grid;
+  grid-template-columns: 54px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.objective-row span {
+  font-size: 11px;
+  color: #d8b56a;
+}
+
+.objective-row.completed strong {
+  color: rgba(255, 255, 255, 0.52);
+  text-decoration: line-through;
+}
+
+.progress-stat,
+.clock-row {
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.clock-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ending-dock {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ending-dock p {
+  margin: 4px 0 0;
+  color: rgba(255, 255, 255, 0.72);
+}
+
 /* 第一行：输入行 */
 .dock-input-row {
   display: flex;

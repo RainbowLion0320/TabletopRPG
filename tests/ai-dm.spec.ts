@@ -137,7 +137,7 @@ test('AI DM repairs unescaped dialogue quotes locally without interrupting the t
   await startGameWithApi(page);
   await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('追问那句话。');
   await page.getByRole('button', { name: '下一位' }).click();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('观察她的反应。');
+  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('记录她的反应。');
   await page.getByRole('button', { name: '提交' }).click();
 
   await expect(page.getByText('伊莎贝拉说父亲总提到"水里的东西"，随后沉默下来。')).toBeVisible();
@@ -146,7 +146,21 @@ test('AI DM repairs unescaped dialogue quotes locally without interrupting the t
 });
 
 test('AI DM scene changes update the chapter, backdrop, party location, and resident NPC together', async ({ page }) => {
-  const narrator = JSON.stringify({
+  const acceptedNarrator = JSON.stringify({
+    narrative: '你们正式接受了伊莎贝拉的委托。',
+    activeNpc: '伊莎贝拉·摩勒',
+    nextPrompt: '可以从埃里克留下的物品开始。',
+    playerChoices: {},
+    keywords: []
+  });
+  const clueNarrator = JSON.stringify({
+    narrative: '合影把埃里克与蒙特利尔联系起来，警察局成为了明确的去处。',
+    activeNpc: '伊莎贝拉·摩勒',
+    nextPrompt: '是否前往上城区第二分局？',
+    playerChoices: {},
+    keywords: []
+  });
+  const arrivalNarrator = JSON.stringify({
     narrative: '你们穿过雾气，抵达上城区第二分局。',
     activeNpc: null,
     nextPrompt: '蒙特利尔局长正在办公室里。',
@@ -157,6 +171,7 @@ test('AI DM scene changes update the chapter, backdrop, party location, and resi
     keywords: []
   });
   let sceneToolWasAvailable = false;
+  let narratorAttempt = 0;
 
   await page.route('https://api.openai.com/v1/responses', async (route) => {
     const body = JSON.parse(route.request().postData() ?? '{}') as {
@@ -166,11 +181,18 @@ test('AI DM scene changes update the chapter, backdrop, party location, and resi
     const system = body.instructions ?? '';
     let response = responseBody(JSON.stringify({ facts: [] }));
     if (system.includes('COC 第七版 AI DM Agent')) {
-      sceneToolWasAvailable = body.tools?.some((tool) => tool.name === 'propose_scene_change') ?? false;
-      response = responseBodyWithToolCall(narrator, 'propose_scene_change', {
-        targetSceneId: 'S02',
-        reason: '调查员明确前往警察局'
-      });
+      narratorAttempt += 1;
+      sceneToolWasAvailable ||= body.tools?.some((tool) => tool.name === 'propose_scene_change') ?? false;
+      if (narratorAttempt === 1) {
+        response = responseBody(acceptedNarrator);
+      } else if (narratorAttempt === 2) {
+        response = responseBody(clueNarrator);
+      } else {
+        response = responseBodyWithToolCall(arrivalNarrator, 'propose_scene_change', {
+          targetSceneId: 'S02',
+          reason: '调查员明确前往警察局'
+        });
+      }
     } else if (system.includes('案件板合成助手')) {
       response = responseBody(JSON.stringify({ nodes: [], edges: [] }));
     }
@@ -183,7 +205,20 @@ test('AI DM scene changes update the chapter, backdrop, party location, and resi
 
   await startGameWithApi(page);
   const initialBackdrop = await page.locator('.scene-backdrop-img').getAttribute('src');
-  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('我们去警察局调查案卷。');
+
+  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('我们接受这份委托。');
+  await page.getByRole('button', { name: '下一位' }).click();
+  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('确认接受伊莎贝拉的委托。');
+  await page.getByRole('button', { name: '提交' }).click();
+  await expect(page.getByText('你们正式接受了伊莎贝拉的委托。')).toBeVisible();
+
+  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('我们找到埃里克与蒙特利尔的合影照片。');
+  await page.getByRole('button', { name: '下一位' }).click();
+  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('收好这张合影。');
+  await page.getByRole('button', { name: '提交' }).click();
+  await expect(page.getByText('合影把埃里克与蒙特利尔联系起来，警察局成为了明确的去处。')).toBeVisible();
+
+  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('我们前往上城区第二分局。');
   await page.getByRole('button', { name: '下一位' }).click();
   await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('一起前往上城区第二分局。');
   await page.getByRole('button', { name: '提交' }).click();
@@ -196,16 +231,6 @@ test('AI DM scene changes update the chapter, backdrop, party location, and resi
 });
 
 test('D100 check plays a locked-result roll and reveal before continuing the AI turn', async ({ page }) => {
-  const checkNarrative = JSON.stringify({
-    narrative: '门锁结构复杂，需要一次细致的侦查检定。',
-    activeNpc: null,
-    nextPrompt: '掷骰决定能否看出异常。',
-    playerChoices: {
-      '亨利·格雷': ['仔细检查锁芯'],
-      '艾达·华莱士': ['留意门外动静']
-    },
-    keywords: []
-  });
   const resolvedNarrative = JSON.stringify({
     narrative: '骰子结果已经落定，门锁上的细小刮痕显露出来。',
     activeNpc: null,
@@ -226,17 +251,8 @@ test('D100 check plays a locked-result roll and reveal before continuing the AI 
     let response = responseBody(JSON.stringify({ facts: [] }));
     if (system.includes('COC 第七版 AI DM Agent')) {
       narratorAttempt += 1;
-      if (narratorAttempt === 1) {
-        response = responseBodyWithToolCall(checkNarrative, 'request_check', {
-          player: '亨利·格雷',
-          skill: '侦查',
-          difficulty: '普通',
-          reason: '检查锁芯上的异常痕迹'
-        });
-      } else {
-        resultTurnBody = postData;
-        response = responseBody(resolvedNarrative);
-      }
+      resultTurnBody = postData;
+      response = responseBody(resolvedNarrative);
     } else if (system.includes('案件板合成助手')) {
       response = responseBody(JSON.stringify({ nodes: [], edges: [] }));
     }
@@ -277,6 +293,7 @@ test('D100 check plays a locked-result roll and reveal before continuing the AI 
   await expect(diceDialog.getByRole('heading', { name: '普通成功' })).toBeVisible();
   await expect(diceDialog).toHaveCount(0, { timeout: 3_000 });
   await expect(page.getByText('骰子结果已经落定，门锁上的细小刮痕显露出来。')).toBeVisible();
+  expect(narratorAttempt).toBe(1);
   expect(resultTurnBody).toContain('掷出 42');
   expect(resultTurnBody).toContain('普通成功');
 });
@@ -323,7 +340,7 @@ test('narrative highlights remain safe, clickable and stable across desktop and 
 
   await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('询问伊莎贝拉父亲的近况。');
   await page.getByRole('button', { name: '下一位' }).click();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('观察伊莎贝拉的反应。');
+  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('记录伊莎贝拉的反应。');
   await page.getByRole('button', { name: '提交' }).click();
 
   await expect.poll(() => narratorAttempts).toBe(1);
@@ -490,9 +507,9 @@ test('case board records a meaningful fact when the AI proposes an empty patch',
   });
 
   await startGameWithApi(page);
-  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('检查门廊。');
+  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('留意门廊。');
   await page.getByRole('button', { name: '下一位' }).click();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('观察周围。');
+  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('守在一旁。');
   await page.getByRole('button', { name: '提交' }).click();
   await expect(page.getByText('亨利在门廊发现几道新鲜的拖拽刮痕，像是有人搬运过重物。')).toBeVisible();
 

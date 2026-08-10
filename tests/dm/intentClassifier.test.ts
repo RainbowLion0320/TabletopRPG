@@ -44,21 +44,21 @@ describe('intentClassifier', () => {
     expect(result.relevantSkills).toEqual(expect.arrayContaining(['侦查', '聆听']));
   });
 
-  it('detects ordinary travel language even when another intent remains primary', () => {
+  it('classifies ordinary travel as movement even when observation terms are present', () => {
     const result = classifyIntent([action('我们去警察局调查案卷')]);
 
-    expect(result.intentKind).toBe('observe');
+    expect(result.intentKind).toBe('move');
     expect(result.hasMovement).toBe(true);
     expect(result.relevantSkills).not.toContain('潜行');
   });
 
-  it('retains movement when an earlier action owns the primary intent', () => {
+  it('retains movement metadata when a higher-priority combat intent wins', () => {
     const result = classifyIntent([
       action('我搜寻地面'),
       action('我逃走返回摩勒住宅', '艾达')
     ]);
 
-    expect(result.intentKind).toBe('observe');
+    expect(result.intentKind).toBe('combat');
     expect(result.hasMovement).toBe(true);
   });
 
@@ -69,11 +69,19 @@ describe('intentClassifier', () => {
     expect(result.hasMovement).toBe(true);
   });
 
-  it('intentKind locks to first non-other hit', () => {
-    // first action is observe, second is combat; intentKind should remain observe
+  it('uses the highest-priority intent across all players', () => {
     const result = classifyIntent([action('我搜寻地面'), action('我开枪还击', '艾达')]);
-    expect(result.intentKind).toBe('observe');
-    expect(result.hasConflict).toBe(true); // combat raises conflict regardless
+    expect(result.intentKind).toBe('combat');
+    expect(result.hasConflict).toBe(true);
+  });
+
+  it('does not let one player observing hide another player moving', () => {
+    const result = classifyIntent([
+      action('我检查已经收集的文件'),
+      action('我开车前往药房', '艾达')
+    ]);
+    expect(result.intentKind).toBe('move');
+    expect(result.relevantSkills).toEqual(expect.arrayContaining(['侦查', '驾驶（汽车）']));
   });
 
   it('case-insensitive matching is OK because dictionary is Chinese', () => {

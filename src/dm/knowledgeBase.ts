@@ -38,12 +38,24 @@ export interface RevealContext {
 
 /**
  * 从 GameState 构造 RevealContext。
- * 由于当前 GameState 还没有 visitedScenes 字段（phase 6 才持久化），
- * 这里以 currentScene + clues 中携带的 scene 推断已访问场景。
+ * 访问历史通过持久 flag 记录；同时读取旧存档的 clues / eventLog 做兼容迁移。
  */
 export function deriveRevealContext(state: GameState): RevealContext {
   const visited = new Set<SceneId>([state.currentScene]);
   state.clues.forEach((clue) => visited.add(clue.scene));
+  for (const [key, value] of Object.entries(state.flags ?? {})) {
+    if (!value) continue;
+    const match = key.match(/^sceneVisited\.(S0[1-5])$/);
+    if (match) visited.add(match[1] as SceneId);
+  }
+  for (const event of state.eventLog ?? []) {
+    if (event.kind !== 'scene_change' && event.kind !== 'state_update') continue;
+    const match = event.description.match(/(?:切换到\s*|scene→)(S0[1-5])/);
+    if (match) visited.add(match[1] as SceneId);
+  }
+  for (const memory of state.episodicMemory ?? []) {
+    if (memory.sceneId) visited.add(memory.sceneId);
+  }
   // S01 永远视为已访问（开局所在）
   visited.add('S01');
 

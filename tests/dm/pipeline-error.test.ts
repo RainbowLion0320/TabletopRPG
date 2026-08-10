@@ -51,4 +51,23 @@ describe('runDmTurn error classification', () => {
       })
     ).rejects.toBeInstanceOf(AiResponseFormatError);
   });
+
+  it('falls back safely after repeated semantic scene violations', async () => {
+    const invalidArrival = JSON.stringify({
+      narrative: '你们已经抵达卡森其药店。',
+      activeNpc: null,
+      nextPrompt: '进入药店。',
+      playerChoices: { 亨利: ['进入药店'] }
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(invalidArrival)));
+    const state = makeState({ players: [makeInvestigator({ name: '亨利' })], currentScene: 'S01' });
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [{ player: '亨利', action: '在没有地址线索时前往卡森其药店。' }]
+    });
+
+    expect(output.legacyResponse?.narrative).toContain('仍在摩勒住宅');
+    expect(output.legacyResponse?.stateUpdate?.sceneChange).toBeNull();
+  });
 });

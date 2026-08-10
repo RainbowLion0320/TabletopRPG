@@ -55,4 +55,17 @@ describe('NarrativePanel', () => {
       state.messages[0].text
     );
   });
+
+  it('hides internal progression prompts while keeping other system feedback', () => {
+    const state = makeState();
+    state.messages = [
+      { id: 'internal-hint', type: 'system', text: '推进提示：检查书桌抽屉。' },
+      { id: 'dice-result', type: 'system', text: '检定结果：普通成功（42）' }
+    ];
+
+    const { container } = render(<NarrativePanel state={state} />);
+
+    expect(screen.queryByText('推进提示：检查书桌抽屉。')).not.toBeInTheDocument();
+    expect(container.querySelector('.story-message.system')?.textContent).toBe('检定结果：普通成功（42）');
+  });
 });

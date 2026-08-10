@@ -30,12 +30,19 @@ import {
   deriveRevealContext,
   getItemSnapshot,
   getNpcSnapshot,
-  getReachableScenes,
   getSceneSnapshot
 } from './knowledgeBase';
 import type { KnowledgeBase, ScenarioRule, WorkingMemory } from './types';
 import { deriveWorkingMemory } from './workingMemory';
 import { getStanceChain } from './memory/evolutionChain';
+import {
+  getActiveScenarioBeat,
+  getAvailableSceneExits,
+  getAvailableStoryEvents,
+  getScenarioDefinition,
+  getScenarioProgressForState,
+  getVisibleScenarioObjectives
+} from '../scenario/engine';
 
 // ---------- 上下文契约 ----------
 
@@ -53,6 +60,7 @@ export interface PlayerCardLite {
   job: string;
   hp: string;
   san: string;
+  meaningfulItem?: string;
 }
 
 export interface PlayerCardFull extends PlayerCardLite {
@@ -71,7 +79,7 @@ export interface DmContextStatic {
 
 export interface DmContextDynamic {
   currentScene: SceneSnapshot;
-  reachableScenes: Array<{ id: SceneId; name: string }>;
+  reachableScenes: Array<{ id: SceneId; name: string; desc: string }>;
   /** 当前场景在场（已解锁公开面 + 已解锁 secrets + 可选 mind 信息） */
   npcs: NpcSnapshotWithMind[];
   /** 仅当前场景关联的物品；已发现物品在前 */
@@ -80,6 +88,8 @@ export interface DmContextDynamic {
   playerLocations: Record<string, string>;
   /** 已发现的线索名列表 */
   knownClueNames: string[];
+  /** 最近确认的原子事实，供长期一致性约束使用。 */
+  recentFacts: AtomicFact[];
   /** 本轮使用的 working memory 快照 */
   workingMemory: WorkingMemory;
   /** RAG/长尾召回片段；非权威事实，仅供 Narrator 参考 */
@@ -87,6 +97,16 @@ export interface DmContextDynamic {
   /** 主要被检定者的完整玩家卡；其它玩家精简卡 */
   spotlightPlayer: PlayerCardFull | null;
   otherPlayers: PlayerCardLite[];
+  scenario: {
+    worldTime: string;
+    actTitle: string;
+    beatTitle: string;
+    dmFacts: string[];
+    knownFacts: string[];
+    objectives: Array<{ id: string; text: string; status: string }>;
+    allowedEvents: Array<{ id: string; title: string }>;
+    softEscalation: string | null;
+  };
 }
 
 /**
@@ -122,7 +142,8 @@ function toLitePlayerCard(p: Investigator): PlayerCardLite {
     name: p.name,
     job: p.job,
     hp: `${p.currentHp}/${p.hp}`,
-    san: `${p.currentSan}/${p.san}`
+    san: `${p.currentSan}/${p.san}`,
+    meaningfulItem: p.background?.meaningfulItem
   };
 }
 
@@ -179,7 +200,7 @@ function buildSceneNpcs(
   const sceneEntry = kb.scenes[sceneId];
   if (!sceneEntry) return [];
   const names = new Set<string>(sceneEntry.public.npcs);
-  if (activeNpcName) names.add(activeNpcName);
+  if (activeNpcName && sceneEntry.public.npcs.includes(activeNpcName)) names.add(activeNpcName);
   const out: NpcSnapshot[] = [];
   for (const name of names) {
     const snap = getNpcSnapshot(kb, name, revealed);
@@ -232,16 +253,6 @@ function filterInScopeIntents(
   if (!intents.length) return [];
   const inScope = new Set(inScopeNpcIds);
   return intents.filter((i) => i.ttl > 0 && (i.owner === 'world' || inScope.has(i.owner)));
-}
-
-function buildReachableScenes(
-  kb: KnowledgeBase,
-  sceneId: SceneId
-): Array<{ id: SceneId; name: string }> {
-  return getReachableScenes(kb, sceneId).map((id) => ({
-    id,
-    name: kb.scenes[id]?.public.name ?? id
-  }));
 }
 
 // ---------- 主入口 ----------
@@ -301,6 +312,15 @@ export function buildDmContext(
   const wmWithIntents: WorkingMemory = inScopeIntents.length
     ? { ...wm, prospectiveIntents: inScopeIntents }
     : wm;
+  const scenarioDefinition = getScenarioDefinition();
+  const scenarioProgress = getScenarioProgressForState(state);
+  const activeBeat = getActiveScenarioBeat(scenarioProgress);
+  const activeAct = scenarioDefinition.progression.acts.find((act) => act.id === scenarioProgress.activeActId);
+  const factsById = new Map(scenarioDefinition.world.facts.map((fact) => [fact.id, fact]));
+  const dmFactIds = new Set([
+    ...(activeBeat?.dmFactIds ?? []),
+    ...(scenarioDefinition.world.scenes.find((scene) => scene.id === state.currentScene)?.dmFactIds ?? [])
+  ]);
 
   return {
     static: {
@@ -311,15 +331,35 @@ export function buildDmContext(
     },
     dynamic: {
       currentScene,
-      reachableScenes: buildReachableScenes(kb, state.currentScene),
+      reachableScenes: getAvailableSceneExits(scenarioProgress, state.currentScene).flatMap((exit) => {
+        const scene = kb.scenes[exit.sceneId]?.public;
+        return scene ? [{ id: scene.id, name: scene.name, desc: scene.desc }] : [];
+      }),
       npcs: enrichedNpcs,
       items: buildSceneItems(kb, state.currentScene, ctx, revealed),
       playerLocations: buildPlayerLocations(state, kb),
       knownClueNames: state.clues.map((clue) => clue.name),
+      recentFacts: (state.atomicFacts ?? []).slice(-20),
       workingMemory: wmWithIntents,
       retrievedMemories: options.retrievedMemories ?? [],
       spotlightPlayer: spotlight,
-      otherPlayers: others
+      otherPlayers: others,
+      scenario: {
+        worldTime: scenarioProgress.worldTime,
+        actTitle: activeAct?.title ?? '',
+        beatTitle: activeBeat?.title ?? '',
+        dmFacts: [...dmFactIds].flatMap((id) => factsById.get(id)?.statement ?? []),
+        knownFacts: scenarioProgress.knownFactIds.flatMap((id) => factsById.get(id)?.statement ?? []),
+        objectives: getVisibleScenarioObjectives(scenarioProgress).map((objective) => ({
+          id: objective.id,
+          text: objective.playerText,
+          status: scenarioProgress.objectiveStates[objective.id]
+        })),
+        allowedEvents: getAvailableStoryEvents(scenarioProgress, state.currentScene).map((event) => ({ id: event.id, title: event.title })),
+        softEscalation: activeBeat && scenarioProgress.idleTurns >= activeBeat.softEscalationAfter
+          ? activeBeat.softPrompt
+          : null
+      }
     },
     recentTurns,
     summary

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AiResponseFormatError } from '../../src/dm/llm/errors';
 import { maybeConsolidateMemory } from '../../src/dm/summarizer';
+import { parseSummary } from '../../src/dm/summarizer';
 import { createInitialGameState } from '../../src/state/gameReducer';
 import type { ApiConfig, ConversationTurn } from '../../src/types/game';
 
@@ -26,6 +27,11 @@ afterEach(() => {
 });
 
 describe('maybeConsolidateMemory', () => {
+  it('accepts a useful Chinese plain-text fallback when a provider omits the JSON wrapper', () => {
+    expect(parseSummary('KP日志：调查员已从摩勒住宅前往警局，并确认便签仍留在书房桌面。'))
+      .toContain('调查员已从摩勒住宅前往警局');
+  });
+
   it.each([
     ['non-JSON text', 'this is not json'],
     ['an empty summary', '{"summary":""}']

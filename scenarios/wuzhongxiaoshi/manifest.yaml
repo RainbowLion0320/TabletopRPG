@@ -1,0 +1,27 @@
+schemaVersion: 1
+contentVersion: 1.0.0
+id: wuzhongxiaoshi
+title: 雾中消逝
+system: COC 第七版风格 D100
+era: 1920年7月13日，英国伦敦
+startTime: 1920-07-13T17:30
+playerCount: { min: 1, max: 4 }
+expectedDurationMinutes: 180
+turnMinutes: 5
+tone: 雨雾笼罩的都市调查，逐步转向克苏鲁式海港恐怖
+contentWarnings: [毒品走私, 绑架, 枪械暴力, 超自然恐怖]
+authors: [舒爾茲上尉]
+source: docs/GDD.md 第四章与第七章规则边界
+credits: [AI 跑团项目组结构化改编]
+startSceneId: S01
+startBeatId: B01
+assets:
+  scene.S01: ../../assets/scenes/客厅.png
+  scene.S02: ../../assets/scenes/警局.png
+  scene.S03: ../../assets/scenes/酒吧.png
+  scene.S04: ../../assets/scenes/药店.png
+  scene.S05: ../../assets/scenes/码头.png
+  npc.N01: ../../assets/avatars/isabella.png
+  npc.N02: ../../assets/avatars/eric.png
+  npc.N03: ../../assets/avatars/montreal.png
+  npc.N04: ../../assets/avatars/bartender.png

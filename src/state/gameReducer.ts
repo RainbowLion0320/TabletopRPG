@@ -1,5 +1,14 @@
 import type { AiResponse, AtomicFact, Attributes, CaseBoardCertainty, CaseBoardInsight, CaseBoardPatch, CaseBoardState, CheckRequest, DiceResult, DynamicCaseBoardEdge, DynamicCaseBoardNode, EpisodicMemoryRecord, EpisodicMemorySource, EpisodicMemoryVisibility, FactPredicate, GameState, Investigator, NarrativeMessage, NpcMindModel, PersistedDMEvent, PersistedPendingConsequence, ProspectiveIntent, SceneId, SkillValue, StoryItem } from '../types/game';
 import { storyData } from '../data/storyData';
+import {
+  createScenarioProgress,
+  getScenarioDefinition,
+  getScenarioProgressForState,
+  hydrateScenarioProgress,
+  npcIdFromName,
+  npcNameFromId,
+  processScenarioTurn
+} from '../scenario/engine';
 import { normalizeNarrativeKeywordHints } from '../services/narrativeKeywords';
 import { allSkills } from '../data/skills';
 import { deriveInvestigatorStats, gameRules, resolveSkillBase } from '../data/gameRules';
@@ -46,7 +55,9 @@ export type GameAction =
   | { type: 'consumeProspectiveIntent'; id: string }
   | { type: 'decayProspectiveIntents' };
 
-const initialMessage = `${storyData.era}。雨夜的伦敦裹在浓雾之中，煤气灯的光晕在水汽里渗散开来。你们站在纽伦上街101号的门廊下，手中握着伊莎贝拉·摩勒小姐的求助信。\n\n信中写道：「我父亲埃里克·摩勒于三日前失踪，警察局毫无进展。若您能找到他，必有重谢。」`;
+const scenarioDefinition = getScenarioDefinition();
+const initialMessage = scenarioDefinition.presentation.openingNarrative;
+const ACTION_LOG_LIMIT = 500;
 
 function id() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -176,14 +187,29 @@ function normalizeCheck(value: unknown, players: Investigator[]): CheckRequest |
   const firstPlayer = players[0]?.name ?? '调查员';
   const requestedPlayer = stringValue(value.player, firstPlayer);
   const player = players.find((item) => item.name === requestedPlayer)?.name ?? firstPlayer;
+  const continuationActions = Array.isArray(value.continuationActions)
+    ? value.continuationActions.flatMap((item) => {
+        if (!isRecord(item)) return [];
+        const actionPlayer = stringValue(item.player);
+        const actionText = stringValue(item.action);
+        if (!actionPlayer || !actionText) return [];
+        return [{
+          player: actionPlayer,
+          action: actionText,
+          scene: typeof item.scene === 'string' ? item.scene : undefined
+        }];
+      })
+    : undefined;
 
   return {
     skill: stringValue(value.skill, '侦查'),
     difficulty: normalizeDifficulty(value.difficulty),
     player,
     reason: typeof value.reason === 'string' ? value.reason : undefined,
+    scenarioCheckId: typeof value.scenarioCheckId === 'string' ? value.scenarioCheckId : undefined,
     threshold: typeof value.threshold === 'number' ? value.threshold : undefined,
-    skillVal: typeof value.skillVal === 'number' ? value.skillVal : undefined
+    skillVal: typeof value.skillVal === 'number' ? value.skillVal : undefined,
+    continuationActions: continuationActions?.length ? continuationActions : undefined
   };
 }
 
@@ -223,6 +249,7 @@ function normalizeMessages(value: unknown, history: GameState['conversationHisto
       const text = typeof item.text === 'string' ? item.text : '';
       if (!text) return [];
       const type: NarrativeMessage['type'] = item.type === 'player' || item.type === 'system' ? item.type : 'dm';
+      if (type === 'system' && /^推进提示[：:]/.test(text.trim())) return [];
       const keywords = type === 'dm'
         ? normalizeNarrativeKeywordHints(item.keywords, text)
         : [];
@@ -265,7 +292,7 @@ function normalizeActionLog(value: unknown, fallback: GameState['actionLog']) {
     if (!text) return [];
     return [{ time: stringValue(item.time, time()), text }];
   });
-  return logs.length ? logs.slice(0, 40) : fallback;
+  return logs.length ? logs.slice(0, ACTION_LOG_LIMIT) : fallback;
 }
 
 function normalizeClues(value: unknown) {
@@ -1121,6 +1148,7 @@ function normalizeAiResponse(value: AiResponse, state: GameState): AiResponse {
       sceneChange,
       scheduledConsequences: normalizeScheduledConsequences(stateUpdate.scheduledConsequences),
       triggeredConsequenceIds: normalizeTriggeredIds(stateUpdate.triggeredConsequenceIds)
+      ,storyEventIds: normalizeTriggeredIds(stateUpdate.storyEventIds)
     },
     nextPrompt: typeof response.nextPrompt === 'string' ? response.nextPrompt : undefined,
     playerChoices,
@@ -1135,12 +1163,14 @@ function normalizeAiResponse(value: AiResponse, state: GameState): AiResponse {
 }
 
 export function createInitialGameState(players: Investigator[]): GameState {
-  const locations = Object.fromEntries(players.map((player) => [player.id, 'S01' as SceneId]));
+  const startScene = scenarioDefinition.manifest.startSceneId;
+  const activeNpcName = defaultActiveNpcForScene(startScene);
+  const locations = Object.fromEntries(players.map((player) => [player.id, startScene]));
   const suggestionsByPlayerId = defaultSuggestionsForPlayers(players);
   const suggestions = firstSuggestionListByPlayerOrder(
     suggestionsByPlayerId,
     players,
-    ['侦查周围', '询问伊莎贝拉', '检查书房']
+    scenarioDefinition.presentation.initialSuggestions
   );
   return {
     players,
@@ -1150,8 +1180,9 @@ export function createInitialGameState(players: Investigator[]): GameState {
     playerLocations: locations,
     declarations: {},
     pendingCheck: null,
-    currentScene: 'S01',
-    activeNpcName: defaultActiveNpcForScene('S01'),
+    currentScene: startScene,
+    activeNpcId: npcIdFromName(activeNpcName),
+    activeNpcName,
     clues: [],
     flags: {},
     actionLog: [{ time: time(), text: '游戏开始 · 摩勒住宅' }],
@@ -1168,7 +1199,8 @@ export function createInitialGameState(players: Investigator[]): GameState {
     npcMindModels: {},
     prospectiveIntents: [],
     episodicMemory: [],
-    caseBoard: { nodes: [], edges: [], insights: [], lastUpdatedTurn: 0 }
+    caseBoard: { nodes: [], edges: [], insights: [], lastUpdatedTurn: 0 },
+    scenarioProgress: createScenarioProgress()
   };
 }
 
@@ -1206,6 +1238,18 @@ export function hydrateGameState(value: unknown): GameState {
   const atomicFacts = normalizeAtomicFacts(source.atomicFacts);
   const rawCaseBoard = isRecord(source.caseBoard) ? source.caseBoard : null;
   const needsCaseBoardV7Migration = Boolean(rawCaseBoard && !Array.isArray(rawCaseBoard.insights));
+  const scenarioProgress = hydrateScenarioProgress(source.scenarioProgress, {
+    currentScene,
+    clueIds: normalizeClues(source.clues).map((clue) => clue.id),
+    flags: isRecord(source.flags) ? source.flags : {},
+    turn: history.filter((turn) => turn.role === 'user').length
+  });
+  const persistedNpcName = typeof source.activeNpcId === 'string'
+    ? npcNameFromId(source.activeNpcId)
+    : normalizeNpcName(source.activeNpcName);
+  const activeNpcName = persistedNpcName && storyData.scenes[currentScene].npcs.includes(persistedNpcName)
+    ? persistedNpcName
+    : storyData.scenes[currentScene].npcs[0] ?? null;
 
   const hydrated: GameState = {
     ...base,
@@ -1218,7 +1262,8 @@ export function hydrateGameState(value: unknown): GameState {
     declarations: normalizeDeclarations(source.declarations, players),
     pendingCheck: normalizeCheck(source.pendingCheck, players),
     currentScene,
-    activeNpcName: normalizeNpcName(source.activeNpcName) ?? defaultActiveNpcForScene(currentScene),
+    activeNpcId: npcIdFromName(activeNpcName),
+    activeNpcName,
     clues: normalizeClues(source.clues),
     flags: isRecord(source.flags) ? source.flags : {},
     actionLog: normalizeActionLog(source.actionLog, base.actionLog),
@@ -1236,7 +1281,8 @@ export function hydrateGameState(value: unknown): GameState {
     npcMindModels: normalizeNpcMindModels(source.npcMindModels),
     prospectiveIntents: normalizeProspectiveIntents(source.prospectiveIntents),
     episodicMemory: normalizeEpisodicMemory(source.episodicMemory),
-    caseBoard: normalizeCaseBoardState(source.caseBoard)
+    caseBoard: normalizeCaseBoardState(source.caseBoard),
+    scenarioProgress
   };
   return needsCaseBoardV7Migration ? migrateLegacyCaseBoard(hydrated) : hydrated;
 }
@@ -1246,7 +1292,10 @@ function addMessage(state: GameState, message: Omit<NarrativeMessage, 'id'>): Ga
 }
 
 function addLog(state: GameState, text: string): GameState {
-  return { ...state, actionLog: [{ time: time(), text }, ...state.actionLog].slice(0, 40) };
+  return {
+    ...state,
+    actionLog: [{ time: time(), text }, ...state.actionLog].slice(0, ACTION_LOG_LIMIT)
+  };
 }
 
 function updatePlayerStats(players: Investigator[], response: AiResponse) {
@@ -1269,6 +1318,48 @@ function appendNewClues(clues: StoryItem[], ids: string[] | undefined) {
   return [...clues, ...incoming];
 }
 
+function applyScenarioTransition(
+  state: GameState,
+  transition: ReturnType<typeof processScenarioTurn>,
+  actorName?: string
+): GameState {
+  const discoveredIds = Object.entries(transition.progress.clueStates)
+    .filter(([, status]) => status === 'discovered' || status === 'analyzed')
+    .map(([clueId]) => clueId);
+  const rewardFlags = { ...state.flags };
+  for (const delta of transition.deltas) {
+    if (delta.field === 'money' || delta.field === 'mythos') {
+      const key = `scenario.reward.${delta.field}`;
+      rewardFlags[key] = numberValue(rewardFlags[key], 0) + delta.value;
+    }
+  }
+  const players = state.players.map((player) => {
+    let hp = player.currentHp;
+    let san = player.currentSan;
+    for (const delta of transition.deltas) {
+      if (delta.field !== 'hp' && delta.field !== 'san') continue;
+      if (delta.target === 'actor' && actorName && player.name !== actorName) continue;
+      if (delta.target === 'actor' && !actorName) continue;
+      if (delta.field === 'hp') hp = clamp(hp + delta.value, 0, player.hp);
+      if (delta.field === 'san') san = clamp(san + delta.value, 0, player.san);
+    }
+    return { ...player, currentHp: hp, currentSan: san };
+  });
+  let next: GameState = {
+    ...state,
+    players,
+    flags: rewardFlags,
+    clues: appendNewClues(state.clues, discoveredIds),
+    scenarioProgress: transition.progress,
+    pendingCheck: transition.requestedCheck ?? state.pendingCheck
+  };
+  for (const cue of transition.narrativeCues) {
+    next = addMessage(next, { type: 'system', text: cue });
+  }
+  for (const eventId of transition.firedEventIds) next = addLog(next, `剧情事件：${eventId}`);
+  return next;
+}
+
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'start':
@@ -1285,17 +1376,19 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const playerLocations = action.mode === 'together'
         ? Object.fromEntries(state.players.map((player) => [player.id, currentScene])) as Record<string, SceneId>
         : state.playerLocations;
+      const activeNpcName = resolveActiveNpcForScene({
+        previousScene: state.currentScene,
+        nextScene: currentScene,
+        previousActiveNpc: state.activeNpcName,
+        requestedActiveNpcProvided: false
+      });
       return addMessage({
         ...state,
         exploreMode: action.mode,
         currentScene,
         playerLocations,
-        activeNpcName: resolveActiveNpcForScene({
-          previousScene: state.currentScene,
-          nextScene: currentScene,
-          previousActiveNpc: state.activeNpcName,
-          requestedActiveNpcProvided: false
-        })
+        activeNpcId: npcIdFromName(activeNpcName),
+        activeNpcName
       }, {
         type: 'system',
         text: action.mode === 'split' ? '切换为「分头探索」模式。' : '切换为「一起行动」模式。'
@@ -1309,33 +1402,40 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if (state.exploreMode !== 'split') return { ...state, currentSplitPlayer };
       const player = state.players[currentSplitPlayer];
       const currentScene = player ? state.playerLocations[player.id] ?? state.currentScene : state.currentScene;
+      const activeNpcName = resolveActiveNpcForScene({
+        previousScene: state.currentScene,
+        nextScene: currentScene,
+        previousActiveNpc: state.activeNpcName,
+        requestedActiveNpcProvided: false
+      });
       return {
         ...state,
         currentSplitPlayer,
         currentScene,
-        activeNpcName: resolveActiveNpcForScene({
-          previousScene: state.currentScene,
-          nextScene: currentScene,
-          previousActiveNpc: state.activeNpcName,
-          requestedActiveNpcProvided: false
-        })
+        activeNpcId: npcIdFromName(activeNpcName),
+        activeNpcName
       };
     }
     case 'setPlayerScene': {
       const player = state.players[action.playerIndex];
       if (!player) return state;
+      const changesFocusedScene = state.exploreMode === 'split' && action.playerIndex === state.currentSplitPlayer;
+      const activeNpcName = changesFocusedScene
+        ? resolveActiveNpcForScene({
+            previousScene: state.currentScene,
+            nextScene: action.sceneId,
+            previousActiveNpc: state.activeNpcName,
+            requestedActiveNpcProvided: false
+          })
+        : state.activeNpcName;
       return {
         ...state,
         playerLocations: { ...state.playerLocations, [player.id]: action.sceneId },
-        ...(state.exploreMode === 'split' && action.playerIndex === state.currentSplitPlayer
+        ...(changesFocusedScene
           ? {
               currentScene: action.sceneId,
-              activeNpcName: resolveActiveNpcForScene({
-                previousScene: state.currentScene,
-                nextScene: action.sceneId,
-                previousActiveNpc: state.activeNpcName,
-                requestedActiveNpcProvided: false
-              })
+              activeNpcId: npcIdFromName(activeNpcName),
+              activeNpcName
             }
           : {})
       };
@@ -1361,11 +1461,22 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, suggestions: action.suggestions };
     case 'addLog':
       return addLog(state, action.text);
-    case 'applyDiceResult':
-      return addMessage(addLog(state, `检定结果：${action.result.roll} · ${action.result.label}`), {
+    case 'applyDiceResult': {
+      let next = addMessage(addLog(state, `检定结果：${action.result.roll} · ${action.result.label}`), {
         type: 'system',
         text: `检定结果：${action.result.label}`
       });
+      if (state.pendingCheck?.scenarioCheckId) {
+        next = applyScenarioTransition(next, processScenarioTurn(getScenarioProgressForState(state), {
+          currentScene: state.currentScene,
+          turn: state.conversationHistory.filter((turn) => turn.role === 'user').length,
+          completeTurn: false,
+          actorName: state.pendingCheck.player,
+          checkResult: { id: state.pendingCheck.scenarioCheckId, outcome: action.result.level }
+        }), state.pendingCheck.player);
+      }
+      return next;
+    }
     case 'applyAiResponse': {
       const response = normalizeAiResponse(action.response, state);
       const sceneChange = response.stateUpdate?.sceneChange ?? null;
@@ -1399,7 +1510,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       let nextState: GameState = {
         ...state,
         players: updatePlayerStats(state.players, response),
-        flags: { ...state.flags, ...(response.stateUpdate?.flags ?? {}) },
+        flags: {
+          ...state.flags,
+          ...(response.stateUpdate?.flags ?? {}),
+          ...(sceneChange ? { [`sceneVisited.${currentScene}`]: true } : {})
+        },
         clues: appendNewClues(state.clues, response.stateUpdate?.newItems),
         currentScene,
         playerLocations: sceneChange ? moveFocusedPlayers(state, currentScene) : state.playerLocations,
@@ -1417,6 +1532,16 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         currentActorIndex: 0,
         pendingConsequences: merged
       };
+      nextState.activeNpcId = npcIdFromName(nextState.activeNpcName);
+      const scenarioTransition = processScenarioTurn(getScenarioProgressForState(state), {
+        currentScene,
+        previousScene: sceneChange ? state.currentScene : undefined,
+        storyEventIds: response.stateUpdate?.storyEventIds,
+        turn: state.conversationHistory.filter((turn) => turn.role === 'user').length,
+        completeTurn: !response.check,
+        actorName: state.players[state.currentActorIndex]?.name
+      });
+      nextState = applyScenarioTransition(nextState, scenarioTransition, state.players[state.currentActorIndex]?.name);
       if (response.narrative) {
         nextState = addMessage(nextState, {
           type: 'dm',

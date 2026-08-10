@@ -69,6 +69,17 @@ describe('caseBoardSynthesizer v7', () => {
     expect(patch).toEqual({ nodes: [], edges: [], insights: [] });
   });
 
+  it('does not turn a failed check narration into confirmed evidence', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const patch = await synthesizeCaseBoardPatch(config, input({
+      narrative: '门廊似乎留下了拖拽刮痕，但亨利没能确认。',
+      playerActions: [{ player: '亨利', action: '【检定结果】侦查结果：失败。' }]
+    }));
+    expect(patch).toEqual({ nodes: [], edges: [], insights: [] });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('drops invented source ids and falls back to the real narrative event', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => response({
       nodes: [{

@@ -1,6 +1,7 @@
-import { Dice5, Send } from 'lucide-react';
+import { Dice5, Flag, Send } from 'lucide-react';
 import type { GameState, SceneId } from '../../types/game';
 import { sceneList, storyData } from '../../data/storyData';
+import { getAvailableSceneExits, getScenarioDefinition, getScenarioProgressForState } from '../../scenario/engine';
 
 interface ActionDockProps {
   isDiceRolling: boolean;
@@ -41,6 +42,23 @@ export function ActionDock({
   const submitLabel = state.exploreMode === 'together'
     ? (togetherIsLast ? '提交' : '下一位')
     : '提交';
+  const scenario = getScenarioDefinition();
+  const progress = getScenarioProgressForState(state);
+  const ending = scenario.progression.endings.find((item) => item.id === progress.endingId);
+  const splitLocation = state.playerLocations[splitActor?.id ?? ''] ?? state.currentScene;
+  const splitSceneIds = new Set([
+    splitLocation,
+    ...getAvailableSceneExits(progress, splitLocation).map((exit) => exit.sceneId)
+  ]);
+
+  if (ending) {
+    return (
+      <section className="action-dock ending-dock" aria-label="游戏结局">
+        <Flag size={20} />
+        <div><strong>{ending.title}</strong><p>{ending.summary}</p></div>
+      </section>
+    );
+  }
 
   return (
     <section className="action-dock">
@@ -80,7 +98,7 @@ export function ActionDock({
             ))}
           </div>
           <div className="scene-chips">
-            {sceneList.map((scene) => (
+            {sceneList.filter((scene) => splitSceneIds.has(scene.id)).map((scene) => (
               <button
                 className={state.playerLocations[splitActor.id] === scene.id ? 'active' : ''}
                 key={scene.id}
@@ -106,6 +124,7 @@ export function ActionDock({
             <input
               className="dock-input"
               autoFocus
+              disabled={isDiceRolling}
               value={state.declarations[currentActor.id] ?? ''}
               placeholder={`${currentActor.name} 想要做什么...`}
               onChange={(event) => onDeclarationChange(currentActor.id, event.target.value)}
@@ -118,7 +137,7 @@ export function ActionDock({
             />
           </>
         ) : null}
-        <button className="primary-action dock-submit" disabled={!allFilled || state.isThinking} onClick={onSubmit}>
+        <button className="primary-action dock-submit" disabled={!allFilled || state.isThinking || isDiceRolling} onClick={onSubmit}>
           <Send size={16} />
           {submitLabel}
         </button>

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildFactCaseBoardPatch } from '../../src/dm/caseBoardModel';
+import { collectKnownNpcNames } from '../../src/dm/caseBoard';
 import { gameReducer, hydrateGameState } from '../../src/state/gameReducer';
 import type { AtomicFact, DynamicCaseBoardEdge, DynamicCaseBoardNode } from '../../src/types/game';
 import { makeState } from './fixtures';
@@ -41,6 +42,13 @@ function edge(partial: Partial<DynamicCaseBoardEdge> & Pick<DynamicCaseBoardEdge
 }
 
 describe('gameReducer v7 case board state', () => {
+  it('keeps NPCs from previously visited scenes known after moving away', () => {
+    const state = makeState({ currentScene: 'S03', flags: { 'sceneVisited.S01': true } });
+    expect(collectKnownNpcNames(state)).toEqual(
+      expect.arrayContaining(['伊莎贝拉·摩勒', '老赫特之家酒保'])
+    );
+  });
+
   it('drops proposals without a player-visible source anchor', () => {
     const state = makeState();
     const next = applyCaseBoardPatch(state, {

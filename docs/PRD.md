@@ -1,7 +1,7 @@
 # TabletopRPG PRD
 
-> Version: v0.8
-> Updated: 2026-07-11
+> Version: v0.9
+> Updated: 2026-07-12
 > Product baseline: Vite + React + TypeScript MVP
 
 ## 1. Product Positioning
@@ -30,9 +30,11 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 - AI DM integration through OpenAI Responses, MiMo, or a custom OpenAI-compatible Chat Completions endpoint.
 - Strict JSON-oriented AI response contract with fallback parsing.
 - D100 skill check flow handled by the frontend.
+- YAML-authored hard mainline with structured beats, objectives, facts, events, fail-forward, world time, clocks, encounters, and three executable endings.
+- Player-visible objectives, clue progress, visible clocks, active act/scene, and ending-locked action area.
 - State updates for HP, SAN, flags, scene change, clues, active NPC, and suggested actions.
-- localStorage saves with latest-save load and save manager list/load/delete through `trpg-saves-v2`.
-- Built-in story data for "雾中消逝": 5 scenes, 6 NPC entries, 8 clue items.
+- v8 localStorage saves with module version/hash validation and deterministic v1-v7 migration through `trpg-saves-v2`.
+- Built-in YAML module "雾中消逝": 5 scenes, 4 stable NPC entities, 8 clue items, 6 beats, fail-forward routes, and 3 endings.
 - Automated smoke tests for the title/setup/game flow, setup portrait/full-attribute display, fullscreen case board reference panel, dynamic case board hypotheses, no-key AI settings guard, save/continue, invalid saves, and D100 fumble priority.
 
 ### Out of Scope for Current MVP

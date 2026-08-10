@@ -1,12 +1,35 @@
 import { expect, test, type Page } from '@playwright/test';
 import { existsSync, readFileSync } from 'fs';
 import { rollD100 } from '../src/services/dice';
-import type { CheckRequest, GameState } from '../src/types/game';
+import type { CheckRequest, GameState, ScenarioProgress } from '../src/types/game';
 import { makeInvestigator } from './dm/fixtures';
 
 const hasEnvDefaultApiKey =
   Boolean(process.env.VITE_AI_API_KEY) ||
   (existsSync('.env.local') && /^VITE_AI_API_KEY=.+$/m.test(readFileSync('.env.local', 'utf8')));
+const scenarioContentHash = /scenarioContentHash = "([^"]+)"/.exec(
+  readFileSync('src/data/scenarios/wuzhongxiaoshi/runtime.generated.ts', 'utf8')
+)?.[1] ?? '';
+
+function createSmokeScenarioProgress(): ScenarioProgress {
+  return {
+    moduleId: 'wuzhongxiaoshi', moduleVersion: '1.0.0', contentHash: scenarioContentHash,
+    worldTime: '1920-07-13T17:30', activeActId: 'A01',
+    beatStates: { B01: 'active', B02: 'locked', B03: 'locked', B04: 'locked', B05: 'locked', B06: 'locked' },
+    objectiveStates: { O01: 'active', O02: 'locked', O03: 'locked', O04: 'locked', O05: 'locked', O06: 'locked', O07: 'locked', O08: 'locked' },
+    knownFactIds: [],
+    clueStates: { I01: 'unknown', I02: 'unknown', I03: 'unknown', I04: 'unknown', I05: 'unknown', I06: 'unknown', I07: 'unknown', I08: 'unknown' },
+    firedEventIds: [], settledEndingIds: [],
+    variables: { commissionAccepted: false, oldHethLead: false, metMontreal: false, hybridEscaped: false, thugAlert: false, finaleRoute: 'undecided', ericRescued: false },
+    clocks: {},
+    encounters: {
+      ENC01: { state: 'inactive', round: 0, defeated: 0, opponentHp: 44 },
+      ENC02: { state: 'inactive', round: 0, defeated: 0, opponentHp: 45 }
+    },
+    lastCheckOutcomes: {}, visitedSceneIds: ['S01'], lastProgressTurn: 0, idleTurns: 0,
+    endingId: null, migrationLog: []
+  };
+}
 
 async function gotoClean(page: Page) {
   await page.addInitScript(() => window.localStorage.clear());
@@ -137,10 +160,77 @@ async function gotoWithSave(page: Page, gameState: GameState) {
       scene: '摩勒住宅',
       players: '亨利·格雷、艾达·华莱士',
       gameState: serializedState,
-      version: 6
+      moduleId: serializedState.scenarioProgress?.moduleId,
+      moduleVersion: serializedState.scenarioProgress?.moduleVersion,
+      contentHash: serializedState.scenarioProgress?.contentHash,
+      version: serializedState.scenarioProgress ? 8 : 6
     }]));
   }, gameState);
   await page.goto('/');
+}
+
+function createV8EndingSave(): GameState {
+  const state = createDynamicCaseBoardSave();
+  const progress = createSmokeScenarioProgress();
+  progress.activeActId = 'A03';
+  progress.endingId = 'END_C';
+  progress.settledEndingIds = ['END_C'];
+  progress.beatStates.B01 = 'completed';
+  progress.beatStates.B02 = 'completed';
+  progress.beatStates.B05 = 'completed';
+  progress.beatStates.B06 = 'completed';
+  progress.objectiveStates.O01 = 'completed';
+  progress.objectiveStates.O02 = 'completed';
+  progress.objectiveStates.O05 = 'completed';
+  progress.objectiveStates.O06 = 'completed';
+  progress.objectiveStates.O08 = 'completed';
+  progress.knownFactIds = ['F04', 'F06', 'F09'];
+  progress.clueStates.I04 = 'analyzed';
+  progress.clueStates.I07 = 'analyzed';
+  return {
+    ...state,
+    currentScene: 'S05',
+    playerLocations: { inspector: 'S05', nurse: 'S05' },
+    activeNpcId: 'N02',
+    activeNpcName: '埃里克·摩勒',
+    scenarioProgress: progress
+  };
+}
+
+function createPendingCheckSave(): GameState {
+  return {
+    ...createDynamicCaseBoardSave(),
+    pendingCheck: {
+      player: '艾达·华莱士',
+      skill: '侦查',
+      difficulty: '普通',
+      skillVal: 60,
+      threshold: 60,
+      continuationActions: []
+    }
+  };
+}
+
+function createPoliceStationSave(): GameState {
+  const state = createDynamicCaseBoardSave();
+  const progress = createSmokeScenarioProgress();
+  progress.activeActId = 'A02';
+  progress.beatStates.B01 = 'completed';
+  progress.beatStates.B02 = 'completed';
+  progress.beatStates.B03 = 'active';
+  progress.objectiveStates.O01 = 'completed';
+  progress.objectiveStates.O02 = 'completed';
+  progress.objectiveStates.O03 = 'active';
+  progress.knownFactIds = ['F04', 'F05'];
+  progress.visitedSceneIds = ['S01', 'S02'];
+  return {
+    ...state,
+    currentScene: 'S02',
+    playerLocations: { inspector: 'S02', nurse: 'S02' },
+    activeNpcId: 'N03',
+    activeNpcName: '洛夫·蒙特利尔',
+    scenarioProgress: progress
+  };
 }
 
 test('new game reaches the main game screen with preset investigators', async ({ page }) => {
@@ -386,6 +476,64 @@ test('reference panel opens a fullscreen case board and keeps the log tab', asyn
 
   await page.getByRole('button', { name: '日志' }).click();
   await expect(page.getByRole('heading', { name: '行动日志' })).toBeVisible();
+});
+
+test('progress tab shows authored objectives, clue counts, and world time', async ({ page }) => {
+  await startNewGame(page);
+  await expect(page.locator('.world-time')).toHaveText('1920-07-13 17:30');
+  await page.getByRole('button', { name: '资料', exact: true }).click();
+  await page.getByRole('button', { name: '进度' }).click();
+  await expect(page.getByRole('heading', { name: '调查目标' })).toBeVisible();
+  await expect(page.getByText('与伊莎贝拉确认委托和埃里克失踪的基本情况。')).toBeVisible();
+  await expect(page.getByText(/已发现 0 \/ 8/)).toBeVisible();
+});
+
+test('v8 ending save locks the action area and preserves the authored ending', async ({ page }) => {
+  await gotoWithSave(page, createV8EndingSave());
+  await page.getByRole('button', { name: '继续游戏' }).click();
+  await expect(page.locator('.ending-dock')).toBeVisible();
+  await expect(page.getByText('结局C：和平交涉')).toBeVisible();
+  await expect(page.getByText('调查员听懂并说服深潜者释放埃里克，扶桑花号随后和平离港。')).toBeVisible();
+  await expect(page.locator('.dock-input')).toHaveCount(0);
+});
+
+test('pending check plays the dice ritual before revealing its result', async ({ page }) => {
+  await gotoWithSave(page, createPendingCheckSave());
+  await page.getByRole('button', { name: '继续游戏' }).click();
+
+  await page.getByRole('button', { name: '掷骰' }).click();
+  const ritual = page.getByRole('dialog', { name: '命运检定' });
+  await expect(ritual).toHaveClass(/rolling/);
+  await expect(ritual.getByText('艾达·华莱士 · 侦查')).toBeVisible();
+  await expect(ritual.getByText('普通难度')).toBeVisible();
+  await expect(ritual.getByText('目标值 60')).toBeVisible();
+  await expect(ritual.getByText('骰面翻滚中')).toBeVisible();
+  await expect(page.getByRole('button', { name: '掷骰中' })).toBeDisabled();
+  await expect(page.getByText(/检定结果：/)).toHaveCount(0);
+});
+
+test('legacy internal progression prompts stay hidden after loading a save', async ({ page }) => {
+  const state = createDynamicCaseBoardSave();
+  state.messages.push({
+    id: 'legacy-progression-prompt',
+    type: 'system',
+    text: '推进提示：从书桌抽屉中选择一处给出明确可调查迹象。'
+  });
+  await gotoWithSave(page, state);
+  await page.getByRole('button', { name: '继续游戏' }).click();
+
+  await expect(page.getByText(/推进提示：/)).toHaveCount(0);
+  await expect(page.getByText('浓雾压在摩勒住宅的窗外。')).toBeVisible();
+});
+
+test('second-act scene loads its authored backdrop and NPC portrait together', async ({ page }) => {
+  await gotoWithSave(page, createPoliceStationSave());
+  await page.getByRole('button', { name: '继续游戏' }).click();
+
+  await expect(page.locator('.brand-title')).toHaveText('第二幕：街区调查');
+  await expect(page.locator('.brand-scene')).toHaveText('上城区第二分局');
+  await expect(page.locator('.scene-backdrop-img')).toHaveAttribute('src', /%E8%AD%A6%E5%B1%80\.png/i);
+  await expect(page.locator('.scene-npc')).toHaveAttribute('src', /montreal\.png/);
 });
 
 test('reference panel renders saved dynamic case board hypotheses', async ({ page }) => {

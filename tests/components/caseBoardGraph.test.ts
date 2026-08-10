@@ -70,7 +70,8 @@ describe('case board graph model and layout', () => {
     const model = buildCaseBoardGraphModel(state);
     const items = filterCaseBoardGraph(model, { query: '', type: 'item', showHypotheses: true, threadId: 'all' });
     expect(items.nodes.every((node) => node.type === 'item')).toBe(true);
-    const search = filterCaseBoardGraph(model, { query: '药店', type: 'all', showHypotheses: true, threadId: 'all' });
-    expect(search.nodes.map((node) => node.title)).toEqual(expect.arrayContaining(['卡森其药店', '小册子']));
+    const search = filterCaseBoardGraph(model, { query: '小册子', type: 'all', showHypotheses: true, threadId: 'all' });
+    expect(search.nodes.map((node) => node.title)).toEqual(expect.arrayContaining(['小册子']));
+    expect(search.nodes.map((node) => node.title)).not.toContain('卡森其药店');
   });
 });

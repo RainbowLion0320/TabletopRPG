@@ -4,7 +4,7 @@ title: 项目全局综述
 tags: [overview, project, aligned]
 sources: [project_plan.md, ../../docs/PRD.md, ../../docs/SPEC.md, ../../docs/GDD.md]
 created: 2026-05-14
-updated: 2026-07-11
+updated: 2026-07-12
 ---
 
 # AI 跑团游戏 · 项目全局综述
@@ -21,6 +21,7 @@ updated: 2026-07-11
   - PRD：`docs/PRD.md`
   - 技术规格：`docs/SPEC.md`
   - 游戏设计：`docs/GDD.md`
+  - 模组内容：`scenarios/wuzhongxiaoshi/*.yaml`
   - 运行时代码：`src/`
 
 ## 已实现功能
@@ -35,8 +36,9 @@ updated: 2026-07-11
 - AI 推荐行动建议。
 - 对话富文本阅读层：人物稳定配色，地点/物证/技能/状态分类高亮，安全详情导航，以及可选的 Narrator 临时语义关键词。
 - 全屏资料界面：默认展示玩家已知的混合调查台；静态主线、AI 审核核心关系和确定性实体档案共同组成案件板，桌面自动布局、移动端按调查脉络分组，行动日志作为辅助页签保留。
-- localStorage 存档：当前 key 为 `trpg-saves-v2`，支持最近存档、列表载入和删除。
-- 首个剧本模块「雾中消逝」：5 个场景、6 个 NPC 条目、8 个线索物品。
+- localStorage v8 存档：记录模组版本、内容哈希和 `ScenarioProgress`，支持 v1-v7 确定性迁移。
+- 首个 YAML 剧本模块「雾中消逝」：5 个场景、4 个稳定 NPC、8 个线索、6 个剧情节点和 3 个结局。
+- 无脚本 Condition/Effect 推进引擎、条件出口、事件幂等、3/6 回合空转升级、可见目标/时钟与结局锁定。
 - Playwright smoke tests：覆盖标题页、选角、主界面、无 API Key、存档/读档、非法存档和 D100 大失败优先规则。
 
 ## 当前未实现/不在 MVP 范围
@@ -57,6 +59,7 @@ updated: 2026-07-11
 - **状态管理**：`useReducer` + `GameState`，恢复存档时统一经过 `hydrateGameState()`。
 - **案件板布局**：React Flow + ELK Layered；布局坐标不进入 AI 输出或存档，v6 案件板确定性迁移到 v7。
 - **游戏规则**：COC 第七版风格 D100 技能检定。
+- **模组事实源**：严格 Schema 校验的 YAML；运行代码、类型、KP 手册和案件板骨架自动生成。
 
 详见 [[concepts/tech_stack]]
 
@@ -79,4 +82,5 @@ updated: 2026-07-11
 - [[concepts/tech_stack]] -- 技术选型
 - [[concepts/prompt_engineering]] -- 提示词工程
 - [[concepts/case_board]] -- 动态案件板与调查台
+- [[concepts/scenario_engine]] -- 模组规范与剧情推进引擎
 - [[sources/project_plan]] -- 原始推进方案
