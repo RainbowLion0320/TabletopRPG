@@ -13,6 +13,7 @@
 
 import type { ApiConfig, GameState, ProspectiveIntent, SceneId } from '../types/game';
 import { AiResponseFormatError, type PlayerAction } from '../services/aiDm';
+import { countCompletedGameTurns, getDmRequestTurn } from '../services/turns';
 import { storyData } from '../data/storyData';
 import { caseBoard as caseBoardDefinition } from '../data/scenarios/wuzhongxiaoshi';
 import { npcIdFromName } from '../scenario/engine';
@@ -86,11 +87,11 @@ function pickSpotlightPlayer(actions: PlayerAction[]): string | null {
 }
 
 function getCompletedTurnCount(state: GameState): number {
-  return state.conversationHistory.filter((turn) => turn.role === 'user').length;
+  return countCompletedGameTurns(state.conversationHistory);
 }
 
 function getCurrentTurn(state: GameState): number {
-  return getCompletedTurnCount(state) + 1;
+  return getDmRequestTurn(state.conversationHistory);
 }
 
 function getUnsummarizedPairCount(state: GameState): number {

@@ -10,7 +10,7 @@ import asset6 from '../../../../assets/avatars/eric.png';
 import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
 
-export const scenarioContentHash = "cf984fba4d854a2b";
+export const scenarioContentHash = "9aa4d2e09756fc0a";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -25,7 +25,7 @@ export const scenarioAssetUrls: Record<string, string> = {
 export const generatedScenarioModule = {
   "manifest": {
     "schemaVersion": 1,
-    "contentVersion": "1.0.1",
+    "contentVersion": "1.1.0",
     "id": "wuzhongxiaoshi",
     "title": "雾中消逝",
     "system": "COC 第七版风格 D100",
@@ -1040,6 +1040,8 @@ export const generatedScenarioModule = {
         "allowedEventIds": [
           "EV_CHOOSE_COMBAT",
           "EV_CHOOSE_NEGOTIATION",
+          "EV_COMBAT_ATTACK",
+          "EV_COMBAT_HIT",
           "EV_COMBAT_ROUND",
           "EV_COMBAT_WIN",
           "EV_NEGOTIATION_LISTEN",
@@ -1047,8 +1049,8 @@ export const generatedScenarioModule = {
           "EV_NEGOTIATION_SUCCESS",
           "EV_RESCUE_ERIC"
         ],
-        "softEscalationAfter": 2,
-        "hardRecoveryAfter": 4,
+        "softEscalationAfter": 3,
+        "hardRecoveryAfter": 6,
         "softPrompt": "船笛和收缆声提醒调查员，扶桑花号即将离港，必须立刻选择行动路线。",
         "recoveryEventId": "EV_CHOOSE_COMBAT",
         "nextBeatIds": []
@@ -1658,7 +1660,16 @@ export const generatedScenarioModule = {
         "title": "选择战斗路线",
         "trigger": "manual",
         "when": {
-          "sceneIs": "S05"
+          "all": [
+            {
+              "sceneIs": "S05"
+            },
+            {
+              "variable": "finaleRoute",
+              "op": "eq",
+              "value": "undecided"
+            }
+          ]
         },
         "effects": [
           {
@@ -1691,7 +1702,16 @@ export const generatedScenarioModule = {
         "title": "选择交涉路线",
         "trigger": "manual",
         "when": {
-          "sceneIs": "S05"
+          "all": [
+            {
+              "sceneIs": "S05"
+            },
+            {
+              "variable": "finaleRoute",
+              "op": "eq",
+              "value": "undecided"
+            }
+          ]
         },
         "effects": [
           {
@@ -1743,9 +1763,9 @@ export const generatedScenarioModule = {
         "narrativeCue": "船员继续收缆，扶桑花号距离逃脱又近一轮。"
       },
       {
-        "id": "EV_COMBAT_WIN",
+        "id": "EV_COMBAT_ATTACK",
         "beatId": "B06",
-        "title": "击败深潜者",
+        "title": "攻击深潜者",
         "trigger": "manual",
         "when": {
           "all": [
@@ -1753,6 +1773,80 @@ export const generatedScenarioModule = {
               "variable": "finaleRoute",
               "op": "eq",
               "value": "combat"
+            },
+            {
+              "encounter": "ENC01",
+              "state": "active"
+            },
+            {
+              "clock": "fusangEscape",
+              "op": "lt",
+              "value": 7
+            }
+          ]
+        },
+        "effects": [
+          {
+            "requestCheck": "CHECK_COMBAT",
+            "skill": "格斗（拳）",
+            "difficulty": "普通",
+            "reason": "在甲板混战中使一名深潜者失去战斗能力"
+          }
+        ],
+        "once": false,
+        "playerVisible": true,
+        "narrativeCue": "调查员抓住机会攻击一名仍在抵抗的深潜者。"
+      },
+      {
+        "id": "EV_COMBAT_HIT",
+        "beatId": "B06",
+        "title": "有效命中深潜者",
+        "trigger": "checkResolved",
+        "when": {
+          "all": [
+            {
+              "check": "CHECK_COMBAT",
+              "outcome": "success"
+            },
+            {
+              "encounter": "ENC01",
+              "state": "active"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "updateEncounter": "ENC01",
+            "field": "opponentHp",
+            "amount": -11
+          },
+          {
+            "updateEncounter": "ENC01",
+            "field": "defeated",
+            "amount": 1
+          }
+        ],
+        "once": false,
+        "playerVisible": true,
+        "narrativeCue": "攻击奏效，一名深潜者失去战斗能力。"
+      },
+      {
+        "id": "EV_COMBAT_WIN",
+        "beatId": "B06",
+        "title": "击败深潜者",
+        "trigger": "automatic",
+        "when": {
+          "all": [
+            {
+              "variable": "finaleRoute",
+              "op": "eq",
+              "value": "combat"
+            },
+            {
+              "encounter": "ENC01",
+              "field": "opponentHp",
+              "op": "lte",
+              "value": 0
             },
             {
               "clock": "fusangEscape",
@@ -1802,7 +1896,7 @@ export const generatedScenarioModule = {
             "reason": "从非人声调中辨认其真正诉求"
           }
         ],
-        "once": true,
+        "once": false,
         "playerVisible": true,
         "narrativeCue": "调查员需要先通过聆听检定理解对方的真正诉求。"
       },
@@ -1810,7 +1904,7 @@ export const generatedScenarioModule = {
         "id": "EV_NEGOTIATION_UNDERSTOOD",
         "beatId": "B06",
         "title": "理解深潜者诉求",
-        "trigger": "manual",
+        "trigger": "checkResolved",
         "when": {
           "check": "CHECK_LISTEN",
           "outcome": "success"
@@ -1823,7 +1917,7 @@ export const generatedScenarioModule = {
             "reason": "说服深潜者释放埃里克并和平离开"
           }
         ],
-        "once": true,
+        "once": false,
         "playerVisible": true,
         "narrativeCue": "调查员已经听懂诉求，现在必须说服深潜者释放埃里克。"
       },
@@ -1831,7 +1925,7 @@ export const generatedScenarioModule = {
         "id": "EV_NEGOTIATION_SUCCESS",
         "beatId": "B06",
         "title": "交涉成功",
-        "trigger": "manual",
+        "trigger": "checkResolved",
         "when": {
           "check": "CHECK_PERSUADE",
           "outcome": "success"

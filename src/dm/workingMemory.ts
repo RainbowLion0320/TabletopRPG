@@ -7,6 +7,7 @@
  */
 
 import type { GameState, SceneId } from '../types/game';
+import { countCompletedGameTurns } from '../services/turns';
 import type { KnowledgeBase, NpcRuntimeState, PendingConsequence, WorkingMemory } from './types';
 import { computeRevealedSecretIds, deriveRevealContext } from './knowledgeBase';
 
@@ -29,7 +30,7 @@ export function createInitialWorkingMemory(currentScene: SceneId = 'S01'): Worki
  * 从 GameState 派生 WorkingMemory。
  *
  * 说明：
- * - turnCount 取 conversationHistory 中 user 角色的数量近似（每轮玩家提交一次）
+ * - turnCount 只统计正式玩家行动，掷骰结果作为当前回合子事件
  * - visitedScenes 由 currentScene + clues.scene 推断
  * - revealedSecrets 通过 KB 的 reveal 条件计算
  * - inScopeNpcIds / inScopeItemIds 取当前场景常驻 NPC + 已发现物品 + 当前 activeNpc
@@ -52,7 +53,7 @@ export function deriveWorkingMemory(state: GameState, kb: KnowledgeBase): Workin
   // 已发现物品也保留在 in-scope（用于回顾性叙述）
   ctx.foundItemIds.forEach((id) => inScopeItemIds.add(id));
 
-  const turnCount = state.conversationHistory.filter((turn) => turn.role === 'user').length;
+  const turnCount = countCompletedGameTurns(state.conversationHistory);
 
   return {
     turnCount,

@@ -44,7 +44,7 @@ function buildCandidate(action: PlayerAction): CheckCandidate | null {
     { pattern: /搜查|搜索|搜寻|检查|观察|调查|寻找|查看/, skill: '侦查', score: 52, reason: '发现不明显的线索' }
   ];
 
-  const spec = specs.find((item) => item.pattern.test(text));
+  const spec = specs.find((item) => hasAffirmativeMatch(text, item.pattern));
   if (!spec) return null;
   return {
     score: spec.score,
@@ -57,9 +57,32 @@ function buildCandidate(action: PlayerAction): CheckCandidate | null {
   };
 }
 
+function hasAffirmativeMatch(text: string, pattern: RegExp): boolean {
+  const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
+  const matcher = new RegExp(pattern.source, flags);
+  for (const match of text.matchAll(matcher)) {
+    const prefix = text.slice(0, match.index ?? 0).slice(-12);
+    if (/不得不[^，。；！？\n]{0,4}$/.test(prefix)) return true;
+    if (/(?:不|未|没有|并未|并不|不要|不再|暂不|暂缓|停止|避免|放弃|拒绝|无意|不想)[^，。；！？\n]{0,6}$/.test(prefix)) {
+      continue;
+    }
+    return true;
+  }
+  return false;
+}
+
 /** Picks at most one check because the current UI can settle one pending check at a time. */
 export function buildRequiredCheck(actions: PlayerAction[], state: GameState): CheckRequest | null {
   if (actions.some((action) => DICE_RESULT_RE.test(action.action))) return null;
+  const storyCall = inferStoryEventFromActions(actions, state);
+  if (storyCall) {
+    const eventId = String(storyCall.arguments.eventId ?? '');
+    const event = getAvailableStoryEvents(
+      getScenarioProgressForState(state),
+      state.currentScene
+    ).find((candidate) => candidate.id === eventId);
+    if (event?.effects.some((effect) => 'requestCheck' in effect)) return null;
+  }
   const candidates = actions
     .map(buildCandidate)
     .filter((item): item is CheckCandidate => Boolean(item))
@@ -149,9 +172,8 @@ export function inferStoryEventFromActions(
     ['EV_S04_CIGAR', /雪茄/],
     ['EV_CHOOSE_NEGOTIATION', /选择.{0,8}交涉|和平交涉|暂缓攻击/],
     ['EV_NEGOTIATION_LISTEN', /聆听.{0,12}诉求|理解.{0,12}诉求/],
-    ['EV_NEGOTIATION_UNDERSTOOD', /聆听|声调|诉求/],
-    ['EV_NEGOTIATION_SUCCESS', /说服.{0,16}(?:释放|埃里克|和平)|双方.{0,8}接受/],
-    ['EV_CHOOSE_COMBAT', /选择.{0,8}战斗|立即.{0,8}战斗|攻击.{0,8}深潜者/]
+    ['EV_CHOOSE_COMBAT', /选择.{0,8}战斗|立即.{0,8}战斗|攻击.{0,8}深潜者/],
+    ['EV_COMBAT_ATTACK', /攻击|搏斗|出拳|制服|击败/]
   ];
   const match = mappings.find(([eventId, pattern]) => available.has(eventId) && pattern.test(text));
   return match ? {

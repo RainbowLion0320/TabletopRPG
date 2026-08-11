@@ -33,6 +33,7 @@
         { "type": "object", "additionalProperties": false, "required": ["clock", "op", "value"], "properties": { "clock": { "$ref": "#/$defs/id" }, "op": { "enum": ["eq", "neq", "gt", "gte", "lt", "lte"] }, "value": { "type": "number" } } },
         { "type": "object", "additionalProperties": false, "required": ["check", "outcome"], "properties": { "check": { "$ref": "#/$defs/id" }, "outcome": { "enum": ["crit", "hard", "success", "fail", "fumble"] } } },
         { "type": "object", "additionalProperties": false, "required": ["encounter", "state"], "properties": { "encounter": { "$ref": "#/$defs/id" }, "state": { "enum": ["inactive", "active", "won", "lost", "resolved"] } } },
+        { "type": "object", "additionalProperties": false, "required": ["encounter", "field", "op", "value"], "properties": { "encounter": { "$ref": "#/$defs/id" }, "field": { "enum": ["round", "defeated", "opponentHp"] }, "op": { "enum": ["eq", "neq", "gt", "gte", "lt", "lte"] }, "value": { "type": "number" } } },
         { "type": "object", "additionalProperties": false, "required": ["always"], "properties": { "always": { "const": true } } }
       ]
     },

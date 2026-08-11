@@ -67,6 +67,12 @@ export type Condition =
       state: 'inactive' | 'active' | 'won' | 'lost' | 'resolved';
     }
   | {
+      encounter: Id;
+      field: 'round' | 'defeated' | 'opponentHp';
+      op: 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte';
+      value: number;
+    }
+  | {
       always: true;
     };
 export type Effect =

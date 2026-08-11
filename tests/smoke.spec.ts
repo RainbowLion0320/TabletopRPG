@@ -201,8 +201,13 @@ function createV8EndingSave(): GameState {
 }
 
 function createPendingCheckSave(): GameState {
+  const state = createDynamicCaseBoardSave();
+  state.players[1] = makeInvestigator(
+    { id: 'nurse', name: '艾达·华莱士', gender: '女' },
+    { 侦查: 60 }
+  );
   return {
-    ...createDynamicCaseBoardSave(),
+    ...state,
     pendingCheck: {
       player: '艾达·华莱士',
       skill: '侦查',
@@ -211,6 +216,43 @@ function createPendingCheckSave(): GameState {
       threshold: 60,
       continuationActions: []
     }
+  };
+}
+
+function createNegotiationCheckSave(): GameState {
+  const state = createDynamicCaseBoardSave();
+  state.players[0] = makeInvestigator(
+    { id: 'inspector', name: '亨利·格雷' },
+    { 聆听: 65, 说服: 60 }
+  );
+  const progress = createSmokeScenarioProgress();
+  progress.activeActId = 'A03';
+  progress.beatStates = {
+    B01: 'completed', B02: 'completed', B03: 'locked', B04: 'locked', B05: 'completed', B06: 'active'
+  };
+  progress.objectiveStates = {
+    O01: 'completed', O02: 'completed', O03: 'locked', O04: 'locked',
+    O05: 'completed', O06: 'completed', O07: 'locked', O08: 'active'
+  };
+  progress.knownFactIds = ['F04', 'F06', 'F09'];
+  progress.variables.commissionAccepted = true;
+  progress.variables.finaleRoute = 'negotiation';
+  progress.visitedSceneIds = ['S01', 'S04', 'S05'];
+  return {
+    ...state,
+    currentScene: 'S05',
+    playerLocations: { inspector: 'S05', nurse: 'S05' },
+    activeNpcId: 'N02',
+    activeNpcName: '埃里克·摩勒',
+    pendingCheck: {
+      scenarioCheckId: 'CHECK_LISTEN',
+      player: '亨利·格雷',
+      skill: '聆听',
+      difficulty: '普通',
+      skillVal: 65,
+      threshold: 65
+    },
+    scenarioProgress: progress
   };
 }
 
@@ -514,6 +556,27 @@ test('pending check plays the dice ritual before revealing its result', async ({
   await expect(ritual.getByText('骰面翻滚中')).toBeVisible();
   await expect(page.getByRole('button', { name: '掷骰中' })).toBeDisabled();
   await expect(page.getByText(/检定结果：/)).toHaveCount(0);
+});
+
+test('authored negotiation checks chain and settle the ending without another AI call', async ({ page }) => {
+  await page.addInitScript(() => {
+    Math.random = () => 0.01;
+  });
+  let aiRequests = 0;
+  page.on('request', (request) => {
+    if (/\/(?:responses|chat\/completions)$/.test(new URL(request.url()).pathname)) aiRequests += 1;
+  });
+  await gotoWithSave(page, createNegotiationCheckSave());
+  await page.getByRole('button', { name: '继续游戏' }).click();
+
+  await expect(page.locator('.check-card')).toContainText('亨利·格雷 · 聆听');
+  await page.getByRole('button', { name: '掷骰' }).click();
+  await expect(page.locator('.check-card')).toContainText('亨利·格雷 · 说服', { timeout: 8_000 });
+  await expect(page.locator('.check-card')).toContainText('困难难度，阈值 30');
+
+  await page.getByRole('button', { name: '掷骰' }).click();
+  await expect(page.locator('.ending-dock')).toContainText('结局C：和平交涉', { timeout: 8_000 });
+  expect(aiRequests).toBe(0);
 });
 
 test('legacy internal progression prompts stay hidden after loading a save', async ({ page }) => {

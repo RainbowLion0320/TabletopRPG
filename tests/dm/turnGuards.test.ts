@@ -31,6 +31,37 @@ describe('turnGuards', () => {
     ], state)).toBeNull();
   });
 
+  it('does not turn explicitly negated violence into a combat check', () => {
+    const state = makeState({ players: [makeInvestigator({ name: '亨利' }, { '格斗（拳）': 50 })] });
+
+    expect(buildRequiredCheck([{
+      player: '亨利', action: '暂缓攻击，明确选择交涉路线。'
+    }], state)).toBeNull();
+    expect(buildRequiredCheck([{
+      player: '亨利', action: '继续谈判，不发动攻击。'
+    }], state)).toEqual(expect.objectContaining({ skill: '说服' }));
+  });
+
+  it('lets an authored story event own its structured check', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' }, { 聆听: 65 })],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'negotiation';
+
+    expect(inferStoryEventFromActions([{
+      player: '亨利', action: '专注聆听深潜者的声调，理解它们的诉求。'
+    }], state)?.arguments.eventId).toBe('EV_NEGOTIATION_LISTEN');
+    expect(buildRequiredCheck([{
+      player: '亨利', action: '专注聆听深潜者的声调，理解它们的诉求。'
+    }], state)).toBeNull();
+  });
+
   it('does not infer a spatial move while its story prerequisite is locked', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '亨利' }), makeInvestigator({ name: '艾达' })],
@@ -207,10 +238,11 @@ describe('turnGuards', () => {
     finale.scenarioProgress.beatStates.B05 = 'completed';
     finale.scenarioProgress.beatStates.B06 = 'active';
     finale.scenarioProgress.lastCheckOutcomes.CHECK_PERSUADE = 'success';
+    finale.scenarioProgress.endingId = 'END_C';
 
     expect(validateNarratorSemantics({
       narrative: '说服奏效，深潜者释放埃里克并同意和平离港。', nextPrompt: '', playerChoices: {}
-    }, [{ name: 'propose_story_event', arguments: { eventId: 'EV_NEGOTIATION_SUCCESS' } }], finale, kb))
+    }, [], finale, kb))
       .toBeNull();
   });
 
