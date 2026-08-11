@@ -16,7 +16,8 @@ const ctx: DmContext = {
     scenarioId: 'test',
     scenarioTitle: '测试模组',
     era: '1920s',
-    rules: []
+    rules: [],
+    npcDirectory: []
   },
   dynamic: {
     currentScene: {

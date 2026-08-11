@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   createScenarioProgress,
+  getActiveScenarioBeat,
   getAvailableSceneExits,
+  getAvailableStoryEvents,
   hydrateScenarioProgress,
   migrateLegacyScenarioProgress,
   processScenarioTurn,
@@ -51,6 +53,34 @@ describe('scenario progression engine', () => {
 
     progress = apply(progress, 'S01', 2, { events: ['EV_FIND_I02'] }).progress;
     expect(getAvailableSceneExits(progress, 'S01').map((exit) => exit.sceneId)).toEqual(['S02', 'S03']);
+  });
+
+  it('keeps unfired manual clue events available after their beat completes', () => {
+    let progress = createScenarioProgress();
+    progress = apply(progress, 'S01', 1, { events: ['EV_ACCEPT_COMMISSION'] }).progress;
+    progress = apply(progress, 'S01', 2, { events: ['EV_FIND_I02'] }).progress;
+
+    expect(progress.beatStates.B02).toBe('completed');
+    expect(progress.objectiveStates.O02).toBe('completed');
+    expect(getAvailableStoryEvents(progress, 'S01').map((event) => event.id)).toContain('EV_FIND_I04');
+
+    progress = apply(progress, 'S01', 3, { events: ['EV_FIND_I04'] }).progress;
+    expect(progress.clueStates.I04).toBe('analyzed');
+    expect(progress.knownFactIds).toContain('F06');
+  });
+
+  it('activates only the required finale objective until a route is selected', () => {
+    let progress = reachFinale();
+
+    expect(getActiveScenarioBeat(progress)?.id).toBe('B06');
+    expect(progress.objectiveStates.O06).toBe('active');
+    expect(progress.objectiveStates.O07).toBe('locked');
+    expect(progress.objectiveStates.O08).toBe('locked');
+
+    progress = apply(progress, 'S05', 5, { events: ['EV_CHOOSE_NEGOTIATION'] }).progress;
+    expect(progress.objectiveStates.O06).toBe('completed');
+    expect(progress.objectiveStates.O07).toBe('locked');
+    expect(progress.objectiveStates.O08).toBe('active');
   });
 
   it('fires stable once events idempotently', () => {
@@ -173,5 +203,25 @@ describe('scenario progression engine', () => {
       { ...current, contentHash: 'stale-content' },
       { currentScene: 'S01', clueIds: [], flags: {}, turn: 0 }
     )).toThrow(ScenarioContentMismatchError);
+  });
+
+  it('migrates the previous v8 content hash without losing progress', () => {
+    const previous = createScenarioProgress();
+    previous.moduleVersion = '1.0.0';
+    previous.contentHash = '75b8bb187c4dace1';
+    previous.beatStates.B01 = 'completed';
+    previous.beatStates.B02 = 'active';
+    previous.objectiveStates.O01 = 'locked';
+    previous.objectiveStates.O02 = 'locked';
+
+    const migrated = hydrateScenarioProgress(previous, {
+      currentScene: 'S01', clueIds: [], flags: {}, turn: 3
+    });
+
+    expect(migrated.moduleVersion).toBe('1.0.1');
+    expect(migrated.beatStates.B02).toBe('active');
+    expect(migrated.objectiveStates.O01).toBe('completed');
+    expect(migrated.objectiveStates.O02).toBe('active');
+    expect(migrated.migrationLog.at(-1)).toContain('1.0.0 -> 1.0.1');
   });
 });

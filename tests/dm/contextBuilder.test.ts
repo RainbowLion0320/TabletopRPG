@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildDmContext } from '../../src/dm/contextBuilder';
+import { buildNarratorSystemPrompt } from '../../src/dm/narrator';
 import { wuzhongxiaoshi } from '../../src/data/scenarios/wuzhongxiaoshi';
 import type { ConversationTurn } from '../../src/types/game';
 import { makeInvestigator, makeState } from './fixtures';
@@ -63,6 +64,26 @@ describe('contextBuilder', () => {
     // single default fixture player should be located in S01
     const playerName = state.players[0].name;
     expect(ctx.dynamic.playerLocations[playerName]).toBe('摩勒住宅');
+  });
+
+  it('includes the public NPC directory and authored event narrative cues', () => {
+    const state = makeState({ currentScene: 'S01' });
+    const ctx = buildDmContext(state, kb, { mode: 'together' });
+
+    expect(ctx.static.npcDirectory).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: '洛夫·蒙特利尔', role: '警察局长' })
+    ]));
+    expect(ctx.dynamic.scenario.allowedEvents).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'EV_FIND_I04',
+        narrativeCue: expect.stringContaining('贝尔街14号卡森其药店')
+      })
+    ]));
+
+    const prompt = buildNarratorSystemPrompt(ctx);
+    expect(prompt).toContain('权威公开人物目录');
+    expect(prompt).toContain('洛夫·蒙特利尔｜警察局长');
+    expect(prompt).toContain('叙事锚点：加热显出隐写文字“贝尔街14号卡森其药店”');
   });
 
   it('exposes summary from state when not overridden', () => {

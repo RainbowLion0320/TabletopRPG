@@ -1,25 +1,43 @@
 import { chromium } from '@playwright/test';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { parse as parseYaml } from 'yaml';
 
 const root = resolve(import.meta.dirname, '..');
-const outputDir = resolve(root, process.env.PLAYTEST_OUTPUT ?? 'test-results/playtest-100');
 const targetTurns = Math.max(1, Number(process.env.PLAYTEST_TURNS ?? 100));
+const outputDir = resolve(root, process.env.PLAYTEST_OUTPUT ?? `test-results/playtest-${targetTurns}`);
+const resumeFromTurn = Math.max(0, Number(process.env.PLAYTEST_RESUME_FROM ?? 0));
 const baseUrl = process.env.PLAYTEST_URL ?? 'http://127.0.0.1:4173';
-const checkpoints = new Set([10, 25, 50, 75, 100].filter((turn) => turn <= targetTurns));
+const backgroundSettleMs = Math.max(0, Number(process.env.PLAYTEST_BACKGROUND_SETTLE_MS ?? 2_500));
+const checkpoints = new Set([10, 25, 50, 75, 100, 125, 150, 175, 200]
+  .filter((turn) => turn <= targetTurns));
+checkpoints.add(targetTurns);
+const world = parseYaml(readFileSync(resolve(root, 'scenarios/wuzhongxiaoshi/world.yaml'), 'utf8'));
+const scenarioNpcs = world.npcs.map((npc) => ({
+  id: npc.id,
+  name: npc.name,
+  aliases: Array.isArray(npc.aliases) ? npc.aliases : []
+}));
 
-rmSync(outputDir, { recursive: true, force: true });
+if (!resumeFromTurn) rmSync(outputDir, { recursive: true, force: true });
 mkdirSync(join(outputDir, 'screenshots'), { recursive: true });
 
+const metricsPath = join(outputDir, 'run-metrics.json');
+const metrics = resumeFromTurn ? JSON.parse(readFileSync(metricsPath, 'utf8')) : [];
+if (metrics.length !== resumeFromTurn) {
+  throw new Error(`断点回合与已有指标不一致：resume=${resumeFromTurn}, metrics=${metrics.length}`);
+}
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-const metrics = [];
 const issues = [];
 const browserLogs = [];
-let runNumber = 1;
+let runNumber = resumeFromTurn
+  ? Math.max(0, ...metrics.map((item) => item.run)) + 1
+  : 1;
 let runTurn = 0;
 let lastScene = '';
 let sceneTurn = 0;
+const reportedIssueKeys = new Set();
 
 page.on('console', (message) => {
   if (message.type() === 'error' || message.type() === 'warning') {
@@ -93,13 +111,21 @@ function actionsFor(scene, turn) {
   return ['根据当前已知线索继续正式调查。', '协助亨利核对证据并推进当前目标。'];
 }
 
-async function waitForAi(startDmCount) {
-  await page.waitForFunction(
-    (before) => !document.querySelector('.thinking-line')
-      && document.querySelectorAll('.story-message.dm').length > before,
-    startDmCount,
+async function waitForAi(startDmCount, startSystemCount) {
+  const outcome = await page.waitForFunction(
+    ({ dmCount, systemCount }) => {
+      if (document.querySelector('.thinking-line')) return null;
+      if (document.querySelectorAll('.story-message.dm').length > dmCount) return 'dm';
+      const systemMessages = Array.from(document.querySelectorAll('.story-message.system'));
+      if (systemMessages.length <= systemCount) return null;
+      const latest = systemMessages.at(-1)?.textContent ?? '';
+      return /AI DM (?:连接|返回)/.test(latest) ? latest.trim() : null;
+    },
+    { dmCount: startDmCount, systemCount: startSystemCount },
     { timeout: 185_000 }
   );
+  const value = await outcome.jsonValue();
+  if (value !== 'dm') throw new Error(String(value));
 }
 
 async function resolveChecks(checks) {
@@ -108,10 +134,58 @@ async function resolveChecks(checks) {
     if (!await card.isVisible().catch(() => false)) return;
     checks.push((await card.innerText()).replace(/\s+/g, ' ').trim());
     const dmCount = await page.locator('.story-message.dm').count();
+    const systemCount = await page.locator('.story-message.system').count();
     await card.getByRole('button', { name: /掷骰/ }).click();
-    await waitForAi(dmCount);
+    await waitForAi(dmCount, systemCount);
   }
   if (await page.locator('.check-card').isVisible().catch(() => false)) throw new Error('连续检定超过3次，视为不可操作状态');
+}
+
+function reportIssue(issue, key) {
+  if (reportedIssueKeys.has(key)) return;
+  reportedIssueKeys.add(key);
+  issues.push(issue);
+}
+
+for (const item of metrics) {
+  for (const npcName of item.missingMentionedNpcNames ?? []) {
+    reportIssue({
+      severity: 'P1', turn: item.turn, run: item.run, scene: item.sceneAfter,
+      observation: `模组人物“${npcName}”已在玩家行动或 DM 叙事中明确出现，但案件板没有人物节点。`,
+      evidence: `run-metrics.json#turn-${item.turn}`
+    }, `missing-npc:${item.run}:${npcName}`);
+  }
+  if ((item.attempts ?? 1) > 1) {
+    reportIssue({
+      severity: 'P2', turn: item.turn, run: item.run, scene: item.sceneBefore,
+      observation: `AI 请求失败后自动重试并在第 ${item.attempts} 次成功。`,
+      evidence: `run-metrics.json#turn-${item.turn}`
+    }, `request-recovered:${item.turn}`);
+  }
+}
+
+function mentionedScenarioNpcs(...texts) {
+  const haystack = texts.filter(Boolean).join('\n');
+  return scenarioNpcs.filter((npc) => [npc.name, ...npc.aliases].some((term) => haystack.includes(term)));
+}
+
+async function readCaseBoard() {
+  await page.getByTitle('资料（可拖拽）').click();
+  const drawer = page.locator('.info-drawer-react');
+  await page.waitForFunction(() => document.querySelector('.info-drawer-react')?.classList.contains('open'));
+  await page.getByRole('button', { name: '案件板' }).click();
+  await drawer.locator('.case-board-view').waitFor({ state: 'visible' });
+  const nodes = await page.locator('.case-flow-node').evaluateAll((items) => items.map((item) => ({
+    type: ['npc', 'scene', 'item', 'event', 'theory'].find((type) => item.classList.contains(type)) ?? 'unknown',
+    text: (item.textContent ?? '').replace(/\s+/g, ' ').trim()
+  })));
+  await page.getByRole('button', { name: '关闭资料' }).click();
+  return {
+    nodes,
+    npcNames: scenarioNpcs.filter((npc) => nodes.some((node) =>
+      node.type === 'npc' && node.text.includes(npc.name)
+    )).map((npc) => npc.name)
+  };
 }
 
 async function saveCheckpoint(turn) {
@@ -138,7 +212,7 @@ async function saveCheckpoint(turn) {
 
 try {
   await startNewGame(true);
-  for (let globalTurn = 1; globalTurn <= targetTurns; globalTurn += 1) {
+  for (let globalTurn = resumeFromTurn + 1; globalTurn <= targetTurns; globalTurn += 1) {
     if (await page.locator('.ending-dock').isVisible().catch(() => false)) {
       const ending = (await page.locator('.ending-dock').innerText()).replace(/\s+/g, ' ').trim();
       metrics.at(-1).runEnding = ending;
@@ -152,21 +226,36 @@ try {
     const actBefore = (await page.locator('.brand-title').innerText()).trim();
     const worldTimeBefore = (await page.locator('.world-time').innerText()).trim();
     const [henryAction, adaAction] = actionsFor(sceneBefore, sceneTurn);
-    const dmCount = await page.locator('.story-message.dm').count();
     const startedAt = Date.now();
     const checks = [];
-    try {
-      await page.getByPlaceholder('亨利·格雷 想要做什么...').fill(henryAction);
-      await page.getByRole('button', { name: '下一位' }).click();
-      await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill(adaAction);
-      await page.getByRole('button', { name: '提交' }).click();
-      await waitForAi(dmCount);
-      await resolveChecks(checks);
-    } catch (error) {
-      const evidence = `failure-turn-${String(globalTurn).padStart(3, '0')}.png`;
-      await page.screenshot({ path: join(outputDir, 'screenshots', evidence), fullPage: true });
-      issues.push({ severity: 'P0', turn: globalTurn, run: runNumber, scene: sceneBefore, error: String(error), evidence });
-      throw error;
+    let attempts = 0;
+    for (; attempts < 3; attempts += 1) {
+      const dmCount = await page.locator('.story-message.dm').count();
+      const systemCount = await page.locator('.story-message.system').count();
+      try {
+        await page.getByPlaceholder('亨利·格雷 想要做什么...').fill(henryAction);
+        await page.getByRole('button', { name: '下一位' }).click();
+        await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill(adaAction);
+        await page.getByRole('button', { name: '提交' }).click();
+        await waitForAi(dmCount, systemCount);
+        await resolveChecks(checks);
+        break;
+      } catch (error) {
+        const finalAttempt = attempts >= 2;
+        const evidence = `failure-turn-${String(globalTurn).padStart(3, '0')}-attempt-${attempts + 1}.png`;
+        await page.screenshot({ path: join(outputDir, 'screenshots', evidence), fullPage: true });
+        reportIssue({
+          severity: finalAttempt ? 'P0' : 'P2',
+          turn: globalTurn,
+          run: runNumber,
+          scene: sceneBefore,
+          observation: finalAttempt ? '同一回合连续三次无法取得 DM 回复。' : 'AI 请求失败后自动重试。',
+          error: String(error),
+          evidence
+        }, `request-failure:${globalTurn}:${attempts + 1}`);
+        if (finalAttempt) throw error;
+        await page.waitForTimeout(1_000);
+      }
     }
     const durationMs = Date.now() - startedAt;
     const sceneAfter = (await page.locator('.brand-scene').innerText()).trim();
@@ -174,19 +263,45 @@ try {
     const worldTimeAfter = (await page.locator('.world-time').innerText()).trim();
     const narratives = await page.locator('.story-message.dm p').allInnerTexts().catch(() => []);
     const narrative = narratives.at(-1)?.replace(/\s+/g, ' ').trim() ?? '';
+    if (backgroundSettleMs) await page.waitForTimeout(backgroundSettleMs);
+    const caseBoard = await readCaseBoard();
+    const mentionedNpcs = mentionedScenarioNpcs(narrative);
+    const missingMentionedNpcs = mentionedNpcs
+      .filter((npc) => !caseBoard.npcNames.includes(npc.name))
+      .map((npc) => npc.name);
     const ending = await page.locator('.ending-dock').isVisible().catch(() => false)
       ? (await page.locator('.ending-dock').innerText()).replace(/\s+/g, ' ').trim()
       : null;
     metrics.push({
       turn: globalTurn, run: runNumber, runTurn, henryAction, adaAction,
       sceneBefore, sceneAfter, actBefore, actAfter, worldTimeBefore, worldTimeAfter,
-      checks, durationMs, narrative, ending
+      checks, durationMs, narrative, ending,
+      attempts: attempts + 1,
+      mentionedNpcNames: mentionedNpcs.map((npc) => npc.name),
+      missingMentionedNpcNames: missingMentionedNpcs,
+      caseBoard
     });
+    for (const npcName of missingMentionedNpcs) {
+      reportIssue({
+        severity: 'P1',
+        turn: globalTurn,
+        run: runNumber,
+        scene: sceneAfter,
+        observation: `模组人物“${npcName}”已在玩家行动或 DM 叙事中明确出现，但案件板没有人物节点。`,
+        evidence: `run-metrics.json#turn-${globalTurn}`
+      }, `missing-npc:${runNumber}:${npcName}`);
+    }
     if (sceneBefore === sceneAfter && runTurn >= 8 && sceneBefore.includes('摩勒住宅')) {
-      issues.push({ severity: 'P1', turn: globalTurn, run: runNumber, scene: sceneAfter, observation: '连续正式行动后仍停留在摩勒住宅，需核对事件工具调用与fail-forward。' });
+      reportIssue(
+        { severity: 'P1', turn: globalTurn, run: runNumber, scene: sceneAfter, observation: '连续正式行动后仍停留在摩勒住宅，需核对事件工具调用与fail-forward。' },
+        `stalled-residence:${runNumber}`
+      );
     }
     if (checkpoints.has(globalTurn)) await saveCheckpoint(globalTurn);
     writeFileSync(join(outputDir, 'run-metrics.json'), JSON.stringify(metrics, null, 2));
+    if (globalTurn === 1 || globalTurn % 5 === 0 || globalTurn === targetTurns) {
+      console.log(`[playtest] ${globalTurn}/${targetTurns} turn(s), run ${runNumber}, scene ${sceneAfter}, issues ${issues.length}`);
+    }
   }
 } finally {
   await browser.close();
@@ -197,7 +312,7 @@ try {
 const durations = metrics.map((item) => item.durationMs).sort((a, b) => a - b);
 const percentile = (p) => durations[Math.min(durations.length - 1, Math.floor(durations.length * p))] ?? 0;
 const endings = metrics.filter((item) => item.ending).map((item) => ({ turn: item.turn, run: item.run, ending: item.ending }));
-const summary = `# 真实 MiMo 100 回合测试摘要
+const summary = `# 真实 MiMo ${targetTurns} 回合测试摘要
 
 - 完成 DM 回合：${metrics.length} / ${targetTurns}
 - 独立游戏局数：${Math.max(1, ...metrics.map((item) => item.run))}
@@ -208,6 +323,7 @@ const summary = `# 真实 MiMo 100 回合测试摘要
 - 发生结局：${endings.length}
 - 浏览器异常日志：${browserLogs.length}
 - 记录问题：${issues.length}
+- 人物提及未落板：${metrics.reduce((sum, item) => sum + item.missingMentionedNpcNames.length, 0)} 次
 
 ## 结局节点
 

@@ -1,8 +1,11 @@
 import type { AiResponse, CheckRequest, GameState, SceneId } from '../types/game';
 import type { PlayerAction } from '../services/aiDm';
 import type { DmToolCall, KnowledgeBase } from './types';
-import { getAvailableSceneExits, getScenarioProgressForState } from '../scenario/engine';
-import { getAvailableStoryEvents } from '../scenario/engine';
+import {
+  getAvailableSceneExits,
+  getAvailableStoryEvents,
+  getScenarioProgressForState
+} from '../scenario/engine';
 
 const DICE_RESULT_RE = /【检定结果】|结果[：:]\s*(?:失败|大失败|成功|困难成功|极难成功|大成功)/;
 const MOVE_VERB_RE = /前往|赶往|去往|出发|动身|返回|回到|离开|开车|驾车|驱车|驶向|跟随|追到|抵达|到达/;
@@ -262,6 +265,52 @@ export function sanitizePlayerChoices(
   }));
 }
 
+interface AddressReference {
+  key: string;
+  text: string;
+}
+
+function extractAddressReferences(text: string): AddressReference[] {
+  const pattern = /(?:^|[\s，。；！？：“”‘’在往向至到从于着是])([\u4e00-\u9fff]{1,8}?(?:上街|下街|大街|大道|街|巷|路))\s*(\d{1,4})(?:\s*[-至到]\s*(\d{1,4}))?\s*号?/g;
+  const out: AddressReference[] = [];
+  for (const match of text.matchAll(pattern)) {
+    out.push({ key: `${match[1]}${match[2]}号`, text: match[0].trim() });
+    if (match[3]) out.push({ key: `${match[1]}${match[3]}号`, text: match[0].trim() });
+  }
+  return out;
+}
+
+function publicScenarioCorpus(kb: KnowledgeBase): string {
+  const scenes = Object.values(kb.scenes).flatMap(({ public: scene }) => [
+    scene.name,
+    scene.desc,
+    ...(scene.aliases ?? [])
+  ]);
+  const npcs = Object.values(kb.npcs).flatMap(({ public: npc }) => [
+    npc.name,
+    npc.role,
+    npc.appearance,
+    ...(npc.aliases ?? [])
+  ]);
+  const items = Object.values(kb.items).flatMap(({ public: item }) => [
+    item.name,
+    item.appearance,
+    ...(item.aliases ?? [])
+  ]);
+  return [...scenes, ...npcs, ...items].join('\n');
+}
+
+function eventAuthorizesOutcome(
+  event: ReturnType<typeof getAvailableStoryEvents>[number],
+  outcome: 'rescue' | 'ending'
+): boolean {
+  return event.effects.some((effect) => {
+    if (outcome === 'ending') return 'setEnding' in effect;
+    return ('setVariable' in effect && effect.setVariable === 'ericRescued' && effect.value === true)
+      || 'setEnding' in effect;
+  });
+}
+
 export function validateNarratorSemantics(
   output: { narrative: string; activeNpc?: string | null; nextPrompt: string; playerChoices: Record<string, string[]> },
   toolCalls: DmToolCall[],
@@ -273,6 +322,96 @@ export function validateNarratorSemantics(
     output.nextPrompt,
     ...Object.values(output.playerChoices).flat()
   ].join('\n');
+  const publicCorpus = publicScenarioCorpus(kb);
+  const authorizedAddresses = new Set(extractAddressReferences(publicCorpus).map((item) => item.key));
+  const outputAddresses = extractAddressReferences(allText);
+  const inventedAddress = outputAddresses.find((item) =>
+    ![...authorizedAddresses].some((address) => item.key.endsWith(address))
+  );
+  if (inventedAddress) return `不得创造模组未声明的地址：${inventedAddress.text}`;
+
+  const numberedWarehouse = allText.match(/\b(?:[A-Za-z]\d*|\d+[A-Za-z]?)\s*(?:号)?仓(?:库)?/i)?.[0];
+  if (numberedWarehouse && !publicCorpus.replace(/\s/g, '').includes(numberedWarehouse.replace(/\s/g, ''))) {
+    return `不得创造模组未声明的仓库编号：${numberedWarehouse}`;
+  }
+
+  const declaredItems = [
+    ...Object.values(kb.items).flatMap(({ public: item }) => [item.name, ...(item.aliases ?? [])]),
+    ...state.players.flatMap((player) => [player.background?.meaningfulItem ?? '']),
+    ...state.clues.map((clue) => clue.name)
+  ].filter(Boolean);
+  const itemClaim = /(?:取得|获得|拿到|找到|发现|捡到|收起|带走)[^。；！？\n]{0,12}?((?:[A-Za-z0-9]{1,4})?钥匙|通行证|徽章|账本)/.exec(allText);
+  if (itemClaim) {
+    const contextStart = Math.max(0, (itemClaim.index ?? 0) - 16);
+    const contextEnd = (itemClaim.index ?? 0) + itemClaim[0].length + 16;
+    const claimContext = allText.slice(contextStart, contextEnd);
+    if (!declaredItems.some((item) => claimContext.includes(item))) {
+      return `不得创造模组未声明的物品：${itemClaim[1]}`;
+    }
+  }
+
+  const inventedAffiliation = allText.match(/([\u4e00-\u9fff]{2,8}(?:帮|会|社|党))(?:的)?(?:成员|人物|头目|老板)/)?.[1];
+  if (inventedAffiliation && !publicCorpus.includes(inventedAffiliation)) {
+    return `不得创造模组未声明的组织身份：${inventedAffiliation}`;
+  }
+
+  const progress = getScenarioProgressForState(state);
+  const availableEvents = new Map(
+    getAvailableStoryEvents(progress, state.currentScene).map((event) => [event.id, event])
+  );
+  const proposedEvents = toolCalls.flatMap((call) => {
+    if (call.name !== 'propose_story_event') return [];
+    const event = availableEvents.get(String(call.arguments.eventId ?? ''));
+    return event ? [event] : [];
+  });
+  const rescueAuthorized = progress.variables.ericRescued === true
+    || Boolean(progress.endingId)
+    || proposedEvents.some((event) => eventAuthorizesOutcome(event, 'rescue'));
+  const endingAuthorized = Boolean(progress.endingId)
+    || proposedEvents.some((event) => eventAuthorizesOutcome(event, 'ending'));
+  const claimsRescue = /埃里克[^。；！？\n]{0,12}(?:获救|被救出|被释放)|(?:救出|释放)[^。；！？\n]{0,8}埃里克/.test(output.narrative);
+  const claimsDeparture = /扶桑花号[^。；！？\n]{0,18}(?:已(?:经)?离港|驶离泊位|驶离港口|离开港口|消失在(?:浓雾|雾中|水面))/.test(output.narrative);
+  if ((claimsRescue && !rescueAuthorized) || (claimsDeparture && !endingAuthorized)) {
+    return '不得在对应剧情事件结算前宣告权威剧情结果';
+  }
+
+  for (const proposed of proposedEvents) {
+    const clueIds = new Set(proposed.effects.flatMap((effect) => {
+      if ('discoverClue' in effect) return [effect.discoverClue];
+      if ('analyzeClue' in effect) return [effect.analyzeClue];
+      return [];
+    }));
+    for (const clueId of clueIds) {
+      const item = kb.items[clueId]?.public;
+      if (!item) continue;
+      const terms = [item.name, ...(item.aliases ?? [])];
+      if (!terms.some((term) => output.narrative.includes(term))) {
+        return `剧情发现事件 ${proposed.id} 必须在正文中说明对应线索：${item.name}`;
+      }
+    }
+
+    const cueNpcs = Object.values(kb.npcs).filter(({ public: npc }) =>
+      [npc.name, ...(npc.aliases ?? [])].some((term) => proposed.narrativeCue.includes(term))
+    );
+    for (const { public: npc } of cueNpcs) {
+      const terms = [npc.name, ...(npc.aliases ?? [])];
+      if (!terms.some((term) => output.narrative.includes(term))) {
+        return `剧情事件 ${proposed.id} 必须在正文中说明涉及人物：${npc.name}`;
+      }
+    }
+
+    const normalizedCue = proposed.narrativeCue.replace(/\s/g, '');
+    const normalizedOutput = allText.replace(/\s/g, '');
+    const cueAddresses = [...authorizedAddresses].filter((address) =>
+      normalizedCue.includes(address.replace(/\s/g, ''))
+    );
+    const missingAddress = cueAddresses.find((address) =>
+      !normalizedOutput.includes(address.replace(/\s/g, ''))
+    );
+    if (missingAddress) {
+      return `剧情事件 ${proposed.id} 必须使用作者地址：${missingAddress}`;
+    }
+  }
   if (/注射[^。；\n]{0,12}活性炭|浓盐水[^。；\n]{0,12}催吐|试喝|尝一口/.test(allText)) {
     return '不得给出危险的现实医疗处置或建议品尝未知物质';
   }

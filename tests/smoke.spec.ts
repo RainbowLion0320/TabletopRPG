@@ -7,13 +7,16 @@ import { makeInvestigator } from './dm/fixtures';
 const hasEnvDefaultApiKey =
   Boolean(process.env.VITE_AI_API_KEY) ||
   (existsSync('.env.local') && /^VITE_AI_API_KEY=.+$/m.test(readFileSync('.env.local', 'utf8')));
-const scenarioContentHash = /scenarioContentHash = "([^"]+)"/.exec(
-  readFileSync('src/data/scenarios/wuzhongxiaoshi/runtime.generated.ts', 'utf8')
-)?.[1] ?? '';
+const generatedScenarioRuntime = readFileSync(
+  'src/data/scenarios/wuzhongxiaoshi/runtime.generated.ts',
+  'utf8'
+);
+const scenarioContentHash = /scenarioContentHash = "([^"]+)"/.exec(generatedScenarioRuntime)?.[1] ?? '';
+const scenarioContentVersion = /"contentVersion": "([^"]+)"/.exec(generatedScenarioRuntime)?.[1] ?? '';
 
 function createSmokeScenarioProgress(): ScenarioProgress {
   return {
-    moduleId: 'wuzhongxiaoshi', moduleVersion: '1.0.0', contentHash: scenarioContentHash,
+    moduleId: 'wuzhongxiaoshi', moduleVersion: scenarioContentVersion, contentHash: scenarioContentHash,
     worldTime: '1920-07-13T17:30', activeActId: 'A01',
     beatStates: { B01: 'active', B02: 'locked', B03: 'locked', B04: 'locked', B05: 'locked', B06: 'locked' },
     objectiveStates: { O01: 'active', O02: 'locked', O03: 'locked', O04: 'locked', O05: 'locked', O06: 'locked', O07: 'locked', O08: 'locked' },
@@ -470,6 +473,7 @@ test('reference panel opens a fullscreen case board and keeps the log tab', asyn
   await expect(board).toBeVisible();
   await expect(board.locator('.case-flow-node.scene', { hasText: '摩勒住宅' })).toBeVisible();
   await expect(board.locator('.case-flow-node.npc', { hasText: '伊莎贝拉·摩勒' })).toBeVisible();
+  await expect(board.locator('.case-flow-node.npc', { hasText: '埃里克·摩勒' })).toBeVisible();
   await expect(board.getByText('卡森其药店')).toHaveCount(0);
   await expect(page.getByRole('button', { name: '线索' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: '人物' })).toHaveCount(0);

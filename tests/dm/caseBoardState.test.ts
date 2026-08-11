@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildFactCaseBoardPatch } from '../../src/dm/caseBoardModel';
-import { collectKnownNpcNames } from '../../src/dm/caseBoard';
+import { collectKnownNpcNames, getVisibleCaseBoard } from '../../src/dm/caseBoard';
+import { caseBoard as caseBoardDefinition } from '../../src/data/scenarios/wuzhongxiaoshi';
 import { gameReducer, hydrateGameState } from '../../src/state/gameReducer';
 import type { AtomicFact, DynamicCaseBoardEdge, DynamicCaseBoardNode } from '../../src/types/game';
 import { makeState } from './fixtures';
@@ -42,6 +43,25 @@ function edge(partial: Partial<DynamicCaseBoardEdge> & Pick<DynamicCaseBoardEdge
 }
 
 describe('gameReducer v7 case board state', () => {
+  it('recognizes authored NPC aliases when the DM introduces them', () => {
+    const state = makeState();
+    state.messages = [
+      { id: 'dm-1', type: 'dm', text: '店主提到蒙特利尔最近来过。' },
+      { id: 'player-1', type: 'player', text: '我声称老赫特酒保也在这里。' }
+    ];
+
+    expect(collectKnownNpcNames(state)).toContain('洛夫·蒙特利尔');
+    expect(collectKnownNpcNames(state)).not.toContain('老赫特之家酒保');
+  });
+
+  it('shows the missing person from the authored opening case board', () => {
+    const visible = getVisibleCaseBoard(caseBoardDefinition, makeState());
+
+    expect(visible.nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'npc-eric', title: '埃里克·摩勒' })
+    ]));
+  });
+
   it('keeps NPCs from previously visited scenes known after moving away', () => {
     const state = makeState({ currentScene: 'S03', flags: { 'sceneVisited.S01': true } });
     expect(collectKnownNpcNames(state)).toEqual(
