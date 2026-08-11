@@ -55,9 +55,9 @@ let currentRouteTarget = endingTargets.find((endingId) => !completedEndingIds.ha
 let stopRequested = false;
 let fatalError = null;
 
-process.once('SIGINT', () => {
+process.on('SIGINT', () => {
   stopRequested = true;
-  console.log('[playtest] received SIGINT; stopping after the current browser operation');
+  console.log('[playtest] received SIGINT; stopping after the current game reaches an ending');
 });
 
 page.on('console', (message) => {
@@ -89,6 +89,8 @@ async function startNewGame(first = false) {
   }
   await page.getByRole('button', { name: /进入游戏/ }).click();
   await page.locator('.game-screen').waitFor();
+  await page.getByRole('button', { name: /菜单/ }).click();
+  await page.getByRole('button', { name: /保存游戏/ }).click();
   runTurn = 0;
   lastScene = '';
   sceneTurn = 0;
@@ -120,30 +122,19 @@ function actionsFor(scene, turn, routeTarget) {
       : ['依据地图笔记立即前往泰晤士港的扶桑花号。', '与亨利一起赶往地图标注的偏僻泊位。'];
   }
   if (scene.includes('扶桑花号') || scene.includes('泰晤士港')) {
-    const routeCycles = {
-      END_C: [
-        ['暂缓攻击，明确选择交涉路线并要求深潜者说明诉求。', '保持戒备，协助亨利尝试和平交涉。'],
-        ['专注聆听深潜者的语调和重复词，理解它们真正的诉求。', '记录声调规律，协助完成聆听判断。'],
-        ['在理解诉求后说服深潜者释放埃里克并和平离港。', '提出双方都可接受的条件，协助说服。'],
-        ['继续以已知诉求为基础争取释放埃里克，不发动攻击。', '补充可执行的交换条件，维持和平交涉。']
-      ],
-      END_A: [
-        ['明确选择战斗路线，阻止深潜者带走埃里克。', '寻找掩护并协助亨利投入战斗。'],
-        ['集中攻击一名仍在抵抗的深潜者，确认其失去战斗能力。', '协助攻击同一目标并保护埃里克。'],
-        ['继续攻击剩余深潜者，逐一确认敌方是否仍能作战。', '利用医疗知识判断倒地敌人并掩护亨利。'],
-        ['在逃脱时钟耗尽前击败最后的深潜者并救出埃里克。', '协助控制甲板，确保埃里克安全获救。']
-      ],
-      END_B: [
-        ['明确选择战斗路线，阻止深潜者带走埃里克。', '寻找掩护并协助亨利投入冲突。'],
-        ['守住当前位置并观察船员收缆进度，暂不冒险突进。', '照看同伴并留意扶桑花号离港迹象。'],
-        ['继续拖延并寻找安全接近埃里克的机会。', '维持掩护，记录逃脱时钟的变化。']
-      ]
-    };
-    const cycle = routeCycles[routeTarget] ?? [
-      ...routeCycles.END_C,
-      ...routeCycles.END_A
-    ];
-    return cycle[(turn - 1) % cycle.length];
+    if (routeTarget === 'END_C') {
+      return turn === 1
+        ? ['暂缓攻击，明确选择交涉路线并要求深潜者说明诉求。', '保持戒备，协助亨利尝试和平交涉。']
+        : ['专注聆听深潜者的语调和重复词，理解它们真正的诉求。', '记录声调规律，并协助说服对方释放埃里克。'];
+    }
+    if (routeTarget === 'END_B') {
+      return turn === 1
+        ? ['明确选择战斗路线，阻止深潜者带走埃里克。', '寻找掩护并协助亨利投入冲突。']
+        : ['守住当前位置并观察船员收缆进度，暂不冒险突进。', '照看同伴并留意扶桑花号离港迹象。'];
+    }
+    return turn === 1
+      ? ['明确选择战斗路线，阻止深潜者带走埃里克。', '寻找掩护并协助亨利投入战斗。']
+      : ['集中攻击一名仍在抵抗的深潜者，确认其失去战斗能力。', '协助攻击同一目标并保护埃里克。'];
   }
   return ['根据当前已知线索继续正式调查。', '协助亨利核对证据并推进当前目标。'];
 }
@@ -350,13 +341,12 @@ async function verifyLatestSave(expectedScene, expectedWorldTime, turn) {
 try {
   await startNewGame(true);
   for (let globalTurn = resumeFromTurn + 1; globalTurn <= targetTurns; globalTurn += 1) {
-    if (stopRequested) break;
     if (await page.locator('.ending-dock').isVisible().catch(() => false)) {
       const ending = (await page.locator('.ending-dock').innerText()).replace(/\s+/g, ' ').trim();
       metrics.at(-1).runEnding = ending;
       const endingId = metrics.at(-1).endingId ?? metrics.at(-1).checkpoint?.endingId ?? null;
       if (endingId) completedEndingIds.add(endingId);
-      if (endingMode && endingTargets.every((target) => completedEndingIds.has(target))) break;
+      if (stopRequested || (endingMode && endingTargets.every((target) => completedEndingIds.has(target)))) break;
       runNumber += 1;
       currentRouteTarget = endingTargets.find((target) => !completedEndingIds.has(target)) ?? null;
       await startNewGame(false);
@@ -396,6 +386,9 @@ try {
           evidence
         }, `request-failure:${globalTurn}:${attempts + 1}`);
         if (finalAttempt) throw error;
+        await page.getByRole('button', { name: /菜单/ }).click();
+        await page.getByRole('button', { name: /读取存档/ }).click();
+        await page.locator('.game-screen').waitFor();
         await page.waitForTimeout(1_000);
       }
     }

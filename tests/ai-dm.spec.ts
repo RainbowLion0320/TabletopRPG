@@ -113,6 +113,56 @@ test('AI DM retries malformed model output instead of returning raw text as narr
   await expect(page.getByText('raw malformed output')).toHaveCount(0);
 });
 
+test('AI DM recovers an exhausted malformed turn without duplicating player history', async ({ page }) => {
+  const malformed = '{"narrative":"truncated';
+  const recovered = JSON.stringify({
+    narrative: 'The turn recovered without asking the players to submit twice.',
+    activeNpc: '伊莎贝拉·摩勒',
+    check: null,
+    stateUpdate: { hp: {}, san: {}, flags: {}, newItems: [], sceneChange: null },
+    nextPrompt: 'Continue the investigation.',
+    playerChoices: {
+      '亨利·格雷': ['Inspect the desk', 'Read the note'],
+      '艾达·华莱士': ['Watch the hallway', 'Calm Isabella']
+    }
+  });
+  let narratorAttempts = 0;
+
+  await page.route('https://api.openai.com/v1/responses', async (route) => {
+    const body = JSON.parse(route.request().postData() ?? '{}') as { instructions?: string };
+    const system = body.instructions ?? '';
+    let content = JSON.stringify({ facts: [] });
+    if (system.includes('COC 第七版 AI DM Agent')) {
+      narratorAttempts += 1;
+      content = narratorAttempts <= 2 ? malformed : recovered;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(responseBody(content))
+    });
+  });
+
+  await startGameWithApi(page);
+  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the study.');
+  await page.getByRole('button', { name: '下一位' }).click();
+  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the hallway.');
+  await page.getByRole('button', { name: '提交' }).click();
+
+  await expect(page.getByText('The turn recovered without asking the players to submit twice.')).toBeVisible();
+  expect(narratorAttempts).toBe(3);
+  await expect(page.locator('.story-message.player')).toHaveCount(2);
+  await expect(page.getByText(/AI DM 返回格式无效/)).toHaveCount(0);
+
+  await page.getByRole('button', { name: /菜单/ }).click();
+  await page.getByRole('button', { name: /保存游戏/ }).click();
+  const historyRoles = await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem('trpg-saves-v2') || '[]')[0];
+    return saved.gameState.conversationHistory.map((turn: { role: string }) => turn.role);
+  });
+  expect(historyRoles).toEqual(['user', 'assistant']);
+});
+
 test('AI DM repairs unescaped dialogue quotes locally without interrupting the turn', async ({ page }) => {
   const malformed = '{"narrative":"伊莎贝拉说父亲总提到"水里的东西"，随后沉默下来。","activeNpc":"伊莎贝拉·摩勒","nextPrompt":"继续追问吗？","playerChoices":{"亨利·格雷":["追问细节"],"艾达·华莱士":["观察她的反应"]}}';
   let narratorAttempts = 0;
@@ -277,10 +327,10 @@ test('D100 check plays a locked-result roll and reveal before continuing the AI 
   await page.getByRole('button', { name: '掷骰' }).click();
 
   const diceDialog = page.getByRole('dialog', { name: '命运检定' });
-  await expect(diceDialog).toBeVisible();
-  await expect(diceDialog).toHaveClass(/rolling/);
-  await expect(diceDialog.getByText('骰面翻滚中')).toBeVisible();
-  await expect(diceDialog.locator('.dice-roll-total')).toHaveCount(0);
+  const rollingDialog = page.locator('.dice-roll-overlay.rolling:not(:has(.dice-roll-total))', {
+    hasText: '骰面翻滚中'
+  });
+  await expect(rollingDialog).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 700 });
   const fitsNarrowViewport = await diceDialog.evaluate((element) => (

@@ -23,6 +23,7 @@ import {
 } from './diceRollAnimation';
 
 const AI_DM_TIMEOUT_MS = 180_000;
+const AI_DM_FORMAT_ATTEMPTS = 3;
 
 export function useGameController() {
   const { notify, toast } = useToast();
@@ -200,17 +201,34 @@ export function useGameController() {
     try {
       dispatch({ type: 'setThinking', value: true });
       const sourceHistoryLength = turnState.conversationHistory.length;
+      let turnResult: Awaited<ReturnType<typeof runDmTurn>> | null = null;
+      for (let attempt = 1; attempt <= AI_DM_FORMAT_ATTEMPTS; attempt += 1) {
+        try {
+          turnResult = await runDmTurn(config, {
+            state: turnState,
+            actions,
+            signal: task.controller.signal
+          });
+          break;
+        } catch (error) {
+          const shouldRetry = error instanceof AiResponseFormatError
+            && attempt < AI_DM_FORMAT_ATTEMPTS
+            && coordinator.isCurrent(task);
+          if (!shouldRetry) throw error;
+          if (import.meta.env.DEV) {
+            // eslint-disable-next-line no-console
+            console.warn(`[useGameController] retrying malformed DM turn (${attempt + 1}/${AI_DM_FORMAT_ATTEMPTS})`);
+          }
+        }
+      }
+      if (!turnResult) throw new AiResponseFormatError('DM 引擎连续返回无效格式');
       const {
         raw,
         legacyResponse,
         events,
         decayIntents,
         backgroundUpdate
-      } = await runDmTurn(config, {
-        state: turnState,
-        actions,
-        signal: task.controller.signal
-      });
+      } = turnResult;
       if (!coordinator.isCurrent(task)) {
         coordinator.finish(task);
         return;
