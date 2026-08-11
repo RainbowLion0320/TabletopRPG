@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import { Check } from 'lucide-react';
 import type { DiceResult } from '../../types/game';
 import type { DiceRollPresentation } from '../../app/diceRollAnimation';
 
 interface DiceRollOverlayProps {
+  onConfirm: () => void;
   roll: DiceRollPresentation | null;
 }
 
@@ -32,13 +34,15 @@ function prefersReducedMotion() {
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-export function DiceRollOverlay({ roll }: DiceRollOverlayProps) {
+export function DiceRollOverlay({ onConfirm, roll }: DiceRollOverlayProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
   const [displayValue, setDisplayValue] = useState(() => randomD100());
 
   useEffect(() => {
     if (!roll) return;
-    dialogRef.current?.focus();
+    if (roll.phase === 'revealed') confirmRef.current?.focus();
+    else dialogRef.current?.focus();
   }, [roll]);
 
   useEffect(() => {
@@ -67,6 +71,9 @@ export function DiceRollOverlay({ roll }: DiceRollOverlayProps) {
       aria-modal="true"
       aria-busy={!revealed}
       className={`dice-roll-overlay ${revealed ? `revealed result-${roll.result.level}` : 'rolling'}`}
+      onKeyDown={(event) => {
+        if (revealed && event.key === 'Escape') onConfirm();
+      }}
       ref={dialogRef}
       role="dialog"
       tabIndex={-1}
@@ -99,7 +106,7 @@ export function DiceRollOverlay({ roll }: DiceRollOverlayProps) {
               <strong className="dice-roll-total">{roll.result.roll}</strong>
               <div>
                 <h3>{resultTitle}</h3>
-                <p>结果已锁定，正在交由 AI DM 继续裁决</p>
+                <p>结果已锁定，确认后继续交由 AI DM 裁决</p>
               </div>
             </>
           ) : (
@@ -110,10 +117,18 @@ export function DiceRollOverlay({ roll }: DiceRollOverlayProps) {
           )}
         </div>
 
-        <footer>
-          <span>{roll.check.difficulty}难度</span>
-          <i />
-          <span>目标值 {roll.check.threshold ?? '-'}</span>
+        <footer className={revealed ? 'with-confirm' : undefined}>
+          <div className="dice-roll-target">
+            <span>{roll.check.difficulty}难度</span>
+            <i />
+            <span>目标值 {roll.check.threshold ?? '-'}</span>
+          </div>
+          {revealed ? (
+            <button className="dice-roll-confirm" onClick={onConfirm} ref={confirmRef} type="button">
+              <Check aria-hidden="true" size={16} />
+              确认结果
+            </button>
+          ) : null}
         </footer>
       </section>
     </div>

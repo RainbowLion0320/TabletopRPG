@@ -571,10 +571,14 @@ test('authored negotiation checks chain and settle the ending without another AI
 
   await expect(page.locator('.check-card')).toContainText('亨利·格雷 · 聆听');
   await page.getByRole('button', { name: '掷骰' }).click();
+  await expect(page.getByRole('dialog', { name: '命运检定' })).toHaveClass(/revealed/, { timeout: 5_000 });
+  await page.getByRole('button', { name: '确认结果' }).click();
   await expect(page.locator('.check-card')).toContainText('亨利·格雷 · 说服', { timeout: 8_000 });
   await expect(page.locator('.check-card')).toContainText('困难难度，阈值 30');
 
   await page.getByRole('button', { name: '掷骰' }).click();
+  await expect(page.getByRole('dialog', { name: '命运检定' })).toHaveClass(/revealed/, { timeout: 5_000 });
+  await page.getByRole('button', { name: '确认结果' }).click();
   await expect(page.locator('.ending-dock')).toContainText('结局C：和平交涉', { timeout: 8_000 });
   expect(aiRequests).toBe(0);
 });

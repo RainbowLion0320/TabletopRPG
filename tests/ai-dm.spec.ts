@@ -338,10 +338,20 @@ test('D100 check plays a locked-result roll and reveal before continuing the AI 
   ));
   expect(fitsNarrowViewport).toBe(true);
 
-  await expect(diceDialog).toHaveClass(/revealed/, { timeout: 3_000 });
+  await expect(diceDialog).toHaveClass(/revealed/, { timeout: 5_000 });
   await expect(diceDialog.locator('.dice-roll-total')).toHaveText('42');
   await expect(diceDialog.getByRole('heading', { name: '普通成功' })).toBeVisible();
-  await expect(diceDialog).toHaveCount(0, { timeout: 3_000 });
+  const confirmResult = diceDialog.getByRole('button', { name: '确认结果' });
+  await expect(confirmResult).toBeFocused();
+  const revealedFitsNarrowViewport = await diceDialog.evaluate((element) => (
+    element.scrollWidth <= window.innerWidth && element.scrollHeight <= window.innerHeight
+  ));
+  expect(revealedFitsNarrowViewport).toBe(true);
+  await page.waitForTimeout(1_300);
+  await expect(diceDialog).toBeVisible();
+  expect(narratorAttempt).toBe(0);
+  await confirmResult.click();
+  await expect(diceDialog).toHaveCount(0);
   await expect(page.getByText('骰子结果已经落定，门锁上的细小刮痕显露出来。')).toBeVisible();
   expect(narratorAttempt).toBe(1);
   expect(resultTurnBody).toContain('掷出 42');

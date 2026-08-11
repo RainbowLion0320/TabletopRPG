@@ -200,6 +200,10 @@ async function resolveChecks(checks, context) {
     const dmCount = await page.locator('.story-message.dm').count();
     const systemCount = await page.locator('.story-message.system').count();
     await card.getByRole('button', { name: /掷骰/ }).click();
+    const diceDialog = page.getByRole('dialog', { name: '命运检定' });
+    const confirmResult = diceDialog.getByRole('button', { name: '确认结果' });
+    await confirmResult.waitFor({ state: 'visible', timeout: 10_000 });
+    await confirmResult.click();
     const resolution = await waitForRollResolution(dmCount, systemCount);
     const newSystemMessages = await page.locator('.story-message.system').evaluateAll(
       (items, start) => items.slice(start).map((item) => (item.textContent ?? '').replace(/\s+/g, ' ').trim()),

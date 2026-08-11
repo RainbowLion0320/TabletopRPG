@@ -87,7 +87,7 @@ export function GameScreen({ controller, onHome, onRestart }: GameScreenProps) {
         onSubmit={controller.submitAction}
         onSuggestion={controller.applySuggestion}
       />
-      <DiceRollOverlay roll={controller.diceRoll} />
+      <DiceRollOverlay onConfirm={controller.confirmDiceResult} roll={controller.diceRoll} />
       <ApiConfigModal open={controller.apiOpen} onClose={() => controller.setApiOpen(false)} onSave={controller.saveApi} />
       <EntityDetailModal detail={narrativeDetail} onClose={() => setNarrativeDetail(null)} />
       {controller.toast ? <div className="toast">{controller.toast}</div> : null}

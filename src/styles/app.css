@@ -1520,14 +1520,14 @@ button {
 }
 
 .rolling .tens-die .percentile-die {
-  animation: dice-tumble-left 410ms cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
+  animation: dice-tumble-left 560ms cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
 }
 
 .rolling .ones-die .percentile-die {
-  animation: dice-tumble-right 360ms cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate-reverse;
+  animation: dice-tumble-right 500ms cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate-reverse;
 }
 
-.rolling .percentile-die span { animation: dice-number-flicker 128ms steps(2, end) infinite; }
+.rolling .percentile-die span { animation: dice-number-flicker 170ms steps(2, end) infinite; }
 
 .revealed .percentile-die {
   background: conic-gradient(from 18deg,
@@ -1607,6 +1607,7 @@ button {
   justify-content: center;
   gap: 13px;
   min-height: 48px;
+  padding: 0 28px;
   border-top: 1px solid rgba(var(--dice-accent-rgb), 0.12);
   background: rgba(0, 0, 0, 0.14);
   color: var(--quiet);
@@ -1615,11 +1616,53 @@ button {
   letter-spacing: 2px;
 }
 
-.dice-roll-card > footer i {
+.dice-roll-card > footer.with-confirm {
+  justify-content: space-between;
+  min-height: 64px;
+}
+
+.dice-roll-target {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  white-space: nowrap;
+}
+
+.dice-roll-target i {
   width: 3px;
   height: 3px;
   border-radius: 50%;
   background: rgba(var(--dice-accent-rgb), 0.48);
+}
+
+.dice-roll-confirm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 118px;
+  height: 36px;
+  border: 1px solid rgba(var(--dice-accent-rgb), 0.52);
+  border-radius: 4px;
+  background: rgba(var(--dice-accent-rgb), 0.13);
+  color: var(--dice-accent);
+  cursor: pointer;
+  font-size: 12px;
+  letter-spacing: 0;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+  animation: dice-result-reveal 320ms 180ms ease-out both;
+}
+
+.dice-roll-confirm:hover {
+  border-color: rgba(var(--dice-accent-rgb), 0.82);
+  background: rgba(var(--dice-accent-rgb), 0.22);
+  color: #fff3cf;
+}
+
+.dice-roll-confirm:focus-visible {
+  outline: 2px solid rgba(var(--dice-accent-rgb), 0.82);
+  outline-offset: 2px;
 }
 
 .result-crit .dice-roll-card {

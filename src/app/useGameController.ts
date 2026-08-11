@@ -17,7 +17,6 @@ import { runDmTurn } from '../dm/pipeline';
 import type { DmBackgroundUpdate } from '../dm/types';
 import { DmTurnCoordinator } from './dmTurnCoordinator';
 import {
-  DICE_RESULT_HOLD_MS,
   DICE_ROLL_DURATION_MS,
   type DiceRollPresentation
 } from './diceRollAnimation';
@@ -303,7 +302,6 @@ export function useGameController() {
     if (!state.pendingCheck || diceRollInFlightRef.current) return;
     const check = state.pendingCheck;
     const result = rollD100(check);
-    const checkMessage = buildDiceResultMessage(check, result);
     const generation = diceRollGenerationRef.current + 1;
     diceRollGenerationRef.current = generation;
     diceRollInFlightRef.current = true;
@@ -313,26 +311,30 @@ export function useGameController() {
       if (diceRollGenerationRef.current !== generation) return;
       setDiceRoll({ check, result, phase: 'revealed' });
     }, DICE_ROLL_DURATION_MS);
-    const settleTimer = setTimeout(() => {
-      if (diceRollGenerationRef.current !== generation) return;
-      const rolledState = gameReducer(state, { type: 'applyDiceResult', result });
-      const continuationState = gameReducer(rolledState, {
-        type: 'appendHistory',
-        role: 'user',
-        content: checkMessage
-      });
-      diceRollInFlightRef.current = false;
-      diceRollTimersRef.current = [];
-      setDiceRoll(null);
-      dispatch({ type: 'applyDiceResult', result });
-      dispatch({ type: 'appendHistory', role: 'user', content: checkMessage });
-      if (rolledState.pendingCheck || rolledState.scenarioProgress?.endingId) return;
-      runAi([
-        ...(check.continuationActions ?? []),
-        buildDiceResultAction(state, check, checkMessage)
-      ], continuationState);
-    }, DICE_ROLL_DURATION_MS + DICE_RESULT_HOLD_MS);
-    diceRollTimersRef.current = [revealTimer, settleTimer];
+    diceRollTimersRef.current = [revealTimer];
+  }
+
+  function confirmDiceResult() {
+    if (!diceRoll || diceRoll.phase !== 'revealed' || !diceRollInFlightRef.current) return;
+    const { check, result } = diceRoll;
+    const checkMessage = buildDiceResultMessage(check, result);
+    const rolledState = gameReducer(state, { type: 'applyDiceResult', result });
+    const continuationState = gameReducer(rolledState, {
+      type: 'appendHistory',
+      role: 'user',
+      content: checkMessage
+    });
+    diceRollInFlightRef.current = false;
+    diceRollTimersRef.current.forEach((timerId) => clearTimeout(timerId));
+    diceRollTimersRef.current = [];
+    setDiceRoll(null);
+    dispatch({ type: 'applyDiceResult', result });
+    dispatch({ type: 'appendHistory', role: 'user', content: checkMessage });
+    if (rolledState.pendingCheck || rolledState.scenarioProgress?.endingId) return;
+    runAi([
+      ...(check.continuationActions ?? []),
+      buildDiceResultAction(state, check, checkMessage)
+    ], continuationState);
   }
 
   function applySuggestion(text: string) {
@@ -401,6 +403,7 @@ export function useGameController() {
     apiOpen,
     applySuggestion,
     closeJournal,
+    confirmDiceResult,
     deleteSaveSlot: saveSlots.deleteSaveSlot,
     diceRoll,
     drawerOpen,
