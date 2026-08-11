@@ -39,6 +39,13 @@ export function collectKnownNpcNames(state: GameState): string[] {
     add(fact.actor);
     add(fact.target);
   }
+  for (const message of state.messages) {
+    if (message.type !== 'dm') continue;
+    for (const [name, npc] of Object.entries(storyData.npcs)) {
+      const terms = [name, ...(npc.aliases ?? [])];
+      if (terms.some((term) => term && message.text.includes(term))) add(name);
+    }
+  }
   return Array.from(known);
 }
 

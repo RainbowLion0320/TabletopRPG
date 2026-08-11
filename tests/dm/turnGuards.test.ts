@@ -174,6 +174,83 @@ describe('turnGuards', () => {
     }, [], state, kb)).toMatch(/高度重复/);
   });
 
+  it('rejects invented addresses, numbered warehouses, items, and affiliations', () => {
+    const state = makeState({ currentScene: 'S01' });
+
+    expect(validateNarratorSemantics({
+      narrative: '便签把你们引向雾鸦巷17号。', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/未声明的地址/);
+    expect(validateNarratorSemantics({
+      narrative: '线索写着贝尔街47号，B仓。', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/未声明的地址|仓库编号/);
+    expect(validateNarratorSemantics({
+      narrative: '你从夹层里取得了3B钥匙。', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/未声明的物品/);
+    expect(validateNarratorSemantics({
+      narrative: '蒙特利尔其实是码头帮的人物。', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/未声明的组织身份/);
+    expect(validateNarratorSemantics({
+      narrative: '可靠线索指向贝尔街14号卡森其药店。', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toBeNull();
+  });
+
+  it('rejects premature rescue and departure claims unless an available event authorizes them', () => {
+    const opening = makeState({ currentScene: 'S01' });
+    expect(validateNarratorSemantics({
+      narrative: '埃里克已经获救，扶桑花号也驶离泊位。', nextPrompt: '', playerChoices: {}
+    }, [], opening, kb)).toMatch(/剧情结果/);
+
+    const finale = makeState({ currentScene: 'S05' });
+    finale.scenarioProgress = createScenarioProgress();
+    finale.scenarioProgress.beatStates.B01 = 'completed';
+    finale.scenarioProgress.beatStates.B02 = 'completed';
+    finale.scenarioProgress.beatStates.B05 = 'completed';
+    finale.scenarioProgress.beatStates.B06 = 'active';
+    finale.scenarioProgress.lastCheckOutcomes.CHECK_PERSUADE = 'success';
+
+    expect(validateNarratorSemantics({
+      narrative: '说服奏效，深潜者释放埃里克并同意和平离港。', nextPrompt: '', playerChoices: {}
+    }, [{ name: 'propose_story_event', arguments: { eventId: 'EV_NEGOTIATION_SUCCESS' } }], finale, kb))
+      .toBeNull();
+  });
+
+  it('accepts an authored address when event narration uses different surrounding words', () => {
+    const state = makeState({ currentScene: 'S03' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B04 = 'active';
+    state.scenarioProgress.variables.oldHethLead = true;
+
+    expect(validateNarratorSemantics({
+      narrative: '酒保压低声音：“老鼠在贝尔街14号活动，那里有一间废弃药店。”',
+      activeNpc: '老赫特之家酒保',
+      nextPrompt: '还要追问细节吗？',
+      playerChoices: {}
+    }, [{ name: 'propose_story_event', arguments: { eventId: 'EV_BARTENDER_RAT' } }], state, kb))
+      .toBeNull();
+  });
+
+  it('requires a discovery event to communicate its clue and named people', () => {
+    const state = makeState({ currentScene: 'S01' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'active';
+
+    const eventCall = [{ name: 'propose_story_event', arguments: { eventId: 'EV_FIND_I02' } }] as const;
+    expect(validateNarratorSemantics({
+      narrative: '墨水泼在文件上，你们没能看清任何有用内容。',
+      nextPrompt: '继续搜查吗？',
+      playerChoices: {}
+    }, [...eventCall], state, kb)).toMatch(/发现事件.*合影照片/);
+
+    expect(validateNarratorSemantics({
+      narrative: '即使墨水污染了文件，你们仍找到一张旧合影，照片上的埃里克正与蒙特利尔并肩站着。',
+      nextPrompt: '要核对照片背景吗？',
+      playerChoices: {}
+    }, [...eventCall], state, kb)).toBeNull();
+  });
+
   it('allows an authored NPC role to speak in its declared scene', () => {
     const state = makeState({ currentScene: 'S03', activeNpcName: '老赫特之家酒保' });
 

@@ -75,6 +75,7 @@ export interface DmContextStatic {
   scenarioTitle: string;
   era: string;
   rules: ScenarioRule[];
+  npcDirectory: Array<{ name: string; role: string; aliases: string[] }>;
 }
 
 export interface DmContextDynamic {
@@ -104,7 +105,7 @@ export interface DmContextDynamic {
     dmFacts: string[];
     knownFacts: string[];
     objectives: Array<{ id: string; text: string; status: string }>;
-    allowedEvents: Array<{ id: string; title: string }>;
+    allowedEvents: Array<{ id: string; title: string; narrativeCue: string }>;
     softEscalation: string | null;
   };
 }
@@ -327,7 +328,12 @@ export function buildDmContext(
       scenarioId: kb.scenarioId,
       scenarioTitle: kb.title,
       era: kb.era,
-      rules: kb.rules
+      rules: kb.rules,
+      npcDirectory: Object.values(kb.npcs).map((entry) => ({
+        name: entry.public.name,
+        role: entry.public.role,
+        aliases: [...(entry.public.aliases ?? [])]
+      }))
     },
     dynamic: {
       currentScene,
@@ -355,7 +361,11 @@ export function buildDmContext(
           text: objective.playerText,
           status: scenarioProgress.objectiveStates[objective.id]
         })),
-        allowedEvents: getAvailableStoryEvents(scenarioProgress, state.currentScene).map((event) => ({ id: event.id, title: event.title })),
+        allowedEvents: getAvailableStoryEvents(scenarioProgress, state.currentScene).map((event) => ({
+          id: event.id,
+          title: event.title,
+          narrativeCue: event.narrativeCue
+        })),
         softEscalation: activeBeat && scenarioProgress.idleTurns >= activeBeat.softEscalationAfter
           ? activeBeat.softPrompt
           : null

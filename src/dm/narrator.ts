@@ -67,6 +67,8 @@ const NARRATOR_SYSTEM_PROMPT_HEAD = `你是 COC 第七版 AI DM Agent，主持�
 - HP / SAN 等非主线数值可通过 propose_state_update 提议；前端校验后落地。
 - 检定由前端骰子决定：你只用 request_check 工具发起，不要自行判断成败。前端返回的检定结果是规则事实，不可改写。
 - 只能使用“可触发剧情事件”列表中的 eventId，不得自行编造事件或效果。
+- 人物姓名、别名、职业和身份以“权威公开人物目录”为准，不得擅自改变职业、所属组织或人物关系。
+- 没有对应剧情事件时，不得宣告人物获救、敌人被击败、船只离港或任何结局已经发生。
 - 切场景必须用 propose_scene_change，目标场景必须是当前场景的邻接场景。
 - 不得把知识库外的医院、仓库、教堂、洞穴等地点写成新的主场景；玩家提出未定义地点时，说明当前缺少可靠路线并留在原场景。
 - 玩家明确前往邻接场景时，叙事中不得先写“抵达/进入”却漏掉 propose_scene_change。
@@ -99,6 +101,13 @@ function formatRules(rules: DmContext['static']['rules']): string {
   return rules
     .map((r) => `- [${r.trigger}] ${r.id}：${r.description}`)
     .join('\n');
+}
+
+function formatNpcDirectory(directory: DmContext['static']['npcDirectory']): string {
+  if (!directory?.length) return '（无）';
+  return directory.map((npc) =>
+    `- ${npc.name}｜${npc.role}${npc.aliases.length ? `｜别名：${npc.aliases.join('、')}` : ''}`
+  ).join('\n');
 }
 
 function formatScene(scene: DmContext['dynamic']['currentScene']): string {
@@ -251,6 +260,7 @@ export function buildNarratorSystemPrompt(ctx: DmContext): string {
     NARRATOR_SYSTEM_PROMPT_HEAD,
     `# 模组\n《${ctx.static.scenarioTitle}》（${ctx.static.era}）`,
     `# 模组规则\n${formatRules(ctx.static.rules)}`,
+    `# 权威公开人物目录\n${formatNpcDirectory(ctx.static.npcDirectory)}`,
     `# 权威剧情状态
 世界时间：${scenarioState.worldTime}
 活动幕：${scenarioState.actTitle || '（无）'}
@@ -258,7 +268,9 @@ export function buildNarratorSystemPrompt(ctx: DmContext): string {
 当前节点 DM 事实：${scenarioState.dmFacts.join('；') || '（无）'}
 玩家已知事实：${scenarioState.knownFacts.join('；') || '（无）'}
 玩家目标：${scenarioState.objectives.map((item) => `${item.id}[${item.status}] ${item.text}`).join('；') || '（无）'}
-可触发剧情事件：${scenarioState.allowedEvents.map((item) => `${item.id} ${item.title}`).join('；') || '（无）'}
+可触发剧情事件：${scenarioState.allowedEvents.map((item) =>
+    `${item.id} ${item.title}｜叙事锚点：${item.narrativeCue}`
+  ).join('；') || '（无）'}
 空转升级：${scenarioState.softEscalation || '（无）'}`,
     `# 当前场景\n${formatScene(ctx.dynamic.currentScene)}`,
     `# 邻接可达场景\n${

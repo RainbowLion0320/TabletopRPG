@@ -10,7 +10,7 @@ import asset6 from '../../../../assets/avatars/eric.png';
 import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
 
-export const scenarioContentHash = "75b8bb187c4dace1";
+export const scenarioContentHash = "cf984fba4d854a2b";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -25,7 +25,7 @@ export const scenarioAssetUrls: Record<string, string> = {
 export const generatedScenarioModule = {
   "manifest": {
     "schemaVersion": 1,
-    "contentVersion": "1.0.0",
+    "contentVersion": "1.0.1",
     "id": "wuzhongxiaoshi",
     "title": "雾中消逝",
     "system": "COC 第七版风格 D100",
@@ -1207,7 +1207,7 @@ export const generatedScenarioModule = {
         ],
         "once": true,
         "playerVisible": true,
-        "narrativeCue": "加热显出隐写文字“卡森其·贝尔14”，同时强化了老赫特这一街区线索。"
+        "narrativeCue": "加热显出隐写文字“贝尔街14号卡森其药店”，同时强化了老赫特这一街区线索。"
       },
       {
         "id": "EV_FIND_I05",
@@ -2167,7 +2167,7 @@ export const generatedScenarioModule = {
           "subtitle": "失踪者",
           "importance": 5,
           "when": {
-            "factKnown": "F01"
+            "always": true
           }
         },
         {

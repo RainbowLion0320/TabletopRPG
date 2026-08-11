@@ -50,6 +50,7 @@ const recoveryEventIds = new Set(
   scenario.progression.beats.map((beat) => beat.recoveryEventId).filter(Boolean)
 );
 const declaredVariables = new Set(scenario.progression.variables.map((item) => item.id));
+const previousContentVersions = new Set(['1.0.0#75b8bb187c4dace1']);
 
 function statusRecord(ids: string[], activeId?: string): Record<string, ScenarioStepStatus> {
   return Object.fromEntries(ids.map((id) => [id, id === activeId ? 'active' : 'locked']));
@@ -201,6 +202,37 @@ function setStepStatus(
   if (id in record) record[id] = status;
 }
 
+function activateBeat(progress: ScenarioProgress, beatId: string): void {
+  const beat = beatsById.get(beatId);
+  if (!beat) return;
+  if (progress.beatStates[beatId] === 'locked') progress.beatStates[beatId] = 'active';
+  const objectiveIds = beat.kind === 'finale'
+    ? beat.objectiveIds.filter((id) => objectivesById.get(id)?.required)
+    : beat.objectiveIds;
+  for (const objectiveId of objectiveIds) {
+    if (progress.objectiveStates[objectiveId] === 'locked') {
+      progress.objectiveStates[objectiveId] = 'active';
+    }
+  }
+}
+
+function settleBeat(
+  progress: ScenarioProgress,
+  beatId: string,
+  status: Extract<ScenarioStepStatus, 'completed' | 'failed'>
+): void {
+  const beat = beatsById.get(beatId);
+  if (!beat) return;
+  progress.beatStates[beatId] = status;
+  for (const objectiveId of beat.objectiveIds) {
+    if (!objectivesById.get(objectiveId)?.required) continue;
+    const objectiveStatus = progress.objectiveStates[objectiveId];
+    if (objectiveStatus === 'locked' || objectiveStatus === 'active') {
+      progress.objectiveStates[objectiveId] = status;
+    }
+  }
+}
+
 function applyEffect(
   progress: ScenarioProgress,
   effect: Effect,
@@ -208,9 +240,9 @@ function applyEffect(
   actorName: string | undefined,
   random: () => number
 ): void {
-  if ('activateBeat' in effect) setStepStatus(progress.beatStates, effect.activateBeat, 'active');
-  else if ('completeBeat' in effect) setStepStatus(progress.beatStates, effect.completeBeat, 'completed');
-  else if ('failBeat' in effect) setStepStatus(progress.beatStates, effect.failBeat, 'failed');
+  if ('activateBeat' in effect) activateBeat(progress, effect.activateBeat);
+  else if ('completeBeat' in effect) settleBeat(progress, effect.completeBeat, 'completed');
+  else if ('failBeat' in effect) settleBeat(progress, effect.failBeat, 'failed');
   else if ('activateObjective' in effect) setStepStatus(progress.objectiveStates, effect.activateObjective, 'active');
   else if ('completeObjective' in effect) setStepStatus(progress.objectiveStates, effect.completeObjective, 'completed');
   else if ('failObjective' in effect) setStepStatus(progress.objectiveStates, effect.failObjective, 'failed');
@@ -268,14 +300,11 @@ function updateStructuralStates(progress: ScenarioProgress, currentScene: SceneI
     let changed = false;
     for (const beat of scenario.progression.beats) {
       if (progress.beatStates[beat.id] === 'locked' && evaluateScenarioCondition(beat.activation, progress, currentScene)) {
-        progress.beatStates[beat.id] = 'active';
-        for (const objectiveId of beat.objectiveIds) {
-          if (progress.objectiveStates[objectiveId] === 'locked') progress.objectiveStates[objectiveId] = 'active';
-        }
+        activateBeat(progress, beat.id);
         changed = true;
       }
       if (progress.beatStates[beat.id] === 'active' && evaluateScenarioCondition(beat.completion, progress, currentScene)) {
-        progress.beatStates[beat.id] = 'completed';
+        settleBeat(progress, beat.id, 'completed');
         changed = true;
       }
     }
@@ -293,7 +322,8 @@ function updateStructuralStates(progress: ScenarioProgress, currentScene: SceneI
 
 function eventIsAllowed(event: StoryEvent, progress: ScenarioProgress, currentScene: SceneId): boolean {
   const beat = beatsById.get(event.beatId);
-  if (!beat || progress.beatStates[event.beatId] !== 'active') return false;
+  const beatStatus = progress.beatStates[event.beatId];
+  if (!beat || (beatStatus !== 'active' && !(event.trigger === 'manual' && beatStatus === 'completed'))) return false;
   if (!beat.allowedEventIds.includes(event.id)) return false;
   if (event.once && progress.firedEventIds.includes(event.id)) return false;
   return evaluateScenarioCondition(event.when, progress, currentScene);
@@ -431,7 +461,15 @@ export function getAvailableStoryEvents(progress: ScenarioProgress, currentScene
 }
 
 export function getActiveScenarioBeat(progress: ScenarioProgress) {
-  return scenario.progression.beats.find((beat) => progress.beatStates[beat.id] === 'active') ?? null;
+  return scenario.progression.beats
+    .filter((beat) => progress.beatStates[beat.id] === 'active')
+    .sort((left, right) => {
+      const leftAct = scenario.progression.acts.find((act) => act.id === left.actId)?.order ?? 0;
+      const rightAct = scenario.progression.acts.find((act) => act.id === right.actId)?.order ?? 0;
+      if (leftAct !== rightAct) return rightAct - leftAct;
+      const kindPriority = { optional: 0, recovery: 1, mandatory: 2, finale: 3 } as const;
+      return kindPriority[right.kind] - kindPriority[left.kind];
+    })[0] ?? null;
 }
 
 export function getVisibleScenarioObjectives(progress: ScenarioProgress) {
@@ -513,14 +551,18 @@ export function hydrateScenarioProgress(
   if (raw.moduleId !== scenario.manifest.id) {
     throw new ScenarioContentMismatchError(`存档模组 ${String(raw.moduleId)} 与当前模组 ${scenario.manifest.id} 不匹配`);
   }
-  if (raw.moduleVersion !== scenario.manifest.contentVersion || raw.contentHash !== scenarioContentHash) {
+  const storedContentKey = `${String(raw.moduleVersion)}#${String(raw.contentHash)}`;
+  const currentContent = raw.moduleVersion === scenario.manifest.contentVersion
+    && raw.contentHash === scenarioContentHash;
+  const knownPreviousContent = previousContentVersions.has(storedContentKey);
+  if (!currentContent && !knownPreviousContent) {
     throw new ScenarioContentMismatchError(
       `存档内容 ${String(raw.moduleVersion)}#${String(raw.contentHash)} 没有到 ${scenario.manifest.contentVersion}#${scenarioContentHash} 的迁移函数`
     );
   }
   const base = createScenarioProgress();
   const source = raw as unknown as ScenarioProgress;
-  return {
+  const hydrated: ScenarioProgress = {
     ...base,
     ...source,
     beatStates: { ...base.beatStates, ...asRecord(source.beatStates) } as Record<string, ScenarioStepStatus>,
@@ -536,6 +578,21 @@ export function hydrateScenarioProgress(
     visitedSceneIds: unique(Array.isArray(source.visitedSceneIds) ? source.visitedSceneIds.filter((id): id is string => typeof id === 'string') : [legacy.currentScene]),
     migrationLog: Array.isArray(source.migrationLog) ? source.migrationLog.filter((item): item is string => typeof item === 'string') : []
   };
+  if (knownPreviousContent) {
+    hydrated.moduleVersion = scenario.manifest.contentVersion;
+    hydrated.contentHash = scenarioContentHash;
+    for (const beat of scenario.progression.beats) {
+      const status = hydrated.beatStates[beat.id];
+      if (status === 'active') activateBeat(hydrated, beat.id);
+      else if (status === 'completed' || status === 'failed') settleBeat(hydrated, beat.id, status);
+    }
+    if (hydrated.variables.finaleRoute === 'combat'
+      && hydrated.objectiveStates.O07 === 'locked') hydrated.objectiveStates.O07 = 'active';
+    if (hydrated.variables.finaleRoute === 'negotiation'
+      && hydrated.objectiveStates.O08 === 'locked') hydrated.objectiveStates.O08 = 'active';
+    hydrated.migrationLog.push('模组内容 1.0.0 -> 1.0.1：同步案件板曝光、目标状态与叙事锚点，保留既有剧情进度。');
+  }
+  return hydrated;
 }
 
 export function getScenarioProgressForState(state: {

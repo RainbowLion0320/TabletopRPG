@@ -136,7 +136,7 @@ storyEvents:
   - { id: EV_FIND_I01, beatId: B02, title: 发现便签, trigger: manual, when: { sceneIs: S01 }, effects: [{ discoverClue: I01 }], once: true, playerVisible: true, narrativeCue: 调查员发现写有“别来找我”的便签。 }
   - { id: EV_FIND_I02, beatId: B02, title: 发现合影, trigger: manual, when: { sceneIs: S01 }, effects: [{ discoverClue: I02 }, { revealFact: F05 }], once: true, playerVisible: true, narrativeCue: 合影把埃里克与蒙特利尔联系起来，警局成为合法调查方向。 }
   - { id: EV_FIND_I03, beatId: B02, title: 发现名片, trigger: manual, when: { sceneIs: S01 }, effects: [{ discoverClue: I03 }], once: true, playerVisible: true, narrativeCue: 调查员收起埃里克旧公司的名片。 }
-  - { id: EV_FIND_I04, beatId: B02, title: 破译小册子, trigger: manual, when: { sceneIs: S01 }, effects: [{ discoverClue: I04 }, { analyzeClue: I04 }, { revealFact: F06 }, { setVariable: oldHethLead, value: true }], once: true, playerVisible: true, narrativeCue: 加热显出隐写文字“卡森其·贝尔14”，同时强化了老赫特这一街区线索。 }
+  - { id: EV_FIND_I04, beatId: B02, title: 破译小册子, trigger: manual, when: { sceneIs: S01 }, effects: [{ discoverClue: I04 }, { analyzeClue: I04 }, { revealFact: F06 }, { setVariable: oldHethLead, value: true }], once: true, playerVisible: true, narrativeCue: 加热显出隐写文字“贝尔街14号卡森其药店”，同时强化了老赫特这一街区线索。 }
   - { id: EV_FIND_I05, beatId: B02, title: 发现粉末样品, trigger: manual, when: { sceneIs: S01 }, effects: [{ discoverClue: I05 }, { analyzeClue: I05 }, { revealFact: F07 }], once: true, playerVisible: true, narrativeCue: 医学分析确认暗格中的白色粉末是高纯度鸦片。 }
   - { id: EV_FIND_I06, beatId: B02, title: 发现报纸残片, trigger: manual, when: { sceneIs: S01 }, effects: [{ discoverClue: I06 }], once: true, playerVisible: true, narrativeCue: 报纸残片保留着蒙特利尔的扫毒英雄通稿，可与合影交叉比对。 }
   - id: EV_HOUSE_RECOVERY
