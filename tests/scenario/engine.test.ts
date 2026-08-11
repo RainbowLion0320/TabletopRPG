@@ -205,6 +205,7 @@ describe('scenario progression engine', () => {
     progress = apply(progress, 'S05', 5, { events: ['EV_CHOOSE_COMBAT'] }).progress;
     for (let turn = 6; turn <= 11; turn += 1) progress = apply(progress, 'S05', turn).progress;
     expect(progress.clocks.fusangEscape.value).toBe(7);
+    expect(progress.clocks.fusangEscape.active).toBe(false);
     expect(progress.endingId).toBe('END_B');
     expect(progress.encounters.ENC01.state).toBe('lost');
   });
@@ -274,11 +275,11 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: [], flags: {}, turn: 3
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.0');
+    expect(migrated.moduleVersion).toBe('1.1.1');
     expect(migrated.beatStates.B02).toBe('active');
     expect(migrated.objectiveStates.O01).toBe('completed');
     expect(migrated.objectiveStates.O02).toBe('active');
-    expect(migrated.migrationLog.at(-1)).toContain('1.0.0 -> 1.1.0');
+    expect(migrated.migrationLog.at(-1)).toContain('1.0.0 -> 1.1.1');
   });
 
   it('migrates the immediately previous scenario content version', () => {
@@ -292,13 +293,14 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: [], flags: {}, turn: 3
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.0');
+    expect(migrated.moduleVersion).toBe('1.1.1');
     expect(migrated.beatStates.B02).toBe('active');
-    expect(migrated.migrationLog.at(-1)).toContain('1.0.1 -> 1.1.0');
+    expect(migrated.migrationLog.at(-1)).toContain('1.0.1 -> 1.1.1');
   });
 
   it('migrates saves from the pre-fix 1.1.0 runtime', () => {
     const previous = createScenarioProgress();
+    previous.moduleVersion = '1.1.0';
     previous.contentHash = '2f9f28cd2a887698';
 
     const migrated = hydrateScenarioProgress(previous, {
@@ -306,7 +308,21 @@ describe('scenario progression engine', () => {
     });
 
     expect(migrated.contentHash).not.toBe(previous.contentHash);
-    expect(migrated.moduleVersion).toBe('1.1.0');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.0');
+    expect(migrated.moduleVersion).toBe('1.1.1');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.1');
+  });
+
+  it('migrates saves from the latest 1.1.0 runtime', () => {
+    const previous = createScenarioProgress();
+    previous.moduleVersion = '1.1.0';
+    previous.contentHash = '9aa4d2e09756fc0a';
+
+    const migrated = hydrateScenarioProgress(previous, {
+      currentScene: 'S05', clueIds: ['I04', 'I07'], flags: {}, turn: 12
+    });
+
+    expect(migrated.moduleVersion).toBe('1.1.1');
+    expect(migrated.contentHash).not.toBe(previous.contentHash);
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.1');
   });
 });

@@ -297,7 +297,7 @@ endings:
     title: 结局B：深潜者逃脱
     summary: 七轮时钟耗尽，扶桑花号载着深潜者和埃里克消失在泰晤士河浓雾中。
     when: { all: [{ variable: finaleRoute, op: eq, value: combat }, { clock: fusangEscape, op: gte, value: 7 }] }
-    effects: [{ resolveEncounter: ENC01, state: lost }, { setEnding: END_B }]
+    effects: [{ resolveEncounter: ENC01, state: lost }, { stopClock: fusangEscape }, { setEnding: END_B }]
     priority: 10
   - id: END_C
     title: 结局C：和平交涉

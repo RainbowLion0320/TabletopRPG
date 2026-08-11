@@ -10,7 +10,7 @@ import asset6 from '../../../../assets/avatars/eric.png';
 import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
 
-export const scenarioContentHash = "9aa4d2e09756fc0a";
+export const scenarioContentHash = "df77e2dcefd534f1";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -25,7 +25,7 @@ export const scenarioAssetUrls: Record<string, string> = {
 export const generatedScenarioModule = {
   "manifest": {
     "schemaVersion": 1,
-    "contentVersion": "1.1.0",
+    "contentVersion": "1.1.1",
     "id": "wuzhongxiaoshi",
     "title": "雾中消逝",
     "system": "COC 第七版风格 D100",
@@ -2025,6 +2025,9 @@ export const generatedScenarioModule = {
           {
             "resolveEncounter": "ENC01",
             "state": "lost"
+          },
+          {
+            "stopClock": "fusangEscape"
           },
           {
             "setEnding": "END_B"
