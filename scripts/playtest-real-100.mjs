@@ -219,12 +219,29 @@ async function resolveChecks(checks, context) {
       result: newSystemMessages.find((text) => /^检定结果[：:]/.test(text)) ?? null,
       resolution
     });
+    const recorded = checks.at(-1);
+    const threshold = Number(/阈值\s*(\d+)/.exec(request)?.[1]);
+    const roll = Number(/[（(](\d+)[）)]/.exec(recorded.result ?? '')?.[1]);
+    const failed = /(?:大)?失败/.test(recorded.result ?? '');
+    if (Number.isFinite(threshold) && Number.isFinite(roll)
+      && ((roll > threshold && !failed) || (roll <= threshold && failed && roll < 96))) {
+      reportIssue({
+        severity: 'P1',
+        turn: context.globalTurn,
+        run: context.run,
+        scene: context.scene,
+        observation: `检定结果与难度阈值矛盾：阈值 ${threshold}，掷出 ${roll}，结果为 ${recorded.result}`,
+        evidence: `run-metrics.json#turn-${context.globalTurn}`
+      }, `check-threshold-mismatch:${context.run}:${context.globalTurn}:${request}:${recorded.result}`);
+    }
     if (resolution === 'ending') break;
   }
   if (await page.locator('.check-card').isVisible().catch(() => false)) {
     throw new Error('同一正式回合连续检定超过6次，视为不可操作状态');
   }
-  const skills = checks.map((check) => check.request.match(/·\s*([^\s]+(?:（[^）]+）)?)/)?.[1] ?? check.request);
+  const skills = checks.map((check) =>
+    check.request.match(/·\s*(.+?)\s+(?:普通|困难|极难)难度/)?.[1] ?? check.request
+  );
   const repeatedSkill = skills.find((skill, index) => skills.indexOf(skill) !== index);
   if (repeatedSkill) {
     reportIssue({
@@ -437,6 +454,16 @@ try {
           observation: `战斗胜利时敌方结构化 HP 仍为 ${progress.encounters.ENC01.opponentHp}，胜利没有由遭遇状态支撑。`,
           evidence: `run-metrics.json#turn-${globalTurn}`
         }, `combat-win-positive-hp:${runNumber}`);
+      }
+      const activeEndingClocks = progress.endingId
+        ? Object.entries(progress.clocks ?? {}).filter(([, clock]) => clock.active).map(([id]) => id)
+        : [];
+      if (activeEndingClocks.length) {
+        reportIssue({
+          severity: 'P1', turn: globalTurn, run: runNumber, scene: sceneAfter,
+          observation: `进入结局后仍有活动时钟：${activeEndingClocks.join('、')}`,
+          evidence: `run-metrics.json#turn-${globalTurn}`
+        }, `active-clock-after-ending:${runNumber}:${activeEndingClocks.join(',')}`);
       }
       const completedBeatsWithOpenRequiredObjectives = Object.entries(progress.beatStates)
         .filter(([, status]) => status === 'completed')

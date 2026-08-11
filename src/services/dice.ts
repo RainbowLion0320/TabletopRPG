@@ -25,9 +25,13 @@ export function prepareCheck(check: CheckRequest, players: Investigator[]): Chec
 export function rollD100(check: CheckRequest): DiceResult {
   const roll = Math.floor(Math.random() * gameRules.dice.sides) + 1;
   const skillVal = check.skillVal ?? check.threshold ?? gameRules.skills.unknownSkillTotal;
+  const requiredThreshold = getDifficultyThreshold(skillVal, check.difficulty);
 
   if (isFumbleRoll(roll)) {
     return { roll, level: 'fumble', label: `大失败（${roll}）` };
+  }
+  if (roll > requiredThreshold) {
+    return { roll, level: 'fail', label: `失败（${roll}）` };
   }
   if (roll <= getDifficultyThreshold(skillVal, '极难')) {
     return { roll, level: 'crit', label: `极难成功（${roll}）` };
