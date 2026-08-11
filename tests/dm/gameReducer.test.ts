@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { gameReducer, hydrateGameState } from '../../src/state/gameReducer';
 import { createScenarioProgress } from '../../src/scenario/engine';
 import type { AiResponse, AtomicFact, EpisodicMemoryRecord, PersistedDMEvent, ProspectiveIntent } from '../../src/types/game';
@@ -16,6 +16,19 @@ describe('gameReducer start opening message', () => {
     expect(opening).not.toContain('。\n\n雨夜的伦敦');
     expect(opening.match(/\n\n/g)).toHaveLength(1);
     expect(opening).toContain('\n\n信中写道');
+  });
+
+  it('keeps message ids unique when time and randomness are identical', () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.01);
+    let state = makeState();
+
+    state = gameReducer(state, { type: 'appendMessage', message: { type: 'system', text: '第一条' } });
+    state = gameReducer(state, { type: 'appendMessage', message: { type: 'system', text: '第二条' } });
+
+    expect(new Set(state.messages.map((message) => message.id)).size).toBe(2);
+    now.mockRestore();
+    random.mockRestore();
   });
 });
 
@@ -48,6 +61,76 @@ describe('gameReducer applyAiResponse pendingConsequences merge', () => {
       raw: '{}'
     });
     expect(next.pendingCheck?.continuationActions).toEqual(continuationActions);
+  });
+
+  it('prepares authored scenario checks with the investigator skill threshold', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' }, { 聆听: 65 })],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'negotiation';
+
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: {
+        narrative: '你们开始辨认非人的声调。',
+        stateUpdate: { storyEventIds: ['EV_NEGOTIATION_LISTEN'] }
+      },
+      raw: '{}'
+    });
+
+    expect(next.pendingCheck).toEqual(expect.objectContaining({
+      scenarioCheckId: 'CHECK_LISTEN',
+      skillVal: 65,
+      threshold: 65
+    }));
+  });
+
+  it('clears a resolved check instead of leaving the rolled request active', () => {
+    const state = makeState({ players: [makeInvestigator({ name: '亨利' }, { 侦查: 60 })] });
+    state.pendingCheck = {
+      player: '亨利', skill: '侦查', difficulty: '普通', skillVal: 60, threshold: 60
+    };
+
+    const next = gameReducer(state, {
+      type: 'applyDiceResult',
+      result: { roll: 42, level: 'success', label: '普通成功（42）' }
+    });
+
+    expect(next.pendingCheck).toBeNull();
+  });
+
+  it('keeps the authored follow-up check after a successful listening roll', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' }, { 聆听: 65, 说服: 60 })],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'negotiation';
+    state.pendingCheck = {
+      scenarioCheckId: 'CHECK_LISTEN', player: '亨利', skill: '聆听', difficulty: '普通', skillVal: 65, threshold: 65
+    };
+
+    const next = gameReducer(state, {
+      type: 'applyDiceResult',
+      result: { roll: 30, level: 'hard', label: '困难成功（30）' }
+    });
+
+    expect(next.pendingCheck).toEqual(expect.objectContaining({
+      scenarioCheckId: 'CHECK_PERSUADE',
+      skill: '说服',
+      threshold: 30
+    }));
+    expect(next.scenarioProgress?.endingId).toBeNull();
   });
 
   it('moves every investigator location when together-mode scene state changes', () => {

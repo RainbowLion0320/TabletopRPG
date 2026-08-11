@@ -10,6 +10,8 @@ import {
   processScenarioTurn
 } from '../scenario/engine';
 import { normalizeNarrativeKeywordHints } from '../services/narrativeKeywords';
+import { prepareCheck } from '../services/dice';
+import { countCompletedGameTurns } from '../services/turns';
 import { allSkills } from '../data/skills';
 import { deriveInvestigatorStats, gameRules, resolveSkillBase } from '../data/gameRules';
 import {
@@ -58,9 +60,11 @@ export type GameAction =
 const scenarioDefinition = getScenarioDefinition();
 const initialMessage = scenarioDefinition.presentation.openingNarrative;
 const ACTION_LOG_LIMIT = 500;
+let messageIdSequence = 0;
 
 function id() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  messageIdSequence = (messageIdSequence + 1) % Number.MAX_SAFE_INTEGER;
+  return `${Date.now()}-${messageIdSequence.toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 function time() {
   return new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
@@ -1137,9 +1141,10 @@ function normalizeAiResponse(value: AiResponse, state: GameState): AiResponse {
     state.suggestions
   );
 
+  const normalizedCheck = normalizeCheck(response.check, state.players);
   const normalized: AiResponse = {
     narrative: typeof response.narrative === 'string' ? response.narrative : undefined,
-    check: normalizeCheck(response.check, state.players),
+    check: normalizedCheck ? prepareCheck(normalizedCheck, state.players) : null,
     stateUpdate: {
       hp: normalizeStatUpdate(stateUpdate.hp),
       san: normalizeStatUpdate(stateUpdate.san),
@@ -1242,7 +1247,7 @@ export function hydrateGameState(value: unknown): GameState {
     currentScene,
     clueIds: normalizeClues(source.clues).map((clue) => clue.id),
     flags: isRecord(source.flags) ? source.flags : {},
-    turn: history.filter((turn) => turn.role === 'user').length
+    turn: countCompletedGameTurns(history)
   });
   const persistedNpcName = typeof source.activeNpcId === 'string'
     ? npcNameFromId(source.activeNpcId)
@@ -1260,7 +1265,10 @@ export function hydrateGameState(value: unknown): GameState {
       : 0,
     playerLocations,
     declarations: normalizeDeclarations(source.declarations, players),
-    pendingCheck: normalizeCheck(source.pendingCheck, players),
+    pendingCheck: (() => {
+      const check = normalizeCheck(source.pendingCheck, players);
+      return check ? prepareCheck(check, players) : null;
+    })(),
     currentScene,
     activeNpcId: npcIdFromName(activeNpcName),
     activeNpcName,
@@ -1351,7 +1359,9 @@ function applyScenarioTransition(
     flags: rewardFlags,
     clues: appendNewClues(state.clues, discoveredIds),
     scenarioProgress: transition.progress,
-    pendingCheck: transition.requestedCheck ?? state.pendingCheck
+    pendingCheck: transition.requestedCheck
+      ? prepareCheck(transition.requestedCheck, state.players)
+      : state.pendingCheck
   };
   for (const cue of transition.narrativeCues) {
     next = addMessage(next, { type: 'system', text: cue });
@@ -1462,14 +1472,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case 'addLog':
       return addLog(state, action.text);
     case 'applyDiceResult': {
-      let next = addMessage(addLog(state, `检定结果：${action.result.roll} · ${action.result.label}`), {
+      let next = addMessage(addLog({ ...state, pendingCheck: null }, `检定结果：${action.result.roll} · ${action.result.label}`), {
         type: 'system',
         text: `检定结果：${action.result.label}`
       });
       if (state.pendingCheck?.scenarioCheckId) {
         next = applyScenarioTransition(next, processScenarioTurn(getScenarioProgressForState(state), {
           currentScene: state.currentScene,
-          turn: state.conversationHistory.filter((turn) => turn.role === 'user').length,
+          turn: countCompletedGameTurns(state.conversationHistory),
           completeTurn: false,
           actorName: state.pendingCheck.player,
           checkResult: { id: state.pendingCheck.scenarioCheckId, outcome: action.result.level }
@@ -1537,7 +1547,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         currentScene,
         previousScene: sceneChange ? state.currentScene : undefined,
         storyEventIds: response.stateUpdate?.storyEventIds,
-        turn: state.conversationHistory.filter((turn) => turn.role === 'user').length,
+        turn: countCompletedGameTurns(state.conversationHistory),
         completeTurn: !response.check,
         actorName: state.players[state.currentActorIndex]?.name
       });

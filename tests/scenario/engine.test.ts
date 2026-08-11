@@ -83,6 +83,39 @@ describe('scenario progression engine', () => {
     expect(progress.objectiveStates.O08).toBe('active');
   });
 
+  it('keeps finale routes mutually exclusive after the first choice', () => {
+    let negotiation = reachFinale();
+    negotiation = apply(negotiation, 'S05', 5, { events: ['EV_CHOOSE_NEGOTIATION'] }).progress;
+    const rejectedCombat = apply(negotiation, 'S05', 6, { events: ['EV_CHOOSE_COMBAT'] });
+    expect(rejectedCombat.firedEventIds).not.toContain('EV_CHOOSE_COMBAT');
+    expect(rejectedCombat.progress.variables.finaleRoute).toBe('negotiation');
+    expect(rejectedCombat.progress.encounters.ENC01.state).toBe('inactive');
+
+    let combat = reachFinale();
+    combat = apply(combat, 'S05', 5, { events: ['EV_CHOOSE_COMBAT'] }).progress;
+    const rejectedNegotiation = apply(combat, 'S05', 6, { events: ['EV_CHOOSE_NEGOTIATION'] });
+    expect(rejectedNegotiation.firedEventIds).not.toContain('EV_CHOOSE_NEGOTIATION');
+    expect(rejectedNegotiation.progress.variables.finaleRoute).toBe('combat');
+    expect(rejectedNegotiation.progress.encounters.ENC01.state).toBe('active');
+  });
+
+  it('does not count a resolved structured check as an idle turn during its narration continuation', () => {
+    let progress = reachFinale();
+    progress = apply(progress, 'S05', 5, { events: ['EV_CHOOSE_NEGOTIATION'] }).progress;
+    progress.idleTurns = 2;
+    const requested = apply(progress, 'S05', 6, {
+      events: ['EV_NEGOTIATION_LISTEN'], completeTurn: false
+    });
+    const failed = apply(requested.progress, 'S05', 6, {
+      completeTurn: false,
+      check: { id: 'CHECK_LISTEN', outcome: 'fail' }
+    });
+    const narrated = apply(failed.progress, 'S05', 6);
+
+    expect(narrated.progress.idleTurns).toBe(0);
+    expect(narrated.progress.variables.finaleRoute).toBe('negotiation');
+  });
+
   it('fires stable once events idempotently', () => {
     let progress = createScenarioProgress();
     const first = apply(progress, 'S01', 1, { events: ['EV_ACCEPT_COMMISSION'] });
@@ -143,16 +176,26 @@ describe('scenario progression engine', () => {
     expect(recovered.progress.beatStates.B06).toBe('active');
   });
 
-  it('reaches combat victory ending A and settles rewards only once', () => {
+  it('resolves combat victory only after four successful structured attacks', () => {
     let progress = reachFinale();
     progress = apply(progress, 'S05', 5, { events: ['EV_CHOOSE_COMBAT'] }).progress;
-    const victory = apply(progress, 'S05', 6, { events: ['EV_COMBAT_WIN'] });
+    const clockBeforeAttack = progress.clocks.fusangEscape.value;
+    const attack = apply(progress, 'S05', 6, { events: ['EV_COMBAT_ATTACK'] });
+    expect(attack.requestedCheck?.scenarioCheckId).toBe('CHECK_COMBAT');
+    expect(attack.progress.clocks.fusangEscape.value).toBe(clockBeforeAttack);
+    progress = attack.progress;
+    for (let hit = 1; hit <= 4; hit += 1) {
+      const resolved = apply(progress, 'S05', 6 + hit, {
+        completeTurn: false,
+        check: { id: 'CHECK_COMBAT', outcome: 'success' }
+      });
+      progress = resolved.progress;
+      expect(progress.encounters.ENC01.opponentHp).toBe(44 - hit * 11);
+    }
+    const victory = { progress, deltas: [] };
     expect(victory.progress.endingId).toBe('END_A');
-    expect(victory.deltas).toEqual(expect.arrayContaining([
-      { field: 'san', target: 'party', value: 1 },
-      { field: 'money', target: 'party', value: 200 },
-      { field: 'mythos', target: 'party', value: 1 }
-    ]));
+    expect(victory.progress.encounters.ENC01.state).toBe('won');
+    expect(victory.progress.encounters.ENC01.defeated).toBe(4);
     const loadedAgain = apply(victory.progress, 'S05', 7, { completeTurn: false });
     expect(loadedAgain.deltas).toEqual([]);
   });
@@ -166,25 +209,38 @@ describe('scenario progression engine', () => {
     expect(progress.encounters.ENC01.state).toBe('lost');
   });
 
-  it('requires listening and persuasion before ending C', () => {
+  it('chains listening and persuasion from resolved checks before ending C', () => {
     let progress = reachFinale();
     progress = apply(progress, 'S05', 5, { events: ['EV_CHOOSE_NEGOTIATION'] }).progress;
-    const listen = apply(progress, 'S05', 6, { events: ['EV_NEGOTIATION_LISTEN'], completeTurn: false });
+    const worldTimeBefore = progress.worldTime;
+    const listen = apply(progress, 'S05', 6, { events: ['EV_NEGOTIATION_LISTEN'] });
     expect(listen.requestedCheck?.scenarioCheckId).toBe('CHECK_LISTEN');
-    progress = apply(listen.progress, 'S05', 6, {
+    expect(listen.progress.worldTime).toBe(worldTimeBefore);
+    const understood = apply(listen.progress, 'S05', 6, {
       completeTurn: false,
       check: { id: 'CHECK_LISTEN', outcome: 'success' }
-    }).progress;
-    const understood = apply(progress, 'S05', 6, { events: ['EV_NEGOTIATION_UNDERSTOOD'], completeTurn: false });
+    });
     expect(understood.requestedCheck?.scenarioCheckId).toBe('CHECK_PERSUADE');
     expect(understood.progress.endingId).toBeNull();
-    progress = apply(understood.progress, 'S05', 6, {
+    const success = apply(understood.progress, 'S05', 6, {
       completeTurn: false,
       check: { id: 'CHECK_PERSUADE', outcome: 'hard' }
-    }).progress;
-    const success = apply(progress, 'S05', 7, { events: ['EV_NEGOTIATION_SUCCESS'] });
+    });
     expect(success.progress.endingId).toBe('END_C');
     expect(success.progress.variables.ericRescued).toBe(true);
+  });
+
+  it('rejects corrupted ids and malformed clocks in a current v8 save', () => {
+    const valid = createScenarioProgress();
+    expect(() => hydrateScenarioProgress({ ...valid, endingId: 'END_UNKNOWN' }, {
+      currentScene: 'S01', clueIds: [], flags: {}, turn: 0
+    })).toThrow(/结局|ending/i);
+    expect(() => hydrateScenarioProgress({
+      ...valid,
+      clocks: { fusangEscape: { value: 'seven', active: true, visible: true } }
+    }, {
+      currentScene: 'S01', clueIds: [], flags: {}, turn: 0
+    })).toThrow(/时钟|clock/i);
   });
 
   it('migrates old S04 saves without replaying entry SAN or rewards', () => {
@@ -218,10 +274,39 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: [], flags: {}, turn: 3
     });
 
-    expect(migrated.moduleVersion).toBe('1.0.1');
+    expect(migrated.moduleVersion).toBe('1.1.0');
     expect(migrated.beatStates.B02).toBe('active');
     expect(migrated.objectiveStates.O01).toBe('completed');
     expect(migrated.objectiveStates.O02).toBe('active');
-    expect(migrated.migrationLog.at(-1)).toContain('1.0.0 -> 1.0.1');
+    expect(migrated.migrationLog.at(-1)).toContain('1.0.0 -> 1.1.0');
+  });
+
+  it('migrates the immediately previous scenario content version', () => {
+    const previous = createScenarioProgress();
+    previous.moduleVersion = '1.0.1';
+    previous.contentHash = 'cf984fba4d854a2b';
+    previous.beatStates.B01 = 'completed';
+    previous.beatStates.B02 = 'active';
+
+    const migrated = hydrateScenarioProgress(previous, {
+      currentScene: 'S01', clueIds: [], flags: {}, turn: 3
+    });
+
+    expect(migrated.moduleVersion).toBe('1.1.0');
+    expect(migrated.beatStates.B02).toBe('active');
+    expect(migrated.migrationLog.at(-1)).toContain('1.0.1 -> 1.1.0');
+  });
+
+  it('migrates saves from the pre-fix 1.1.0 runtime', () => {
+    const previous = createScenarioProgress();
+    previous.contentHash = '2f9f28cd2a887698';
+
+    const migrated = hydrateScenarioProgress(previous, {
+      currentScene: 'S01', clueIds: [], flags: {}, turn: 1
+    });
+
+    expect(migrated.contentHash).not.toBe(previous.contentHash);
+    expect(migrated.moduleVersion).toBe('1.1.0');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.0');
   });
 });

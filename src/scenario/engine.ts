@@ -12,6 +12,7 @@ import {
   generatedScenarioModule as scenario,
   scenarioContentHash
 } from '../data/scenarios/wuzhongxiaoshi/runtime.generated';
+import { countCompletedGameTurns } from '../services/turns';
 
 export interface ScenarioEffectDelta {
   field: 'hp' | 'san' | 'money' | 'mythos';
@@ -50,7 +51,35 @@ const recoveryEventIds = new Set(
   scenario.progression.beats.map((beat) => beat.recoveryEventId).filter(Boolean)
 );
 const declaredVariables = new Set(scenario.progression.variables.map((item) => item.id));
-const previousContentVersions = new Set(['1.0.0#75b8bb187c4dace1']);
+const variableTypes = new Map(scenario.progression.variables.map((item) => [item.id, item.type]));
+const actIds = new Set(scenario.progression.acts.map((item) => item.id));
+const beatIds = new Set(scenario.progression.beats.map((item) => item.id));
+const objectiveIds = new Set(scenario.progression.objectives.map((item) => item.id));
+const factIds = new Set(scenario.world.facts.map((item) => item.id));
+const clueIds = new Set(scenario.world.items.map((item) => item.id));
+const sceneIds = new Set(scenario.world.scenes.map((item) => item.id));
+const eventIds = new Set(scenario.progression.storyEvents.map((item) => item.id));
+const endingIds = new Set(scenario.progression.endings.map((item) => item.id));
+const encounterIds = new Set(scenario.world.encounters.map((item) => item.id));
+const allEffects = [
+  ...scenario.progression.storyEvents.flatMap((item) => item.effects),
+  ...scenario.progression.endings.flatMap((item) => item.effects),
+  ...scenario.rules.entries.flatMap((item) => item.effects)
+];
+const clockIds = new Set(allEffects.flatMap((effect) => {
+  if ('startClock' in effect) return [effect.startClock];
+  if ('tickClock' in effect) return [effect.tickClock];
+  if ('stopClock' in effect) return [effect.stopClock];
+  return [];
+}));
+const checkIds = new Set(allEffects.flatMap((effect) =>
+  'requestCheck' in effect ? [effect.requestCheck] : []
+));
+const previousContentVersions = new Set([
+  '1.0.0#75b8bb187c4dace1',
+  '1.0.1#cf984fba4d854a2b',
+  '1.1.0#2f9f28cd2a887698'
+]);
 
 function statusRecord(ids: string[], activeId?: string): Record<string, ScenarioStepStatus> {
   return Object.fromEntries(ids.map((id) => [id, id === activeId ? 'active' : 'locked']));
@@ -115,7 +144,13 @@ export function evaluateScenarioCondition(
     if (condition.outcome === 'success') return actual === 'crit' || actual === 'hard' || actual === 'success';
     return actual === condition.outcome;
   }
-  if ('encounter' in condition) return (progress.encounters[condition.encounter]?.state ?? 'inactive') === condition.state;
+  if ('encounter' in condition) {
+    const encounter = progress.encounters[condition.encounter];
+    if ('field' in condition) {
+      return compare(encounter?.[condition.field] ?? 0, condition.op, condition.value);
+    }
+    return (encounter?.state ?? 'inactive') === condition.state;
+  }
   return false;
 }
 
@@ -323,10 +358,19 @@ function updateStructuralStates(progress: ScenarioProgress, currentScene: SceneI
 function eventIsAllowed(event: StoryEvent, progress: ScenarioProgress, currentScene: SceneId): boolean {
   const beat = beatsById.get(event.beatId);
   const beatStatus = progress.beatStates[event.beatId];
-  if (!beat || (beatStatus !== 'active' && !(event.trigger === 'manual' && beatStatus === 'completed'))) return false;
+  const canSettleAfterBeat = beatStatus === 'completed'
+    && ((event.trigger === 'manual') || (event.trigger === 'automatic' && event.once));
+  if (!beat || (beatStatus !== 'active' && !canSettleAfterBeat)) return false;
   if (!beat.allowedEventIds.includes(event.id)) return false;
   if (event.once && progress.firedEventIds.includes(event.id)) return false;
   return evaluateScenarioCondition(event.when, progress, currentScene);
+}
+
+function conditionReferencesCheck(condition: Condition, checkId: string): boolean {
+  if ('all' in condition) return condition.all.some((item) => conditionReferencesCheck(item, checkId));
+  if ('any' in condition) return condition.any.some((item) => conditionReferencesCheck(item, checkId));
+  if ('not' in condition) return conditionReferencesCheck(condition.not, checkId);
+  return 'check' in condition && condition.check === checkId;
 }
 
 function fireEvent(
@@ -402,12 +446,20 @@ export function processScenarioTurn(
   }
   if (options.checkResult) {
     for (const event of scenario.progression.storyEvents) {
-      if (event.trigger === 'checkResolved') fireEvent(event, result, options);
+      if (event.trigger === 'checkResolved'
+        && conditionReferencesCheck(event.when, options.checkResult.id)) {
+        fireEvent(event, result, options);
+      }
     }
   }
   runAutomaticEvents(result, options);
 
-  if (options.completeTurn) {
+  const madeProgressThisPass = result.firedEventIds.length > 0
+    || Boolean(options.previousScene && options.previousScene !== options.currentScene)
+    || Boolean(options.checkResult);
+  if (madeProgressThisPass) progress.lastProgressTurn = options.turn;
+
+  if (options.completeTurn && !result.requestedCheck) {
     for (const rule of scenario.rules.entries) {
       if (rule.support !== 'enforced' || rule.trigger !== 'afterAction') continue;
       if (!evaluateScenarioCondition(rule.when, progress, options.currentScene)) continue;
@@ -416,11 +468,9 @@ export function processScenarioTurn(
     for (const event of scenario.progression.storyEvents) {
       if (event.trigger === 'turnEnd') fireEvent(event, result, options);
     }
-    const madeProgress = result.firedEventIds.length > 0
-      || Boolean(options.previousScene && options.previousScene !== options.currentScene)
-      || Boolean(options.checkResult);
+    const madeProgress = madeProgressThisPass
+      || (options.turn > 0 && progress.lastProgressTurn === options.turn);
     progress.idleTurns = madeProgress ? 0 : progress.idleTurns + 1;
-    if (madeProgress) progress.lastProgressTurn = options.turn;
 
     const activeMandatory = scenario.progression.beats.find((beat) =>
       progress.beatStates[beat.id] === 'active' && (beat.kind === 'mandatory' || beat.kind === 'finale')
@@ -542,6 +592,139 @@ export function migrateLegacyScenarioProgress(input: {
   return progress;
 }
 
+const STEP_STATUSES = new Set<ScenarioStepStatus>(['locked', 'active', 'completed', 'failed']);
+const CLUE_STATUSES = new Set<ScenarioClueStatus>(['unknown', 'discovered', 'analyzed', 'destroyed']);
+const CHECK_OUTCOMES = new Set<DiceResult['level']>(['crit', 'hard', 'success', 'fail', 'fumble']);
+const ENCOUNTER_STATES = new Set<ScenarioEncounterState['state']>([
+  'inactive', 'active', 'won', 'lost', 'resolved'
+]);
+
+function invalidScenarioState(field: string, detail: string): never {
+  throw new ScenarioContentMismatchError(`存档剧情状态 ${field} 无效：${detail}`);
+}
+
+function strictRecord(value: unknown, field: string): Record<string, unknown> {
+  if (value === undefined || value === null) return {};
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    invalidScenarioState(field, '应为对象');
+  }
+  return value as Record<string, unknown>;
+}
+
+function knownIdList(value: unknown, allowed: ReadonlySet<string>, field: string): string[] {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value)) invalidScenarioState(field, '应为 ID 数组');
+  const out: string[] = [];
+  for (const item of value) {
+    if (typeof item !== 'string' || !allowed.has(item)) {
+      invalidScenarioState(field, `未知 ID ${String(item)}`);
+    }
+    out.push(item);
+  }
+  return unique(out);
+}
+
+function statusMap<T extends string>(
+  value: unknown,
+  base: Record<string, T>,
+  allowedIds: ReadonlySet<string>,
+  allowedValues: ReadonlySet<T>,
+  field: string
+): Record<string, T> {
+  const source = strictRecord(value, field);
+  const out = { ...base };
+  for (const [id, status] of Object.entries(source)) {
+    if (!allowedIds.has(id)) invalidScenarioState(field, `未知 ID ${id}`);
+    if (typeof status !== 'string' || !allowedValues.has(status as T)) {
+      invalidScenarioState(`${field}.${id}`, `未知状态 ${String(status)}`);
+    }
+    out[id] = status as T;
+  }
+  return out;
+}
+
+function storedVariables(value: unknown, base: ScenarioProgress['variables']): ScenarioProgress['variables'] {
+  const source = strictRecord(value, 'variables');
+  const out = { ...base };
+  for (const [id, variableValue] of Object.entries(source)) {
+    const expectedType = variableTypes.get(id);
+    if (!expectedType) invalidScenarioState('variables', `未知变量 ${id}`);
+    if (typeof variableValue !== expectedType) {
+      invalidScenarioState(`variables.${id}`, `预期 ${expectedType}，实际 ${typeof variableValue}`);
+    }
+    out[id] = variableValue as string | number | boolean;
+  }
+  return out;
+}
+
+function storedClocks(value: unknown): ScenarioProgress['clocks'] {
+  const source = strictRecord(value, 'clocks');
+  const out: ScenarioProgress['clocks'] = {};
+  for (const [id, rawClock] of Object.entries(source)) {
+    if (!clockIds.has(id)) invalidScenarioState('clocks', `未知时钟 ${id}`);
+    const clock = strictRecord(rawClock, `clocks.${id}`);
+    if (typeof clock.value !== 'number' || !Number.isFinite(clock.value)) {
+      invalidScenarioState(`clocks.${id}`, '时钟 value 必须是有限数字');
+    }
+    if (typeof clock.active !== 'boolean' || typeof clock.visible !== 'boolean') {
+      invalidScenarioState(`clocks.${id}`, 'active/visible 必须是布尔值');
+    }
+    out[id] = { value: clock.value, active: clock.active, visible: clock.visible };
+  }
+  return out;
+}
+
+function storedEncounters(
+  value: unknown,
+  base: ScenarioProgress['encounters']
+): ScenarioProgress['encounters'] {
+  const source = strictRecord(value, 'encounters');
+  const out = Object.fromEntries(Object.entries(base).map(([id, encounter]) => [id, { ...encounter }]));
+  for (const [id, rawEncounter] of Object.entries(source)) {
+    if (!encounterIds.has(id)) invalidScenarioState('encounters', `未知遭遇 ${id}`);
+    const encounter = strictRecord(rawEncounter, `encounters.${id}`);
+    const state = encounter.state;
+    if (typeof state !== 'string' || !ENCOUNTER_STATES.has(state as ScenarioEncounterState['state'])) {
+      invalidScenarioState(`encounters.${id}.state`, String(state));
+    }
+    const numericFields = ['round', 'defeated', 'opponentHp'] as const;
+    for (const field of numericFields) {
+      if (typeof encounter[field] !== 'number' || !Number.isFinite(encounter[field]) || encounter[field] < 0) {
+        invalidScenarioState(`encounters.${id}.${field}`, String(encounter[field]));
+      }
+    }
+    out[id] = {
+      state: state as ScenarioEncounterState['state'],
+      round: encounter.round as number,
+      defeated: encounter.defeated as number,
+      opponentHp: encounter.opponentHp as number,
+      ...(typeof encounter.route === 'string' && encounter.route ? { route: encounter.route } : {})
+    };
+  }
+  return out;
+}
+
+function storedCheckOutcomes(value: unknown): ScenarioProgress['lastCheckOutcomes'] {
+  const source = strictRecord(value, 'lastCheckOutcomes');
+  const out: ScenarioProgress['lastCheckOutcomes'] = {};
+  for (const [id, outcome] of Object.entries(source)) {
+    if (!checkIds.has(id)) invalidScenarioState('lastCheckOutcomes', `未知检定 ${id}`);
+    if (typeof outcome !== 'string' || !CHECK_OUTCOMES.has(outcome as DiceResult['level'])) {
+      invalidScenarioState(`lastCheckOutcomes.${id}`, String(outcome));
+    }
+    out[id] = outcome as DiceResult['level'];
+  }
+  return out;
+}
+
+function nonNegativeInteger(value: unknown, fallback: number, field: string): number {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+    invalidScenarioState(field, String(value));
+  }
+  return value;
+}
+
 export function hydrateScenarioProgress(
   value: unknown,
   legacy: Parameters<typeof migrateLegacyScenarioProgress>[0]
@@ -562,25 +745,44 @@ export function hydrateScenarioProgress(
   }
   const base = createScenarioProgress();
   const source = raw as unknown as ScenarioProgress;
+  const worldTime = source.worldTime ?? base.worldTime;
+  if (typeof worldTime !== 'string' || !Number.isFinite(parseWorldTime(worldTime))) {
+    invalidScenarioState('worldTime', String(worldTime));
+  }
+  const activeActId = source.activeActId ?? base.activeActId;
+  if (typeof activeActId !== 'string' || !actIds.has(activeActId)) {
+    invalidScenarioState('activeActId', String(activeActId));
+  }
+  const endingId = source.endingId ?? null;
+  if (endingId !== null && (typeof endingId !== 'string' || !endingIds.has(endingId))) {
+    invalidScenarioState('endingId', `未知结局 ${String(endingId)}`);
+  }
   const hydrated: ScenarioProgress = {
     ...base,
-    ...source,
-    beatStates: { ...base.beatStates, ...asRecord(source.beatStates) } as Record<string, ScenarioStepStatus>,
-    objectiveStates: { ...base.objectiveStates, ...asRecord(source.objectiveStates) } as Record<string, ScenarioStepStatus>,
-    clueStates: { ...base.clueStates, ...asRecord(source.clueStates) } as Record<string, ScenarioClueStatus>,
-    variables: { ...base.variables, ...asRecord(source.variables) } as Record<string, string | number | boolean>,
-    clocks: { ...base.clocks, ...asRecord(source.clocks) } as ScenarioProgress['clocks'],
-    encounters: { ...base.encounters, ...asRecord(source.encounters) } as ScenarioProgress['encounters'],
-    lastCheckOutcomes: { ...asRecord(source.lastCheckOutcomes) } as ScenarioProgress['lastCheckOutcomes'],
-    knownFactIds: unique(Array.isArray(source.knownFactIds) ? source.knownFactIds.filter((id): id is string => typeof id === 'string') : []),
-    firedEventIds: unique(Array.isArray(source.firedEventIds) ? source.firedEventIds.filter((id): id is string => typeof id === 'string') : []),
-    settledEndingIds: unique(Array.isArray(source.settledEndingIds) ? source.settledEndingIds.filter((id): id is string => typeof id === 'string') : []),
-    visitedSceneIds: unique(Array.isArray(source.visitedSceneIds) ? source.visitedSceneIds.filter((id): id is string => typeof id === 'string') : [legacy.currentScene]),
-    migrationLog: Array.isArray(source.migrationLog) ? source.migrationLog.filter((item): item is string => typeof item === 'string') : []
+    moduleId: scenario.manifest.id,
+    moduleVersion: scenario.manifest.contentVersion,
+    contentHash: scenarioContentHash,
+    worldTime,
+    activeActId,
+    beatStates: statusMap(source.beatStates, base.beatStates, beatIds, STEP_STATUSES, 'beatStates'),
+    objectiveStates: statusMap(source.objectiveStates, base.objectiveStates, objectiveIds, STEP_STATUSES, 'objectiveStates'),
+    knownFactIds: knownIdList(source.knownFactIds, factIds, 'knownFactIds'),
+    clueStates: statusMap(source.clueStates, base.clueStates, clueIds, CLUE_STATUSES, 'clueStates'),
+    firedEventIds: knownIdList(source.firedEventIds, eventIds, 'firedEventIds'),
+    settledEndingIds: knownIdList(source.settledEndingIds, endingIds, 'settledEndingIds'),
+    variables: storedVariables(source.variables, base.variables),
+    clocks: storedClocks(source.clocks),
+    encounters: storedEncounters(source.encounters, base.encounters),
+    lastCheckOutcomes: storedCheckOutcomes(source.lastCheckOutcomes),
+    visitedSceneIds: knownIdList(source.visitedSceneIds ?? [legacy.currentScene], sceneIds, 'visitedSceneIds'),
+    lastProgressTurn: nonNegativeInteger(source.lastProgressTurn, 0, 'lastProgressTurn'),
+    idleTurns: nonNegativeInteger(source.idleTurns, 0, 'idleTurns'),
+    endingId,
+    migrationLog: Array.isArray(source.migrationLog)
+      ? source.migrationLog.filter((item): item is string => typeof item === 'string')
+      : []
   };
   if (knownPreviousContent) {
-    hydrated.moduleVersion = scenario.manifest.contentVersion;
-    hydrated.contentHash = scenarioContentHash;
     for (const beat of scenario.progression.beats) {
       const status = hydrated.beatStates[beat.id];
       if (status === 'active') activateBeat(hydrated, beat.id);
@@ -590,7 +792,9 @@ export function hydrateScenarioProgress(
       && hydrated.objectiveStates.O07 === 'locked') hydrated.objectiveStates.O07 = 'active';
     if (hydrated.variables.finaleRoute === 'negotiation'
       && hydrated.objectiveStates.O08 === 'locked') hydrated.objectiveStates.O08 = 'active';
-    hydrated.migrationLog.push('模组内容 1.0.0 -> 1.0.1：同步案件板曝光、目标状态与叙事锚点，保留既有剧情进度。');
+    hydrated.migrationLog.push(
+      `模组内容 ${String(raw.moduleVersion)} -> ${scenario.manifest.contentVersion}：同步规则、目标状态与终幕检定，保留既有剧情进度。`
+    );
   }
   return hydrated;
 }
@@ -600,14 +804,14 @@ export function getScenarioProgressForState(state: {
   currentScene: SceneId;
   clues?: Array<{ id: string }>;
   flags?: Record<string, unknown>;
-  conversationHistory?: Array<{ role: string }>;
+  conversationHistory?: Array<{ role: string; content?: unknown }>;
 }): ScenarioProgress {
   if (state.scenarioProgress) return state.scenarioProgress;
   return migrateLegacyScenarioProgress({
     currentScene: state.currentScene,
     clueIds: (state.clues ?? []).map((clue) => clue.id),
     flags: state.flags ?? {},
-    turn: (state.conversationHistory ?? []).filter((turn) => turn.role === 'user').length
+    turn: countCompletedGameTurns(state.conversationHistory ?? [])
   });
 }
 

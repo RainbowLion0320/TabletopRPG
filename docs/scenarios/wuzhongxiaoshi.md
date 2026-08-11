@@ -2,8 +2,8 @@
 # 《雾中消逝》KP 模组手册
 
 - 模组 ID：`wuzhongxiaoshi`
-- 内容版本：`1.0.1`
-- 内容哈希：`cf984fba4d854a2b`
+- 内容版本：`1.1.0`
+- 内容哈希：`9aa4d2e09756fc0a`
 - 规则：COC 第七版风格 D100
 - 时间：1920年7月13日，英国伦敦
 - 作者：舒爾茲上尉
@@ -127,10 +127,12 @@ flowchart LR
 - **EV_CHOOSE_COMBAT 选择战斗路线** [manual/once]：调查员以武力阻止深潜者，扶桑花号逃脱时钟开始计数。
 - **EV_CHOOSE_NEGOTIATION 选择交涉路线** [manual/once]：调查员暂缓攻击，尝试听懂深潜者的诉求。
 - **EV_COMBAT_ROUND 战斗轮推进** [turnEnd/repeatable]：船员继续收缆，扶桑花号距离逃脱又近一轮。
-- **EV_COMBAT_WIN 击败深潜者** [manual/once]：四名深潜者失去战斗能力，调查员及时救出埃里克。
-- **EV_NEGOTIATION_LISTEN 听懂深潜者诉求** [manual/once]：调查员需要先通过聆听检定理解对方的真正诉求。
-- **EV_NEGOTIATION_UNDERSTOOD 理解深潜者诉求** [manual/once]：调查员已经听懂诉求，现在必须说服深潜者释放埃里克。
-- **EV_NEGOTIATION_SUCCESS 交涉成功** [manual/once]：说服奏效，深潜者释放埃里克并同意和平离港。
+- **EV_COMBAT_ATTACK 攻击深潜者** [manual/repeatable]：调查员抓住机会攻击一名仍在抵抗的深潜者。
+- **EV_COMBAT_HIT 有效命中深潜者** [checkResolved/repeatable]：攻击奏效，一名深潜者失去战斗能力。
+- **EV_COMBAT_WIN 击败深潜者** [automatic/once]：四名深潜者失去战斗能力，调查员及时救出埃里克。
+- **EV_NEGOTIATION_LISTEN 听懂深潜者诉求** [manual/repeatable]：调查员需要先通过聆听检定理解对方的真正诉求。
+- **EV_NEGOTIATION_UNDERSTOOD 理解深潜者诉求** [checkResolved/repeatable]：调查员已经听懂诉求，现在必须说服深潜者释放埃里克。
+- **EV_NEGOTIATION_SUCCESS 交涉成功** [checkResolved/once]：说服奏效，深潜者释放埃里克并同意和平离港。
 - **EV_RESCUE_ERIC 救出埃里克** [automatic/once]：埃里克获救，但其走私身份也随证据暴露。
 
 ## 结局

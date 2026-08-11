@@ -298,8 +298,7 @@ export function useGameController() {
     const settleTimer = setTimeout(() => {
       if (diceRollGenerationRef.current !== generation) return;
       const rolledState = gameReducer(state, { type: 'applyDiceResult', result });
-      const clearedState = gameReducer(rolledState, { type: 'setPendingCheck', check: null });
-      const continuationState = gameReducer(clearedState, {
+      const continuationState = gameReducer(rolledState, {
         type: 'appendHistory',
         role: 'user',
         content: checkMessage
@@ -308,8 +307,8 @@ export function useGameController() {
       diceRollTimersRef.current = [];
       setDiceRoll(null);
       dispatch({ type: 'applyDiceResult', result });
-      dispatch({ type: 'setPendingCheck', check: null });
       dispatch({ type: 'appendHistory', role: 'user', content: checkMessage });
+      if (rolledState.pendingCheck || rolledState.scenarioProgress?.endingId) return;
       runAi([
         ...(check.continuationActions ?? []),
         buildDiceResultAction(state, check, checkMessage)
