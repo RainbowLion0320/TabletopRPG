@@ -100,7 +100,7 @@
     },
     "item": {
       "type": "object", "additionalProperties": false, "required": ["id", "name", "sceneId", "appearance", "aliases", "factIds", "discovery", "fallbackEventId"],
-      "properties": { "id": { "$ref": "#/$defs/id" }, "name": { "$ref": "#/$defs/text" }, "sceneId": { "$ref": "#/$defs/id" }, "appearance": { "$ref": "#/$defs/text" }, "aliases": { "$ref": "#/$defs/stringList" }, "factIds": { "$ref": "#/$defs/stringList" }, "discovery": { "type": "object", "additionalProperties": false, "required": ["skill", "difficulty", "failForward"], "properties": { "skill": { "type": "string" }, "difficulty": { "enum": ["自动", "普通", "困难", "极难"] }, "failForward": { "$ref": "#/$defs/text" } } }, "fallbackEventId": { "$ref": "#/$defs/id" } }
+      "properties": { "id": { "$ref": "#/$defs/id" }, "name": { "$ref": "#/$defs/text" }, "sceneId": { "$ref": "#/$defs/id" }, "appearance": { "$ref": "#/$defs/text" }, "aliases": { "$ref": "#/$defs/stringList" }, "factIds": { "$ref": "#/$defs/stringList" }, "discovery": { "type": "object", "additionalProperties": false, "required": ["skill", "difficulty", "failForward", "successEventId", "failureEventId"], "properties": { "skill": { "type": "string" }, "difficulty": { "enum": ["自动", "普通", "困难", "极难"] }, "failForward": { "$ref": "#/$defs/text" }, "successEventId": { "$ref": "#/$defs/id" }, "failureEventId": { "$ref": "#/$defs/id" } } }, "fallbackEventId": { "$ref": "#/$defs/id" } }
     },
     "progression": {
       "type": "object", "additionalProperties": false, "required": ["variables", "acts", "objectives", "beats", "storyEvents", "endings"],

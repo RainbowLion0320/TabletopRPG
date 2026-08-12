@@ -7,6 +7,7 @@ import {
   inferNarrativeConsequences,
   inferSceneChangeFromActions,
   inferStoryEventFromActions,
+  inferStoryEventsFromActions,
   sanitizePlayerChoices,
   validateNarratorSemantics
 } from '../../src/dm/turnGuards';
@@ -154,17 +155,55 @@ describe('turnGuards', () => {
     }], state, kb)).toBeNull();
   });
 
-  it('turns an explicit authored story intent into a Director-reviewed proposal', () => {
+  it('turns explicit authored clue searches into Director-reviewed proposals', () => {
     const state = makeState({ currentScene: 'S01' });
-    expect(inferStoryEventFromActions([
+    expect(inferStoryEventsFromActions([
       { player: '亨利', action: '我检查抽屉里的旧合影照片。' }
-    ], state)).toEqual(expect.objectContaining({
+    ], state)).toEqual([expect.objectContaining({
       name: 'propose_story_event',
       arguments: expect.objectContaining({ eventId: 'EV_FIND_I02' })
-    }));
+    })]);
     expect(inferStoryEventFromActions([
       { player: '亨利', action: '我凭空宣布已经击败深潜者。' }
     ], state)).toBeNull();
+  });
+
+  it('settles every explicitly searched clue through its authored failure path', () => {
+    const state = makeState({ currentScene: 'S01' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'active';
+
+    const calls = inferStoryEventsFromActions([
+      { player: '亨利', action: '检查桌上便签、抽屉里的旧合影和书架夹缝的小册子。' },
+      { player: '艾达', action: '检查名片和垃圾桶里的报纸残片。' },
+      { player: '亨利', action: '【检定结果】亨利 的侦查检定：掷出 82，结果：失败。' }
+    ], state);
+
+    expect(calls.map((call) => call.arguments.eventId)).toEqual([
+      'EV_FAIL_I01',
+      'EV_FAIL_I02',
+      'EV_FIND_I03',
+      'EV_FAIL_I04',
+      'EV_FAIL_I06'
+    ]);
+  });
+
+  it('discovers but does not analyze the booklet until a separate decoding action', () => {
+    const state = makeState({ currentScene: 'S01' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'active';
+
+    expect(inferStoryEventsFromActions([
+      { player: '亨利', action: '检查书架夹缝里的小册子。' }
+    ], state).map((call) => call.arguments.eventId)).toEqual(['EV_DISCOVER_I04']);
+
+    state.clues = [{ id: 'I04', name: '小册子', description: '', discoveredAt: 1 }];
+    state.scenarioProgress.clueStates.I04 = 'discovered';
+    expect(inferStoryEventFromActions([
+      { player: '艾达', action: '小心加热小册子夹页，让隐写显字。' }
+    ], state)?.arguments.eventId).toBe('EV_FIND_I04');
   });
 
   it('records a clearly discovered scenario item but not one after a failed check', () => {

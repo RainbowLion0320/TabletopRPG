@@ -10,7 +10,7 @@ import asset6 from '../../../../assets/avatars/eric.png';
 import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
 
-export const scenarioContentHash = "df77e2dcefd534f1";
+export const scenarioContentHash = "f6d2725f8d274d21";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -25,7 +25,7 @@ export const scenarioAssetUrls: Record<string, string> = {
 export const generatedScenarioModule = {
   "manifest": {
     "schemaVersion": 1,
-    "contentVersion": "1.1.1",
+    "contentVersion": "1.1.2",
     "id": "wuzhongxiaoshi",
     "title": "雾中消逝",
     "system": "COC 第七版风格 D100",
@@ -544,7 +544,9 @@ export const generatedScenarioModule = {
         "discovery": {
           "skill": "侦查",
           "difficulty": "普通",
-          "failForward": "即使失败也能看到文字，但无法判断笔触异常，并推进5分钟。"
+          "failForward": "即使失败也能看到文字，但无法判断笔触异常，并推进5分钟。",
+          "successEventId": "EV_FIND_I01",
+          "failureEventId": "EV_FAIL_I01"
         },
         "fallbackEventId": "EV_RECOVER_I01"
       },
@@ -563,7 +565,9 @@ export const generatedScenarioModule = {
         "discovery": {
           "skill": "侦查",
           "difficulty": "普通",
-          "failForward": "失败仍能发现照片，但会惊动伊莎贝拉并推进10分钟。"
+          "failForward": "失败仍能发现照片，但会惊动伊莎贝拉并推进10分钟。",
+          "successEventId": "EV_FIND_I02",
+          "failureEventId": "EV_FAIL_I02"
         },
         "fallbackEventId": "EV_RECOVER_I02"
       },
@@ -579,7 +583,9 @@ export const generatedScenarioModule = {
         "discovery": {
           "skill": "侦查",
           "difficulty": "自动",
-          "failForward": "公开摆放，无需检定。"
+          "failForward": "公开摆放，无需检定。",
+          "successEventId": "EV_FIND_I03",
+          "failureEventId": "EV_FIND_I03"
         },
         "fallbackEventId": "EV_RECOVER_I03"
       },
@@ -597,7 +603,9 @@ export const generatedScenarioModule = {
         "discovery": {
           "skill": "侦查",
           "difficulty": "普通",
-          "failForward": "失败仍发现受潮夹页，艾达可通过加热或医学知识恢复隐写内容，但推进15分钟。"
+          "failForward": "失败仍发现受潮夹页，艾达可通过加热或医学知识恢复隐写内容，但推进15分钟。",
+          "successEventId": "EV_DISCOVER_I04",
+          "failureEventId": "EV_FAIL_I04"
         },
         "fallbackEventId": "EV_RECOVER_I04"
       },
@@ -617,7 +625,9 @@ export const generatedScenarioModule = {
         "discovery": {
           "skill": "医学",
           "difficulty": "普通",
-          "failForward": "失败只能确认其可疑并推进10分钟，之后可由药店记录或蒙特利尔反应补证。"
+          "failForward": "失败只能确认其可疑并推进10分钟，之后可由药店记录或蒙特利尔反应补证。",
+          "successEventId": "EV_FIND_I05",
+          "failureEventId": "EV_FAIL_I05"
         },
         "fallbackEventId": "EV_RECOVER_I05"
       },
@@ -635,7 +645,9 @@ export const generatedScenarioModule = {
         "discovery": {
           "skill": "侦查",
           "difficulty": "普通",
-          "failForward": "失败仍能带走残片，之后可与合影比对。"
+          "failForward": "失败仍能带走残片，之后可与合影比对。",
+          "successEventId": "EV_FIND_I06",
+          "failureEventId": "EV_FAIL_I06"
         },
         "fallbackEventId": "EV_RECOVER_I06"
       },
@@ -655,7 +667,9 @@ export const generatedScenarioModule = {
         "discovery": {
           "skill": "侦查",
           "difficulty": "普通",
-          "failForward": "失败仍能从残片辨认扶桑花号泊位，但暴徒或深潜者警觉度增加。"
+          "failForward": "失败仍能从残片辨认扶桑花号泊位，但暴徒或深潜者警觉度增加。",
+          "successEventId": "EV_S04_MAP",
+          "failureEventId": "EV_FAIL_I07"
         },
         "fallbackEventId": "EV_RECOVER_I07"
       },
@@ -673,7 +687,9 @@ export const generatedScenarioModule = {
         "discovery": {
           "skill": "侦查",
           "difficulty": "普通",
-          "failForward": "失败仍可收集，回看埃里克物品后自动完成比对。"
+          "failForward": "失败仍可收集，回看埃里克物品后自动完成比对。",
+          "successEventId": "EV_S04_CIGAR",
+          "failureEventId": "EV_FAIL_I08"
         },
         "fallbackEventId": "EV_RECOVER_I08"
       }
@@ -862,11 +878,17 @@ export const generatedScenarioModule = {
         ],
         "allowedEventIds": [
           "EV_FIND_I01",
+          "EV_FAIL_I01",
           "EV_FIND_I02",
+          "EV_FAIL_I02",
           "EV_FIND_I03",
+          "EV_DISCOVER_I04",
+          "EV_FAIL_I04",
           "EV_FIND_I04",
           "EV_FIND_I05",
+          "EV_FAIL_I05",
           "EV_FIND_I06",
+          "EV_FAIL_I06",
           "EV_HOUSE_RECOVERY",
           "EV_RECOVER_I01",
           "EV_RECOVER_I02",
@@ -986,7 +1008,9 @@ export const generatedScenarioModule = {
         "allowedEventIds": [
           "EV_S04_FOG",
           "EV_S04_MAP",
+          "EV_FAIL_I07",
           "EV_S04_CIGAR",
+          "EV_FAIL_I08",
           "EV_S04_THUGS",
           "EV_PHARMACY_RECOVERY",
           "EV_RECOVER_I07",
@@ -1148,6 +1172,26 @@ export const generatedScenarioModule = {
         "narrativeCue": "调查员发现写有“别来找我”的便签。"
       },
       {
+        "id": "EV_FAIL_I01",
+        "beatId": "B02",
+        "title": "失败推进·便签",
+        "trigger": "manual",
+        "when": {
+          "sceneIs": "S01"
+        },
+        "effects": [
+          {
+            "discoverClue": "I01"
+          },
+          {
+            "advanceTime": 5
+          }
+        ],
+        "once": true,
+        "playerVisible": true,
+        "narrativeCue": "虽然没能判断笔触异常，调查员仍看清便签上的“别来找我”，但耽误了五分钟。"
+      },
+      {
         "id": "EV_FIND_I02",
         "beatId": "B02",
         "title": "发现合影",
@@ -1168,6 +1212,29 @@ export const generatedScenarioModule = {
         "narrativeCue": "合影把埃里克与蒙特利尔联系起来，警局成为合法调查方向。"
       },
       {
+        "id": "EV_FAIL_I02",
+        "beatId": "B02",
+        "title": "失败推进·合影",
+        "trigger": "manual",
+        "when": {
+          "sceneIs": "S01"
+        },
+        "effects": [
+          {
+            "discoverClue": "I02"
+          },
+          {
+            "revealFact": "F05"
+          },
+          {
+            "advanceTime": 10
+          }
+        ],
+        "once": true,
+        "playerVisible": true,
+        "narrativeCue": "翻找声惊动了伊莎贝拉，但她仍认出合影中的蒙特利尔；调查因此耽误十分钟。"
+      },
+      {
         "id": "EV_FIND_I03",
         "beatId": "B02",
         "title": "发现名片",
@@ -1185,9 +1252,26 @@ export const generatedScenarioModule = {
         "narrativeCue": "调查员收起埃里克旧公司的名片。"
       },
       {
-        "id": "EV_FIND_I04",
+        "id": "EV_DISCOVER_I04",
         "beatId": "B02",
-        "title": "破译小册子",
+        "title": "发现小册子",
+        "trigger": "manual",
+        "when": {
+          "sceneIs": "S01"
+        },
+        "effects": [
+          {
+            "discoverClue": "I04"
+          }
+        ],
+        "once": true,
+        "playerVisible": true,
+        "narrativeCue": "调查员在书架夹缝中发现夹页受过特殊处理的小册子，但尚未读出隐藏内容。"
+      },
+      {
+        "id": "EV_FAIL_I04",
+        "beatId": "B02",
+        "title": "失败推进·小册子",
         "trigger": "manual",
         "when": {
           "sceneIs": "S01"
@@ -1196,6 +1280,31 @@ export const generatedScenarioModule = {
           {
             "discoverClue": "I04"
           },
+          {
+            "advanceTime": 15
+          }
+        ],
+        "once": true,
+        "playerVisible": true,
+        "narrativeCue": "调查员仍找到受潮的小册子，却没能读出隐藏内容；反复翻找耽误十五分钟。"
+      },
+      {
+        "id": "EV_FIND_I04",
+        "beatId": "B02",
+        "title": "破译小册子",
+        "trigger": "manual",
+        "when": {
+          "all": [
+            {
+              "sceneIs": "S01"
+            },
+            {
+              "clue": "I04",
+              "status": "discovered"
+            }
+          ]
+        },
+        "effects": [
           {
             "analyzeClue": "I04"
           },
@@ -1235,6 +1344,26 @@ export const generatedScenarioModule = {
         "narrativeCue": "医学分析确认暗格中的白色粉末是高纯度鸦片。"
       },
       {
+        "id": "EV_FAIL_I05",
+        "beatId": "B02",
+        "title": "失败推进·粉末",
+        "trigger": "manual",
+        "when": {
+          "sceneIs": "S01"
+        },
+        "effects": [
+          {
+            "discoverClue": "I05"
+          },
+          {
+            "advanceTime": 10
+          }
+        ],
+        "once": true,
+        "playerVisible": true,
+        "narrativeCue": "艾达只能确认白色粉末样品十分可疑，无法立即定性；检查耽误十分钟。"
+      },
+      {
         "id": "EV_FIND_I06",
         "beatId": "B02",
         "title": "发现报纸残片",
@@ -1250,6 +1379,23 @@ export const generatedScenarioModule = {
         "once": true,
         "playerVisible": true,
         "narrativeCue": "报纸残片保留着蒙特利尔的扫毒英雄通稿，可与合影交叉比对。"
+      },
+      {
+        "id": "EV_FAIL_I06",
+        "beatId": "B02",
+        "title": "失败推进·报纸",
+        "trigger": "manual",
+        "when": {
+          "sceneIs": "S01"
+        },
+        "effects": [
+          {
+            "discoverClue": "I06"
+          }
+        ],
+        "once": true,
+        "playerVisible": true,
+        "narrativeCue": "调查员仍带走了破损严重的报纸残片，人物照片需要之后与合影比对。"
       },
       {
         "id": "EV_HOUSE_RECOVERY",
@@ -1527,6 +1673,45 @@ export const generatedScenarioModule = {
         "narrativeCue": "后厅油布包中的地图笔记标出了泰晤士港扶桑花号的位置。"
       },
       {
+        "id": "EV_FAIL_I07",
+        "beatId": "B05",
+        "title": "失败推进·地图",
+        "trigger": "manual",
+        "when": {
+          "sceneIs": "S04"
+        },
+        "effects": [
+          {
+            "discoverClue": "I07"
+          },
+          {
+            "analyzeClue": "I07"
+          },
+          {
+            "revealFact": "F09"
+          },
+          {
+            "completeObjective": "O05"
+          },
+          {
+            "completeBeat": "B05"
+          },
+          {
+            "activateBeat": "B06"
+          },
+          {
+            "setVariable": "thugAlert",
+            "value": true
+          },
+          {
+            "advanceTime": 10
+          }
+        ],
+        "once": true,
+        "playerVisible": true,
+        "narrativeCue": "地图笔记虽被水浸坏，残片仍能定位泰晤士港扶桑花号；敌人警觉且调查耽误十分钟。"
+      },
+      {
         "id": "EV_S04_CIGAR",
         "beatId": "B05",
         "title": "发现雪茄头",
@@ -1548,6 +1733,23 @@ export const generatedScenarioModule = {
         "once": true,
         "playerVisible": true,
         "narrativeCue": "雪茄头与埃里克常用品牌一致，证明他近期来过药店。"
+      },
+      {
+        "id": "EV_FAIL_I08",
+        "beatId": "B05",
+        "title": "失败推进·雪茄",
+        "trigger": "manual",
+        "when": {
+          "sceneIs": "S04"
+        },
+        "effects": [
+          {
+            "discoverClue": "I08"
+          }
+        ],
+        "once": true,
+        "playerVisible": true,
+        "narrativeCue": "调查员仍收起雪茄头，但暂时无法辨认品牌，需与埃里克的物品比对。"
       },
       {
         "id": "EV_S04_THUGS",

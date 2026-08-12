@@ -254,6 +254,8 @@ export interface Item {
     skill: string;
     difficulty: '自动' | '普通' | '困难' | '极难';
     failForward: Text;
+    successEventId: Id;
+    failureEventId: Id;
   };
   fallbackEventId: Id;
 }

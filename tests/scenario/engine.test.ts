@@ -37,7 +37,7 @@ function apply(
 function reachFinale(): ScenarioProgress {
   let progress = createScenarioProgress();
   progress = apply(progress, 'S01', 1, { events: ['EV_ACCEPT_COMMISSION'] }).progress;
-  progress = apply(progress, 'S01', 2, { events: ['EV_FIND_I04'] }).progress;
+  progress = apply(progress, 'S01', 2, { events: ['EV_DISCOVER_I04', 'EV_FIND_I04'] }).progress;
   progress = apply(progress, 'S04', 3, { previousScene: 'S01' }).progress;
   progress = apply(progress, 'S05', 4, { previousScene: 'S04' }).progress;
   return progress;
@@ -62,11 +62,28 @@ describe('scenario progression engine', () => {
 
     expect(progress.beatStates.B02).toBe('completed');
     expect(progress.objectiveStates.O02).toBe('completed');
-    expect(getAvailableStoryEvents(progress, 'S01').map((event) => event.id)).toContain('EV_FIND_I04');
+    expect(getAvailableStoryEvents(progress, 'S01').map((event) => event.id)).toContain('EV_DISCOVER_I04');
 
-    progress = apply(progress, 'S01', 3, { events: ['EV_FIND_I04'] }).progress;
+    progress = apply(progress, 'S01', 3, { events: ['EV_DISCOVER_I04', 'EV_FIND_I04'] }).progress;
     expect(progress.clueStates.I04).toBe('analyzed');
     expect(progress.knownFactIds).toContain('F06');
+  });
+
+  it('applies every authored failure-forward clue event from one failed search', () => {
+    let progress = createScenarioProgress();
+    progress = apply(progress, 'S01', 1, { events: ['EV_ACCEPT_COMMISSION'] }).progress;
+    const failedSearch = apply(progress, 'S01', 2, {
+      events: ['EV_FAIL_I01', 'EV_FAIL_I02', 'EV_FIND_I03', 'EV_FAIL_I04', 'EV_FAIL_I06']
+    });
+
+    expect(failedSearch.firedEventIds).toEqual(expect.arrayContaining([
+      'EV_FAIL_I01', 'EV_FAIL_I02', 'EV_FIND_I03', 'EV_FAIL_I04', 'EV_FAIL_I06'
+    ]));
+    expect(failedSearch.progress.clueStates).toEqual(expect.objectContaining({
+      I01: 'discovered', I02: 'discovered', I03: 'discovered', I04: 'discovered', I06: 'discovered'
+    }));
+    expect(failedSearch.progress.knownFactIds).toContain('F05');
+    expect(failedSearch.progress.knownFactIds).not.toContain('F06');
   });
 
   it('activates only the required finale objective until a route is selected', () => {
@@ -137,7 +154,7 @@ describe('scenario progression engine', () => {
   it('executes S04 entrance effects once and unlocks the port', () => {
     let progress = createScenarioProgress();
     progress = apply(progress, 'S01', 1, { events: ['EV_ACCEPT_COMMISSION'] }).progress;
-    progress = apply(progress, 'S01', 2, { events: ['EV_FIND_I04'] }).progress;
+    progress = apply(progress, 'S01', 2, { events: ['EV_DISCOVER_I04', 'EV_FIND_I04'] }).progress;
     const entered = apply(progress, 'S04', 3, { previousScene: 'S01' });
     expect(entered.firedEventIds).toEqual(expect.arrayContaining(['EV_S04_FOG', 'EV_S04_MAP']));
     expect(entered.deltas).toContainEqual({ field: 'san', target: 'party', value: -1 });
@@ -152,7 +169,7 @@ describe('scenario progression engine', () => {
   it('settles every event eligible at scene entry even if an earlier event completes the beat', () => {
     let progress = createScenarioProgress();
     progress = apply(progress, 'S01', 1, { events: ['EV_ACCEPT_COMMISSION'] }).progress;
-    progress = apply(progress, 'S01', 2, { events: ['EV_FIND_I04'] }).progress;
+    progress = apply(progress, 'S01', 2, { events: ['EV_DISCOVER_I04', 'EV_FIND_I04'] }).progress;
     progress.variables.metMontreal = true;
     progress.worldTime = '1920-07-13T19:00';
 
@@ -186,7 +203,7 @@ describe('scenario progression engine', () => {
   it('recovers a destroyed critical pharmacy clue without a dead end', () => {
     let progress = createScenarioProgress();
     progress = apply(progress, 'S01', 1, { events: ['EV_ACCEPT_COMMISSION'] }).progress;
-    progress = apply(progress, 'S01', 2, { events: ['EV_FIND_I04'] }).progress;
+    progress = apply(progress, 'S01', 2, { events: ['EV_DISCOVER_I04', 'EV_FIND_I04'] }).progress;
     progress.clueStates.I07 = 'destroyed';
     const recovered = apply(progress, 'S04', 3, { previousScene: 'S01' });
     expect(recovered.progress.knownFactIds).toContain('F09');
@@ -292,11 +309,11 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: [], flags: {}, turn: 3
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.1');
+    expect(migrated.moduleVersion).toBe('1.1.2');
     expect(migrated.beatStates.B02).toBe('active');
     expect(migrated.objectiveStates.O01).toBe('completed');
     expect(migrated.objectiveStates.O02).toBe('active');
-    expect(migrated.migrationLog.at(-1)).toContain('1.0.0 -> 1.1.1');
+    expect(migrated.migrationLog.at(-1)).toContain('1.0.0 -> 1.1.2');
   });
 
   it('migrates the immediately previous scenario content version', () => {
@@ -310,9 +327,9 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: [], flags: {}, turn: 3
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.1');
+    expect(migrated.moduleVersion).toBe('1.1.2');
     expect(migrated.beatStates.B02).toBe('active');
-    expect(migrated.migrationLog.at(-1)).toContain('1.0.1 -> 1.1.1');
+    expect(migrated.migrationLog.at(-1)).toContain('1.0.1 -> 1.1.2');
   });
 
   it('migrates saves from the pre-fix 1.1.0 runtime', () => {
@@ -325,8 +342,8 @@ describe('scenario progression engine', () => {
     });
 
     expect(migrated.contentHash).not.toBe(previous.contentHash);
-    expect(migrated.moduleVersion).toBe('1.1.1');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.1');
+    expect(migrated.moduleVersion).toBe('1.1.2');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.2');
   });
 
   it('migrates saves from the latest 1.1.0 runtime', () => {
@@ -338,8 +355,24 @@ describe('scenario progression engine', () => {
       currentScene: 'S05', clueIds: ['I04', 'I07'], flags: {}, turn: 12
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.1');
+    expect(migrated.moduleVersion).toBe('1.1.2');
     expect(migrated.contentHash).not.toBe(previous.contentHash);
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.1');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.2');
+  });
+
+  it('migrates the saved real-play state from scenario 1.1.1', () => {
+    const previous = createScenarioProgress();
+    previous.moduleVersion = '1.1.1';
+    previous.contentHash = 'df77e2dcefd534f1';
+    previous.beatStates.B01 = 'completed';
+    previous.beatStates.B02 = 'active';
+
+    const migrated = hydrateScenarioProgress(previous, {
+      currentScene: 'S01', clueIds: [], flags: {}, turn: 2
+    });
+
+    expect(migrated.moduleVersion).toBe('1.1.2');
+    expect(migrated.beatStates.B02).toBe('active');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.1 -> 1.1.2');
   });
 });

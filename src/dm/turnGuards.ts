@@ -3,6 +3,7 @@ import type { PlayerAction } from '../services/aiDm';
 import type { DmToolCall, KnowledgeBase } from './types';
 import { getActiveKnowledgeBase } from './knowledgeBase';
 import {
+  getScenarioDefinition,
   getAvailableSceneExits,
   getAvailableStoryEvents,
   getScenarioProgressForState
@@ -103,6 +104,55 @@ export function buildRequiredCheck(actions: PlayerAction[], state: GameState): C
   return null;
 }
 
+function explicitlyTargetedScenarioItems(
+  actions: PlayerAction[],
+  state: GameState,
+  kb: KnowledgeBase
+) {
+  const definition = getScenarioDefinition();
+  const discovered = new Set(state.clues.map((clue) => clue.id));
+  const actionText = actions
+    .filter((action) => !DICE_RESULT_RE.test(action.action))
+    .map((action) => action.action)
+    .join('\n');
+  return definition.world.items.filter((item) => {
+    if (item.sceneId !== state.currentScene || discovered.has(item.id)) return false;
+    return [item.name, ...(kb.items[item.id]?.public.aliases ?? [])]
+      .some((term) => term && actionText.includes(term));
+  });
+}
+
+/**
+ * Converts explicit authored clue searches into one or more Director-reviewed
+ * events. On a failed roll the event id comes from the item's YAML-defined
+ * failure path, so minimum information and costs remain scenario-authoritative.
+ */
+export function inferStoryEventsFromActions(
+  actions: PlayerAction[],
+  state: GameState,
+  kb: KnowledgeBase = getActiveKnowledgeBase()
+): DmToolCall[] {
+  const available = new Set(
+    getAvailableStoryEvents(getScenarioProgressForState(state), state.currentScene).map((event) => event.id)
+  );
+  const failed = actionIsFailedCheck(actions);
+  const clueCalls = explicitlyTargetedScenarioItems(actions, state, kb).flatMap((item) => {
+    const eventId = failed ? item.discovery.failureEventId : item.discovery.successEventId;
+    return available.has(eventId) ? [{
+      name: 'propose_story_event' as const,
+      arguments: {
+        eventId,
+        reason: failed
+          ? `检定失败，按 ${item.id} 的作者失败推进结算`
+          : `玩家明确调查作者线索 ${item.id}`
+      }
+    }] : [];
+  });
+  if (clueCalls.length) return clueCalls;
+  const legacy = inferStoryEventFromActions(actions, state);
+  return legacy ? [legacy] : [];
+}
+
 function applyAuthoredCheckDifficulty(check: CheckRequest, state: GameState): CheckRequest {
   if (state.currentScene === 'S02' && check.skill === '心理学') {
     return { ...check, difficulty: '困难' };
@@ -201,12 +251,7 @@ export function inferStoryEventFromActions(
   );
   const mappings: Array<[string, RegExp]> = [
     ['EV_ACCEPT_COMMISSION', /接受.{0,8}委托|确认.{0,8}委托/],
-    ['EV_FIND_I01', /便签|求助便签/],
-    ['EV_FIND_I02', /合影|照片/],
-    ['EV_FIND_I03', /名片/],
-    ['EV_FIND_I04', /小册子|隐写/],
-    ['EV_FIND_I05', /白色粉末|鸦片样品|粉末样品/],
-    ['EV_FIND_I06', /报纸残片|报纸碎片/],
+    ['EV_FIND_I04', /加热|烘烤|显字|破译|解读.{0,8}(?:小册子|隐写)|(?:小册子|隐写).{0,8}(?:解读|解码)/],
     ['EV_MEET_MONTREAL', /质询.{0,8}蒙特利尔|蒙特利尔.{0,8}关系/],
     ['EV_BARTENDER_RAT', /酒保[\s\S]{0,20}(?:老鼠|贝尔街)|(?:老鼠|贝尔街)[\s\S]{0,20}酒保/],
     ['EV_S04_CIGAR', /雪茄/],

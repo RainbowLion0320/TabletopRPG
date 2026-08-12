@@ -45,7 +45,7 @@ import {
 import { pushTrace, updateTrace } from './debugTrace';
 import {
   buildRequiredCheck,
-  inferStoryEventFromActions,
+  inferStoryEventsFromActions,
   inferNarrativeConsequences,
   inferSceneChangeFromActions,
   sanitizePlayerChoices,
@@ -458,7 +458,7 @@ export async function runDmTurn(
   const inferredSceneCall = allowed.includes('propose_scene_change')
     ? inferSceneChangeFromActions(input.actions, input.state, kb)
     : null;
-  const inferredStoryCall = inferStoryEventFromActions(input.actions, input.state);
+  const inferredStoryCalls = inferStoryEventsFromActions(input.actions, input.state, kb);
   const revealCtx = deriveRevealContext(input.state);
   const revealedSet = computeRevealedSecretIds(kb, revealCtx);
 
@@ -520,7 +520,7 @@ export async function runDmTurn(
       lookupResolver,
       validateOutput: (output, toolCalls) => validateNarratorSemantics(
         output,
-        [inferredSceneCall, inferredStoryCall, ...toolCalls].filter((call): call is NonNullable<typeof call> => Boolean(call)),
+        [inferredSceneCall, ...inferredStoryCalls, ...toolCalls].filter((call): call is NonNullable<typeof call> => Boolean(call)),
         input.state,
         kb
       ),
@@ -551,10 +551,12 @@ export async function runDmTurn(
   // 4) 出口护栏：逐个语义校验工具调用，同时检查是否越出 allowed 集
   const candidateCalls = [
     ...(inferredSceneCall ? [inferredSceneCall] : []),
-    ...(inferredStoryCall ? [inferredStoryCall] : []),
+    ...inferredStoryCalls,
     ...narrator.toolCalls.filter((call) =>
       call.name !== 'propose_scene_change'
-      && !(call.name === 'propose_story_event' && call.arguments.eventId === inferredStoryCall?.arguments.eventId)
+      && !(call.name === 'propose_story_event' && inferredStoryCalls.some((inferred) =>
+        inferred.arguments.eventId === call.arguments.eventId
+      ))
     )
   ];
   const directorResult = validateToolCalls(candidateCalls, directorCtx, allowed);

@@ -152,6 +152,8 @@ function lintModule(module) {
     if (!ids.scene.has(item.sceneId)) errors.push(`${item.id} 引用不存在场景 ${item.sceneId}`);
     item.factIds.forEach((id) => { if (!ids.fact.has(id)) errors.push(`${item.id} 引用不存在 fact ${id}`); });
     if (!ids.event.has(item.fallbackEventId)) errors.push(`${item.id} 缺少有效 fail-forward event：${item.fallbackEventId}`);
+    if (!ids.event.has(item.discovery.successEventId)) errors.push(`${item.id} 缺少有效 successEventId：${item.discovery.successEventId}`);
+    if (!ids.event.has(item.discovery.failureEventId)) errors.push(`${item.id} 缺少有效 failureEventId：${item.discovery.failureEventId}`);
   }
   for (const objective of progression.objectives) if (!ids.beat.has(objective.beatId)) errors.push(`${objective.id} 引用不存在 beat ${objective.beatId}`);
   for (const beat of progression.beats) {

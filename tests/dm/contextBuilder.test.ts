@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildDmContext } from '../../src/dm/contextBuilder';
 import { buildNarratorSystemPrompt } from '../../src/dm/narrator';
 import { wuzhongxiaoshi } from '../../src/data/scenarios/wuzhongxiaoshi';
+import { createScenarioProgress } from '../../src/scenario/engine';
 import type { ConversationTurn } from '../../src/types/game';
 import { makeInvestigator, makeState } from './fixtures';
 
@@ -66,7 +67,7 @@ describe('contextBuilder', () => {
     expect(ctx.dynamic.playerLocations[playerName]).toBe('摩勒住宅');
   });
 
-  it('includes the public NPC directory and authored event narrative cues', () => {
+  it('only exposes authored narrative cues after their prerequisites are known', () => {
     const state = makeState({ currentScene: 'S01' });
     const ctx = buildDmContext(state, kb, { mode: 'together' });
 
@@ -75,15 +76,29 @@ describe('contextBuilder', () => {
     ]));
     expect(ctx.dynamic.scenario.allowedEvents).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        id: 'EV_FIND_I04',
-        narrativeCue: expect.stringContaining('贝尔街14号卡森其药店')
+        id: 'EV_DISCOVER_I04',
+        narrativeCue: expect.stringContaining('尚未读出隐藏内容')
       })
     ]));
+    expect(ctx.dynamic.scenario.allowedEvents.map((event) => event.id)).not.toContain('EV_FIND_I04');
 
     const prompt = buildNarratorSystemPrompt(ctx);
     expect(prompt).toContain('权威公开人物目录');
     expect(prompt).toContain('洛夫·蒙特利尔｜警察局长');
-    expect(prompt).toContain('叙事锚点：加热显出隐写文字“贝尔街14号卡森其药店”');
+    expect(prompt).not.toContain('贝尔街14号卡森其药店');
+
+    state.clues = [{ id: 'I04', name: '小册子', description: '', discoveredAt: 1 }];
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'active';
+    state.scenarioProgress.clueStates.I04 = 'discovered';
+    const discoveredCtx = buildDmContext(state, kb, { mode: 'together' });
+    expect(discoveredCtx.dynamic.scenario.allowedEvents).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'EV_FIND_I04',
+        narrativeCue: expect.stringContaining('贝尔街14号卡森其药店')
+      })
+    ]));
   });
 
   it('exposes summary from state when not overridden', () => {
