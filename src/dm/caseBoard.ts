@@ -89,7 +89,6 @@ export function getVisibleCaseBoard(
   const nodes = definition.nodes.filter((node) =>
     node.scenarioCondition
       ? evaluateScenarioCondition(node.scenarioCondition, scenarioProgress, state.currentScene)
-        || revealRuleMatches(node.revealWhen, state, foundItems, knownNpcs, visitedScenes)
       : revealRuleMatches(node.revealWhen, state, foundItems, knownNpcs, visitedScenes)
   );
   const visibleIds = new Set(nodes.map((node) => node.id));

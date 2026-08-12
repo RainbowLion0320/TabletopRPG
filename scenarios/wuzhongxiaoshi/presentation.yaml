@@ -9,7 +9,7 @@ caseBoard:
     - { id: scene-s01, type: scene, refId: S01, title: 摩勒住宅, subtitle: 委托起点, importance: 5, when: { sceneVisited: S01 } }
     - { id: scene-s02, type: scene, refId: S02, title: 上城区第二分局, subtitle: 蒙特利尔任职的警局, importance: 4, when: { sceneVisited: S02 } }
     - { id: scene-s03, type: scene, refId: S03, title: 老赫特酒吧, subtitle: 街区消息集散地, importance: 4, when: { sceneVisited: S03 } }
-    - { id: scene-s04, type: scene, refId: S04, title: 卡森其药店, subtitle: 贝尔街14号, importance: 5, when: { sceneVisited: S04 } }
+    - { id: scene-s04, type: scene, refId: S04, title: 卡森其药店, subtitle: 贝尔街14号, importance: 5, when: { any: [{ sceneVisited: S04 }, { factKnown: F06 }, { factKnown: F08 }] } }
     - { id: scene-s05, type: scene, refId: S05, title: 扶桑花号, subtitle: 泰晤士港终幕地点, importance: 5, when: { sceneVisited: S05 } }
     - { id: npc-isabella, type: npc, refId: N01, title: 伊莎贝拉·摩勒, subtitle: 委托人, importance: 5, when: { sceneVisited: S01 } }
     - { id: npc-eric, type: npc, refId: N02, title: 埃里克·摩勒, subtitle: 失踪者, importance: 5, when: { always: true } }
@@ -18,12 +18,12 @@ caseBoard:
     - { id: item-i01, type: item, refId: I01, title: 便签, subtitle: “别来找我”, importance: 3, when: { clue: I01, status: discovered } }
     - { id: item-i02, type: item, refId: I02, title: 合影照片, subtitle: 蒙特利尔与埃里克, importance: 4, when: { clue: I02, status: discovered } }
     - { id: item-i03, type: item, refId: I03, title: 名片, subtitle: 埃里克留下的旧公司地址, importance: 3, when: { clue: I03, status: discovered } }
-    - { id: item-i04, type: item, refId: I04, title: 小册子, subtitle: 隐写文字指向贝尔街14号, importance: 5, when: { clue: I04, status: analyzed } }
-    - { id: item-i05, type: item, refId: I05, title: 白色粉末样品, subtitle: 暗格中的鸦片证据, importance: 4, when: { clue: I05, status: analyzed } }
+    - { id: item-i04, type: item, refId: I04, title: 小册子, subtitle: 夹页受过特殊处理, importance: 5, when: { clue: I04, status: discovered } }
+    - { id: item-i05, type: item, refId: I05, title: 白色粉末样品, subtitle: 车库暗格中的可疑粉末, importance: 4, when: { clue: I05, status: discovered } }
     - { id: item-i06, type: item, refId: I06, title: 报纸残片, subtitle: 扫毒英雄通稿, importance: 4, when: { clue: I06, status: discovered } }
     - { id: item-i07, type: item, refId: I07, title: 深潜者地图笔记, subtitle: 标注扶桑花号位置, importance: 5, when: { clue: I07, status: discovered } }
-    - { id: item-i08, type: item, refId: I08, title: 雪茄头, subtitle: 埃里克到过药店, importance: 4, when: { clue: I08, status: analyzed } }
-    - { id: theory-smuggling, type: theory, refId: F07, title: 走私嫌疑, subtitle: 失踪案背后可能有鸦片运输, importance: 5, when: { any: [{ factKnown: F07 }, { clue: I06, status: discovered }] } }
+    - { id: item-i08, type: item, refId: I08, title: 雪茄头, subtitle: 药店内收集的烟蒂, importance: 4, when: { clue: I08, status: discovered } }
+    - { id: theory-smuggling, type: theory, refId: F07, title: 走私嫌疑, subtitle: 失踪案背后可能有鸦片运输, importance: 5, when: { factKnown: F07 } }
     - { id: theory-rat, type: theory, refId: F08, title: “老鼠”线索, subtitle: 指向贝尔街14号, importance: 3, when: { factKnown: F08 } }
   edges:
     - { id: CBE_01, from: scene-s01, to: npc-isabella, label: 委托, tone: evidence, when: { always: true } }

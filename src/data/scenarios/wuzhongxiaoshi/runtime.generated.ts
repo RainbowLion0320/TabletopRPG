@@ -10,7 +10,7 @@ import asset6 from '../../../../assets/avatars/eric.png';
 import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
 
-export const scenarioContentHash = "f6d2725f8d274d21";
+export const scenarioContentHash = "a65a4b4b398d405d";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -25,7 +25,7 @@ export const scenarioAssetUrls: Record<string, string> = {
 export const generatedScenarioModule = {
   "manifest": {
     "schemaVersion": 1,
-    "contentVersion": "1.1.2",
+    "contentVersion": "1.1.3",
     "id": "wuzhongxiaoshi",
     "title": "雾中消逝",
     "system": "COC 第七版风格 D100",
@@ -2433,7 +2433,17 @@ export const generatedScenarioModule = {
           "subtitle": "贝尔街14号",
           "importance": 5,
           "when": {
-            "sceneVisited": "S04"
+            "any": [
+              {
+                "sceneVisited": "S04"
+              },
+              {
+                "factKnown": "F06"
+              },
+              {
+                "factKnown": "F08"
+              }
+            ]
           }
         },
         {
@@ -2532,11 +2542,11 @@ export const generatedScenarioModule = {
           "type": "item",
           "refId": "I04",
           "title": "小册子",
-          "subtitle": "隐写文字指向贝尔街14号",
+          "subtitle": "夹页受过特殊处理",
           "importance": 5,
           "when": {
             "clue": "I04",
-            "status": "analyzed"
+            "status": "discovered"
           }
         },
         {
@@ -2544,11 +2554,11 @@ export const generatedScenarioModule = {
           "type": "item",
           "refId": "I05",
           "title": "白色粉末样品",
-          "subtitle": "暗格中的鸦片证据",
+          "subtitle": "车库暗格中的可疑粉末",
           "importance": 4,
           "when": {
             "clue": "I05",
-            "status": "analyzed"
+            "status": "discovered"
           }
         },
         {
@@ -2580,11 +2590,11 @@ export const generatedScenarioModule = {
           "type": "item",
           "refId": "I08",
           "title": "雪茄头",
-          "subtitle": "埃里克到过药店",
+          "subtitle": "药店内收集的烟蒂",
           "importance": 4,
           "when": {
             "clue": "I08",
-            "status": "analyzed"
+            "status": "discovered"
           }
         },
         {
@@ -2595,15 +2605,7 @@ export const generatedScenarioModule = {
           "subtitle": "失踪案背后可能有鸦片运输",
           "importance": 5,
           "when": {
-            "any": [
-              {
-                "factKnown": "F07"
-              },
-              {
-                "clue": "I06",
-                "status": "discovered"
-              }
-            ]
+            "factKnown": "F07"
           }
         },
         {

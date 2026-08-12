@@ -8,6 +8,7 @@ import {
   type CaseBoardDisplayNode
 } from '../../src/components/game/caseBoardGraph';
 import { makeState } from '../dm/fixtures';
+import { createScenarioProgress } from '../../src/scenario/engine';
 
 function displayNode(index: number): CaseBoardDisplayNode {
   const types = ['npc', 'scene', 'item', 'event', 'theory'] as const;
@@ -67,6 +68,8 @@ describe('case board graph model and layout', () => {
   it('filters by type while keeping search context relations', () => {
     const state = makeState({ activeNpcName: '伊莎贝拉·摩勒' });
     state.clues = [{ ...storyData.items.I04, found: true }];
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.clueStates.I04 = 'discovered';
     const model = buildCaseBoardGraphModel(state);
     const items = filterCaseBoardGraph(model, { query: '', type: 'item', showHypotheses: true, threadId: 'all' });
     expect(items.nodes.every((node) => node.type === 'item')).toBe(true);

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildFactCaseBoardPatch } from '../../src/dm/caseBoardModel';
 import { collectKnownNpcNames, getVisibleCaseBoard } from '../../src/dm/caseBoard';
 import { caseBoard as caseBoardDefinition } from '../../src/data/scenarios/wuzhongxiaoshi';
+import { createScenarioProgress } from '../../src/scenario/engine';
 import { gameReducer, hydrateGameState } from '../../src/state/gameReducer';
 import type { AtomicFact, DynamicCaseBoardEdge, DynamicCaseBoardNode } from '../../src/types/game';
 import { makeState } from './fixtures';
@@ -60,6 +61,41 @@ describe('gameReducer v7 case board state', () => {
     expect(visible.nodes).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'npc-eric', title: '埃里克·摩勒' })
     ]));
+  });
+
+  it('shows a discovered item without revealing its analysis result', () => {
+    const state = makeState();
+    state.clues = [{ id: 'I04', name: '小册子', desc: '夹页受过处理。', scene: 'S01', found: true }];
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.clueStates.I04 = 'discovered';
+
+    const discovered = getVisibleCaseBoard(caseBoardDefinition, state).nodes;
+    expect(discovered).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'item-i04', subtitle: '夹页受过特殊处理' })
+    ]));
+    expect(discovered.map((item) => `${item.title}${item.subtitle}`)).not.toEqual(
+      expect.arrayContaining([expect.stringContaining('贝尔街14号')])
+    );
+
+    state.scenarioProgress.clueStates.I04 = 'analyzed';
+    state.scenarioProgress.knownFactIds.push('F06');
+    expect(getVisibleCaseBoard(caseBoardDefinition, state).nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'scene-s04', subtitle: '贝尔街14号' })
+    ]));
+  });
+
+  it('does not turn a newspaper clipping into a confirmed smuggling theory', () => {
+    const state = makeState();
+    state.clues = [{ id: 'I06', name: '报纸残片', desc: '扫毒通稿。', scene: 'S01', found: true }];
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.clueStates.I06 = 'discovered';
+
+    expect(getVisibleCaseBoard(caseBoardDefinition, state).nodes.map((item) => item.id))
+      .not.toContain('theory-smuggling');
+
+    state.scenarioProgress.knownFactIds.push('F07');
+    expect(getVisibleCaseBoard(caseBoardDefinition, state).nodes.map((item) => item.id))
+      .toContain('theory-smuggling');
   });
 
   it('keeps NPCs from previously visited scenes known after moving away', () => {

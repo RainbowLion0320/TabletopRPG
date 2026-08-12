@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { InfoDrawer } from '../../src/components/game/InfoDrawer';
 import { storyData } from '../../src/data/storyData';
 import { makeState } from '../dm/fixtures';
+import { createScenarioProgress } from '../../src/scenario/engine';
 
 function renderDrawer(state = makeState({ activeNpcName: '伊莎贝拉·摩勒' })) {
   return render(<InfoDrawer open onClose={vi.fn()} onOpen={vi.fn()} state={state} />);
@@ -33,6 +34,8 @@ describe('InfoDrawer v7 investigation workspace', () => {
   it('reveals authored branches and supports type filtering', async () => {
     const state = makeState({ activeNpcName: '伊莎贝拉·摩勒' });
     state.clues = [{ ...storyData.items.I04, found: true }];
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.clueStates.I04 = 'discovered';
     renderDrawer(state);
     expect((await screen.findAllByText('小册子')).length).toBeGreaterThan(0);
     expect(screen.queryByText('卡森其药店')).not.toBeInTheDocument();
