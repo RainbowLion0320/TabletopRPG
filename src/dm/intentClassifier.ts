@@ -221,11 +221,15 @@ export function classifyIntent(actions: PlayerAction[]): ClassifiedIntent {
   for (const a of actions) {
     const text = (a.action || '').toLowerCase();
     if (!text) continue;
-    if (MOVEMENT_KEYWORDS.some((keyword) => text.includes(keyword))) hasMovement = true;
+    const onlyDiscussesMovement = /(?:提醒|建议|询问|商量|考虑|计划|打算)[^，。；！？\n]{0,18}(?:前往|赶往|去往|出发|动身|返回|离开|抵达|到达)/.test(text);
+    if (!onlyDiscussesMovement && MOVEMENT_KEYWORDS.some((keyword) => text.includes(keyword))) {
+      hasMovement = true;
+    }
 
     for (const entry of DICTIONARY) {
       const hit = entry.keywords.some((kw) => text.includes(kw.toLowerCase()));
       if (!hit) continue;
+      if (entry.kind === 'move' && onlyDiscussesMovement) continue;
       for (const skill of entry.skills) skillSet.add(skill);
       if (entry.conflict) hasConflict = true;
       if (priority[entry.kind] > priority[intentKind]) {

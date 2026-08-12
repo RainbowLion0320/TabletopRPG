@@ -31,6 +31,41 @@ describe('turnGuards', () => {
     ], state)).toBeNull();
   });
 
+  it('does not gate ordinary movement or information-only wording with an investigation roll', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利' }, { 侦查: 75 }),
+        makeInvestigator({ name: '艾达' }, { 侦查: 50 })
+      ],
+      currentScene: 'S04'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.knownFactIds = ['F09'];
+
+    expect(buildRequiredCheck([
+      { player: '亨利', action: '按照地图笔记离开药店，立即前往泰晤士港扶桑花号。' },
+      { player: '艾达', action: '一起抵达港口并登上扶桑花号，寻找被困的埃里克。' }
+    ], state)).toBeNull();
+    expect(buildRequiredCheck([
+      { player: '亨利', action: '询问伊莎贝拉警方调查进展。' }
+    ], state)).toBeNull();
+    expect(buildRequiredCheck([
+      { player: '亨利', action: '去酒吧寻找酒保并礼貌点两杯酒。' }
+    ], state)).toBeNull();
+  });
+
+  it('uses the authored hard Psychology difficulty against Montreal', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '艾达' }, { 心理学: 65 })],
+      currentScene: 'S02'
+    });
+
+    expect(buildRequiredCheck([{
+      player: '艾达',
+      action: '观察蒙特利尔的表情、停顿和肢体反应，判断他是否说谎。'
+    }], state)).toEqual(expect.objectContaining({ skill: '心理学', difficulty: '困难' }));
+  });
+
   it('does not turn explicitly negated violence into a combat check', () => {
     const state = makeState({ players: [makeInvestigator({ name: '亨利' }, { '格斗（拳）': 50 })] });
 
@@ -94,6 +129,29 @@ describe('turnGuards', () => {
     expect(inferSceneChangeFromActions([
       { player: '亨利', action: '我们暂不去警局。' }
     ], state, kb)).toBeNull();
+  });
+
+  it('does not reverse a move by treating the source scene after 离开 as its destination', () => {
+    const state = makeState({ currentScene: 'S05' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.knownFactIds = ['F09'];
+
+    expect(inferSceneChangeFromActions([
+      {
+        player: '亨利',
+        action: '放下烟蒂，立即离开卡森其药店前往泰晤士港扶桑花号。'
+      }
+    ], state, kb)).toBeNull();
+  });
+
+  it('does not execute movement that a player only discusses for later', () => {
+    const state = makeState({ currentScene: 'S04' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.knownFactIds = ['F09'];
+
+    expect(inferSceneChangeFromActions([{
+      player: '艾达', action: '收好地图，然后提醒亨利尽快赶往泰晤士港。'
+    }], state, kb)).toBeNull();
   });
 
   it('turns an explicit authored story intent into a Director-reviewed proposal', () => {
@@ -281,6 +339,25 @@ describe('turnGuards', () => {
       nextPrompt: '要核对照片背景吗？',
       playerChoices: {}
     }, [...eventCall], state, kb)).toBeNull();
+  });
+
+  it('rejects authored clue discoveries that have no matching structured event', () => {
+    const state = makeState({ currentScene: 'S01' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'active';
+
+    expect(validateNarratorSemantics({
+      narrative: '你在墨水瓶下发现一张写有“别来找我”的便签。',
+      nextPrompt: '继续搜查吗？',
+      playerChoices: {}
+    }, [], state, kb)).toMatch(/EV_FIND_I01/);
+
+    expect(validateNarratorSemantics({
+      narrative: '你在墨水瓶下发现一张写有“别来找我”的便签。',
+      nextPrompt: '继续搜查吗？',
+      playerChoices: {}
+    }, [{ name: 'propose_story_event', arguments: { eventId: 'EV_FIND_I01' } }], state, kb)).toBeNull();
   });
 
   it('allows an authored NPC role to speak in its declared scene', () => {

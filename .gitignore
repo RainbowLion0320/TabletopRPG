@@ -43,6 +43,8 @@ node_modules/
 dist/
 playwright-report/
 test-results/
+output/
+.playwright-cli/
 
 # 环境预检缓存
 .precheck-cache.json

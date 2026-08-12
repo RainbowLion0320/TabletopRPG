@@ -377,10 +377,11 @@ function conditionReferencesCheck(condition: Condition, checkId: string): boolea
 function fireEvent(
   event: StoryEvent,
   result: ScenarioTransitionResult,
-  options: ProcessScenarioTurnOptions
+  options: ProcessScenarioTurnOptions,
+  eligibilityAlreadyChecked = false
 ): boolean {
   const progress = result.progress;
-  if (!eventIsAllowed(event, progress, options.currentScene)) return false;
+  if (!eligibilityAlreadyChecked && !eventIsAllowed(event, progress, options.currentScene)) return false;
   if (event.once) progress.firedEventIds = unique([...progress.firedEventIds, event.id]);
   result.firedEventIds.push(event.id);
   if (event.playerVisible && event.narrativeCue) result.narrativeCues.push(event.narrativeCue);
@@ -437,9 +438,13 @@ export function processScenarioTurn(
   updateStructuralStates(progress, options.currentScene);
 
   if (options.previousScene && options.previousScene !== options.currentScene) {
-    for (const event of scenario.progression.storyEvents) {
-      if (event.trigger === 'sceneEnter') fireEvent(event, result, options);
-    }
+    // Scene-entry eligibility is atomic. One entry event may complete its beat,
+    // but that must not suppress sibling events that were valid at the instant
+    // the party entered the scene.
+    const entryEvents = scenario.progression.storyEvents.filter((event) =>
+      event.trigger === 'sceneEnter' && eventIsAllowed(event, progress, options.currentScene)
+    );
+    for (const event of entryEvents) fireEvent(event, result, options, true);
   }
   for (const id of unique(options.storyEventIds ?? [])) {
     const event = eventsById.get(id);

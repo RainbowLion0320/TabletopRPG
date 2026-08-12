@@ -1,6 +1,7 @@
 import type { AiResponse, CheckRequest, GameState, SceneId } from '../types/game';
 import type { PlayerAction } from '../services/aiDm';
 import type { DmToolCall, KnowledgeBase } from './types';
+import { getActiveKnowledgeBase } from './knowledgeBase';
 import {
   getAvailableSceneExits,
   getAvailableStoryEvents,
@@ -9,6 +10,7 @@ import {
 
 const DICE_RESULT_RE = /【检定结果】|结果[：:]\s*(?:失败|大失败|成功|困难成功|极难成功|大成功)/;
 const MOVE_VERB_RE = /前往|赶往|去往|出发|动身|返回|回到|离开|开车|驾车|驱车|驶向|跟随|追到|抵达|到达/;
+const MOVE_DESTINATION_RE = /前往|赶往|去往|驶向|追到|抵达|到达|进入|登上|回到|返回|去/;
 const NPC_ROLE_TERMS = ['店主', '老板', '伙计', '服务生', '医生', '护士', '牧师', '管理员', '警员', '警察', '酒保'];
 
 interface CheckCandidate {
@@ -39,9 +41,9 @@ function buildCandidate(action: PlayerAction): CheckCandidate | null {
     { pattern: /说服|劝说|谈判|请求/, skill: '说服', score: 70, reason: '改变对方的态度' },
     { pattern: /套话|撒谎|骗|假装|攀谈/, skill: '话术', score: 68, reason: '从交谈中取得进展' },
     { pattern: /查阅|档案|文献|图书馆|翻书/, skill: '图书馆', score: 62, reason: '从资料中定位可靠信息' },
-    { pattern: /观察表情|判断真假|是否说谎|心理/, skill: '心理学', score: 60, reason: '判断对方的真实反应' },
+    { pattern: /观察[^，。；！？\n]{0,16}(?:表情|神色|脸色|肢体|反应)|判断[^，。；！？\n]{0,12}(?:真假|说谎|隐瞒)|是否说谎|心理/, skill: '心理学', score: 60, reason: '判断对方的真实反应' },
     { pattern: /聆听|偷听|听清|门外动静/, skill: '聆听', score: 56, reason: '分辨不易察觉的声音' },
-    { pattern: /搜查|搜索|搜寻|检查|观察|调查|寻找|查看/, skill: '侦查', score: 52, reason: '发现不明显的线索' }
+    { pattern: /搜查|搜索|搜寻|检查|观察|查看/, skill: '侦查', score: 52, reason: '发现不明显的线索' }
   ];
 
   const spec = specs.find((item) => hasAffirmativeMatch(text, item.pattern));
@@ -84,6 +86,7 @@ export function buildRequiredCheck(actions: PlayerAction[], state: GameState): C
     if (event?.effects.some((effect) => 'requestCheck' in effect)) return null;
   }
   const candidates = actions
+    .filter((action) => !actionExplicitlyMovesToReachableScene(action, state))
     .map(buildCandidate)
     .filter((item): item is CheckCandidate => Boolean(item))
     .sort((a, b) => b.score - a.score);
@@ -95,9 +98,16 @@ export function buildRequiredCheck(actions: PlayerAction[], state: GameState): C
       if (!fallback || !player.skills[fallback]) continue;
       return { ...candidate.check, skill: fallback };
     }
-    return candidate.check;
+    return applyAuthoredCheckDifficulty(candidate.check, state);
   }
   return null;
+}
+
+function applyAuthoredCheckDifficulty(check: CheckRequest, state: GameState): CheckRequest {
+  if (state.currentScene === 'S02' && check.skill === '心理学') {
+    return { ...check, difficulty: '困难' };
+  }
+  return check;
 }
 
 function sceneTerms(kb: KnowledgeBase, sceneId: SceneId): string[] {
@@ -124,9 +134,35 @@ function unavailableNpcRole(text: string, kb: KnowledgeBase, sceneId: SceneId, d
 }
 
 function explicitlyRequestsMove(text: string) {
+  if (movementIsOnlyDiscussed(text)) return false;
   if (MOVE_VERB_RE.test(text)) return true;
   if (!/去/.test(text)) return false;
   return !/(?:不|别|不要|暂不|要不要|是否|考虑是否)[^，。；！？\n]{0,4}去/.test(text);
+}
+
+function movementIsOnlyDiscussed(text: string): boolean {
+  return /(?:提醒|建议|询问|商量|考虑|计划|打算)[^，。；！？\n]{0,18}(?:前往|赶往|去往|出发|动身|返回|离开|抵达|到达)/.test(text);
+}
+
+function sceneMentionFollowsDestinationVerb(text: string, terms: string[]): boolean {
+  return terms.some((term) => {
+    if (!term) return false;
+    const index = text.indexOf(term);
+    if (index < 0) return false;
+    const prefix = text.slice(Math.max(0, index - 24), index);
+    const destinationVerbs = [...prefix.matchAll(new RegExp(MOVE_DESTINATION_RE.source, 'g'))];
+    const lastDestinationVerb = destinationVerbs[destinationVerbs.length - 1];
+    if (!lastDestinationVerb) return false;
+    const between = prefix.slice((lastDestinationVerb.index ?? 0) + lastDestinationVerb[0].length);
+    return !/[，。；！？\n]/.test(between) && !/(?:离开|告别|走出|退出)[^，。；！？\n]*$/.test(prefix);
+  });
+}
+
+function actionExplicitlyMovesToReachableScene(action: PlayerAction, state: GameState): boolean {
+  if (!explicitlyRequestsMove(action.action)) return false;
+  const kb = getActiveKnowledgeBase();
+  return getAvailableSceneExits(getScenarioProgressForState(state), state.currentScene)
+    .some((exit) => sceneMentionFollowsDestinationVerb(action.action, sceneTerms(kb, exit.sceneId)));
 }
 
 export function inferSceneChangeFromActions(
@@ -140,7 +176,7 @@ export function inferSceneChangeFromActions(
   ).map((exit) => exit.sceneId);
   for (const action of actions) {
     const target = reachable.find((sceneId) =>
-      sceneTerms(kb, sceneId).some((term) => term && action.action.includes(term))
+      sceneMentionFollowsDestinationVerb(action.action, sceneTerms(kb, sceneId))
     );
     if (target && explicitlyRequestsMove(action.action)) {
       return {
@@ -165,8 +201,12 @@ export function inferStoryEventFromActions(
   );
   const mappings: Array<[string, RegExp]> = [
     ['EV_ACCEPT_COMMISSION', /接受.{0,8}委托|确认.{0,8}委托/],
+    ['EV_FIND_I01', /便签|求助便签/],
     ['EV_FIND_I02', /合影|照片/],
+    ['EV_FIND_I03', /名片/],
     ['EV_FIND_I04', /小册子|隐写/],
+    ['EV_FIND_I05', /白色粉末|鸦片样品|粉末样品/],
+    ['EV_FIND_I06', /报纸残片|报纸碎片/],
     ['EV_MEET_MONTREAL', /质询.{0,8}蒙特利尔|蒙特利尔.{0,8}关系/],
     ['EV_BARTENDER_RAT', /酒保[\s\S]{0,20}(?:老鼠|贝尔街)|(?:老鼠|贝尔街)[\s\S]{0,20}酒保/],
     ['EV_S04_CIGAR', /雪茄/],
@@ -175,7 +215,11 @@ export function inferStoryEventFromActions(
     ['EV_CHOOSE_COMBAT', /选择.{0,8}战斗|立即.{0,8}战斗|攻击.{0,8}深潜者/],
     ['EV_COMBAT_ATTACK', /攻击|搏斗|出拳|制服|击败/]
   ];
-  const match = mappings.find(([eventId, pattern]) => available.has(eventId) && pattern.test(text));
+  const match = mappings.find(([eventId, pattern]) =>
+    available.has(eventId)
+    && pattern.test(text)
+    && (!actionIsFailedCheck(actions) || eventId === 'EV_BARTENDER_RAT' || eventId === 'EV_MEET_MONTREAL')
+  );
   return match ? {
     name: 'propose_story_event',
     arguments: { eventId: match[0], reason: '玩家行动明确满足作者事件意图' }
@@ -386,6 +430,31 @@ export function validateNarratorSemantics(
     const event = availableEvents.get(String(call.arguments.eventId ?? ''));
     return event ? [event] : [];
   });
+  const proposedClueIds = new Set(proposedEvents.flatMap((event) => event.effects.flatMap((effect) => {
+    if ('discoverClue' in effect) return [effect.discoverClue];
+    if ('analyzeClue' in effect) return [effect.analyzeClue];
+    return [];
+  })));
+  const uncommittedClueIds = inferDiscoveredItems(
+    output.narrative,
+    [],
+    state,
+    kb,
+    state.currentScene
+  ).filter((clueId) => !proposedClueIds.has(clueId));
+  if (uncommittedClueIds.length) {
+    const requirements = uncommittedClueIds.map((clueId) => {
+      const item = kb.items[clueId]?.public;
+      const event = [...availableEvents.values()].find((candidate) =>
+        candidate.effects.some((effect) =>
+          ('discoverClue' in effect && effect.discoverClue === clueId)
+          || ('analyzeClue' in effect && effect.analyzeClue === clueId)
+        )
+      );
+      return event ? `${item?.name ?? clueId} -> ${event.id}` : `${item?.name ?? clueId} -> 无可用事件`;
+    });
+    return `正文发现的线索必须在同一响应调用对应剧情事件，并同步写出事件规定的人物和作者地址：${requirements.join('；')}`;
+  }
   const rescueAuthorized = progress.variables.ericRescued === true
     || Boolean(progress.endingId)
     || proposedEvents.some((event) => eventAuthorizesOutcome(event, 'rescue'));

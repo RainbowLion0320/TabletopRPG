@@ -149,6 +149,23 @@ describe('scenario progression engine', () => {
     expect(reentered.deltas.filter((delta) => delta.field === 'san')).toEqual([]);
   });
 
+  it('settles every event eligible at scene entry even if an earlier event completes the beat', () => {
+    let progress = createScenarioProgress();
+    progress = apply(progress, 'S01', 1, { events: ['EV_ACCEPT_COMMISSION'] }).progress;
+    progress = apply(progress, 'S01', 2, { events: ['EV_FIND_I04'] }).progress;
+    progress.variables.metMontreal = true;
+    progress.worldTime = '1920-07-13T19:00';
+
+    const entered = apply(progress, 'S04', 3, { previousScene: 'S01' });
+
+    expect(entered.firedEventIds).toEqual(expect.arrayContaining([
+      'EV_S04_FOG',
+      'EV_S04_MAP',
+      'EV_S04_THUGS'
+    ]));
+    expect(entered.progress.encounters.ENC02.state).toBe('active');
+  });
+
   it('issues a soft prompt at three idle turns and fail-forwards at six', () => {
     let progress = createScenarioProgress();
     let result = apply(progress, 'S01', 1);
