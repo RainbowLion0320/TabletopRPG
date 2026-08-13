@@ -1,4 +1,4 @@
-export const COMBAT_ACTION_RE = /攻击(?!机会|结果|计划|路线|意图|准备)|搏斗|出拳|挥拳|制服|击败|殴打|近战|射击|开枪|擒抱|摔倒|猛击|重击|痛击|击打|打击|击向|挥击|挥砍|挥棍|砸向|砸击|横扫|劈向|劈下|刺向|砍向|踢向|踹向/;
+export const COMBAT_ACTION_RE = /攻击(?!机会|结果|计划|路线|意图|准备)|搏斗|出拳|挥拳|制服|击败|打倒|殴打|近战|射击|开枪|擒抱|摔倒|猛击|重击|痛击|击打|打击|击向|挥击|挥砍|挥棍|砸向|砸击|横扫|劈向|劈下|刺向|砍向|踢向|踹向/;
 
 export function hasAffirmativeMatch(text: string, pattern: RegExp): boolean {
   const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;

@@ -272,6 +272,51 @@ describe('turnGuards', () => {
     expect(inferStoryEventActor(actions, state, 'EV_COMBAT_ATTACK')).toBe('罗伯特');
   });
 
+  it('treats a natural first strike as the authored combat route and keeps its actor', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利' }, { '格斗（拳）': 50 }),
+        makeInvestigator({ name: '罗伯特' }, { '格斗（拳）': 70 })
+      ],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+
+    const actions = [
+      { player: '亨利', action: '躲在木箱后观察守卫位置，掩护罗伯特继续攻击，本轮不出手。' },
+      { player: '罗伯特', action: '用警棍抢先打倒离埃里克最近的深潜者，阻止扶桑花号离港。' }
+    ];
+
+    expect(inferStoryEventFromActions(actions, state)?.arguments.eventId).toBe('EV_CHOOSE_COMBAT');
+    expect(inferStoryEventActor(actions, state, 'EV_CHOOSE_COMBAT')).toBe('罗伯特');
+    expect(buildRequiredCheck(actions, state)).toBeNull();
+  });
+
+  it('does not assign an authored attack to a companion who only names and covers the attacker', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利' }, { '格斗（拳）': 50 }),
+        makeInvestigator({ name: '罗伯特' }, { '格斗（拳）': 70 })
+      ],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+
+    const actions = [
+      { player: '亨利', action: '留在木箱后观察三名守卫的位置，掩护罗伯特继续攻击，不切换交涉路线。' },
+      { player: '罗伯特', action: '挥动警棍攻击第二名仍在抵抗的深潜者，等待格斗检定决定结果。' }
+    ];
+
+    expect(inferStoryEventActor(actions, state, 'EV_COMBAT_ATTACK')).toBe('罗伯特');
+  });
+
   it('lets an authored story event own its structured check', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '亨利' }, { 聆听: 65 })],
@@ -806,6 +851,25 @@ describe('turnGuards', () => {
       ...base,
       narrative: '罗伯特命中那名深潜者。它并未倒下，却已无力再战。'
     }, [], state, kb, actions)).toBeNull();
+  });
+
+  it('rejects combat narration that exceeds the structured defeated count', () => {
+    const state = makeState({ currentScene: 'S05' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.encounters.ENC01.defeated = 2;
+
+    expect(validateNarratorSemantics({
+      narrative: '罗伯特的警棍击中一名守卫，甲板上已有三名深潜者失去战斗能力。',
+      activeNpc: '扶桑花号交涉代表', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/仅结算2名/);
+
+    state.scenarioProgress.encounters.ENC01.defeated = 3;
+    expect(validateNarratorSemantics({
+      narrative: '亨利这次攻击落空，但最后一名深潜者也失去战斗能力，甲板上四名深潜者全部倒地。',
+      activeNpc: null, nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/仅结算3名|不得提前宣告最后一名/);
   });
 
   it('keeps a locked combat finale from inventing negotiation or reinforcements', () => {

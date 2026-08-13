@@ -214,8 +214,37 @@ export function inferStoryEventActor(
   eventId: string,
   kb: KnowledgeBase = getActiveKnowledgeBase()
 ): string | null {
+  if (eventId === 'EV_CHOOSE_COMBAT' || eventId === 'EV_COMBAT_ATTACK') {
+    const combatActors = actions
+      .map((action, index) => ({
+        action,
+        index,
+        score: combatActorScore(action, actions)
+      }))
+      .filter(({ score }) => score > 0)
+      .sort((left, right) => right.score - left.score || left.index - right.index);
+    if (combatActors.length) return combatActors[0].action.player;
+  }
   return actions.find((action) => inferStoryEventsFromActions([action], state, kb)
     .some((call) => call.arguments.eventId === eventId))?.player ?? null;
+}
+
+function combatActorScore(action: PlayerAction, actions: PlayerAction[]): number {
+  const text = action.action;
+  if (!hasAffirmativeMatch(text, COMBAT_ACTION_RE)) return 0;
+  let score = 10;
+  const namesAnotherAttacker = actions.some((other) => {
+    if (other.player === action.player || !text.includes(other.player)) return false;
+    return new RegExp(`${escapeRegex(other.player)}[^，。；！？\\n]{0,18}(?:${COMBAT_ACTION_RE.source})`).test(text);
+  });
+  if (namesAnotherAttacker) score -= 20;
+  if (/(?:用|挥动|挥起|挥出|抽出|拔出|举起|抡起)[^，。；！？\n]{0,16}(?:警棍|拳|枪|武器|刀)|(?:向|对)[^，。；！？\n]{0,18}(?:深潜者|敌人|守卫)[^，。；！？\n]{0,12}(?:攻击|打倒|击打|挥击|横扫|猛击|射击)/.test(text)) {
+    score += 30;
+  }
+  if (/(?:掩护|协助|配合|牵制|警戒|观察|照明)[^，。；！？\n]{0,18}(?:同伴|队友|他|她|[\u4e00-\u9fff·]{2,10})[^，。；！？\n]{0,12}(?:攻击|击打|挥击|横扫)/.test(text)) {
+    score -= 10;
+  }
+  return score;
 }
 
 function applyAuthoredCheckDifficulty(check: CheckRequest, sceneId: SceneId): CheckRequest {
@@ -399,12 +428,12 @@ export function inferStoryEventFromActions(
       'EV_NEGOTIATION_LISTEN',
       /聆听.{0,12}诉求|理解.{0,12}诉求|(?:提出|确认|完成).{0,12}(?:交换|条件)|说服.{0,12}(?:释放|放走).{0,8}埃里克|不碰.{0,8}货物.{0,16}(?:释放|放走)/
     ],
-    ['EV_CHOOSE_COMBAT', /选择.{0,8}战斗|立即.{0,8}战斗|攻击.{0,8}深潜者/],
+    ['EV_CHOOSE_COMBAT', COMBAT_ACTION_RE],
     ['EV_COMBAT_ATTACK', COMBAT_ACTION_RE]
   ];
   const match = mappings.find(([eventId, pattern]) =>
     available.has(eventId)
-    && (eventId === 'EV_COMBAT_ATTACK'
+    && (eventId === 'EV_COMBAT_ATTACK' || eventId === 'EV_CHOOSE_COMBAT'
       ? actions.some((action) => hasAffirmativeMatch(action.action, pattern))
       : pattern.test(text))
     && (!actionIsFailedCheck(actions) || eventId === 'EV_BARTENDER_RAT')
@@ -862,9 +891,31 @@ export function validateNarratorSemantics(
     return '结构化战斗命中已使一名深潜者失去战斗能力，正文不得否定该结算';
   }
   const confirmsDefeatedDeepOne = /(?:倒地|瘫倒|失去战斗能力|无力再战|被制服)[^。；！？\n]{0,16}深潜者|深潜者[^。；！？\n]{0,16}(?:倒地|瘫倒|失去战斗能力|无力再战|被制服)/.test(output.narrative);
+  const structuredDefeated = progress.encounters.ENC01?.defeated ?? 0;
+  const claimedDefeatedMatch = /(?:已有|已经|共|总共|甲板上)?\s*([一二三四]|[1-4])\s*名(?:仍在抵抗的)?深潜者[^。；！？\n]{0,28}(?:倒地|瘫倒|失去战斗能力|无力再战|被制服|退出战斗)/.exec(output.narrative);
+  const defeatedNumbers: Record<string, number> = { 一: 1, 二: 2, 三: 3, 四: 4 };
+  const claimedDefeated = claimedDefeatedMatch
+    ? defeatedNumbers[claimedDefeatedMatch[1]] ?? Number(claimedDefeatedMatch[1])
+    : /(?:四名|所有|全部)[^。；！？\n]{0,12}深潜者[^。；！？\n]{0,24}(?:倒地|瘫倒|失去战斗能力|无力再战|被制服)|深潜者[^。；！？\n]{0,16}(?:全部|全都)[^。；！？\n]{0,16}(?:倒地|失去战斗能力|被制服)/.test(output.narrative)
+      ? 4
+      : null;
   if (
     progress.variables.finaleRoute === 'combat'
-    && (progress.encounters.ENC01?.defeated ?? 0) === 0
+    && claimedDefeated !== null
+    && claimedDefeated > structuredDefeated
+  ) {
+    return `正文宣称已有${claimedDefeated}名深潜者失去战斗能力，但结构化遭遇仅结算${structuredDefeated}名`;
+  }
+  if (
+    progress.variables.finaleRoute === 'combat'
+    && structuredDefeated < 4
+    && /最后一名[^。；！？\n]{0,20}(?:深潜者|守卫)[^。；！？\n]{0,24}(?:倒地|瘫倒|失去战斗能力|无力再战|被制服)|(?:深潜者|守卫)[^。；！？\n]{0,20}最后一名[^。；！？\n]{0,24}(?:倒地|失去战斗能力|被制服)/.test(output.narrative)
+  ) {
+    return `结构化遭遇尚有${4 - structuredDefeated}名深潜者，正文不得提前宣告最后一名失去战斗能力`;
+  }
+  if (
+    progress.variables.finaleRoute === 'combat'
+    && structuredDefeated === 0
     && confirmsDefeatedDeepOne
   ) {
     return '没有结构化战斗命中时，正文不得把玩家自述的倒地深潜者当作既成战果';
