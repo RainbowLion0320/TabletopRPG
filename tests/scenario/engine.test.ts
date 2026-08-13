@@ -57,6 +57,24 @@ describe('scenario progression engine', () => {
     expect(getAvailableSceneExits(progress, 'S01').map((exit) => exit.sceneId)).toEqual(['S02', 'S03']);
   });
 
+  it('settles a source-scene event before moving to the next scene in the same turn', () => {
+    let progress = createScenarioProgress();
+    progress = apply(progress, 'S01', 1, { events: ['EV_ACCEPT_COMMISSION'] }).progress;
+    progress = apply(progress, 'S01', 2, { events: ['EV_FIND_I02'] }).progress;
+    progress = apply(progress, 'S02', 3, { previousScene: 'S01' }).progress;
+
+    const moved = apply(progress, 'S03', 4, {
+      previousScene: 'S02',
+      events: ['EV_MEET_MONTREAL']
+    });
+
+    expect(moved.firedEventIds).toContain('EV_MEET_MONTREAL');
+    expect(moved.progress.variables.metMontreal).toBe(true);
+    expect(moved.progress.beatStates.B03).toBe('completed');
+    expect(moved.progress.objectiveStates.O03).toBe('completed');
+    expect(moved.progress.visitedSceneIds).toContain('S03');
+  });
+
   it('keeps unfired manual clue events available after their beat completes', () => {
     let progress = createScenarioProgress();
     progress = apply(progress, 'S01', 1, { events: ['EV_ACCEPT_COMMISSION'] }).progress;

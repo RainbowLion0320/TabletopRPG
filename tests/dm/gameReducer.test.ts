@@ -493,6 +493,33 @@ describe('gameReducer scene focus synchronization', () => {
     expect(next.playerLocations).toEqual({ 'p-henry': 'S02', 'p-ada': 'S02' });
   });
 
+  it('settles a source-scene story event before applying the paired scene change', () => {
+    const state = makeState({ currentScene: 'S02', activeNpcName: '洛夫·蒙特利尔' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B03 = 'active';
+    state.scenarioProgress.beatStates.B04 = 'active';
+    state.scenarioProgress.objectiveStates.O03 = 'active';
+    state.scenarioProgress.objectiveStates.O04 = 'active';
+    state.scenarioProgress.variables.oldHethLead = true;
+
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: {
+        narrative: '蒙特利尔冷淡地结束会面，你们随后抵达老赫特酒吧。',
+        stateUpdate: { sceneChange: 'S03', storyEventIds: ['EV_MEET_MONTREAL'] }
+      },
+      raw: '{}'
+    });
+
+    expect(next.currentScene).toBe('S03');
+    expect(next.activeNpcName).toBe('老赫特之家酒保');
+    expect(next.scenarioProgress?.beatStates.B03).toBe('completed');
+    expect(next.scenarioProgress?.objectiveStates.O03).toBe('completed');
+    expect(next.scenarioProgress?.variables.metMontreal).toBe(true);
+  });
+
   it('keeps explicit null meaningful when the scene did not change', () => {
     const state = makeState({ currentScene: 'S01', activeNpcName: '伊莎贝拉·摩勒' });
 

@@ -470,14 +470,28 @@ export function processScenarioTurn(
   if (progress.endingId) return result;
 
   if (options.checkResult) progress.lastCheckOutcomes[options.checkResult.id] = options.checkResult.outcome;
+  const movedScenes = Boolean(options.previousScene && options.previousScene !== options.currentScene);
+  const sourceEventIds = new Set<string>();
+  if (movedScenes && options.previousScene) {
+    updateStructuralStates(progress, options.previousScene);
+    for (const id of unique(options.storyEventIds ?? [])) {
+      const event = eventsById.get(id);
+      const beat = event ? beatsById.get(event.beatId) : null;
+      if (!event || event.trigger !== 'manual' || !beat) continue;
+      if (!beat.sceneIds.includes(options.previousScene) || beat.sceneIds.includes(options.currentScene)) continue;
+      if (!eventIsAllowed(event, progress, options.previousScene)) continue;
+      fireEvent(event, result, { ...options, currentScene: options.previousScene }, true);
+      sourceEventIds.add(id);
+    }
+  }
   if (!progress.visitedSceneIds.includes(options.currentScene)) progress.visitedSceneIds.push(options.currentScene);
-  if (options.previousScene && options.previousScene !== options.currentScene) {
+  if (movedScenes && options.previousScene) {
     const exit = scenesById.get(options.previousScene)?.exits.find((item) => item.to === options.currentScene);
     if (exit) advanceTime(progress, exit.travelMinutes);
   }
   updateStructuralStates(progress, options.currentScene);
 
-  if (options.previousScene && options.previousScene !== options.currentScene) {
+  if (movedScenes && options.previousScene) {
     // Scene-entry eligibility is atomic. One entry event may complete its beat,
     // but that must not suppress sibling events that were valid at the instant
     // the party entered the scene.
@@ -487,6 +501,7 @@ export function processScenarioTurn(
     for (const event of entryEvents) fireEvent(event, result, options, true);
   }
   for (const id of unique(options.storyEventIds ?? [])) {
+    if (sourceEventIds.has(id)) continue;
     const event = eventsById.get(id);
     if (event?.trigger === 'manual') fireEvent(event, result, options);
   }
@@ -501,7 +516,7 @@ export function processScenarioTurn(
   runAutomaticEvents(result, options);
 
   const madeProgressThisPass = result.firedEventIds.length > 0
-    || Boolean(options.previousScene && options.previousScene !== options.currentScene)
+    || movedScenes
     || Boolean(options.checkResult);
   if (madeProgressThisPass) progress.lastProgressTurn = options.turn;
 
