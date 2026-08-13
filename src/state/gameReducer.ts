@@ -317,6 +317,26 @@ function normalizeMessages(value: unknown, history: GameState['conversationHisto
   return fallback;
 }
 
+const WITHDRAWN_PHARMACY_STATE_MARKERS = [
+  '调查员离开后，他秘密派出暴徒',
+  '后厅油布包中的地图笔记标出了泰晤士港扶桑花号的位置',
+  '蒙特利尔派来的三名暴徒封住退路',
+  '战斗阶段开始'
+];
+
+function referencesWithdrawnPharmacyState(text: string): boolean {
+  return WITHDRAWN_PHARMACY_STATE_MARKERS.some((marker) => text.includes(marker));
+}
+
+function pharmacyInvestigationSuggestions(players: Investigator[]): Record<string, string[]> {
+  const suggestions = [
+    '搜查后厅油布包，寻找并检查潮湿的地图笔记',
+    '检查柜台附近是否留下雪茄或其他痕迹',
+    '观察浓雾与后门附近的撤离痕迹'
+  ];
+  return Object.fromEntries(players.map((player) => [player.id, [...suggestions]]));
+}
+
 function normalizeActionLog(value: unknown, fallback: GameState['actionLog']) {
   if (!Array.isArray(value)) return fallback;
   const logs = value.flatMap((item) => {
@@ -1258,16 +1278,16 @@ export function hydrateGameState(value: unknown): GameState {
   const playerLocations = exploreMode === 'together'
     ? Object.fromEntries(players.map((player) => [player.id, currentScene])) as Record<string, SceneId>
     : persistedLocations;
-  const history = normalizeConversationHistory(source.conversationHistory);
-  const suggestionsByPlayerId = normalizeSuggestionsByPlayerId(
+  const rawHistory = normalizeConversationHistory(source.conversationHistory);
+  const rawSuggestionsByPlayerId = normalizeSuggestionsByPlayerId(
     source.suggestionsByPlayerId ?? source.suggestions,
     players,
     base.suggestionsByPlayerId,
     base.suggestions
   );
-  const suggestions = normalizeStringList(
+  const rawSuggestions = normalizeStringList(
     source.suggestions,
-    firstSuggestionListByPlayerOrder(suggestionsByPlayerId, players, base.suggestions)
+    firstSuggestionListByPlayerOrder(rawSuggestionsByPlayerId, players, base.suggestions)
   );
   const atomicFacts = normalizeAtomicFacts(source.atomicFacts);
   const rawCaseBoard = isRecord(source.caseBoard) ? source.caseBoard : null;
@@ -1277,8 +1297,26 @@ export function hydrateGameState(value: unknown): GameState {
     currentScene,
     clueIds: normalizedClues.map((clue) => clue.id),
     flags: isRecord(source.flags) ? source.flags : {},
-    turn: countCompletedGameTurns(history)
+    turn: countCompletedGameTurns(rawHistory)
   });
+  const withdrewAutomaticPharmacyMap = scenarioProgress.migrationLog.some((entry) =>
+    entry.includes('撤回旧版进入药店时自动授予的地图')
+  );
+  const history = withdrewAutomaticPharmacyMap
+    ? rawHistory.filter((turn) => turn.role !== 'assistant' || !referencesWithdrawnPharmacyState(turn.content))
+    : rawHistory;
+  const normalizedMessages = normalizeMessages(source.messages, history, players, base.messages);
+  const messages = withdrewAutomaticPharmacyMap
+    ? normalizedMessages.filter((message) =>
+        message.type === 'player' || !referencesWithdrawnPharmacyState(message.text)
+      )
+    : normalizedMessages;
+  const suggestionsByPlayerId = withdrewAutomaticPharmacyMap
+    ? pharmacyInvestigationSuggestions(players)
+    : rawSuggestionsByPlayerId;
+  const suggestions = withdrewAutomaticPharmacyMap
+    ? firstSuggestionListByPlayerOrder(suggestionsByPlayerId, players, base.suggestions)
+    : rawSuggestions;
   const persistedNpcName = typeof source.activeNpcId === 'string'
     ? npcNameFromId(source.activeNpcId)
     : normalizeNpcName(source.activeNpcName);
@@ -1304,21 +1342,30 @@ export function hydrateGameState(value: unknown): GameState {
     activeNpcName,
     clues: normalizedClues.filter((clue) => scenarioProgress.clueStates[clue.id] !== 'unknown'),
     flags: isRecord(source.flags) ? source.flags : {},
-    actionLog: normalizeActionLog(source.actionLog, base.actionLog),
+    actionLog: normalizeActionLog(source.actionLog, base.actionLog).filter((entry) =>
+      !withdrewAutomaticPharmacyMap || !entry.text.includes('EV_S04_MAP')
+    ),
     conversationHistory: history,
-    messages: normalizeMessages(source.messages, history, players, base.messages),
+    messages,
     suggestions,
     suggestionsByPlayerId,
     isThinking: false,
-    longTermMemorySummary:
-      typeof source.longTermMemorySummary === 'string' ? source.longTermMemorySummary : '',
-    summarizedUntilIndex: Math.max(0, Math.floor(numberValue(source.summarizedUntilIndex, 0))),
+    longTermMemorySummary: withdrewAutomaticPharmacyMap
+      ? ''
+      : typeof source.longTermMemorySummary === 'string' ? source.longTermMemorySummary : '',
+    summarizedUntilIndex: withdrewAutomaticPharmacyMap
+      ? 0
+      : Math.max(0, Math.floor(numberValue(source.summarizedUntilIndex, 0))),
     eventLog: normalizeEventLog(source.eventLog),
     pendingConsequences: normalizePendingConsequences(source.pendingConsequences),
     atomicFacts,
     npcMindModels: normalizeNpcMindModels(source.npcMindModels),
-    prospectiveIntents: normalizeProspectiveIntents(source.prospectiveIntents),
-    episodicMemory: normalizeEpisodicMemory(source.episodicMemory),
+    prospectiveIntents: withdrewAutomaticPharmacyMap
+      ? []
+      : normalizeProspectiveIntents(source.prospectiveIntents),
+    episodicMemory: normalizeEpisodicMemory(source.episodicMemory).filter((memory) =>
+      !withdrewAutomaticPharmacyMap || !referencesWithdrawnPharmacyState(JSON.stringify(memory))
+    ),
     caseBoard: normalizeCaseBoardState(source.caseBoard),
     scenarioProgress
   };

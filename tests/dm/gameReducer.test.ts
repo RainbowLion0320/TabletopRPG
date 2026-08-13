@@ -574,6 +574,52 @@ describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
     expect(hydrated.messages.some((message) => message.text.startsWith('检定结果'))).toBe(true);
   });
 
+  it('removes withdrawn pharmacy-map and ambush UI records from a migrated live save', () => {
+    const progress = createScenarioProgress();
+    progress.moduleVersion = '1.1.5';
+    progress.contentHash = '4d651496e9200891';
+    progress.activeActId = 'A03';
+    progress.beatStates.B01 = 'completed';
+    progress.beatStates.B02 = 'completed';
+    progress.beatStates.B05 = 'completed';
+    progress.beatStates.B06 = 'active';
+    progress.objectiveStates.O05 = 'completed';
+    progress.objectiveStates.O06 = 'active';
+    progress.clueStates.I07 = 'analyzed';
+    progress.knownFactIds.push('F09');
+    progress.firedEventIds.push('EV_S04_MAP', 'EV_S04_THUGS');
+    progress.encounters.ENC02.state = 'active';
+    progress.visitedSceneIds.push('S04');
+    const hydrated = hydrateGameState({
+      players: [makeInvestigator({ id: 'p1', name: '托马斯' })],
+      currentScene: 'S04',
+      scenarioProgress: progress,
+      clues: ['I07'],
+      messages: [
+        { id: 'player', type: 'player', text: '抵达药店后先确认现场。', playerName: '托马斯' },
+        { id: 'map', type: 'system', text: '后厅油布包中的地图笔记标出了泰晤士港扶桑花号的位置。' },
+        { id: 'ambush', type: 'dm', text: '三个黑影堵住去路。（战斗阶段开始）' }
+      ],
+      conversationHistory: [
+        { role: 'user', content: '抵达药店后先确认现场。' },
+        { role: 'assistant', content: '{"narrative":"三个黑影堵住去路。（战斗阶段开始）"}' }
+      ],
+      suggestions: ['抓起杂物作为防身武器'],
+      actionLog: [{ time: '19:20', text: '剧情事件：EV_S04_MAP' }],
+      longTermMemorySummary: '已经找到地图并进入战斗。',
+      prospectiveIntents: [{ id: 'fight', description: '继续战斗', dueTurn: 10, createdTurn: 9, ttl: 2 }]
+    });
+
+    expect(hydrated.clues.map((clue) => clue.id)).not.toContain('I07');
+    expect(hydrated.messages.map((message) => message.id)).toEqual(['player']);
+    expect(hydrated.conversationHistory).toEqual([{ role: 'user', content: '抵达药店后先确认现场。' }]);
+    expect(hydrated.suggestions).toContain('搜查后厅油布包，寻找并检查潮湿的地图笔记');
+    expect(hydrated.actionLog.some((entry) => entry.text.includes('EV_S04_MAP'))).toBe(false);
+    expect(hydrated.longTermMemorySummary).toBe('');
+    expect(hydrated.summarizedUntilIndex).toBe(0);
+    expect(hydrated.prospectiveIntents).toEqual([]);
+  });
+
   it('repairs an offstage active NPC to match the persisted scene', () => {
     const hydrated = hydrateGameState({
       players: [makeInvestigator({ id: 'p1', name: '亨利' })],
