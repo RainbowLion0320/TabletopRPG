@@ -11,7 +11,7 @@ import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
 import asset9 from '../../../../assets/avatars/deep_one.svg';
 
-export const scenarioContentHash = "4d651496e9200891";
+export const scenarioContentHash = "33991bac69fb658b";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -2621,8 +2621,16 @@ export const generatedScenarioModule = {
           "subtitle": "“别来找我”",
           "importance": 3,
           "when": {
-            "clue": "I01",
-            "status": "discovered"
+            "any": [
+              {
+                "clue": "I01",
+                "status": "discovered"
+              },
+              {
+                "clue": "I01",
+                "status": "analyzed"
+              }
+            ]
           }
         },
         {
@@ -2633,8 +2641,16 @@ export const generatedScenarioModule = {
           "subtitle": "蒙特利尔与埃里克",
           "importance": 4,
           "when": {
-            "clue": "I02",
-            "status": "discovered"
+            "any": [
+              {
+                "clue": "I02",
+                "status": "discovered"
+              },
+              {
+                "clue": "I02",
+                "status": "analyzed"
+              }
+            ]
           }
         },
         {
@@ -2645,8 +2661,16 @@ export const generatedScenarioModule = {
           "subtitle": "埃里克留下的旧公司地址",
           "importance": 3,
           "when": {
-            "clue": "I03",
-            "status": "discovered"
+            "any": [
+              {
+                "clue": "I03",
+                "status": "discovered"
+              },
+              {
+                "clue": "I03",
+                "status": "analyzed"
+              }
+            ]
           }
         },
         {
@@ -2657,8 +2681,16 @@ export const generatedScenarioModule = {
           "subtitle": "夹页受过特殊处理",
           "importance": 5,
           "when": {
-            "clue": "I04",
-            "status": "discovered"
+            "any": [
+              {
+                "clue": "I04",
+                "status": "discovered"
+              },
+              {
+                "clue": "I04",
+                "status": "analyzed"
+              }
+            ]
           }
         },
         {
@@ -2669,8 +2701,16 @@ export const generatedScenarioModule = {
           "subtitle": "车库暗格中的可疑粉末",
           "importance": 4,
           "when": {
-            "clue": "I05",
-            "status": "discovered"
+            "any": [
+              {
+                "clue": "I05",
+                "status": "discovered"
+              },
+              {
+                "clue": "I05",
+                "status": "analyzed"
+              }
+            ]
           }
         },
         {
@@ -2681,8 +2721,16 @@ export const generatedScenarioModule = {
           "subtitle": "扫毒英雄通稿",
           "importance": 4,
           "when": {
-            "clue": "I06",
-            "status": "discovered"
+            "any": [
+              {
+                "clue": "I06",
+                "status": "discovered"
+              },
+              {
+                "clue": "I06",
+                "status": "analyzed"
+              }
+            ]
           }
         },
         {
@@ -2693,8 +2741,16 @@ export const generatedScenarioModule = {
           "subtitle": "标注扶桑花号位置",
           "importance": 5,
           "when": {
-            "clue": "I07",
-            "status": "discovered"
+            "any": [
+              {
+                "clue": "I07",
+                "status": "discovered"
+              },
+              {
+                "clue": "I07",
+                "status": "analyzed"
+              }
+            ]
           }
         },
         {
@@ -2705,8 +2761,16 @@ export const generatedScenarioModule = {
           "subtitle": "药店内收集的烟蒂",
           "importance": 4,
           "when": {
-            "clue": "I08",
-            "status": "discovered"
+            "any": [
+              {
+                "clue": "I08",
+                "status": "discovered"
+              },
+              {
+                "clue": "I08",
+                "status": "analyzed"
+              }
+            ]
           }
         },
         {

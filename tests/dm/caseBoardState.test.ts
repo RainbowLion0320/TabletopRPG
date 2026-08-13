@@ -80,6 +80,7 @@ describe('gameReducer v7 case board state', () => {
     state.scenarioProgress.clueStates.I04 = 'analyzed';
     state.scenarioProgress.knownFactIds.push('F06');
     expect(getVisibleCaseBoard(caseBoardDefinition, state).nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'item-i04', title: '小册子' }),
       expect.objectContaining({ id: 'scene-s04', subtitle: '贝尔街14号' })
     ]));
   });

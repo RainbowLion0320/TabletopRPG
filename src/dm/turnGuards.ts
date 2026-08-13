@@ -1,12 +1,14 @@
 import type { AiResponse, CheckRequest, GameState, SceneId } from '../types/game';
 import type { PlayerAction } from '../services/aiDm';
+import { getDmRequestTurn } from '../services/turns';
 import type { DmToolCall, KnowledgeBase } from './types';
 import { getActiveKnowledgeBase } from './knowledgeBase';
 import {
   getScenarioDefinition,
   getAvailableSceneExits,
   getAvailableStoryEvents,
-  getScenarioProgressForState
+  getScenarioProgressForState,
+  processScenarioTurn
 } from '../scenario/engine';
 
 const DICE_RESULT_RE = /【检定结果】|结果[：:]\s*(?:失败|大失败|成功|困难成功|极难成功|大成功)/;
@@ -476,6 +478,37 @@ function publicScenarioCorpus(kb: KnowledgeBase): string {
   return [...scenes, ...npcs, ...items].join('\n');
 }
 
+function lockedSceneReference(
+  text: string,
+  authority: string,
+  state: GameState,
+  kb: KnowledgeBase,
+  proposedEvents: ReturnType<typeof getAvailableStoryEvents>
+): string | null {
+  const progress = getScenarioProgressForState(state);
+  const projected = processScenarioTurn(progress, {
+    currentScene: state.currentScene,
+    storyEventIds: proposedEvents.map((event) => event.id),
+    turn: getDmRequestTurn(state.conversationHistory),
+    completeTurn: false
+  }).progress;
+  const visibleSceneIds = new Set([
+    state.currentScene,
+    ...projected.visitedSceneIds,
+    ...getAvailableSceneExits(projected, state.currentScene).map((exit) => exit.sceneId)
+  ]);
+
+  for (const [sceneId, entry] of Object.entries(kb.scenes) as Array<[SceneId, KnowledgeBase['scenes'][SceneId]]>) {
+    if (visibleSceneIds.has(sceneId)) continue;
+    const distinctiveTerms = [entry.public.name, ...(entry.public.aliases ?? [])]
+      .map((term) => term.trim())
+      .filter((term) => term.replace(/[^\u4e00-\u9fffA-Za-z0-9]/g, '').length >= 4);
+    const leaked = distinctiveTerms.find((term) => text.includes(term) && !authority.includes(term));
+    if (leaked) return leaked;
+  }
+  return null;
+}
+
 function eventAuthorizesOutcome(
   event: ReturnType<typeof getAvailableStoryEvents>[number],
   outcome: 'rescue' | 'ending'
@@ -618,6 +651,7 @@ export function validateNarratorSemantics(
     const event = availableEvents.get(String(call.arguments.eventId ?? ''));
     return event ? [event] : [];
   });
+  const narrativeAuthority = authoredNarrativeCorpus(state, proposedEvents);
   const proposedClueIds = new Set(proposedEvents.flatMap((event) => event.effects.flatMap((effect) => {
     if ('discoverClue' in effect) return [effect.discoverClue];
     if ('analyzeClue' in effect) return [effect.analyzeClue];
@@ -749,7 +783,7 @@ export function validateNarratorSemantics(
   }
   const plotClaimIssue = unsupportedPlotClaim(
     allText,
-    authoredNarrativeCorpus(state, proposedEvents)
+    narrativeAuthority
   );
   if (plotClaimIssue) return plotClaimIssue;
   const bookletWillBeAnalyzed = proposedEvents.some((event) =>
@@ -783,6 +817,10 @@ export function validateNarratorSemantics(
     if (framesForeignSceneAsCurrent(output.narrative, sceneTerms(kb, sceneId))) {
       return `叙事把${entry.public.name}写成当前环境，但没有对应的合法场景切换`;
     }
+  }
+  const lockedScene = lockedSceneReference(allText, narrativeAuthority, state, kb, proposedEvents);
+  if (lockedScene) {
+    return `不得在作者事件或可达性解锁前提及锁定地点：${lockedScene}`;
   }
   return null;
 }

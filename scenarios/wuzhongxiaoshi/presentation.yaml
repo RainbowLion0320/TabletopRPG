@@ -16,14 +16,14 @@ caseBoard:
     - { id: npc-montreal, type: npc, refId: N03, title: 洛夫·蒙特利尔, subtitle: 警察局长, importance: 4, when: { factKnown: F05 } }
     - { id: npc-bartender, type: npc, refId: N04, title: 老赫特之家酒保, subtitle: 线人消息来源, importance: 3, when: { sceneVisited: S03 } }
     - { id: npc-hybrid-envoy, type: npc, refId: N05, title: 扶桑花号交涉代表, subtitle: 终幕中的深潜者代表, importance: 5, when: { sceneVisited: S05 } }
-    - { id: item-i01, type: item, refId: I01, title: 便签, subtitle: “别来找我”, importance: 3, when: { clue: I01, status: discovered } }
-    - { id: item-i02, type: item, refId: I02, title: 合影照片, subtitle: 蒙特利尔与埃里克, importance: 4, when: { clue: I02, status: discovered } }
-    - { id: item-i03, type: item, refId: I03, title: 名片, subtitle: 埃里克留下的旧公司地址, importance: 3, when: { clue: I03, status: discovered } }
-    - { id: item-i04, type: item, refId: I04, title: 小册子, subtitle: 夹页受过特殊处理, importance: 5, when: { clue: I04, status: discovered } }
-    - { id: item-i05, type: item, refId: I05, title: 白色粉末样品, subtitle: 车库暗格中的可疑粉末, importance: 4, when: { clue: I05, status: discovered } }
-    - { id: item-i06, type: item, refId: I06, title: 报纸残片, subtitle: 扫毒英雄通稿, importance: 4, when: { clue: I06, status: discovered } }
-    - { id: item-i07, type: item, refId: I07, title: 深潜者地图笔记, subtitle: 标注扶桑花号位置, importance: 5, when: { clue: I07, status: discovered } }
-    - { id: item-i08, type: item, refId: I08, title: 雪茄头, subtitle: 药店内收集的烟蒂, importance: 4, when: { clue: I08, status: discovered } }
+    - { id: item-i01, type: item, refId: I01, title: 便签, subtitle: “别来找我”, importance: 3, when: { any: [{ clue: I01, status: discovered }, { clue: I01, status: analyzed }] } }
+    - { id: item-i02, type: item, refId: I02, title: 合影照片, subtitle: 蒙特利尔与埃里克, importance: 4, when: { any: [{ clue: I02, status: discovered }, { clue: I02, status: analyzed }] } }
+    - { id: item-i03, type: item, refId: I03, title: 名片, subtitle: 埃里克留下的旧公司地址, importance: 3, when: { any: [{ clue: I03, status: discovered }, { clue: I03, status: analyzed }] } }
+    - { id: item-i04, type: item, refId: I04, title: 小册子, subtitle: 夹页受过特殊处理, importance: 5, when: { any: [{ clue: I04, status: discovered }, { clue: I04, status: analyzed }] } }
+    - { id: item-i05, type: item, refId: I05, title: 白色粉末样品, subtitle: 车库暗格中的可疑粉末, importance: 4, when: { any: [{ clue: I05, status: discovered }, { clue: I05, status: analyzed }] } }
+    - { id: item-i06, type: item, refId: I06, title: 报纸残片, subtitle: 扫毒英雄通稿, importance: 4, when: { any: [{ clue: I06, status: discovered }, { clue: I06, status: analyzed }] } }
+    - { id: item-i07, type: item, refId: I07, title: 深潜者地图笔记, subtitle: 标注扶桑花号位置, importance: 5, when: { any: [{ clue: I07, status: discovered }, { clue: I07, status: analyzed }] } }
+    - { id: item-i08, type: item, refId: I08, title: 雪茄头, subtitle: 药店内收集的烟蒂, importance: 4, when: { any: [{ clue: I08, status: discovered }, { clue: I08, status: analyzed }] } }
     - { id: theory-smuggling, type: theory, refId: F07, title: 走私嫌疑, subtitle: 失踪案背后可能有鸦片运输, importance: 5, when: { factKnown: F07 } }
     - { id: theory-rat, type: theory, refId: F08, title: “老鼠”线索, subtitle: 指向贝尔街14号, importance: 3, when: { factKnown: F08 } }
   edges:

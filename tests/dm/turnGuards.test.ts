@@ -490,6 +490,8 @@ describe('turnGuards', () => {
     expect(validateNarratorSemantics({
       narrative: '蒙特利尔其实是码头帮的人物。', nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/未声明的组织身份/);
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.knownFactIds = ['F06'];
     expect(validateNarratorSemantics({
       narrative: '可靠线索指向贝尔街14号卡森其药店。', nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toBeNull();
@@ -695,5 +697,10 @@ describe('turnGuards', () => {
       activeNpc: '伊莎贝拉·摩勒', nextPrompt: '是否前往药店？', playerChoices: {}
     }, [{ name: 'propose_story_event', arguments: { eventId: 'EV_FIND_I04' } }], searching, kb))
       .toBeNull();
+    expect(validateNarratorSemantics({
+      narrative: '加热小册子夹页，显出“贝尔街14号卡森其药店，提货后转运至扶桑花号”。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '是否前往药店？', playerChoices: {}
+    }, [{ name: 'propose_story_event', arguments: { eventId: 'EV_FIND_I04' } }], searching, kb))
+      .toMatch(/锁定地点.*扶桑花号/);
   });
 });
