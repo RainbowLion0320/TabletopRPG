@@ -654,7 +654,24 @@ export async function runDmTurn(
       const eventNarrative = projectedStoryEventIds.flatMap((id) =>
         availableEvents.get(id)?.narrativeCue ?? []
       ).join(' ');
-      const narrative = eventNarrative || (changedScene
+      const projectedRoute = projectedTransition.progress.variables.finaleRoute;
+      const diceResultText = input.actions.map((action) => action.action).join('\n');
+      const checkSucceeded = /【检定结果】[\s\S]*结果[：:]\s*(?:成功|普通成功|困难成功|极难成功|大成功)/.test(diceResultText);
+      const checkFailed = /【检定结果】[\s\S]*结果[：:]\s*(?:失败|大失败)/.test(diceResultText);
+      const finaleNarrative = projectedScene === 'S05' && projectedRoute === 'combat'
+        ? checkSucceeded
+          ? '攻击已经结算并奏效，一名深潜者失去战斗能力；其余深潜者仍在阻止你们接近埃里克。'
+          : checkFailed
+            ? '这次攻击未能使深潜者失去战斗能力；甲板冲突仍在继续，扶桑花号正准备离港。'
+            : '甲板冲突仍在继续，调查员必须尽快攻击仍在抵抗的深潜者并救出埃里克。'
+        : projectedScene === 'S05' && projectedRoute === 'negotiation'
+          ? checkSucceeded
+            ? '这次交涉检定已经成功结算；调查员继续依据已经听懂的诉求完成交涉。'
+            : checkFailed
+              ? '这次交涉检定未能奏效；调查员仍须依据当前有效目标继续处理交涉。'
+              : '交涉仍在继续，调查员需要先听懂对方诉求，再说服其释放埃里克。'
+          : '';
+      const narrative = eventNarrative || finaleNarrative || (changedScene
         ? `你们已经抵达${sceneName}。声明中的其他新信息无法由现有证据确认，只能依据已经确认的线索继续调查。`
         : activeNpcName
           ? `${activeNpcName}没有提供更多可核实的信息。你们仍在${sceneName}，只能依据已经确认的线索继续调查。`
@@ -666,11 +683,16 @@ export async function runDmTurn(
         activeNpcName,
         projectedTransition.progress
       );
+      const nextPrompt = finaleNarrative
+        ? projectedRoute === 'combat'
+          ? '下一轮如何攻击仍在抵抗的深潜者？'
+          : '下一步如何继续交涉？'
+        : '下一步要从哪条已确认线索着手？';
       narrator = {
-        raw: JSON.stringify({ narrative, activeNpc: activeNpcName, nextPrompt: '下一步要从哪条已确认线索着手？', playerChoices }),
+        raw: JSON.stringify({ narrative, activeNpc: activeNpcName, nextPrompt, playerChoices }),
         narrative,
         activeNpc: activeNpcName,
-        nextPrompt: '下一步要从哪条已确认线索着手？',
+        nextPrompt,
         playerChoices,
         keywords: [],
         toolCalls: [],

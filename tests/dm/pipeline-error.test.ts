@@ -194,4 +194,43 @@ describe('runDmTurn error classification', () => {
     expect(output.legacyResponse.playerChoices?.艾达).not.toContain('听懂深潜者诉求');
     expect(output.legacyResponse.playerChoices?.艾达).not.toContain('前往卡森其药店继续调查');
   });
+
+  it('uses a combat-aware semantic fallback after a resolved successful attack', async () => {
+    const invalidOutcome = JSON.stringify({
+      narrative: '交涉代表立刻释放了埃里克，并允许调查员停止战斗离开码头。',
+      activeNpc: '扶桑花号交涉代表',
+      nextPrompt: '带埃里克离开。',
+      playerChoices: { 罗伯特: ['停止攻击并谈判'] }
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(invalidOutcome)));
+    const state = makeState({
+      players: [makeInvestigator({ name: '罗伯特' }, { '格斗（拳）': 70 })],
+      currentScene: 'S05',
+      activeNpcName: '扶桑花号交涉代表'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.variables.combatRoundStarted = true;
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.clocks.fusangEscape = { value: 2, active: true, visible: true };
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [{
+        player: '罗伯特',
+        action: '【检定结果】罗伯特 的 格斗（拳） 检定：掷出 59，阈值 70，结果：普通成功（59）。这是规则事实，不得改写或推翻；请根据结果继续叙述。'
+      }]
+    });
+
+    expect(output.legacyResponse.narrative).toContain('攻击已经结算并奏效');
+    expect(output.legacyResponse.narrative).toContain('一名深潜者失去战斗能力');
+    expect(output.legacyResponse.narrative).not.toMatch(/提供更多可核实的信息|释放了埃里克/);
+    expect(output.legacyResponse.playerChoices?.罗伯特.every((choice) =>
+      /攻击|搏斗|出拳|制服|击败|警棍|射击|开枪|擒抱|摔倒|猛击/.test(choice)
+    )).toBe(true);
+  });
 });
