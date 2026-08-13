@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { gameReducer, hydrateGameState } from '../../src/state/gameReducer';
 import { createScenarioProgress } from '../../src/scenario/engine';
+import { isAffirmativeCombatAction } from '../../src/services/actionIntent';
 import type { AiResponse, AtomicFact, EpisodicMemoryRecord, PersistedDMEvent, ProspectiveIntent } from '../../src/types/game';
 import { makeInvestigator, makeState } from './fixtures';
 
@@ -229,6 +230,34 @@ describe('gameReducer applyAiResponse pendingConsequences merge', () => {
       threshold: 30
     }));
     expect(next.scenarioProgress?.endingId).toBeNull();
+  });
+
+  it('refreshes stale pre-finale choices after the combat route settles', () => {
+    const player = makeInvestigator({ id: 'p-robert', name: '罗伯特' });
+    const state = makeState({ players: [player], currentScene: 'S05' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.suggestionsByPlayerId = {
+      'p-robert': ['沿防波堤观察甲板', '从舷梯登船寻找管事', '在码头隐蔽观察']
+    };
+    state.suggestions = state.suggestionsByPlayerId['p-robert'];
+
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: {
+        narrative: '调查员以武力阻止深潜者。',
+        playerChoices: {},
+        stateUpdate: { storyEventIds: ['EV_CHOOSE_COMBAT'] }
+      },
+      raw: '{}'
+    });
+
+    expect(next.scenarioProgress?.variables.finaleRoute).toBe('combat');
+    expect(next.suggestionsByPlayerId['p-robert']).toHaveLength(3);
+    expect(next.suggestionsByPlayerId['p-robert'].every(isAffirmativeCombatAction)).toBe(true);
   });
 
   it('turns a failed authored listen into an extreme persuasion check without AI continuation', () => {

@@ -435,7 +435,7 @@ function mergeDelta(target: Record<string, number>, player: string, delta: numbe
 
 function narrativeHarmsPlayer(narrative: string, playerName: string): boolean {
   const player = escapeRegex(playerName);
-  const bodyPart = '(?:头|脸|颈|肩|胸|背|腰|腹|手|手臂|前臂|手掌|手指|指尖|虎口|腿|膝|脚|皮肤)';
+  const bodyPart = '(?:头|脸|颈|肩|胸|背|腰|腹|手|手臂|前臂|小臂|手掌|手指|指尖|虎口|腿|膝|脚|皮肤)';
   const injury = '(?:击中|打中|砸中|划伤|抓伤|刺伤|咬伤|撕伤|砍伤|中弹|受伤|流血|渗血|出血|骨折|伤口|血口|血痕|血丝|剧痛|划出.{0,6}(?:伤口|血口|血痕|细痕))';
   const direct = new RegExp(
     `${player}(?:的${bodyPart})?(?:被|受到|遭到|挨(?:了)?|中(?:了)?)[^，。；！？\\n]{0,14}${injury}`
@@ -793,13 +793,23 @@ export function validateNarratorSemantics(
     const event = availableEvents.get(String(call.arguments.eventId ?? ''));
     return event ? [event] : [];
   });
-  const settledCombatHit = actions.some((action) =>
+  const settledCombatHit = progress.variables.finaleRoute === 'combat'
+    && (progress.encounters.ENC01?.defeated ?? 0) > 0
+    && actions.some((action) =>
     /【检定结果】[^。；！？\n]{0,100}(?:格斗（拳）|CHECK_COMBAT)[^。；！？\n]{0,80}结果[：:]\s*(?:普通成功|成功|困难成功|极难成功|大成功)/.test(action.action)
-  ) && progress.firedEventIds.includes('EV_COMBAT_HIT');
+    );
   const deniesCombatIncapacitation = /(?:并未|没有|未能)(?:立刻|完全)?倒下|仍(?:然)?(?:能够?|可以|在)(?:继续)?(?:战斗|抵抗)/.test(output.narrative);
   const confirmsCombatIncapacitation = /失去战斗能力|无力再战|退出战斗|无法继续战斗|不再抵抗|被制服/.test(output.narrative);
   if (settledCombatHit && deniesCombatIncapacitation && !confirmsCombatIncapacitation) {
     return '结构化战斗命中已使一名深潜者失去战斗能力，正文不得否定该结算';
+  }
+  const confirmsDefeatedDeepOne = /(?:倒地|瘫倒|失去战斗能力|无力再战|被制服)[^。；！？\n]{0,16}深潜者|深潜者[^。；！？\n]{0,16}(?:倒地|瘫倒|失去战斗能力|无力再战|被制服)/.test(output.narrative);
+  if (
+    progress.variables.finaleRoute === 'combat'
+    && (progress.encounters.ENC01?.defeated ?? 0) === 0
+    && confirmsDefeatedDeepOne
+  ) {
+    return '没有结构化战斗命中时，正文不得把玩家自述的倒地深潜者当作既成战果';
   }
   const demandsPendingCheck = /(?:需要|必须|务必|须得)[^。；！？\n]{0,24}检定|请[^。；！？\n]{0,12}(?:掷骰|进行)[^。；！？\n]{0,12}检定/.test(
     `${output.narrative}\n${output.nextPrompt}`

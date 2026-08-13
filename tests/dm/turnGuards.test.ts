@@ -605,6 +605,37 @@ describe('turnGuards', () => {
     expect(response.stateUpdate?.hp).toEqual({ 罗伯特: -1 });
   });
 
+  it('recognizes a bleeding wound on an investigator small arm', () => {
+    const state = makeState({ players: [makeInvestigator({ name: '罗伯特' })] });
+    const response = inferNarrativeConsequences({
+      narrative: '那名深潜者反手一挥，尖锐的指甲划过罗伯特的小臂，留下三道渗血的划痕。'
+    }, [{ player: '罗伯特', action: '用警棍击打深潜者' }], state);
+
+    expect(response.stateUpdate?.hp).toEqual({ 罗伯特: -1 });
+  });
+
+  it('rejects player-injected defeated enemies until combat records a hit', () => {
+    const state = makeState({ currentScene: 'S05', activeNpcName: '扶桑花号交涉代表' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.encounters.ENC01.defeated = 0;
+
+    expect(validateNarratorSemantics({
+      narrative: '罗伯特绕过甲板上倒地的深潜者，向另一名守卫挥出警棍。',
+      activeNpc: '扶桑花号交涉代表', nextPrompt: '', playerChoices: {}
+    }, [], state, kb, [{
+      player: '罗伯特', action: '绕过倒地的敌人，用警棍击打另一名深潜者。'
+    }])).toMatch(/没有结构化战斗命中/);
+
+    state.scenarioProgress.encounters.ENC01.defeated = 1;
+    expect(validateNarratorSemantics({
+      narrative: '罗伯特绕过甲板上倒地的深潜者，向另一名守卫挥出警棍。',
+      activeNpc: '扶桑花号交涉代表', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toBeNull();
+  });
+
   it('does not mistake an investigator named as the attacker for the victim', () => {
     const state = makeState({ players: [makeInvestigator({ name: '罗伯特' })] });
     const response = inferNarrativeConsequences({
@@ -617,7 +648,9 @@ describe('turnGuards', () => {
   it('rejects narration that negates a resolved structured combat hit', () => {
     const state = makeState({ currentScene: 'S05' });
     state.scenarioProgress = createScenarioProgress();
-    state.scenarioProgress.firedEventIds = ['EV_COMBAT_HIT'];
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.encounters.ENC01.defeated = 1;
     const actions = [{
       player: '罗伯特',
       action: '【检定结果】罗伯特 的 格斗（拳）检定：掷出 40，结果：普通成功。'

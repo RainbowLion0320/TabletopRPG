@@ -1702,6 +1702,21 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         action.actorName ?? state.players[state.currentActorIndex]?.name,
         response.narrative
       );
+      const settledFinaleRoute = nextState.scenarioProgress?.variables.finaleRoute;
+      const previousFinaleRoute = getScenarioProgressForState(state).variables.finaleRoute;
+      if (
+        nextState.currentScene === 'S05'
+        && (settledFinaleRoute === 'combat' || settledFinaleRoute === 'negotiation')
+        && (previousFinaleRoute !== settledFinaleRoute
+          || containsInvalidFinaleSuggestion(nextState.suggestionsByPlayerId, settledFinaleRoute))
+      ) {
+        const routeSuggestions = finaleSuggestions(nextState.players, settledFinaleRoute);
+        nextState = {
+          ...nextState,
+          suggestionsByPlayerId: routeSuggestions,
+          suggestions: firstSuggestionListByPlayerOrder(routeSuggestions, nextState.players, nextState.suggestions)
+        };
+      }
       if (response.narrative) {
         nextState = addMessage(nextState, {
           type: 'dm',
