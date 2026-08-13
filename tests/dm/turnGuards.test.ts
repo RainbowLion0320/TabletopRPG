@@ -712,6 +712,36 @@ describe('turnGuards', () => {
     }, [{ name: 'propose_story_event', arguments: { eventId: 'EV_FIND_I01' } }], state, kb)).toBeNull();
   });
 
+  it('rejects opening narration that leaks the dock, hands over I02, or invents Montreal involvement', () => {
+    const state = makeState({ currentScene: 'S01', activeNpcName: '伊莎贝拉·摩勒' });
+    state.scenarioProgress = createScenarioProgress();
+    const accept = [{
+      name: 'propose_story_event' as const,
+      arguments: { eventId: 'EV_ACCEPT_COMMISSION' }
+    }];
+
+    expect(validateNarratorSemantics({
+      narrative: '伊莎贝拉说老赫特酒吧就在码头区附近。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}
+    }, accept, state, kb)).toMatch(/锁定地点.*码头区/);
+    expect(validateNarratorSemantics({
+      narrative: '伊莎贝拉说父亲失踪当天去码头区办事。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}
+    }, accept, state, kb)).toMatch(/失踪前的未授权行踪细节/);
+    expect(validateNarratorSemantics({
+      narrative: '伊莎贝拉从桌上推过一个信封，里面还有父亲最近的一张照片。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}
+    }, accept, state, kb)).toMatch(/合影照片.*无可用事件/);
+    expect(validateNarratorSemantics({
+      narrative: '伊莎贝拉说她报案后，蒙特利尔局长承诺会调查，但至今没有进展。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}
+    }, accept, state, kb)).toMatch(/未解锁人物介入调查/);
+    expect(validateNarratorSemantics({
+      narrative: '伊莎贝拉确认父亲于三日前失踪，警方没有取得进展，他平时常去老赫特酒吧。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '是否调查住宅？', playerChoices: {}
+    }, accept, state, kb)).toBeNull();
+  });
+
   it('allows an authored NPC to repeat non-authoritative local color and known leads', () => {
     const state = makeState({ currentScene: 'S03', activeNpcName: '老赫特之家酒保' });
 

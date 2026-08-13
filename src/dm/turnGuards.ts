@@ -509,7 +509,10 @@ function lockedSceneReference(
     if (visibleSceneIds.has(sceneId)) continue;
     const distinctiveTerms = [entry.public.name, ...(entry.public.aliases ?? [])]
       .map((term) => term.trim())
-      .filter((term) => term.replace(/[^\u4e00-\u9fffA-Za-z0-9]/g, '').length >= 4);
+      .filter((term) => {
+        const length = term.replace(/[^\u4e00-\u9fffA-Za-z0-9]/g, '').length;
+        return length >= 4 || (length >= 3 && term.endsWith('区'));
+      });
     const leaked = distinctiveTerms.find((term) => text.includes(term) && !authority.includes(term));
     if (leaked) return leaked;
   }
@@ -568,7 +571,11 @@ const PLOT_CLAIM_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
   },
   {
     label: '失踪前的未授权行踪细节',
-    pattern: /(?:埃里克|父亲)[^。；！？\n]{0,56}(?:傍晚|晚上)[^。；！？\n]{0,20}(?:离开|出门)|(?:去|前往)[^。；！？\n]{0,12}老赫特[^。；！？\n]{0,24}(?:见|会面)[^。；！？\n]{0,8}(?:朋友|生意伙伴)/
+    pattern: /(?:埃里克|父亲)[^。；！？\n]{0,56}(?:傍晚|晚上)[^。；！？\n]{0,20}(?:离开|出门)|(?:埃里克|父亲)[^。；！？\n]{0,48}(?:去|前往|到)[^。；！？\n]{0,12}(?:码头区|码头|港口)|(?:去|前往)[^。；！？\n]{0,12}老赫特[^。；！？\n]{0,24}(?:见|会面)[^。；！？\n]{0,8}(?:朋友|生意伙伴)/
+  },
+  {
+    label: '未解锁人物介入调查',
+    pattern: /蒙特利尔[^。；！？\n]{0,32}(?:亲自|表示|说|承诺|答应|保证)[^。；！？\n]{0,20}(?:会调查|负责调查|关照|接手|处理)/
   },
   {
     label: '人物身份或背景',
