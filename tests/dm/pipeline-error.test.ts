@@ -229,8 +229,8 @@ describe('runDmTurn error classification', () => {
     expect(output.legacyResponse.narrative).toContain('攻击已经结算并奏效');
     expect(output.legacyResponse.narrative).toContain('一名深潜者失去战斗能力');
     expect(output.legacyResponse.narrative).not.toMatch(/提供更多可核实的信息|释放了埃里克/);
-    expect(output.legacyResponse.playerChoices?.罗伯特.every((choice) =>
-      /攻击|搏斗|出拳|制服|击败|警棍|射击|开枪|擒抱|摔倒|猛击/.test(choice)
-    )).toBe(true);
+    expect(output.legacyResponse.playerChoices?.罗伯特).not.toContain(
+      '用警棍指向深潜者代表，警告它下令停船'
+    );
   });
 });

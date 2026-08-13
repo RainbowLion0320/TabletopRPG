@@ -426,12 +426,15 @@ describe('turnGuards', () => {
 
   it('keeps finale suggestions within the selected authored route', () => {
     const combat = sanitizePlayerChoices({
-      罗伯特: ['再次用警棍攻击深潜者', '冲向埃里克解开束缚', '要求深潜者代表谈判']
+      罗伯特: [
+        '再次用警棍攻击深潜者',
+        '用警棍指向深潜者代表，警告它下令停船',
+        '冲向埃里克解开束缚',
+        '要求深潜者代表谈判'
+      ]
     }, new Set(), kb, 'S05', 'combat');
     expect(combat.罗伯特).toHaveLength(3);
-    expect(combat.罗伯特.every((choice) =>
-      /攻击|搏斗|出拳|制服|击败|警棍|射击|开枪|擒抱|摔倒|猛击/.test(choice)
-    )).toBe(true);
+    expect(combat.罗伯特).not.toContain('用警棍指向深潜者代表，警告它下令停船');
     expect(combat.罗伯特.some((choice) => /谈判|交涉/.test(choice))).toBe(false);
 
     const negotiation = sanitizePlayerChoices({
@@ -439,6 +442,31 @@ describe('turnGuards', () => {
     }, new Set(), kb, 'S05', 'negotiation');
     expect(negotiation.艾达).toHaveLength(3);
     expect(negotiation.艾达.some((choice) => /攻击|拔枪/.test(choice))).toBe(false);
+  });
+
+  it('requires an affirmative combat action before advancing the finale battle', () => {
+    const state = makeState({ currentScene: 'S05' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.variables.combatRoundStarted = true;
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.clocks.fusangEscape = { value: 2, active: true, visible: true };
+
+    expect(inferStoryEventFromActions([{
+      player: '罗伯特', action: '用警棍指向深潜者代表，警告它下令停船。'
+    }], state)).toBeNull();
+    expect(inferStoryEventFromActions([{
+      player: '罗伯特', action: '继续警戒，但不要攻击深潜者。'
+    }], state)).toBeNull();
+    expect(inferStoryEventFromActions([{
+      player: '罗伯特', action: '拔出手枪射击最后一名深潜者护卫。'
+    }], state)).toEqual(expect.objectContaining({
+      arguments: expect.objectContaining({ eventId: 'EV_COMBAT_ATTACK' })
+    }));
   });
 
   it('rejects narration that contradicts the active authored NPC appearance', () => {

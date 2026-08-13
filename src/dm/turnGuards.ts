@@ -14,6 +14,7 @@ import {
 const DICE_RESULT_RE = /【检定结果】|结果[：:]\s*(?:失败|大失败|成功|困难成功|极难成功|大成功)/;
 const MOVE_VERB_RE = /前往|赶往|去往|转往|改去|改从|出发|动身|返回|回到|离开|开车|驾车|驱车|驶向|跟随|追到|抵达|到达/;
 const MOVE_DESTINATION_RE = /前往|赶往|去往|转往|改去|改从|驶向|追到|抵达|到达|进入|登上|回到|返回|去/;
+const COMBAT_ACTION_RE = /攻击|搏斗|出拳|制服|击败|殴打|近战|射击|开枪|擒抱|摔倒|猛击|砸向|砸击/;
 const NPC_ROLE_TERMS = ['店主', '老板', '伙计', '服务生', '医生', '护士', '牧师', '管理员', '警员', '警察', '酒保'];
 
 interface CheckCandidate {
@@ -337,11 +338,13 @@ export function inferStoryEventFromActions(
       /聆听.{0,12}诉求|理解.{0,12}诉求|(?:提出|确认|完成).{0,12}(?:交换|条件)|说服.{0,12}(?:释放|放走).{0,8}埃里克|不碰.{0,8}货物.{0,16}(?:释放|放走)/
     ],
     ['EV_CHOOSE_COMBAT', /选择.{0,8}战斗|立即.{0,8}战斗|攻击.{0,8}深潜者/],
-    ['EV_COMBAT_ATTACK', /攻击|搏斗|出拳|制服|击败/]
+    ['EV_COMBAT_ATTACK', COMBAT_ACTION_RE]
   ];
   const match = mappings.find(([eventId, pattern]) =>
     available.has(eventId)
-    && pattern.test(text)
+    && (eventId === 'EV_COMBAT_ATTACK'
+      ? actions.some((action) => hasAffirmativeMatch(action.action, pattern))
+      : pattern.test(text))
     && (!actionIsFailedCheck(actions) || eventId === 'EV_BARTENDER_RAT' || eventId === 'EV_MEET_MONTREAL')
   );
   return match ? {
@@ -452,9 +455,9 @@ export function sanitizePlayerChoices(
       && !offstageNpcNames.some((name) => choice.includes(name))
       && !(sceneId && unavailableNpcRole(choice, kb, sceneId, true))
       && !(sceneId === 'S05' && finaleRoute === 'combat'
-        && !/攻击|搏斗|出拳|制服|击败|警棍|射击|开枪|擒抱|摔倒|猛击/.test(choice))
+        && !hasAffirmativeMatch(choice, COMBAT_ACTION_RE))
       && !(sceneId === 'S05' && finaleRoute === 'negotiation'
-        && /攻击|搏斗|出拳|制服|击败|警棍|射击|开枪|擒抱|摔倒|猛击/.test(choice))
+        && hasAffirmativeMatch(choice, COMBAT_ACTION_RE))
     );
     for (const item of fallback) {
       if (safe.length >= 3) break;
