@@ -653,4 +653,29 @@ describe('turnGuards', () => {
     }, [{ name: 'propose_story_event', arguments: { eventId: 'EV_FIND_I02' } }], searching, kb))
       .toBeNull();
   });
+
+  it('does not add transport markings to the booklet before analysis', () => {
+    const searching = makeState({ currentScene: 'S01', activeNpcName: '伊莎贝拉·摩勒' });
+    searching.scenarioProgress = createScenarioProgress();
+    searching.scenarioProgress.beatStates.B01 = 'completed';
+    searching.scenarioProgress.beatStates.B02 = 'active';
+
+    expect(validateNarratorSemantics({
+      narrative: '托马斯找到一本小册子，封面印着货物运输的标识，夹页似乎经过特殊处理。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '要分析夹页吗？', playerChoices: {}
+    }, [{ name: 'propose_story_event', arguments: { eventId: 'EV_DISCOVER_I04' } }], searching, kb))
+      .toMatch(/尚未分析/);
+    expect(validateNarratorSemantics({
+      narrative: '托马斯找到一本受潮的小册子，夹页似乎经过特殊处理。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '要分析夹页吗？', playerChoices: {}
+    }, [{ name: 'propose_story_event', arguments: { eventId: 'EV_DISCOVER_I04' } }], searching, kb))
+      .toBeNull();
+
+    searching.scenarioProgress.clueStates.I04 = 'discovered';
+    expect(validateNarratorSemantics({
+      narrative: '加热小册子夹页，显出隐写文字“贝尔街14号卡森其药店”。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '是否前往药店？', playerChoices: {}
+    }, [{ name: 'propose_story_event', arguments: { eventId: 'EV_FIND_I04' } }], searching, kb))
+      .toBeNull();
+  });
 });

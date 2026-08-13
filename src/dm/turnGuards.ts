@@ -715,7 +715,7 @@ export function validateNarratorSemantics(
   );
   const policeText = registeredPoliceTerms
     .sort((left, right) => right.length - left.length)
-    .reduce((text, term) => text.replaceAll(term, ''), allText);
+    .reduce((text, term) => text.split(term).join(''), allText);
   const undeclaredPrecinct = policeText.match(/[\u4e00-\u9fff]{1,10}(?:分局|警察局|警局)/)?.[0];
   if (undeclaredPrecinct) {
     return `不得创造模组未声明的警局：${undeclaredPrecinct}`;
@@ -753,6 +753,16 @@ export function validateNarratorSemantics(
     authoredNarrativeCorpus(state, proposedEvents)
   );
   if (plotClaimIssue) return plotClaimIssue;
+  const bookletWillBeAnalyzed = proposedEvents.some((event) =>
+    event.effects.some((effect) => 'analyzeClue' in effect && effect.analyzeClue === 'I04')
+  );
+  const bookletAnalyzed = progress.clueStates.I04 === 'analyzed' || bookletWillBeAnalyzed;
+  if (
+    !bookletAnalyzed
+    && /(?:小册子|册子|封面|夹页)[^。；！？\n]{0,64}(?:货物运输|运输标识|货运标识|公司标记|走私标记|走私含义)/.test(allText)
+  ) {
+    return '小册子尚未分析，不得创造封面或夹页中的运输、公司或走私含义';
+  }
   const unknownVenueArrival = output.narrative.match(
     /(?:抵达|到达|进入|来到|赶到|回到|走进|拜访)[^。；！？\n]{0,16}(?:贸易行|事务所|诊所|商店|旅馆|餐馆)/
   )?.[0];
