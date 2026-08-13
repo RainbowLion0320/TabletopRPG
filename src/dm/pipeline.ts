@@ -17,9 +17,11 @@ import { countCompletedGameTurns, getDmRequestTurn } from '../services/turns';
 import { storyData } from '../data/storyData';
 import { caseBoard as caseBoardDefinition } from '../data/scenarios/wuzhongxiaoshi';
 import {
+  getAvailableStoryEvents,
   getAvailableSceneExits,
   getScenarioProgressForState,
-  npcIdFromName
+  npcIdFromName,
+  processScenarioTurn
 } from '../scenario/engine';
 import { buildDmContext } from './contextBuilder';
 import {
@@ -57,7 +59,7 @@ import {
   validateNarratorSemantics
 } from './turnGuards';
 import { DEFAULT_MEMORY_OPTIONS } from './types';
-import { resolveActiveNpcForScene } from '../state/sceneFocus';
+import { defaultActiveNpcForScene, resolveActiveNpcForScene } from '../state/sceneFocus';
 import type {
   DmBackgroundUpdate,
   DmMemoryUpdate,
@@ -95,13 +97,17 @@ function buildSemanticFallbackChoices(
   state: GameState,
   kb: ReturnType<typeof getActiveKnowledgeBase>,
   sceneId: SceneId,
-  activeNpcName: string | null
+  activeNpcName: string | null,
+  progress = getScenarioProgressForState(state)
 ): Record<string, string[]> {
-  const exits = getAvailableSceneExits(getScenarioProgressForState(state), sceneId);
+  const exits = getAvailableSceneExits(progress, sceneId);
   const destinations = exits.flatMap((exit) => {
     const scene = kb.scenes[exit.sceneId]?.public;
     return scene ? [`前往${scene.name}继续调查`] : [];
   });
+  const authoredActions = getAvailableStoryEvents(progress, sceneId)
+    .map((event) => event.title)
+    .filter((title) => !/^失败推进|恢复|回收/.test(title));
   const localAction = activeNpcName
     ? `请${activeNpcName}只核对已经确认的事实`
     : '继续观察当前环境';
@@ -110,8 +116,9 @@ function buildSemanticFallbackChoices(
       ? [...destinations.slice(index), ...destinations.slice(0, index)]
       : [];
     return [player.name, [
-      ...orderedDestinations,
+      ...authoredActions,
       localAction,
+      ...(authoredActions.length ? [] : orderedDestinations),
       '整理已经发现的线索，决定下一步行动'
     ].filter((choice, choiceIndex, all) => all.indexOf(choice) === choiceIndex).slice(0, 3)];
   }));
@@ -418,6 +425,7 @@ export async function runDmTurn(
   const inferredSceneCall = allowed.includes('propose_scene_change')
     ? inferSceneChangeFromActions(input.actions, input.state, kb)
     : null;
+  const inferredStoryCalls = inferStoryEventsFromActions(input.actions, input.state, kb);
   const requiredCheck = buildRequiredCheck(input.actions, input.state);
   if (requiredCheck) {
     const targetSceneId = inferredSceneCall
@@ -468,6 +476,46 @@ export async function runDmTurn(
       timings
     };
   }
+  const progressBefore = getScenarioProgressForState(input.state);
+  const availableEvents = new Map(
+    getAvailableStoryEvents(progressBefore, input.state.currentScene).map((event) => [event.id, event])
+  );
+  const checkEvent = inferredStoryCalls.flatMap((call) => {
+    const event = availableEvents.get(String(call.arguments.eventId ?? ''));
+    return event?.effects.some((effect) => 'requestCheck' in effect) ? [event] : [];
+  })[0];
+  if (checkEvent) {
+    const activeNpc = defaultActiveNpcForScene(input.state.currentScene);
+    const narrator = {
+      raw: JSON.stringify({
+        narrative: checkEvent.narrativeCue,
+        activeNpc,
+        nextPrompt: '请掷骰结算检定。',
+        playerChoices: {}
+      }),
+      narrative: checkEvent.narrativeCue,
+      activeNpc,
+      nextPrompt: '请掷骰结算检定。',
+      playerChoices: {},
+      keywords: [],
+      toolCalls: [],
+      usedFunctionCalling: false
+    };
+    const resolved = resolveDmTurn({
+      narrator,
+      acceptedCalls: inferredStoryCalls,
+      turn: currentTurn,
+      pendingBefore: input.state.pendingConsequences ?? []
+    });
+    timings.totalForeground = elapsedMs(foregroundStart);
+    return {
+      raw: narrator.raw,
+      legacyResponse: resolved.legacyResponse,
+      events: resolved.events,
+      decayIntents: true,
+      timings
+    };
+  }
   const retrievedMemories = DEFAULT_MEMORY_OPTIONS.enableEpisodicRetrieval
     && shouldRetrieveEpisodicMemory(intent.intentKind, input.actions)
     ? searchEpisodicMemory(input.state.episodicMemory ?? [], {
@@ -501,7 +549,6 @@ export async function runDmTurn(
     .map((turn) => ({ role: turn.role, content: turn.content }));
 
   // 3) 计算本轮允许工具集 + lookup 解析器，调主 LLM
-  const inferredStoryCalls = inferStoryEventsFromActions(input.actions, input.state, kb);
   const settlesFinaleRoute = inferredStoryCalls.some((call) =>
     call.arguments.eventId === 'EV_CHOOSE_NEGOTIATION'
     || call.arguments.eventId === 'EV_CHOOSE_COMBAT'
@@ -580,19 +627,39 @@ export async function runDmTurn(
         : input.state.currentScene;
       const sceneName = kb.scenes[projectedScene]?.public.name ?? projectedScene;
       const changedScene = projectedScene !== input.state.currentScene;
-      const activeNpcName = resolveActiveNpcForScene({
-        previousScene: input.state.currentScene,
-        nextScene: projectedScene,
-        previousActiveNpc: input.state.activeNpcName,
-        requestedActiveNpc: changedScene ? null : input.state.activeNpcName,
-        requestedActiveNpcProvided: true
+      const projectedStoryEventIds = inferredStoryCalls.map((call) => String(call.arguments.eventId ?? ''));
+      const projectedTransition = processScenarioTurn(progressBefore, {
+        currentScene: projectedScene,
+        previousScene: changedScene ? input.state.currentScene : undefined,
+        storyEventIds: projectedStoryEventIds,
+        turn: currentTurn,
+        completeTurn: false,
+        actorName: input.actions[input.actions.length - 1]?.player
       });
-      const narrative = changedScene
+      const activeNpcName = inferredStoryCalls.length
+        ? defaultActiveNpcForScene(projectedScene)
+        : resolveActiveNpcForScene({
+            previousScene: input.state.currentScene,
+            nextScene: projectedScene,
+            previousActiveNpc: input.state.activeNpcName,
+            requestedActiveNpc: changedScene ? null : input.state.activeNpcName,
+            requestedActiveNpcProvided: true
+          });
+      const eventNarrative = projectedStoryEventIds.flatMap((id) =>
+        availableEvents.get(id)?.narrativeCue ?? []
+      ).join(' ');
+      const narrative = eventNarrative || (changedScene
         ? `你们已经抵达${sceneName}。声明中的其他新信息无法由现有证据确认，只能依据已经确认的线索继续调查。`
         : activeNpcName
           ? `${activeNpcName}没有提供更多可核实的信息。你们仍在${sceneName}，只能依据已经确认的线索继续调查。`
-          : `声明中的新信息无法由现有证据确认。你们仍在${sceneName}，可以换一种调查方式或核对已知线索。`;
-      const playerChoices = buildSemanticFallbackChoices(input.state, kb, projectedScene, activeNpcName);
+          : `声明中的新信息无法由现有证据确认。你们仍在${sceneName}，可以换一种调查方式或核对已知线索。`);
+      const playerChoices = buildSemanticFallbackChoices(
+        input.state,
+        kb,
+        projectedScene,
+        activeNpcName,
+        projectedTransition.progress
+      );
       narrator = {
         raw: JSON.stringify({ narrative, activeNpc: activeNpcName, nextPrompt: '下一步要从哪条已确认线索着手？', playerChoices }),
         narrative,

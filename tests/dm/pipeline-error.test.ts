@@ -135,4 +135,62 @@ describe('runDmTurn error classification', () => {
     expect(output.legacyResponse.narrative).not.toContain('老赫特之家酒保');
     expect(output.legacyResponse.playerChoices?.亨利).not.toContain('请老赫特之家酒保只核对已经确认的事实');
   });
+
+  it('uses authored pre-roll narration without calling the model for a scenario check', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({
+      players: [makeInvestigator({ name: '艾达' }, { 聆听: 65 })],
+      currentScene: 'S05',
+      activeNpcName: '扶桑花号交涉代表'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'negotiation';
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [{ player: '艾达', action: '专心聆听深潜者的声调，理解它的诉求。' }]
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_NEGOTIATION_LISTEN');
+    expect(output.legacyResponse.narrative).toBe('调查员需要先通过聆听检定理解对方的真正诉求。');
+    expect(output.legacyResponse.narrative).not.toMatch(/货物|小艇|释放埃里克/);
+    expect(output.legacyResponse.activeNpc).toBe('扶桑花号交涉代表');
+  });
+
+  it('projects a settled route into semantic fallback NPC and choices', async () => {
+    const invalidOutcome = JSON.stringify({
+      narrative: '交涉代表立刻释放了埃里克，并允许你们离开。',
+      activeNpc: '埃里克·摩勒',
+      nextPrompt: '带埃里克离开。',
+      playerChoices: { 艾达: ['返回药店'] }
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(invalidOutcome)));
+    const state = makeState({
+      players: [makeInvestigator({ name: '艾达' })],
+      currentScene: 'S05',
+      activeNpcName: '埃里克·摩勒'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [{ player: '艾达', action: '不使用武力，正式选择和平交涉路线。' }]
+    });
+
+    expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_CHOOSE_NEGOTIATION');
+    expect(output.legacyResponse.activeNpc).toBe('扶桑花号交涉代表');
+    expect(output.legacyResponse.narrative).toContain('暂缓攻击');
+    expect(output.legacyResponse.playerChoices?.艾达?.[0]).toBe('听懂深潜者诉求');
+    expect(output.legacyResponse.playerChoices?.艾达).not.toContain('前往卡森其药店继续调查');
+  });
 });
