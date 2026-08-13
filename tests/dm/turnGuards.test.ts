@@ -603,4 +603,54 @@ describe('turnGuards', () => {
       activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}
     }, [], opening, kb)).toMatch(/犯罪、交易/);
   });
+
+  it('keeps the opening commission within authored testimony', () => {
+    const opening = makeState({ currentScene: 'S01', activeNpcName: '伊莎贝拉·摩勒' });
+    opening.scenarioProgress = createScenarioProgress();
+    const accept = [{ name: 'propose_story_event', arguments: { eventId: 'EV_ACCEPT_COMMISSION' } }] as const;
+
+    expect(validateNarratorSemantics({
+      narrative: '伊莎贝拉说她在西区分局报了案，但没有进展。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}
+    }, [...accept], opening, kb)).toMatch(/未声明的警局/);
+    expect(validateNarratorSemantics({
+      narrative: '伊莎贝拉说她11号一早报案，接待警员做了笔录。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}
+    }, [...accept], opening, kb)).toMatch(/报案日期|受理流程/);
+    expect(validateNarratorSemantics({
+      narrative: '伊莎贝拉说父女因埃里克最近花钱的事大吵了一架。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}
+    }, [...accept], opening, kb)).toMatch(/家庭争执|财务背景/);
+    expect(validateNarratorSemantics({
+      narrative: '伊莎贝拉说蒙特利尔认识父亲，还答应亲自关照。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}
+    }, [...accept], opening, kb)).toMatch(/人物关系/);
+    expect(validateNarratorSemantics({
+      narrative: '伊莎贝拉确认父亲于7月10日失踪，警方没有进展；他平日会去老赫特酒吧。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '是否检查书房？', playerChoices: {
+        托马斯: ['搜查书房的公开物品']
+      }
+    }, [...accept], opening, kb)).toBeNull();
+    expect(validateNarratorSemantics({
+      narrative: '伊莎贝拉确认父亲于7月10日失踪，警方没有进展。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {
+        托马斯: ['追问父女因花钱争吵的金额']
+      }
+    }, [...accept], opening, kb)).toMatch(/家庭争执|财务背景/);
+    expect(validateNarratorSemantics({
+      narrative: '伊莎贝拉避开了关于债务的问题。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '她等待下一问。', playerChoices: {
+        托马斯: ['追问债务']
+      }
+    }, [], opening, kb)).toBeNull();
+    const searching = makeState({ currentScene: 'S01', activeNpcName: '伊莎贝拉·摩勒' });
+    searching.scenarioProgress = createScenarioProgress();
+    searching.scenarioProgress.beatStates.B01 = 'completed';
+    searching.scenarioProgress.beatStates.B02 = 'active';
+    expect(validateNarratorSemantics({
+      narrative: '合影把埃里克与蒙特利尔联系起来，警察局成为了明确的去处。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '是否前往上城区第二分局？', playerChoices: {}
+    }, [{ name: 'propose_story_event', arguments: { eventId: 'EV_FIND_I02' } }], searching, kb))
+      .toBeNull();
+  });
 });

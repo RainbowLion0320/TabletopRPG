@@ -490,6 +490,22 @@ function eventAuthorizesOutcome(
 
 const PLOT_CLAIM_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
   {
+    label: '报案日期或受理流程',
+    pattern: /(?:报案|受理|笔录|接待警员)[^。；！？\n]{0,48}(?:7月11日|11号|第二天|次日|早晨|一早|做了?笔录|登记)/
+  },
+  {
+    label: '家庭争执或财务背景',
+    pattern: /(?:伊莎贝拉|埃里克|父亲|父女|我们)[^。；！？\n]{0,56}(?:大吵|争吵|吵架|因为.{0,12}(?:花钱|欠债|债务)|(?:存在|有|背负|隐瞒|欠下).{0,8}(?:欠债|债务)|财务困难|手头紧)/
+  },
+  {
+    label: '未解锁的人物关系',
+    pattern: /(?:蒙特利尔[^。；！？\n]{0,48}(?:认识|熟悉|朋友|旧识|关照|与埃里克[^。；！？\n]{0,12}(?:关系|同框))|(?:埃里克|父亲)[^。；！？\n]{0,40}蒙特利尔[^。；！？\n]{0,16}(?:认识|熟悉|朋友|旧识|关照))/
+  },
+  {
+    label: '失踪前的未授权行踪细节',
+    pattern: /(?:埃里克|父亲)[^。；！？\n]{0,56}(?:傍晚|晚上)[^。；！？\n]{0,20}(?:离开|出门)|(?:去|前往)[^。；！？\n]{0,12}老赫特[^。；！？\n]{0,24}(?:见|会面)[^。；！？\n]{0,8}(?:朋友|生意伙伴)/
+  },
+  {
     label: '人物身份或背景',
     pattern: /(?:老鼠|埃里克|蒙特利尔)[^。；！？\n]{0,32}(?:东欧口音|瘦子|走私者|帮派成员|船员|水手|毒贩)/
   },
@@ -694,6 +710,16 @@ export function validateNarratorSemantics(
   if (inventedStreet && inventedStreet !== '纽伦上街') {
     return `不得创造模组未声明的街道：${inventedStreet}`;
   }
+  const registeredPoliceTerms = Object.values(kb.scenes).flatMap(({ public: scene }) =>
+    [scene.name, ...(scene.aliases ?? [])].filter((term) => /分局|警察局|警局/.test(term))
+  );
+  const policeText = registeredPoliceTerms
+    .sort((left, right) => right.length - left.length)
+    .reduce((text, term) => text.replaceAll(term, ''), allText);
+  const undeclaredPrecinct = policeText.match(/[\u4e00-\u9fff]{1,10}(?:分局|警察局|警局)/)?.[0];
+  if (undeclaredPrecinct) {
+    return `不得创造模组未声明的警局：${undeclaredPrecinct}`;
+  }
 
   const repeated = state.messages
     .filter((message) => message.type === 'dm')
@@ -723,7 +749,7 @@ export function validateNarratorSemantics(
     return `当前场景没有已登记的${inventedSpeaker}，不得让未授权 NPC 参与对话`;
   }
   const plotClaimIssue = unsupportedPlotClaim(
-    output.narrative,
+    allText,
     authoredNarrativeCorpus(state, proposedEvents)
   );
   if (plotClaimIssue) return plotClaimIssue;
