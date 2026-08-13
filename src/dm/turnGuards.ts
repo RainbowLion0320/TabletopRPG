@@ -51,7 +51,7 @@ function buildCandidate(action: PlayerAction): CheckCandidate | null {
   }> = [
     { pattern: /开枪|射击|瞄准|扣扳机/, skill: '射击（手枪）', score: 100, difficulty: '困难', reason: '在压力下完成射击' },
     { pattern: COMBAT_ACTION_RE, skill: '格斗（拳）', score: 95, difficulty: '困难', reason: '冲突行动存在受伤风险' },
-    { pattern: /闪避|躲开|避开|逃脱/, skill: '闪避', score: 92, difficulty: '困难', reason: '避开迫近的危险' },
+    { pattern: /闪避(?!过|的|结果)|躲开|避开|逃脱/, skill: '闪避', score: 92, difficulty: '困难', reason: '避开迫近的危险' },
     { pattern: /潜入|潜行|蹑手蹑脚|躲藏|尾随/, skill: '潜行', score: 88, reason: '不被察觉地完成行动' },
     { pattern: /撬锁|开锁|撬开|拆开|修理|修复/, skill: '机械维修', score: 84, reason: '完成精细的机械操作' },
     { pattern: /高速|追车|甩开|危险驾驶|强行驾车/, skill: '驾驶（汽车）', score: 82, difficulty: '困难', reason: '在危险条件下驾驶' },
@@ -171,6 +171,17 @@ export function inferStoryEventsFromActions(
   if (clueCalls.length) return clueCalls;
   const legacy = inferStoryEventFromActions(actions, state);
   return legacy ? [legacy] : [];
+}
+
+/** Returns the player whose own action proposed a structured story event. */
+export function inferStoryEventActor(
+  actions: PlayerAction[],
+  state: GameState,
+  eventId: string,
+  kb: KnowledgeBase = getActiveKnowledgeBase()
+): string | null {
+  return actions.find((action) => inferStoryEventsFromActions([action], state, kb)
+    .some((call) => call.arguments.eventId === eventId))?.player ?? null;
 }
 
 function applyAuthoredCheckDifficulty(check: CheckRequest, sceneId: SceneId): CheckRequest {

@@ -57,6 +57,7 @@ import {
   inferStoryEventsFromActions,
   inferNarrativeConsequences,
   inferSceneChangeFromActions,
+  inferStoryEventActor,
   sanitizePlayerChoices,
   validateNarratorSemantics
 } from './turnGuards';
@@ -512,6 +513,12 @@ export async function runDmTurn(
     return event?.effects.some((effect) => 'requestCheck' in effect) ? [event] : [];
   })[0];
   if (checkEvent) {
+    const eventActorName = inferStoryEventActor(
+      input.actions,
+      input.state,
+      checkEvent.id,
+      kb
+    ) ?? input.actions[input.actions.length - 1]?.player;
     const activeNpc = defaultActiveNpcForScene(input.state.currentScene);
     const narrator = {
       raw: JSON.stringify({
@@ -539,6 +546,7 @@ export async function runDmTurn(
       raw: narrator.raw,
       legacyResponse: resolved.legacyResponse,
       events: resolved.events,
+      actorName: eventActorName,
       decayIntents: true,
       timings
     };

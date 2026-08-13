@@ -226,6 +226,8 @@ export interface DmTurnOutput {
   legacyResponse?: import('../types/game').AiResponse;
   /** 新契约下的事件序列；v2 启用时使用 */
   events?: DMEvent[];
+  /** Player whose action caused the authoritative story event/check. */
+  actorName?: string;
   /** Phase 9：本轮是否需要执行 ttl 衰减（每轮 true） */
   decayIntents?: boolean;
   /** Foreground/background phase timings in milliseconds. */

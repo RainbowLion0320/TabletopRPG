@@ -61,6 +61,38 @@ afterEach(() => {
 });
 
 describe('runDmTurn error classification', () => {
+  it('preserves the actor that proposed an authored combat check', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '艾达' }, { '闪避': 70, '格斗（拳）': 30 }),
+        makeInvestigator({ name: '罗伯特' }, { '闪避': 50, '格斗（拳）': 70 })
+      ],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.clocks.fusangEscape = { value: 1, active: true, visible: true };
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [
+        { player: '艾达', action: '继续用灯光锁定刚才闪避的深潜者，为罗伯特示警，本轮不攻击。' },
+        { player: '罗伯特', action: '再次逼近同一名深潜者，避开蹼爪后用警棍横扫他的膝部。' }
+      ]
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(output.actorName).toBe('罗伯特');
+    expect(output.legacyResponse?.stateUpdate?.storyEventIds).toContain('EV_COMBAT_ATTACK');
+  });
+
   it('retries a failed clue roll until narration and the Director-approved failure event agree', async () => {
     const narrative = JSON.stringify({
       narrative: '尽管亨利没能判断便签上笔触是否异常，他仍看清了桌面上那张写有“别来找我”的字条。',

@@ -7,6 +7,7 @@ import {
   inferDiscoveredItems,
   inferNarrativeConsequences,
   inferSceneChangeFromActions,
+  inferStoryEventActor,
   inferStoryEventFromActions,
   inferStoryEventsFromActions,
   sanitizePlayerChoices,
@@ -174,6 +175,33 @@ describe('turnGuards', () => {
     expect(buildRequiredCheck([{
       player: '亨利', action: '继续谈判，不发动攻击。'
     }], state)).toEqual(expect.objectContaining({ skill: '说服' }));
+  });
+
+  it('keeps a weapon sweep as the combat action and assigns the authored check to its actor', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '艾达' }, { '闪避': 70, '格斗（拳）': 30 }),
+        makeInvestigator({ name: '罗伯特' }, { '闪避': 50, '格斗（拳）': 70 })
+      ],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.clocks.fusangEscape = { value: 1, active: true, visible: true };
+
+    const actions = [
+      { player: '艾达', action: '继续用灯光锁定刚才闪避的深潜者，为罗伯特示警，本轮不攻击。' },
+      { player: '罗伯特', action: '再次逼近同一名深潜者，避开蹼爪后用警棍横扫他的膝部。' }
+    ];
+
+    expect(inferStoryEventFromActions(actions, state)?.arguments.eventId).toBe('EV_COMBAT_ATTACK');
+    expect(buildRequiredCheck(actions, state)).toBeNull();
+    expect(inferStoryEventActor(actions, state, 'EV_COMBAT_ATTACK')).toBe('罗伯特');
   });
 
   it('lets an authored story event own its structured check', () => {

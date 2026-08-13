@@ -225,6 +225,7 @@ export function useGameController() {
         raw,
         legacyResponse,
         events,
+        actorName,
         decayIntents,
         backgroundUpdate
       } = turnResult;
@@ -246,7 +247,9 @@ export function useGameController() {
         type: 'applyAiResponse',
         response: prepared,
         raw,
-        actorName: actions[actions.length - 1]?.player ?? turnState.players[turnState.currentActorIndex]?.name
+        actorName: actorName
+          ?? actions[actions.length - 1]?.player
+          ?? turnState.players[turnState.currentActorIndex]?.name
       });
       if (events && events.length) {
         dispatch({ type: 'appendEvents', events });
