@@ -38,4 +38,15 @@ describe('normalizeNarrativeKeywordHints', () => {
       text: '船缆仍未解开，但锅炉的汽笛已经嘶鸣', kind: 'state'
     }], narrative)).toEqual([]);
   });
+
+  it('drops decorative architecture but keeps physical evidence on it', () => {
+    const narrative = '漆皮剥落的木门透出灯光，锁孔旁的新鲜刮痕值得检查。';
+
+    expect(normalizeNarrativeKeywordHints([
+      { text: '漆皮剥落的木门', kind: 'clue' },
+      { text: '锁孔旁的新鲜刮痕', kind: 'clue' }
+    ], narrative)).toEqual([
+      { text: '锁孔旁的新鲜刮痕', kind: 'clue' }
+    ]);
+  });
 });
