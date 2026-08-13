@@ -563,7 +563,7 @@ test('pending check plays the dice ritual before revealing its result', async ({
   const ritual = page.getByRole('dialog', { name: '命运检定' });
   await expect(ritual).toHaveClass(/rolling/);
   await expect(ritual.getByText('艾达·华莱士 · 侦查')).toBeVisible();
-  await expect(ritual.getByText('普通难度')).toBeVisible();
+  await expect(ritual.getByText('难度：普通')).toBeVisible();
   await expect(ritual.getByText('目标值 60')).toBeVisible();
   await expect(ritual.getByText('骰面翻滚中')).toBeVisible();
   await expect(page.getByRole('button', { name: '掷骰中' })).toBeDisabled();
@@ -586,7 +586,7 @@ test('authored negotiation checks chain and settle the ending without another AI
   await expect(page.getByRole('dialog', { name: '命运检定' })).toHaveClass(/revealed/, { timeout: 5_000 });
   await page.getByRole('button', { name: '确认结果' }).click();
   await expect(page.locator('.check-card')).toContainText('亨利·格雷 · 说服', { timeout: 8_000 });
-  await expect(page.locator('.check-card')).toContainText('困难难度，阈值 30');
+  await expect(page.locator('.check-card')).toContainText('难度：困难，阈值 30');
 
   await page.getByRole('button', { name: '掷骰' }).click();
   await expect(page.getByRole('dialog', { name: '命运检定' })).toHaveClass(/revealed/, { timeout: 5_000 });
@@ -600,7 +600,7 @@ test('loading a bypassed finale persuasion restores the authored listen check', 
   await page.getByRole('button', { name: '继续游戏' }).click();
 
   await expect(page.locator('.check-card')).toContainText('亨利·格雷 · 聆听');
-  await expect(page.locator('.check-card')).toContainText('普通难度，阈值 65');
+  await expect(page.locator('.check-card')).toContainText('难度：普通，阈值 65');
 });
 
 test('legacy internal progression prompts stay hidden after loading a save', async ({ page }) => {

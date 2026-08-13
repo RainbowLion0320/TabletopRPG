@@ -106,7 +106,7 @@ export function DiceRollOverlay({ onConfirm, roll }: DiceRollOverlayProps) {
               <strong className="dice-roll-total">{roll.result.roll}</strong>
               <div>
                 <h3>{resultTitle}</h3>
-                <p>结果已锁定，确认后继续交由 AI DM 裁决</p>
+                <p>结果已锁定，确认后继续结算</p>
               </div>
             </>
           ) : (
@@ -119,7 +119,7 @@ export function DiceRollOverlay({ onConfirm, roll }: DiceRollOverlayProps) {
 
         <footer className={revealed ? 'with-confirm' : undefined}>
           <div className="dice-roll-target">
-            <span>{roll.check.difficulty}难度</span>
+            <span>难度：{roll.check.difficulty}</span>
             <i />
             <span>目标值 {roll.check.threshold ?? '-'}</span>
           </div>

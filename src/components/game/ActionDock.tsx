@@ -67,7 +67,7 @@ export function ActionDock({
         <div className="check-card">
           <div>
             <strong>{state.pendingCheck.player} · {state.pendingCheck.skill}</strong>
-            <span>{state.pendingCheck.difficulty}难度，阈值 {state.pendingCheck.threshold ?? '-'}</span>
+            <span>难度：{state.pendingCheck.difficulty}，阈值 {state.pendingCheck.threshold ?? '-'}</span>
           </div>
           <button className="secondary-action" disabled={isDiceRolling || state.isThinking} onClick={onRoll}>
             <Dice5 size={16} />

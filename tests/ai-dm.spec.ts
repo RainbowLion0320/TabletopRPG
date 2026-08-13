@@ -320,7 +320,7 @@ test('D100 check plays a locked-result roll and reveal before continuing the AI 
   await page.getByRole('button', { name: '提交' }).click();
 
   await expect(page.getByText('亨利·格雷 · 侦查')).toBeVisible();
-  await expect(page.getByText('普通难度，阈值 75')).toBeVisible();
+  await expect(page.getByText('难度：普通，阈值 75')).toBeVisible();
   await page.evaluate(() => {
     Math.random = () => 0.41;
   });
