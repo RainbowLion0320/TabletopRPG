@@ -843,6 +843,14 @@ export function validateNarratorSemantics(
     const event = availableEvents.get(String(call.arguments.eventId ?? ''));
     return event ? [event] : [];
   });
+  const startsUnresolvedCombat = state.currentScene === 'S05'
+    && actions.some((action) => hasAffirmativeMatch(action.action, COMBAT_ACTION_RE))
+    && !actions.some((action) => DICE_RESULT_RE.test(action.action))
+    && proposedEvents.some((event) => event.id === 'EV_CHOOSE_COMBAT' || event.id === 'EV_COMBAT_ATTACK');
+  const narratesCombatHit = /(?:命中|击中|打中|砸中|攻击奏效)|(?:警棍|拳头|子弹|枪弹)[^。；！？\n]{0,16}(?:击中|打中|砸中)|(?:深潜者|蹼状[^。；！？\n]{0,4}(?:手|手臂|肢体))[^。；！？\n]{0,16}(?:被击中|挨了一击|踉跄后退)/.test(output.narrative);
+  if (startsUnresolvedCombat && narratesCombatHit) {
+    return '战斗攻击尚未完成结构化检定，正文不得提前叙述命中或攻击奏效';
+  }
   const settledCombatHit = progress.variables.finaleRoute === 'combat'
     && (progress.encounters.ENC01?.defeated ?? 0) > 0
     && actions.some((action) =>

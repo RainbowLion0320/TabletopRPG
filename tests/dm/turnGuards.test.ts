@@ -753,6 +753,26 @@ describe('turnGuards', () => {
     }, [], state, kb)).toBeNull();
   });
 
+  it('rejects a narrated hit before the first combat check is resolved', () => {
+    const state = makeState({ currentScene: 'S05', activeNpcName: '扶桑花号交涉代表' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    const actions = [{ player: '罗伯特', action: '拒绝交涉，用警棍攻击深潜者。' }];
+    const calls = inferStoryEventsFromActions(actions, state, kb);
+
+    expect(validateNarratorSemantics({
+      narrative: '罗伯特挥出警棍，蹼状手臂被击中，深潜者踉跄后退。',
+      activeNpc: '扶桑花号交涉代表', nextPrompt: '', playerChoices: {}
+    }, calls, state, kb, actions)).toMatch(/尚未完成结构化检定/);
+    expect(validateNarratorSemantics({
+      narrative: '罗伯特挥起警棍逼近深潜者，双方即将在甲板上交锋。',
+      activeNpc: '扶桑花号交涉代表', nextPrompt: '请掷骰。', playerChoices: {}
+    }, calls, state, kb, actions)).toBeNull();
+  });
+
   it('does not mistake an investigator named as the attacker for the victim', () => {
     const state = makeState({ players: [makeInvestigator({ name: '罗伯特' })] });
     const response = inferNarrativeConsequences({

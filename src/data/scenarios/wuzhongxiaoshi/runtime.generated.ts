@@ -11,7 +11,7 @@ import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
 import asset9 from '../../../../assets/avatars/deep_one.svg';
 
-export const scenarioContentHash = "a8f320e27561ac6f";
+export const scenarioContentHash = "0380e1c1fe9fa566";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -27,7 +27,7 @@ export const scenarioAssetUrls: Record<string, string> = {
 export const generatedScenarioModule = {
   "manifest": {
     "schemaVersion": 1,
-    "contentVersion": "1.1.11",
+    "contentVersion": "1.1.12",
     "id": "wuzhongxiaoshi",
     "title": "雾中消逝",
     "system": "COC 第七版风格 D100",
@@ -1954,6 +1954,10 @@ export const generatedScenarioModule = {
             "value": "combat"
           },
           {
+            "setVariable": "combatRoundStarted",
+            "value": true
+          },
+          {
             "completeObjective": "O06"
           },
           {
@@ -1967,11 +1971,17 @@ export const generatedScenarioModule = {
             "startClock": "fusangEscape",
             "value": 0,
             "visible": true
+          },
+          {
+            "requestCheck": "CHECK_COMBAT",
+            "skill": "格斗（拳）",
+            "difficulty": "普通",
+            "reason": "以第一次攻击正式打响甲板战斗"
           }
         ],
         "once": true,
         "playerVisible": true,
-        "narrativeCue": "调查员以武力阻止深潜者，扶桑花号逃脱时钟开始计数。"
+        "narrativeCue": "调查员以武力阻止深潜者，扶桑花号逃脱时钟开始计数；第一次攻击需要通过格斗检定结算。"
       },
       {
         "id": "EV_CHOOSE_NEGOTIATION",

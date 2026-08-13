@@ -217,10 +217,10 @@ storyEvents:
     title: 选择战斗路线
     trigger: manual
     when: { all: [{ sceneIs: S05 }, { variable: finaleRoute, op: eq, value: undecided }] }
-    effects: [{ setVariable: finaleRoute, value: combat }, { completeObjective: O06 }, { activateObjective: O07 }, { startEncounter: ENC01, route: combat }, { startClock: fusangEscape, value: 0, visible: true }]
+    effects: [{ setVariable: finaleRoute, value: combat }, { setVariable: combatRoundStarted, value: true }, { completeObjective: O06 }, { activateObjective: O07 }, { startEncounter: ENC01, route: combat }, { startClock: fusangEscape, value: 0, visible: true }, { requestCheck: CHECK_COMBAT, skill: 格斗（拳）, difficulty: 普通, reason: 以第一次攻击正式打响甲板战斗 }]
     once: true
     playerVisible: true
-    narrativeCue: 调查员以武力阻止深潜者，扶桑花号逃脱时钟开始计数。
+    narrativeCue: 调查员以武力阻止深潜者，扶桑花号逃脱时钟开始计数；第一次攻击需要通过格斗检定结算。
   - id: EV_CHOOSE_NEGOTIATION
     beatId: B06
     title: 选择交涉路线

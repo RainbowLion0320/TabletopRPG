@@ -2,8 +2,8 @@
 # 《雾中消逝》KP 模组手册
 
 - 模组 ID：`wuzhongxiaoshi`
-- 内容版本：`1.1.11`
-- 内容哈希：`a8f320e27561ac6f`
+- 内容版本：`1.1.12`
+- 内容哈希：`0380e1c1fe9fa566`
 - 规则：COC 第七版风格 D100
 - 时间：1920年7月13日，英国伦敦
 - 作者：舒爾茲上尉
@@ -133,7 +133,7 @@ flowchart LR
 - **EV_PHARMACY_RECOVERY 药店主线回收** [automatic/once]：即使地图受损，水渍和船名残片仍足以定位扶桑花号，但敌人获得了额外准备时间。
 - **EV_RECOVER_I07 恢复港口位置** [automatic/once]：地图残片与港口灯号相互印证，恢复了扶桑花号泊位。
 - **EV_RECOVER_I08 恢复雪茄证据** [automatic/once]：柜台残留的烟灰品牌仍能与埃里克的雪茄盒对应。
-- **EV_CHOOSE_COMBAT 选择战斗路线** [manual/once]：调查员以武力阻止深潜者，扶桑花号逃脱时钟开始计数。
+- **EV_CHOOSE_COMBAT 选择战斗路线** [manual/once]：调查员以武力阻止深潜者，扶桑花号逃脱时钟开始计数；第一次攻击需要通过格斗检定结算。
 - **EV_CHOOSE_NEGOTIATION 选择交涉路线** [manual/once]：调查员暂缓攻击，与扶桑花号交涉代表保持距离，尝试听懂深潜者的诉求。
 - **EV_COMBAT_ROUND 战斗轮推进** [turnEnd/repeatable]：船员继续收缆，扶桑花号距离逃脱又近一轮。
 - **EV_COMBAT_ATTACK 攻击深潜者** [manual/repeatable]：调查员抓住机会攻击一名仍在抵抗的深潜者。

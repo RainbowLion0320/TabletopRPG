@@ -62,6 +62,47 @@ afterEach(() => {
 });
 
 describe('runDmTurn error classification', () => {
+  it('turns the attack that selects combat into the first authored combat check', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({
+      players: [makeInvestigator({ name: '罗伯特' }, { '格斗（拳）': 70 })],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [{
+        player: '罗伯特',
+        action: '拒绝交涉，抽出警棍攻击甲板上的一名深潜者。'
+      }]
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(output.actorName).toBe('罗伯特');
+    expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_CHOOSE_COMBAT');
+
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: output.legacyResponse,
+      raw: output.raw,
+      actorName: output.actorName
+    });
+    expect(next.pendingCheck).toEqual(expect.objectContaining({
+      player: '罗伯特',
+      skill: '格斗（拳）',
+      difficulty: '普通',
+      scenarioCheckId: 'CHECK_COMBAT'
+    }));
+    expect(next.scenarioProgress?.clocks.fusangEscape.value).toBe(0);
+    expect(next.scenarioProgress?.encounters.ENC01.round).toBe(0);
+  });
+
   it('preserves the actor that proposed an authored combat check', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
