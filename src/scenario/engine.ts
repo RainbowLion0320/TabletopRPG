@@ -86,7 +86,8 @@ const previousContentVersions = new Set([
   '1.1.4#a30bd9e43e729d45',
   '1.1.5#4d651496e9200891',
   '1.1.5#33991bac69fb658b',
-  '1.1.5#7a9fe3252f30b83f'
+  '1.1.5#7a9fe3252f30b83f',
+  '1.1.6#6204fadbf9c5cf3f'
 ]);
 const autoMapContentVersions = new Set([
   '1.1.5#4d651496e9200891',
@@ -821,6 +822,19 @@ export function hydrateScenarioProgress(
       && hydrated.objectiveStates.O08 === 'locked') hydrated.objectiveStates.O08 = 'active';
     if (hydrated.encounters.ENC02.state === 'active') {
       hydrated.encounters.ENC02.state = 'resolved';
+    }
+    const combat = hydrated.encounters.ENC01;
+    const escapeClock = hydrated.clocks.fusangEscape;
+    if (storedContentKey === '1.1.6#6204fadbf9c5cf3f'
+      && hydrated.variables.finaleRoute === 'combat'
+      && !hydrated.endingId
+      && combat.state === 'active'
+      && escapeClock?.active
+      && escapeClock.value > 0) {
+      escapeClock.value -= 1;
+      combat.round = Math.max(0, combat.round - 1);
+      hydrated.variables.combatRoundStarted = combat.round > 0;
+      hydrated.migrationLog.push('1.1.7：撤回选择战斗路线时误推进的一轮逃脱时钟，恢复完整七个战斗回合。');
     }
     const mapWasOnlyGrantedByEntry = autoMapContentVersions.has(storedContentKey)
       && legacy.currentScene === 'S04'

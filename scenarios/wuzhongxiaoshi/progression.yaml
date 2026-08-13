@@ -5,6 +5,7 @@ variables:
   - { id: hybridEscaped, type: boolean, default: false }
   - { id: thugAlert, type: boolean, default: false }
   - { id: finaleRoute, type: string, default: undecided }
+  - { id: combatRoundStarted, type: boolean, default: false }
   - { id: ericRescued, type: boolean, default: false }
 
 acts:
@@ -233,7 +234,7 @@ storyEvents:
     beatId: B06
     title: 战斗轮推进
     trigger: turnEnd
-    when: { all: [{ variable: finaleRoute, op: eq, value: combat }, { encounter: ENC01, state: active }] }
+    when: { all: [{ variable: finaleRoute, op: eq, value: combat }, { variable: combatRoundStarted, op: eq, value: true }, { encounter: ENC01, state: active }] }
     effects: [{ updateEncounter: ENC01, field: round, amount: 1 }, { tickClock: fusangEscape, amount: 1 }]
     once: false
     playerVisible: true
@@ -243,7 +244,7 @@ storyEvents:
     title: 攻击深潜者
     trigger: manual
     when: { all: [{ variable: finaleRoute, op: eq, value: combat }, { encounter: ENC01, state: active }, { clock: fusangEscape, op: lt, value: 7 }] }
-    effects: [{ requestCheck: CHECK_COMBAT, skill: 格斗（拳）, difficulty: 普通, reason: 在甲板混战中使一名深潜者失去战斗能力 }]
+    effects: [{ setVariable: combatRoundStarted, value: true }, { requestCheck: CHECK_COMBAT, skill: 格斗（拳）, difficulty: 普通, reason: 在甲板混战中使一名深潜者失去战斗能力 }]
     once: false
     playerVisible: true
     narrativeCue: 调查员抓住机会攻击一名仍在抵抗的深潜者。

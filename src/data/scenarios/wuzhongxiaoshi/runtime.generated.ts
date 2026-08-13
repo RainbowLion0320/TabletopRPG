@@ -11,7 +11,7 @@ import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
 import asset9 from '../../../../assets/avatars/deep_one.svg';
 
-export const scenarioContentHash = "6204fadbf9c5cf3f";
+export const scenarioContentHash = "583aa89c17ff1574";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -27,7 +27,7 @@ export const scenarioAssetUrls: Record<string, string> = {
 export const generatedScenarioModule = {
   "manifest": {
     "schemaVersion": 1,
-    "contentVersion": "1.1.6",
+    "contentVersion": "1.1.7",
     "id": "wuzhongxiaoshi",
     "title": "雾中消逝",
     "system": "COC 第七版风格 D100",
@@ -757,6 +757,11 @@ export const generatedScenarioModule = {
         "id": "finaleRoute",
         "type": "string",
         "default": "undecided"
+      },
+      {
+        "id": "combatRoundStarted",
+        "type": "boolean",
+        "default": false
       },
       {
         "id": "ericRescued",
@@ -1978,6 +1983,11 @@ export const generatedScenarioModule = {
               "value": "combat"
             },
             {
+              "variable": "combatRoundStarted",
+              "op": "eq",
+              "value": true
+            },
+            {
               "encounter": "ENC01",
               "state": "active"
             }
@@ -2022,6 +2032,10 @@ export const generatedScenarioModule = {
           ]
         },
         "effects": [
+          {
+            "setVariable": "combatRoundStarted",
+            "value": true
+          },
           {
             "requestCheck": "CHECK_COMBAT",
             "skill": "格斗（拳）",
