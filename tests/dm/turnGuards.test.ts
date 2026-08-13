@@ -978,6 +978,25 @@ describe('turnGuards', () => {
       .toBeNull();
   });
 
+  it('does not mistake movement around the current precinct for a new police location', () => {
+    const state = makeState({ currentScene: 'S02', activeNpcName: '洛夫·蒙特利尔' });
+    const narratives = [
+      '蒙特利尔结束会面，你们走出分局，在门廊下整理笔记。',
+      '你们离开分局，没有继续追问。',
+      '你们返回分局，只核对此前记下的答复。',
+      '值班警员点头致意，你们转身推开分局玻璃门。'
+    ];
+
+    for (const narrative of narratives) {
+      expect(validateNarratorSemantics({
+        narrative,
+        activeNpc: '洛夫·蒙特利尔',
+        nextPrompt: '',
+        playerChoices: {}
+      }, [], state, kb)).toBeNull();
+    }
+  });
+
   it('does not add transport markings to the booklet before analysis', () => {
     const searching = makeState({ currentScene: 'S01', activeNpcName: '伊莎贝拉·摩勒' });
     searching.scenarioProgress = createScenarioProgress();

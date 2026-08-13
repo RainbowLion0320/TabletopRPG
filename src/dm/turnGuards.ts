@@ -17,6 +17,20 @@ const MOVE_VERB_RE = /前往|赶往|去往|转往|改去|改从|出发|动身|�
 const MOVE_DESTINATION_RE = /前往|赶往|去往|转往|改去|改从|驶向|追到|抵达|到达|进入|登上|回到|返回|去/;
 const NPC_ROLE_TERMS = ['店主', '老板', '伙计', '服务生', '医生', '护士', '牧师', '管理员', '警员', '警察', '酒保'];
 
+function undeclaredPrecinctMention(text: string, registeredTerms: string[]): string | null {
+  const withoutRegisteredTerms = registeredTerms
+    .sort((left, right) => right.length - left.length)
+    .reduce((remaining, term) => remaining.split(term).join(''), text);
+  const withoutGenericMovement = withoutRegisteredTerms.replace(
+    /(?:离开|走出|返回|回到|进入|走进|抵达|到达|来到|赶到|推开|走向|前往|赶往|去往|转往|驶向)(?:了|这座|这栋|当地|当前|眼前的)?(?:分局|警察局|警局)/g,
+    ''
+  );
+
+  return withoutGenericMovement.match(
+    /(?:第[一二三四五六七八九十百\d]{1,4}|[\u4e00-\u9fff]{1,6}区)分局|[\u4e00-\u9fff]{2,6}(?:警察局|警局)/
+  )?.[0] ?? null;
+}
+
 interface CheckCandidate {
   score: number;
   check: CheckRequest;
@@ -865,10 +879,7 @@ export function validateNarratorSemantics(
   const registeredPoliceTerms = Object.values(kb.scenes).flatMap(({ public: scene }) =>
     [scene.name, ...(scene.aliases ?? [])].filter((term) => /分局|警察局|警局/.test(term))
   );
-  const policeText = registeredPoliceTerms
-    .sort((left, right) => right.length - left.length)
-    .reduce((text, term) => text.split(term).join(''), allText);
-  const undeclaredPrecinct = policeText.match(/[\u4e00-\u9fff]{1,10}(?:分局|警察局|警局)/)?.[0];
+  const undeclaredPrecinct = undeclaredPrecinctMention(allText, registeredPoliceTerms);
   if (undeclaredPrecinct) {
     return `不得创造模组未声明的警局：${undeclaredPrecinct}`;
   }
