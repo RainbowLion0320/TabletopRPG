@@ -11,7 +11,7 @@ import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
 import asset9 from '../../../../assets/avatars/deep_one.svg';
 
-export const scenarioContentHash = "7a9fe3252f30b83f";
+export const scenarioContentHash = "6204fadbf9c5cf3f";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -27,7 +27,7 @@ export const scenarioAssetUrls: Record<string, string> = {
 export const generatedScenarioModule = {
   "manifest": {
     "schemaVersion": 1,
-    "contentVersion": "1.1.5",
+    "contentVersion": "1.1.6",
     "id": "wuzhongxiaoshi",
     "title": "雾中消逝",
     "system": "COC 第七版风格 D100",
@@ -1678,7 +1678,7 @@ export const generatedScenarioModule = {
         "id": "EV_S04_MAP",
         "beatId": "B05",
         "title": "获得地图笔记",
-        "trigger": "sceneEnter",
+        "trigger": "manual",
         "when": {
           "sceneIs": "S04"
         },
@@ -1806,13 +1806,13 @@ export const generatedScenarioModule = {
         },
         "effects": [
           {
-            "startEncounter": "ENC02",
-            "route": "ambush"
+            "resolveEncounter": "ENC02",
+            "state": "resolved"
           }
         ],
         "once": true,
         "playerVisible": true,
-        "narrativeCue": "蒙特利尔派来的三名暴徒封住退路，试图夺走证据。"
+        "narrativeCue": "三名身份不明的暴徒追到贝尔街，短暂封住药店外的退路后消失在浓雾中。"
       },
       {
         "id": "EV_PHARMACY_RECOVERY",
@@ -2405,7 +2405,7 @@ export const generatedScenarioModule = {
         "id": "RULE_S04_ENTRY",
         "trigger": "sceneEnter",
         "support": "enforced",
-        "description": "S04首次进入触发深潜者撤离、浓雾和地图笔记事件。",
+        "description": "S04首次进入触发深潜者撤离与浓雾，并给出调查地图笔记的机会。",
         "when": {
           "sceneIs": "S04"
         },

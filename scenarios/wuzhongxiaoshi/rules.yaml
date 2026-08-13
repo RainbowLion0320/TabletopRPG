@@ -14,7 +14,7 @@ entries:
   - id: RULE_S04_ENTRY
     trigger: sceneEnter
     support: enforced
-    description: S04首次进入触发深潜者撤离、浓雾和地图笔记事件。
+    description: S04首次进入触发深潜者撤离与浓雾，并给出调查地图笔记的机会。
     when: { sceneIs: S04 }
     effects: []
   - id: RULE_S04_THUGS

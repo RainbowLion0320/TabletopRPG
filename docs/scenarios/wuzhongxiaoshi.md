@@ -2,8 +2,8 @@
 # 《雾中消逝》KP 模组手册
 
 - 模组 ID：`wuzhongxiaoshi`
-- 内容版本：`1.1.5`
-- 内容哈希：`7a9fe3252f30b83f`
+- 内容版本：`1.1.6`
+- 内容哈希：`6204fadbf9c5cf3f`
 - 规则：COC 第七版风格 D100
 - 时间：1920年7月13日，英国伦敦
 - 作者：舒爾茲上尉
@@ -125,11 +125,11 @@ flowchart LR
 - **EV_MEET_MONTREAL 蒙特利尔阻挠调查** [manual/once]：蒙特利尔回避关键问题，并冷淡地结束了会面。
 - **EV_BARTENDER_RAT 酒保提供“老鼠”线索** [manual/once]：酒保在得到酒水、金钱或可信理由后，指出贝尔街14号的废弃药店。
 - **EV_S04_FOG 深潜者撤离与浓雾** [sceneEnter/once]：非人的身影从后门撤离，咒术浓雾涌入药店；所有在场调查员承受最低1点SAN损失。
-- **EV_S04_MAP 获得地图笔记** [sceneEnter/once]：后厅油布包中的地图笔记标出了泰晤士港扶桑花号的位置。
+- **EV_S04_MAP 获得地图笔记** [manual/once]：后厅油布包中的地图笔记标出了泰晤士港扶桑花号的位置。
 - **EV_FAIL_I07 失败推进·地图** [manual/once]：地图笔记虽被水浸坏，残片仍能定位泰晤士港扶桑花号；敌人警觉且调查耽误十分钟。
 - **EV_S04_CIGAR 发现雪茄头** [manual/once]：雪茄头与埃里克常用品牌一致，证明他近期来过药店。
 - **EV_FAIL_I08 失败推进·雪茄** [manual/once]：调查员仍收起雪茄头，但暂时无法辨认品牌，需与埃里克的物品比对。
-- **EV_S04_THUGS 暴徒抵达贝尔街** [sceneEnter/once]：蒙特利尔派来的三名暴徒封住退路，试图夺走证据。
+- **EV_S04_THUGS 暴徒抵达贝尔街** [sceneEnter/once]：三名身份不明的暴徒追到贝尔街，短暂封住药店外的退路后消失在浓雾中。
 - **EV_PHARMACY_RECOVERY 药店主线回收** [automatic/once]：即使地图受损，水渍和船名残片仍足以定位扶桑花号，但敌人获得了额外准备时间。
 - **EV_RECOVER_I07 恢复港口位置** [automatic/once]：地图残片与港口灯号相互印证，恢复了扶桑花号泊位。
 - **EV_RECOVER_I08 恢复雪茄证据** [automatic/once]：柜台残留的烟灰品牌仍能与埃里克的雪茄盒对应。
@@ -158,7 +158,7 @@ flowchart LR
 |---|---|---|---|
 | RULE_MONTREAL_LANGUAGE | enforced | checkRequested | 对蒙特利尔使用语言类技能默认失败；心理学提高为困难难度。 |
 | RULE_TURN_TIME | enforced | afterAction | 每个完成的正式DM回合推进五分钟世界时间。 |
-| RULE_S04_ENTRY | enforced | sceneEnter | S04首次进入触发深潜者撤离、浓雾和地图笔记事件。 |
+| RULE_S04_ENTRY | enforced | sceneEnter | S04首次进入触发深潜者撤离与浓雾，并给出调查地图笔记的机会。 |
 | RULE_S04_THUGS | enforced | sceneEnter | 见过蒙特利尔且19:00后进入S04时触发暴徒伏击。 |
 | RULE_HYBRID_SAN | enforced | sceneEnter | 首次清楚目睹深潜者或浓雾咒术时，全队最低损失1点SAN。 |
 | RULE_FUSANG_TIMER | enforced | clockTick | 战斗路线第七轮结束时扶桑花号逃脱并进入结局B。 |

@@ -190,7 +190,7 @@ storyEvents:
   - id: EV_S04_MAP
     beatId: B05
     title: 获得地图笔记
-    trigger: sceneEnter
+    trigger: manual
     when: { sceneIs: S04 }
     effects: [{ discoverClue: I07 }, { analyzeClue: I07 }, { revealFact: F09 }, { completeObjective: O05 }, { completeBeat: B05 }, { activateBeat: B06 }]
     once: true
@@ -204,10 +204,10 @@ storyEvents:
     title: 暴徒抵达贝尔街
     trigger: sceneEnter
     when: { all: [{ variable: metMontreal, op: eq, value: true }, { worldTime: true, op: gte, value: 1920-07-13T19:00 }] }
-    effects: [{ startEncounter: ENC02, route: ambush }]
+    effects: [{ resolveEncounter: ENC02, state: resolved }]
     once: true
     playerVisible: true
-    narrativeCue: 蒙特利尔派来的三名暴徒封住退路，试图夺走证据。
+    narrativeCue: 三名身份不明的暴徒追到贝尔街，短暂封住药店外的退路后消失在浓雾中。
   - { id: EV_PHARMACY_RECOVERY, beatId: B05, title: 药店主线回收, trigger: automatic, when: { not: { factKnown: F09 } }, effects: [{ discoverClue: I07 }, { analyzeClue: I07 }, { revealFact: F09 }, { completeObjective: O05 }, { completeBeat: B05 }, { activateBeat: B06 }, { advanceTime: 15 }], once: true, playerVisible: true, narrativeCue: 即使地图受损，水渍和船名残片仍足以定位扶桑花号，但敌人获得了额外准备时间。 }
   - { id: EV_RECOVER_I07, beatId: B05, title: 恢复港口位置, trigger: automatic, when: { clue: I07, status: destroyed }, effects: [{ revealFact: F09 }, { advanceTime: 15 }], once: true, playerVisible: true, narrativeCue: 地图残片与港口灯号相互印证，恢复了扶桑花号泊位。 }
   - { id: EV_RECOVER_I08, beatId: B05, title: 恢复雪茄证据, trigger: automatic, when: { clue: I08, status: destroyed }, effects: [{ revealFact: F10 }], once: true, playerVisible: true, narrativeCue: 柜台残留的烟灰品牌仍能与埃里克的雪茄盒对应。 }

@@ -40,7 +40,8 @@ function reachFinale(): ScenarioProgress {
   progress = apply(progress, 'S01', 1, { events: ['EV_ACCEPT_COMMISSION'] }).progress;
   progress = apply(progress, 'S01', 2, { events: ['EV_DISCOVER_I04', 'EV_FIND_I04'] }).progress;
   progress = apply(progress, 'S04', 3, { previousScene: 'S01' }).progress;
-  progress = apply(progress, 'S05', 4, { previousScene: 'S04' }).progress;
+  progress = apply(progress, 'S04', 4, { events: ['EV_S04_MAP'] }).progress;
+  progress = apply(progress, 'S05', 5, { previousScene: 'S04' }).progress;
   return progress;
 }
 
@@ -155,18 +156,23 @@ describe('scenario progression engine', () => {
     expect(second.progress.worldTime).toBe('1920-07-13T17:40');
   });
 
-  it('executes S04 entrance effects once and unlocks the port', () => {
+  it('executes S04 entrance effects once but requires an authored map search to unlock the port', () => {
     let progress = createScenarioProgress();
     progress = apply(progress, 'S01', 1, { events: ['EV_ACCEPT_COMMISSION'] }).progress;
     progress = apply(progress, 'S01', 2, { events: ['EV_DISCOVER_I04', 'EV_FIND_I04'] }).progress;
     const entered = apply(progress, 'S04', 3, { previousScene: 'S01' });
-    expect(entered.firedEventIds).toEqual(expect.arrayContaining(['EV_S04_FOG', 'EV_S04_MAP']));
+    expect(entered.firedEventIds).toContain('EV_S04_FOG');
+    expect(entered.firedEventIds).not.toContain('EV_S04_MAP');
     expect(entered.deltas).toContainEqual({ field: 'san', target: 'party', value: -1 });
-    expect(entered.progress.knownFactIds).toContain('F09');
-    expect(getAvailableSceneExits(entered.progress, 'S04').map((exit) => exit.sceneId)).toContain('S05');
+    expect(entered.progress.knownFactIds).not.toContain('F09');
+    expect(getAvailableSceneExits(entered.progress, 'S04').map((exit) => exit.sceneId)).not.toContain('S05');
 
-    const reentered = apply(entered.progress, 'S04', 5, { previousScene: 'S03' });
-    expect(reentered.firedEventIds).not.toEqual(expect.arrayContaining(['EV_S04_FOG', 'EV_S04_MAP']));
+    const searched = apply(entered.progress, 'S04', 4, { events: ['EV_S04_MAP'] });
+    expect(searched.progress.knownFactIds).toContain('F09');
+    expect(getAvailableSceneExits(searched.progress, 'S04').map((exit) => exit.sceneId)).toContain('S05');
+
+    const reentered = apply(searched.progress, 'S04', 5, { previousScene: 'S03' });
+    expect(reentered.firedEventIds).not.toContain('EV_S04_FOG');
     expect(reentered.deltas.filter((delta) => delta.field === 'san')).toEqual([]);
   });
 
@@ -181,10 +187,10 @@ describe('scenario progression engine', () => {
 
     expect(entered.firedEventIds).toEqual(expect.arrayContaining([
       'EV_S04_FOG',
-      'EV_S04_MAP',
       'EV_S04_THUGS'
     ]));
-    expect(entered.progress.encounters.ENC02.state).toBe('active');
+    expect(entered.firedEventIds).not.toContain('EV_S04_MAP');
+    expect(entered.progress.encounters.ENC02.state).toBe('resolved');
   });
 
   it('issues a soft prompt at three idle turns and fail-forwards at six', () => {
@@ -340,11 +346,11 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: [], flags: {}, turn: 3
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.5');
+    expect(migrated.moduleVersion).toBe('1.1.6');
     expect(migrated.beatStates.B02).toBe('active');
     expect(migrated.objectiveStates.O01).toBe('completed');
     expect(migrated.objectiveStates.O02).toBe('active');
-    expect(migrated.migrationLog.at(-1)).toContain('1.0.0 -> 1.1.5');
+    expect(migrated.migrationLog.at(-1)).toContain('1.0.0 -> 1.1.6');
   });
 
   it('migrates the immediately previous scenario content version', () => {
@@ -358,9 +364,42 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: [], flags: {}, turn: 3
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.5');
+    expect(migrated.moduleVersion).toBe('1.1.6');
     expect(migrated.beatStates.B02).toBe('active');
-    expect(migrated.migrationLog.at(-1)).toContain('1.0.1 -> 1.1.5');
+    expect(migrated.migrationLog.at(-1)).toContain('1.0.1 -> 1.1.6');
+  });
+
+  it('migrates a live 1.1.5 pharmacy save and restores the skipped map search', () => {
+    const previous = createScenarioProgress();
+    previous.moduleVersion = '1.1.5';
+    previous.contentHash = '4d651496e9200891';
+    previous.activeActId = 'A03';
+    previous.beatStates.B01 = 'completed';
+    previous.beatStates.B02 = 'completed';
+    previous.beatStates.B05 = 'completed';
+    previous.beatStates.B06 = 'active';
+    previous.objectiveStates.O05 = 'completed';
+    previous.objectiveStates.O06 = 'active';
+    previous.clueStates.I07 = 'analyzed';
+    previous.knownFactIds.push('F09');
+    previous.firedEventIds.push('EV_S04_MAP', 'EV_S04_THUGS');
+    previous.encounters.ENC02.state = 'active';
+    previous.visitedSceneIds.push('S04');
+
+    const migrated = hydrateScenarioProgress(previous, {
+      currentScene: 'S04', clueIds: ['I07'], flags: {}, turn: 9
+    });
+
+    expect(migrated.moduleVersion).toBe('1.1.6');
+    expect(migrated.clueStates.I07).toBe('unknown');
+    expect(migrated.knownFactIds).not.toContain('F09');
+    expect(migrated.firedEventIds).not.toContain('EV_S04_MAP');
+    expect(migrated.beatStates.B05).toBe('active');
+    expect(migrated.beatStates.B06).toBe('locked');
+    expect(migrated.encounters.ENC02.state).toBe('resolved');
+    expect(migrated.migrationLog).toEqual(expect.arrayContaining([
+      expect.stringContaining('自动授予的地图')
+    ]));
   });
 
   it('migrates saves from the pre-fix 1.1.0 runtime', () => {
@@ -373,8 +412,8 @@ describe('scenario progression engine', () => {
     });
 
     expect(migrated.contentHash).not.toBe(previous.contentHash);
-    expect(migrated.moduleVersion).toBe('1.1.5');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.5');
+    expect(migrated.moduleVersion).toBe('1.1.6');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.6');
   });
 
   it('migrates saves from the latest 1.1.0 runtime', () => {
@@ -386,9 +425,9 @@ describe('scenario progression engine', () => {
       currentScene: 'S05', clueIds: ['I04', 'I07'], flags: {}, turn: 12
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.5');
+    expect(migrated.moduleVersion).toBe('1.1.6');
     expect(migrated.contentHash).not.toBe(previous.contentHash);
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.5');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.6');
   });
 
   it('migrates the saved real-play state from scenario 1.1.1', () => {
@@ -402,9 +441,9 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: [], flags: {}, turn: 2
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.5');
+    expect(migrated.moduleVersion).toBe('1.1.6');
     expect(migrated.beatStates.B02).toBe('active');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.1 -> 1.1.5');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.1 -> 1.1.6');
   });
 
   it('migrates the saved real-play state from scenario 1.1.2', () => {
@@ -419,10 +458,10 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: ['I04'], flags: {}, turn: 3
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.5');
+    expect(migrated.moduleVersion).toBe('1.1.6');
     expect(migrated.clueStates.I04).toBe('discovered');
     expect(migrated.knownFactIds).not.toContain('F06');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.2 -> 1.1.5');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.2 -> 1.1.6');
   });
 
   it('migrates the saved real-play state from scenario 1.1.4', () => {
@@ -441,10 +480,10 @@ describe('scenario progression engine', () => {
       currentScene: 'S05', clueIds: ['I04', 'I07'], flags: {}, turn: 24
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.5');
+    expect(migrated.moduleVersion).toBe('1.1.6');
     expect(migrated.beatStates.B06).toBe('active');
     expect(migrated.objectiveStates.O08).toBe('active');
     expect(migrated.variables.finaleRoute).toBe('negotiation');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.4 -> 1.1.5');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.4 -> 1.1.6');
   });
 });

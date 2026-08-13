@@ -83,7 +83,15 @@ const previousContentVersions = new Set([
   '1.1.1#df77e2dcefd534f1',
   '1.1.2#f6d2725f8d274d21',
   '1.1.3#a65a4b4b398d405d',
-  '1.1.4#a30bd9e43e729d45'
+  '1.1.4#a30bd9e43e729d45',
+  '1.1.5#4d651496e9200891',
+  '1.1.5#33991bac69fb658b',
+  '1.1.5#7a9fe3252f30b83f'
+]);
+const autoMapContentVersions = new Set([
+  '1.1.5#4d651496e9200891',
+  '1.1.5#33991bac69fb658b',
+  '1.1.5#7a9fe3252f30b83f'
 ]);
 
 function statusRecord(ids: string[], activeId?: string): Record<string, ScenarioStepStatus> {
@@ -811,6 +819,28 @@ export function hydrateScenarioProgress(
       && hydrated.objectiveStates.O07 === 'locked') hydrated.objectiveStates.O07 = 'active';
     if (hydrated.variables.finaleRoute === 'negotiation'
       && hydrated.objectiveStates.O08 === 'locked') hydrated.objectiveStates.O08 = 'active';
+    if (hydrated.encounters.ENC02.state === 'active') {
+      hydrated.encounters.ENC02.state = 'resolved';
+    }
+    const mapWasOnlyGrantedByEntry = autoMapContentVersions.has(storedContentKey)
+      && legacy.currentScene === 'S04'
+      && !hydrated.visitedSceneIds.includes('S05')
+      && hydrated.variables.finaleRoute === 'undecided'
+      && hydrated.firedEventIds.includes('EV_S04_MAP')
+      && !hydrated.firedEventIds.some((id) => id === 'EV_FAIL_I07'
+        || id === 'EV_PHARMACY_RECOVERY'
+        || id === 'EV_RECOVER_I07');
+    if (mapWasOnlyGrantedByEntry) {
+      hydrated.clueStates.I07 = 'unknown';
+      hydrated.knownFactIds = hydrated.knownFactIds.filter((id) => id !== 'F09');
+      hydrated.firedEventIds = hydrated.firedEventIds.filter((id) => id !== 'EV_S04_MAP');
+      hydrated.beatStates.B05 = 'active';
+      hydrated.objectiveStates.O05 = 'active';
+      hydrated.beatStates.B06 = 'locked';
+      hydrated.objectiveStates.O06 = 'locked';
+      hydrated.activeActId = 'A02';
+      hydrated.migrationLog.push('1.1.6：撤回旧版进入药店时自动授予的地图，保留现场并恢复为可调查状态。');
+    }
     hydrated.migrationLog.push(
       `模组内容 ${String(raw.moduleVersion)} -> ${scenario.manifest.contentVersion}：同步规则、目标状态与终幕检定，保留既有剧情进度。`
     );

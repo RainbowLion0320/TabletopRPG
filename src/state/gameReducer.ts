@@ -1272,9 +1272,10 @@ export function hydrateGameState(value: unknown): GameState {
   const atomicFacts = normalizeAtomicFacts(source.atomicFacts);
   const rawCaseBoard = isRecord(source.caseBoard) ? source.caseBoard : null;
   const needsCaseBoardV7Migration = Boolean(rawCaseBoard && !Array.isArray(rawCaseBoard.insights));
+  const normalizedClues = normalizeClues(source.clues);
   const scenarioProgress = hydrateScenarioProgress(source.scenarioProgress, {
     currentScene,
-    clueIds: normalizeClues(source.clues).map((clue) => clue.id),
+    clueIds: normalizedClues.map((clue) => clue.id),
     flags: isRecord(source.flags) ? source.flags : {},
     turn: countCompletedGameTurns(history)
   });
@@ -1301,7 +1302,7 @@ export function hydrateGameState(value: unknown): GameState {
     currentScene,
     activeNpcId: npcIdFromName(activeNpcName),
     activeNpcName,
-    clues: normalizeClues(source.clues),
+    clues: normalizedClues.filter((clue) => scenarioProgress.clueStates[clue.id] !== 'unknown'),
     flags: isRecord(source.flags) ? source.flags : {},
     actionLog: normalizeActionLog(source.actionLog, base.actionLog),
     conversationHistory: history,

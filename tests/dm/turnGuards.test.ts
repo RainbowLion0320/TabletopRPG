@@ -170,6 +170,35 @@ describe('turnGuards', () => {
     expect(buildRequiredCheck(actions, state)).toBeNull();
   });
 
+  it('requires a real roll before the pharmacy map event and uses its authored fail-forward', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '托马斯' }, { 侦查: 65 })],
+      currentScene: 'S04'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'active';
+    state.scenarioProgress.objectiveStates.O05 = 'active';
+    const search = [{ player: '托马斯', action: '搜查后厅油布包，寻找并检查潮湿的地图笔记。' }];
+
+    expect(buildRequiredCheck(search, state)).toEqual(expect.objectContaining({
+      player: '托马斯', skill: '侦查', difficulty: '普通'
+    }));
+    expect(inferStoryEventsFromActions(search, state, kb)).toEqual([
+      expect.objectContaining({ arguments: expect.objectContaining({ eventId: 'EV_S04_MAP' }) })
+    ]);
+
+    const failed = [...search, {
+      player: '托马斯',
+      action: '【检定结果】托马斯 的 侦查检定：掷出 92，结果：失败。'
+    }];
+    expect(buildRequiredCheck(failed, state)).toBeNull();
+    expect(inferStoryEventsFromActions(failed, state, kb)).toEqual([
+      expect.objectContaining({ arguments: expect.objectContaining({ eventId: 'EV_FAIL_I07' }) })
+    ]);
+  });
+
   it('settles a natural finale route choice before any follow-up generic check', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '艾达' }, { 聆听: 65 })],
