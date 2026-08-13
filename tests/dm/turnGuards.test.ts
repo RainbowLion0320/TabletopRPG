@@ -335,6 +335,31 @@ describe('turnGuards', () => {
     ], state)).toBeNull();
   });
 
+  it('maps natural search areas to authored clue events without requiring spoiler names', () => {
+    const state = makeState({ currentScene: 'S01' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'active';
+    const actions = [
+      { player: '亨利', action: '系统搜查书房桌面、抽屉和书架夹缝，只记录实际发现。' },
+      { player: '托马斯', action: '协助检查同一书房的桌面、抽屉和书架。' }
+    ];
+
+    expect(inferStoryEventsFromActions(actions, state).map((call) => call.arguments.eventId)).toEqual([
+      'EV_FIND_I01',
+      'EV_FIND_I02',
+      'EV_DISCOVER_I04'
+    ]);
+    expect(inferStoryEventsFromActions([...actions, {
+      player: '亨利',
+      action: '【检定结果】亨利的侦查检定：掷出84，结果：失败。'
+    }], state).map((call) => call.arguments.eventId)).toEqual([
+      'EV_FAIL_I01',
+      'EV_FAIL_I02',
+      'EV_FAIL_I04'
+    ]);
+  });
+
   it('settles every explicitly searched clue through its authored failure path', () => {
     const state = makeState({ currentScene: 'S01' });
     state.scenarioProgress = createScenarioProgress();
@@ -546,7 +571,7 @@ describe('turnGuards', () => {
     }, [], state, kb)).toMatch(/未声明地点/);
     expect(validateNarratorSemantics({
       narrative: '蒙特利尔冷冷地拒绝回答。', activeNpc: '洛夫·蒙特利尔', nextPrompt: '', playerChoices: {}
-    }, [], state, kb)).toMatch(/activeNpc/);
+    }, [], state, kb)).toMatch(/activeNpc|提前点名蒙特利尔/);
   });
 
   it('rejects exact invented clocks and highly repetitive narration', () => {
@@ -765,7 +790,23 @@ describe('turnGuards', () => {
     expect(validateNarratorSemantics({
       narrative: '伊莎贝拉说她报案后，蒙特利尔局长承诺会调查，但至今没有进展。',
       activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}
-    }, accept, state, kb)).toMatch(/未解锁人物介入调查/);
+    }, accept, state, kb)).toMatch(/未解锁人物介入调查|提前点名蒙特利尔/);
+    expect(validateNarratorSemantics({
+      narrative: '伊莎贝拉说：“蒙特利尔局长接手了案子，但他告诉我目前没有任何线索。”',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {
+        亨利: ['询问埃里克是否有仇人或近期经济纠纷']
+      }
+    }, accept, state, kb)).toMatch(/未解锁人物介入调查|提前点名蒙特利尔|财务背景/);
+    expect(validateNarratorSemantics({
+      narrative: '伊莎贝拉说父亲在失踪那天早上要去老赫特之家处理事情。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}
+    }, accept, state, kb)).toMatch(/失踪前的未授权行踪细节/);
+    expect(validateNarratorSemantics({
+      narrative: '伊莎贝拉没有更多可核实的信息。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {
+        亨利: ['在摩勒住宅寻找能指向警局、酒吧或贝尔街的证据。']
+      }
+    }, accept, state, kb)).toMatch(/提前透露贝尔街/);
     expect(validateNarratorSemantics({
       narrative: '伊莎贝拉确认父亲于三日前失踪，警方没有取得进展，他平时常去老赫特酒吧。',
       activeNpc: '伊莎贝拉·摩勒', nextPrompt: '是否调查住宅？', playerChoices: {}
@@ -843,7 +884,7 @@ describe('turnGuards', () => {
     expect(validateNarratorSemantics({
       narrative: '伊莎贝拉说蒙特利尔认识父亲，还答应亲自关照。',
       activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}
-    }, [...accept], opening, kb)).toMatch(/人物关系/);
+    }, [...accept], opening, kb)).toMatch(/人物关系|提前点名蒙特利尔/);
     expect(validateNarratorSemantics({
       narrative: '伊莎贝拉确认父亲于7月10日失踪，警方没有进展；他平日会去老赫特酒吧。',
       activeNpc: '伊莎贝拉·摩勒', nextPrompt: '是否检查书房？', playerChoices: {

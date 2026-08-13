@@ -15,7 +15,7 @@ acts:
 
 objectives:
   - { id: O01, beatId: B01, title: 接受委托, playerText: 与伊莎贝拉确认委托和埃里克失踪的基本情况。, required: true }
-  - { id: O02, beatId: B02, title: 找到下一处调查方向, playerText: 在摩勒住宅寻找能指向警局、酒吧或贝尔街的证据。, required: true }
+  - { id: O02, beatId: B02, title: 找到下一处调查方向, playerText: 在摩勒住宅寻找能指向下一处调查地点的证据。, required: true }
   - { id: O03, beatId: B03, title: 质询蒙特利尔, playerText: 调查蒙特利尔与埃里克的关系并观察他的反应。, required: false }
   - { id: O04, beatId: B04, title: 获取“老鼠”情报, playerText: 说服老赫特酒保透露贝尔街相关消息。, required: false }
   - { id: O05, beatId: B05, title: 调查卡森其药店, playerText: 应对浓雾与追兵，找到扶桑花号的位置。, required: true }

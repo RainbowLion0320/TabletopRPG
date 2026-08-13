@@ -11,7 +11,7 @@ import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
 import asset9 from '../../../../assets/avatars/deep_one.svg';
 
-export const scenarioContentHash = "56bbdc8889d15bd1";
+export const scenarioContentHash = "3acb27b69a49d649";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -27,7 +27,7 @@ export const scenarioAssetUrls: Record<string, string> = {
 export const generatedScenarioModule = {
   "manifest": {
     "schemaVersion": 1,
-    "contentVersion": "1.1.9",
+    "contentVersion": "1.1.10",
     "id": "wuzhongxiaoshi",
     "title": "雾中消逝",
     "system": "COC 第七版风格 D100",
@@ -575,6 +575,11 @@ export const generatedScenarioModule = {
         "discovery": {
           "skill": "侦查",
           "difficulty": "普通",
+          "searchTerms": [
+            "桌面",
+            "书房桌面",
+            "墨水瓶"
+          ],
           "failForward": "即使失败也能看到文字，但无法判断笔触异常，并推进5分钟。",
           "successEventId": "EV_FIND_I01",
           "failureEventId": "EV_FAIL_I01"
@@ -597,6 +602,10 @@ export const generatedScenarioModule = {
         "discovery": {
           "skill": "侦查",
           "difficulty": "普通",
+          "searchTerms": [
+            "抽屉",
+            "书桌抽屉"
+          ],
           "failForward": "失败仍能发现照片，但会惊动伊莎贝拉并推进10分钟。",
           "successEventId": "EV_FIND_I02",
           "failureEventId": "EV_FAIL_I02"
@@ -615,6 +624,10 @@ export const generatedScenarioModule = {
         "discovery": {
           "skill": "侦查",
           "difficulty": "自动",
+          "searchTerms": [
+            "桌角",
+            "文件堆"
+          ],
           "failForward": "公开摆放，无需检定。",
           "successEventId": "EV_FIND_I03",
           "failureEventId": "EV_FIND_I03"
@@ -635,6 +648,11 @@ export const generatedScenarioModule = {
         "discovery": {
           "skill": "侦查",
           "difficulty": "普通",
+          "searchTerms": [
+            "书架",
+            "书架夹缝",
+            "夹缝"
+          ],
           "failForward": "失败仍发现受潮夹页，艾达可通过加热或医学知识恢复隐写内容，但推进15分钟。",
           "successEventId": "EV_DISCOVER_I04",
           "failureEventId": "EV_FAIL_I04"
@@ -657,6 +675,10 @@ export const generatedScenarioModule = {
         "discovery": {
           "skill": "医学",
           "difficulty": "普通",
+          "searchTerms": [
+            "车库暗格",
+            "暗格"
+          ],
           "failForward": "失败只能确认其可疑并推进10分钟，之后可由药店记录或蒙特利尔反应补证。",
           "successEventId": "EV_FIND_I05",
           "failureEventId": "EV_FAIL_I05"
@@ -677,6 +699,10 @@ export const generatedScenarioModule = {
         "discovery": {
           "skill": "侦查",
           "difficulty": "普通",
+          "searchTerms": [
+            "垃圾桶",
+            "废纸篓"
+          ],
           "failForward": "失败仍能带走残片，之后可与合影比对。",
           "successEventId": "EV_FIND_I06",
           "failureEventId": "EV_FAIL_I06"
@@ -699,6 +725,11 @@ export const generatedScenarioModule = {
         "discovery": {
           "skill": "侦查",
           "difficulty": "普通",
+          "searchTerms": [
+            "后厅油布包",
+            "油布包",
+            "后厅"
+          ],
           "failForward": "失败仍能从残片辨认扶桑花号泊位，但暴徒或深潜者警觉度增加。",
           "successEventId": "EV_S04_MAP",
           "failureEventId": "EV_FAIL_I07"
@@ -719,6 +750,10 @@ export const generatedScenarioModule = {
         "discovery": {
           "skill": "侦查",
           "difficulty": "普通",
+          "searchTerms": [
+            "柜台",
+            "柜台附近"
+          ],
           "failForward": "失败仍可收集，回看埃里克物品后自动完成比对。",
           "successEventId": "EV_S04_CIGAR",
           "failureEventId": "EV_FAIL_I08"
@@ -799,7 +834,7 @@ export const generatedScenarioModule = {
         "id": "O02",
         "beatId": "B02",
         "title": "找到下一处调查方向",
-        "playerText": "在摩勒住宅寻找能指向警局、酒吧或贝尔街的证据。",
+        "playerText": "在摩勒住宅寻找能指向下一处调查地点的证据。",
         "required": true
       },
       {

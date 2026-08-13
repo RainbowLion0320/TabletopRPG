@@ -253,6 +253,10 @@ export interface Item {
   discovery: {
     skill: string;
     difficulty: '自动' | '普通' | '困难' | '极难';
+    /**
+     * @minItems 1
+     */
+    searchTerms: [Text, ...Text[]];
     failForward: Text;
     successEventId: Id;
     failureEventId: Id;

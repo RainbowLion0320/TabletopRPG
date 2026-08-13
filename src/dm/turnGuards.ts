@@ -117,7 +117,11 @@ function explicitlyTargetedScenarioItems(
     .join('\n');
   return definition.world.items.filter((item) => {
     if (item.sceneId !== state.currentScene || discovered.has(item.id)) return false;
-    return [item.name, ...(kb.items[item.id]?.public.aliases ?? [])]
+    return [
+      item.name,
+      ...(kb.items[item.id]?.public.aliases ?? []),
+      ...item.discovery.searchTerms
+    ]
       .some((term) => term && actionText.includes(term));
   });
 }
@@ -570,7 +574,7 @@ const PLOT_CLAIM_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
   },
   {
     label: '家庭争执或财务背景',
-    pattern: /(?:伊莎贝拉|埃里克|父亲|父女|我们)[^。；！？\n]{0,56}(?:大吵|争吵|吵架|因为.{0,12}(?:花钱|欠债|债务)|(?:存在|有|背负|隐瞒|欠下).{0,8}(?:欠债|债务)|财务困难|手头紧)/
+    pattern: /(?:伊莎贝拉|埃里克|父亲|父女|我们)[^。；！？\n]{0,56}(?:大吵|争吵|吵架|因为.{0,12}(?:花钱|欠债|债务)|(?:存在|有|背负|隐瞒|欠下).{0,8}(?:欠债|债务)|财务困难|手头紧|经济纠纷|金钱纠纷|债务纠纷)/
   },
   {
     label: '未解锁的人物关系',
@@ -578,11 +582,11 @@ const PLOT_CLAIM_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
   },
   {
     label: '失踪前的未授权行踪细节',
-    pattern: /(?:埃里克|父亲)[^。；！？\n]{0,56}(?:傍晚|晚上)[^。；！？\n]{0,20}(?:离开|出门)|(?:埃里克|父亲)[^。；！？\n]{0,48}(?:去|前往|到)[^。；！？\n]{0,12}(?:码头区|码头|港口)|(?:去|前往)[^。；！？\n]{0,12}老赫特[^。；！？\n]{0,24}(?:见|会面)[^。；！？\n]{0,8}(?:朋友|生意伙伴)/
+    pattern: /(?:埃里克|父亲)[^。；！？\n]{0,56}(?:傍晚|晚上)[^。；！？\n]{0,20}(?:离开|出门)|(?:埃里克|父亲)[^。；！？\n]{0,48}(?:去|前往|到)[^。；！？\n]{0,12}(?:码头区|码头|港口)|(?:失踪当天|失踪当日|7月10日|那天早上)[^。；！？\n]{0,48}(?:去|前往|到)[^。；！？\n]{0,12}老赫特|(?:去|前往)[^。；！？\n]{0,12}老赫特[^。；！？\n]{0,24}(?:见|会面)[^。；！？\n]{0,8}(?:朋友|生意伙伴)/
   },
   {
     label: '未解锁人物介入调查',
-    pattern: /蒙特利尔[^。；！？\n]{0,32}(?:亲自|表示|说|承诺|答应|保证)[^。；！？\n]{0,20}(?:会调查|负责调查|关照|接手|处理)/
+    pattern: /蒙特利尔[^。；！？\n]{0,40}(?:(?:亲自|表示|说|承诺|答应|保证)[^。；！？\n]{0,20}(?:会调查|负责调查|关照|接手|处理)|(?:接手|负责|受理|处理)[^。；！？\n]{0,12}(?:案子|案件|调查))/
   },
   {
     label: '人物身份或背景',
@@ -704,6 +708,12 @@ export function validateNarratorSemantics(
     return event ? [event] : [];
   });
   const narrativeAuthority = authoredNarrativeCorpus(state, proposedEvents);
+  if (state.currentScene === 'S01' && /贝尔街/.test(allText) && !narrativeAuthority.includes('贝尔街')) {
+    return '不得在住宅调查取得对应线索前提前透露贝尔街';
+  }
+  if (state.currentScene === 'S01' && /蒙特利尔/.test(allText) && !narrativeAuthority.includes('蒙特利尔')) {
+    return '不得在住宅调查取得对应线索前提前点名蒙特利尔';
+  }
   const proposedClueIds = new Set(proposedEvents.flatMap((event) => event.effects.flatMap((effect) => {
     if ('discoverClue' in effect) return [effect.discoverClue];
     if ('analyzeClue' in effect) return [effect.analyzeClue];

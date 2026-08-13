@@ -18,6 +18,7 @@
 - 每个运行时时钟都必须在 `presentation.clocks` 声明玩家可见名称和最大值，UI 不显示内部 ID。
 - 必经节点必须配置 3 回合软提示、6 回合 fail-forward 和有效 `recoveryEventId`。
 - 关键线索必须配置 `fallbackEventId`，任何检定失败或物证损坏后仍须存在合法主线路径。
+- 每条物证的 `discovery.searchTerms` 必须列出玩家在不知道线索名称时会自然调查的区域词；不要要求玩家先说出答案才能命中剧情事件。
 - YAML 中禁止 JavaScript；Condition/Effect 只能使用 Schema 声明的无脚本 DSL。
 
 ## 工作流
