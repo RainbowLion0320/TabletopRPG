@@ -10,8 +10,8 @@ import {
 } from '../scenario/engine';
 
 const DICE_RESULT_RE = /【检定结果】|结果[：:]\s*(?:失败|大失败|成功|困难成功|极难成功|大成功)/;
-const MOVE_VERB_RE = /前往|赶往|去往|出发|动身|返回|回到|离开|开车|驾车|驱车|驶向|跟随|追到|抵达|到达/;
-const MOVE_DESTINATION_RE = /前往|赶往|去往|驶向|追到|抵达|到达|进入|登上|回到|返回|去/;
+const MOVE_VERB_RE = /前往|赶往|去往|转往|改去|改从|出发|动身|返回|回到|离开|开车|驾车|驱车|驶向|跟随|追到|抵达|到达/;
+const MOVE_DESTINATION_RE = /前往|赶往|去往|转往|改去|改从|驶向|追到|抵达|到达|进入|登上|回到|返回|去/;
 const NPC_ROLE_TERMS = ['店主', '老板', '伙计', '服务生', '医生', '护士', '牧师', '管理员', '警员', '警察', '酒保'];
 
 interface CheckCandidate {
@@ -86,9 +86,18 @@ export function buildRequiredCheck(actions: PlayerAction[], state: GameState): C
     ).find((candidate) => candidate.id === eventId);
     if (event?.effects.some((effect) => 'requestCheck' in effect)) return null;
   }
+  const kb = getActiveKnowledgeBase();
+  const sceneChange = inferSceneChangeFromActions(actions, state, kb);
+  const targetScene = sceneChange
+    ? String(sceneChange.arguments.targetSceneId) as SceneId
+    : state.currentScene;
   const candidates = actions
-    .filter((action) => !actionExplicitlyMovesToReachableScene(action, state))
-    .map(buildCandidate)
+    .map((action) => {
+      if (!actionExplicitlyMovesToReachableScene(action, state)) return buildCandidate(action);
+      if (!sceneChange) return null;
+      const followUp = actionAfterSceneDestination(action, targetScene, kb);
+      return followUp ? buildCandidate({ ...action, action: followUp }) : null;
+    })
     .filter((item): item is CheckCandidate => Boolean(item))
     .sort((a, b) => b.score - a.score);
   for (const candidate of candidates) {
@@ -99,7 +108,7 @@ export function buildRequiredCheck(actions: PlayerAction[], state: GameState): C
       if (!fallback || !player.skills[fallback]) continue;
       return { ...candidate.check, skill: fallback };
     }
-    return applyAuthoredCheckDifficulty(candidate.check, state);
+    return applyAuthoredCheckDifficulty(candidate.check, targetScene);
   }
   return null;
 }
@@ -153,8 +162,8 @@ export function inferStoryEventsFromActions(
   return legacy ? [legacy] : [];
 }
 
-function applyAuthoredCheckDifficulty(check: CheckRequest, state: GameState): CheckRequest {
-  if (state.currentScene === 'S02' && check.skill === '心理学') {
+function applyAuthoredCheckDifficulty(check: CheckRequest, sceneId: SceneId): CheckRequest {
+  if (sceneId === 'S02' && check.skill === '心理学') {
     return { ...check, difficulty: '困难' };
   }
   return check;
@@ -204,7 +213,35 @@ function sceneMentionFollowsDestinationVerb(text: string, terms: string[]): bool
     const lastDestinationVerb = destinationVerbs[destinationVerbs.length - 1];
     if (!lastDestinationVerb) return false;
     const between = prefix.slice((lastDestinationVerb.index ?? 0) + lastDestinationVerb[0].length);
-    return !/[，。；！？\n]/.test(between) && !/(?:离开|告别|走出|退出)[^，。；！？\n]*$/.test(prefix);
+    return !/[，。；！？\n]/.test(between) && lastDestinationVerb[0] !== '离开';
+  });
+}
+
+function actionAfterSceneDestination(
+  action: PlayerAction,
+  targetScene: SceneId,
+  kb: KnowledgeBase
+): string {
+  let destinationEnd = -1;
+  for (const term of sceneTerms(kb, targetScene)) {
+    const index = action.action.lastIndexOf(term);
+    if (index >= 0) destinationEnd = Math.max(destinationEnd, index + term.length);
+  }
+  return destinationEnd >= 0 ? action.action.slice(destinationEnd) : '';
+}
+
+export function buildPostMoveContinuationActions(
+  actions: PlayerAction[],
+  state: GameState,
+  targetScene: SceneId,
+  kb: KnowledgeBase = getActiveKnowledgeBase()
+): PlayerAction[] {
+  return actions.flatMap((action) => {
+    if (!actionExplicitlyMovesToReachableScene(action, state)) return [action];
+    const followUp = actionAfterSceneDestination(action, targetScene, kb)
+      .replace(/^[，。；！？\s]+/, '')
+      .trim();
+    return followUp ? [{ ...action, action: followUp }] : [];
   });
 }
 

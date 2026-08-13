@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { runDmTurn } from '../../src/dm/pipeline';
 import { AiResponseFormatError } from '../../src/services/aiDm';
+import { createScenarioProgress } from '../../src/scenario/engine';
 import type { ApiConfig } from '../../src/types/game';
 import { makeInvestigator, makeState } from './fixtures';
 
@@ -35,6 +36,41 @@ afterEach(() => {
 });
 
 describe('runDmTurn error classification', () => {
+  it('settles legal travel before requesting a risky destination follow-up check', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利' }),
+        makeInvestigator({ name: '艾达' }, { 心理学: 65 })
+      ],
+      currentScene: 'S02'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.variables.oldHethLead = true;
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [
+        { player: '亨利', action: '暂时收手，离开分局，改从老赫特酒吧寻找突破口' },
+        { player: '艾达', action: '与亨利一同离开分局前往老赫特酒吧；进门后先观察酒保和常客对埃里克照片的反应，不惊动其他人。' }
+      ]
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(output.legacyResponse.stateUpdate?.sceneChange).toBe('S03');
+    expect(output.legacyResponse.activeNpc).toBeNull();
+    expect(output.legacyResponse.check).toEqual(expect.objectContaining({
+      player: '艾达',
+      skill: '心理学',
+      difficulty: '普通',
+      continuationActions: [
+        { player: '亨利', action: '寻找突破口' },
+        { player: '艾达', action: '进门后先观察酒保和常客对埃里克照片的反应，不惊动其他人。' }
+      ]
+    }));
+  });
+
   it('reports narrator JSON parse failures as AI response format errors', async () => {
     const malformed = '{\n  "narrative": "雾里传来"钟声"\n  "activeNpc": null\n}';
     vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(malformed)));

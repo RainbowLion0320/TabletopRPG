@@ -3,6 +3,7 @@ import { getActiveKnowledgeBase } from '../../src/dm/knowledgeBase';
 import { createScenarioProgress } from '../../src/scenario/engine';
 import {
   buildRequiredCheck,
+  buildPostMoveContinuationActions,
   inferDiscoveredItems,
   inferNarrativeConsequences,
   inferSceneChangeFromActions,
@@ -53,6 +54,36 @@ describe('turnGuards', () => {
     expect(buildRequiredCheck([
       { player: '亨利', action: '去酒吧寻找酒保并礼貌点两杯酒。' }
     ], state)).toBeNull();
+  });
+
+  it('does not make legal travel depend on a risky follow-up observation', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利' }, { 心理学: 10 }),
+        makeInvestigator({ name: '艾达' }, { 心理学: 65 })
+      ],
+      currentScene: 'S02'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.variables.oldHethLead = true;
+
+    const actions = [
+      { player: '亨利', action: '暂时收手，离开分局，改从老赫特酒吧寻找突破口' },
+      { player: '艾达', action: '与亨利一同离开分局前往老赫特酒吧；进门后先观察酒保和常客对埃里克照片的反应，不惊动其他人。' }
+    ];
+
+    expect(inferSceneChangeFromActions(actions, state, kb)).toEqual(expect.objectContaining({
+      arguments: expect.objectContaining({ targetSceneId: 'S03' })
+    }));
+    expect(buildRequiredCheck(actions, state)).toEqual(expect.objectContaining({
+      player: '艾达',
+      skill: '心理学',
+      difficulty: '普通'
+    }));
+    expect(buildPostMoveContinuationActions(actions, state, 'S03', kb)).toEqual([
+      { player: '亨利', action: '寻找突破口' },
+      { player: '艾达', action: '进门后先观察酒保和常客对埃里克照片的反应，不惊动其他人。' }
+    ]);
   });
 
   it('uses the authored hard Psychology difficulty against Montreal', () => {

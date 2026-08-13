@@ -76,7 +76,7 @@ export function ActionDock({
         </div>
       ) : null}
 
-      {currentSuggestions.length ? (
+      {!state.pendingCheck && currentSuggestions.length ? (
         <div className="suggestion-row">
           {currentSuggestions.slice(0, 3).map((text) => (
             <button key={text} onClick={() => onSuggestion(text)}>{text}</button>

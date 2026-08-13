@@ -45,6 +45,7 @@ import {
 import { pushTrace, updateTrace } from './debugTrace';
 import {
   buildRequiredCheck,
+  buildPostMoveContinuationActions,
   inferStoryEventsFromActions,
   inferNarrativeConsequences,
   inferSceneChangeFromActions,
@@ -382,19 +383,31 @@ export async function runDmTurn(
 
   // 0) 意图分类（规则版）
   const intent = classifyIntent(input.actions);
+  const directorCtx = { state: input.state, kb };
+  const allowed = allowedTools(directorCtx, { intent, mode: input.state.exploreMode });
+  const inferredSceneCall = allowed.includes('propose_scene_change')
+    ? inferSceneChangeFromActions(input.actions, input.state, kb)
+    : null;
   const requiredCheck = buildRequiredCheck(input.actions, input.state);
   if (requiredCheck) {
-    const narrative = `${requiredCheck.player}的行动存在明确失败风险，需要先进行${requiredCheck.skill}检定。`;
+    const targetSceneId = inferredSceneCall
+      ? String(inferredSceneCall.arguments.targetSceneId) as SceneId
+      : null;
+    const movementPrefix = targetSceneId
+      ? `你们已抵达${kb.scenes[targetSceneId].public.name}。`
+      : '';
+    const narrative = `${movementPrefix}${requiredCheck.player}接下来的行动存在明确失败风险，需要先进行${requiredCheck.skill}检定。`;
+    const activeNpc = targetSceneId ? null : input.state.activeNpcName;
     const narrator = {
       raw: JSON.stringify({
         narrative,
-        activeNpc: input.state.activeNpcName,
+        activeNpc,
         nextPrompt: '请掷骰结算检定。',
         playerChoices: {},
         keywords: []
       }),
       narrative,
-      activeNpc: input.state.activeNpcName,
+      activeNpc,
       nextPrompt: '请掷骰结算检定。',
       playerChoices: {},
       keywords: [],
@@ -403,13 +416,18 @@ export async function runDmTurn(
     };
     const resolved = resolveDmTurn({
       narrator,
-      acceptedCalls: [{ name: 'request_check', arguments: { ...requiredCheck } }],
+      acceptedCalls: [
+        ...(inferredSceneCall ? [inferredSceneCall] : []),
+        { name: 'request_check', arguments: { ...requiredCheck } }
+      ],
       turn: currentTurn,
       pendingBefore: input.state.pendingConsequences ?? []
     });
     resolved.legacyResponse.check = {
       ...requiredCheck,
-      continuationActions: input.actions.map((action) => ({ ...action }))
+      continuationActions: targetSceneId
+        ? buildPostMoveContinuationActions(input.actions, input.state, targetSceneId, kb)
+        : input.actions.map((action) => ({ ...action }))
     };
     timings.totalForeground = elapsedMs(foregroundStart);
     return {
@@ -453,11 +471,6 @@ export async function runDmTurn(
     .map((turn) => ({ role: turn.role, content: turn.content }));
 
   // 3) 计算本轮允许工具集 + lookup 解析器，调主 LLM
-  const directorCtx = { state: input.state, kb };
-  const allowed = allowedTools(directorCtx, { intent, mode: input.state.exploreMode });
-  const inferredSceneCall = allowed.includes('propose_scene_change')
-    ? inferSceneChangeFromActions(input.actions, input.state, kb)
-    : null;
   const inferredStoryCalls = inferStoryEventsFromActions(input.actions, input.state, kb);
   const revealCtx = deriveRevealContext(input.state);
   const revealedSet = computeRevealedSecretIds(kb, revealCtx);
