@@ -93,4 +93,22 @@ describe('InfoDrawer v7 investigation workspace', () => {
     expect(screen.getByText('6 / 7')).toBeInTheDocument();
     expect(screen.queryByText('fusangEscape')).not.toBeInTheDocument();
   });
+
+  it('stays usable while a restored progress record is being normalized', async () => {
+    const state = makeState({ activeNpcName: '伊莎贝拉·摩勒' });
+    state.scenarioProgress = {
+      ...createScenarioProgress(),
+      objectiveStates: undefined,
+      clueStates: undefined,
+      clocks: undefined
+    } as unknown as typeof state.scenarioProgress;
+    state.actionLog = undefined as unknown as typeof state.actionLog;
+    renderDrawer(state);
+
+    fireEvent.click(screen.getByRole('button', { name: '进度' }));
+    expect(screen.getByRole('heading', { name: '调查目标' })).toBeInTheDocument();
+    expect(screen.getByText(/已发现 0/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '日志' }));
+    expect(screen.getByRole('heading', { name: '行动日志' })).toBeInTheDocument();
+  });
 });

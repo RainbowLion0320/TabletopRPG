@@ -35,23 +35,25 @@ export function useGameController() {
   const [journalOpen, setJournalOpen] = useState(false);
   const [diceRoll, setDiceRoll] = useState<DiceRollPresentation | null>(null);
   const dmCoordinatorRef = useRef(new DmTurnCoordinator());
-  const diceRollTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
-  const diceRollGenerationRef = useRef(0);
   const diceRollInFlightRef = useRef(false);
 
   useEffect(() => () => {
     dmCoordinatorRef.current.invalidate();
-    diceRollGenerationRef.current += 1;
     diceRollInFlightRef.current = false;
-    diceRollTimersRef.current.forEach((timerId) => clearTimeout(timerId));
-    diceRollTimersRef.current = [];
   }, []);
 
+  useEffect(() => {
+    if (!diceRoll || diceRoll.phase !== 'rolling') return;
+    const revealTimer = window.setTimeout(() => {
+      setDiceRoll((current) => current?.phase === 'rolling'
+        ? { ...current, phase: 'revealed' }
+        : current);
+    }, DICE_ROLL_DURATION_MS);
+    return () => window.clearTimeout(revealTimer);
+  }, [diceRoll]);
+
   function cancelDiceRoll() {
-    diceRollGenerationRef.current += 1;
     diceRollInFlightRef.current = false;
-    diceRollTimersRef.current.forEach((timerId) => clearTimeout(timerId));
-    diceRollTimersRef.current = [];
     setDiceRoll(null);
   }
 
@@ -310,16 +312,8 @@ export function useGameController() {
     if (!state.pendingCheck || diceRollInFlightRef.current) return;
     const check = state.pendingCheck;
     const result = rollD100(check);
-    const generation = diceRollGenerationRef.current + 1;
-    diceRollGenerationRef.current = generation;
     diceRollInFlightRef.current = true;
     setDiceRoll({ check, result, phase: 'rolling' });
-
-    const revealTimer = setTimeout(() => {
-      if (diceRollGenerationRef.current !== generation) return;
-      setDiceRoll({ check, result, phase: 'revealed' });
-    }, DICE_ROLL_DURATION_MS);
-    diceRollTimersRef.current = [revealTimer];
   }
 
   function confirmDiceResult() {
@@ -333,8 +327,6 @@ export function useGameController() {
       content: checkMessage
     });
     diceRollInFlightRef.current = false;
-    diceRollTimersRef.current.forEach((timerId) => clearTimeout(timerId));
-    diceRollTimersRef.current = [];
     setDiceRoll(null);
     dispatch({ type: 'applyDiceResult', result });
     dispatch({ type: 'appendHistory', role: 'user', content: checkMessage });

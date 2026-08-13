@@ -165,7 +165,7 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
           <section className="drawer-section" aria-label="行动日志">
             <h3>行动日志</h3>
             <div className="log-list-modern">
-              {state.actionLog.map((log, index) => (
+              {(state.actionLog ?? []).map((log, index) => (
                 <p key={`${log.time}-${index}`}><span>{log.time}</span>{log.text}</p>
               ))}
             </div>

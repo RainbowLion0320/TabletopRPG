@@ -912,7 +912,26 @@ export function getScenarioProgressForState(state: {
   flags?: Record<string, unknown>;
   conversationHistory?: Array<{ role: string; content?: unknown }>;
 }): ScenarioProgress {
-  if (state.scenarioProgress) return state.scenarioProgress;
+  if (state.scenarioProgress) {
+    const progress = state.scenarioProgress;
+    const base = createScenarioProgress();
+    return {
+      ...base,
+      ...progress,
+      beatStates: { ...base.beatStates, ...(progress.beatStates ?? {}) },
+      objectiveStates: { ...base.objectiveStates, ...(progress.objectiveStates ?? {}) },
+      knownFactIds: Array.isArray(progress.knownFactIds) ? progress.knownFactIds : [],
+      clueStates: { ...base.clueStates, ...(progress.clueStates ?? {}) },
+      firedEventIds: Array.isArray(progress.firedEventIds) ? progress.firedEventIds : [],
+      settledEndingIds: Array.isArray(progress.settledEndingIds) ? progress.settledEndingIds : [],
+      variables: { ...base.variables, ...(progress.variables ?? {}) },
+      clocks: { ...(progress.clocks ?? {}) },
+      encounters: { ...base.encounters, ...(progress.encounters ?? {}) },
+      lastCheckOutcomes: { ...(progress.lastCheckOutcomes ?? {}) },
+      visitedSceneIds: Array.isArray(progress.visitedSceneIds) ? progress.visitedSceneIds : [state.currentScene],
+      migrationLog: Array.isArray(progress.migrationLog) ? progress.migrationLog : []
+    };
+  }
   return migrateLegacyScenarioProgress({
     currentScene: state.currentScene,
     clueIds: (state.clues ?? []).map((clue) => clue.id),
