@@ -555,6 +555,42 @@ describe('turnGuards', () => {
     expect(response.stateUpdate?.hp).toEqual({ 艾达: -1 });
   });
 
+  it('does not assign enemy injuries to the investigator who made the roll', () => {
+    const state = makeState({ players: [makeInvestigator({ name: '罗伯特' })] });
+    const response = inferNarrativeConsequences({
+      narrative: '罗伯特的警棍命中深潜者膝部。灰绿色鳞片下传来闷响，那受伤的身影踉跄后退。'
+    }, [{
+      player: '罗伯特',
+      action: '【检定结果】罗伯特 的 格斗（拳）检定：掷出 40，结果：普通成功。'
+    }], state);
+
+    expect(response.stateUpdate?.hp).toEqual({});
+  });
+
+  it('rejects narration that negates a resolved structured combat hit', () => {
+    const state = makeState({ currentScene: 'S05' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.firedEventIds = ['EV_COMBAT_HIT'];
+    const actions = [{
+      player: '罗伯特',
+      action: '【检定结果】罗伯特 的 格斗（拳）检定：掷出 40，结果：普通成功。'
+    }];
+    const base = {
+      activeNpc: '扶桑花号交涉代表',
+      nextPrompt: '下一步怎么做？',
+      playerChoices: {}
+    };
+
+    expect(validateNarratorSemantics({
+      ...base,
+      narrative: '罗伯特命中那名深潜者，但它并未倒下，仍在继续抵抗。'
+    }, [], state, kb, actions)).toMatch(/不得否定/);
+    expect(validateNarratorSemantics({
+      ...base,
+      narrative: '罗伯特命中那名深潜者。它并未倒下，却已无力再战。'
+    }, [], state, kb, actions)).toBeNull();
+  });
+
   it('removes suggestions that reveal undiscovered item names', () => {
     const result = sanitizePlayerChoices({
       亨利: ['检查白色粉末样品', '询问伊莎贝拉']

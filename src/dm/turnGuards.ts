@@ -457,7 +457,7 @@ export function inferNarrativeConsequences(
   const hp = { ...(response.stateUpdate?.hp ?? {}) };
   const involved = new Set(actions.map((action) => action.player));
 
-  const harmPattern = /中弹|被击中|受伤|流血|灼伤|划伤|划出(?:一道)?(?:伤口|血痕|细痕)|骨折|剧痛/;
+  const harmPattern = /中弹|被[^，。；！？\n]{0,12}击中|受伤|流血|灼伤|划伤|划出(?:一道)?(?:伤口|血痕|细痕)|骨折|剧痛/;
   if (harmPattern.test(narrative)) {
     const harmClauses = narrative
       .split(/[，。；！？\n]/)
@@ -465,9 +465,15 @@ export function inferNarrativeConsequences(
     const namedVictims = state.players.filter((player) =>
       harmClauses.some((clause) => clause.includes(player.name))
     );
+    const explicitlyTargetsInvestigator = harmClauses.some((clause) =>
+      /(?:调查员|玩家角色|你(?:被|的|受到)|你们(?:被|受到))/.test(clause)
+    );
+    const involvedPlayers = state.players.filter((player) => involved.has(player.name));
     const victims = namedVictims.length
       ? namedVictims
-      : state.players.filter((player) => involved.has(player.name));
+      : explicitlyTargetsInvestigator && involvedPlayers.length === 1
+        ? involvedPlayers
+        : [];
     for (const player of victims) {
       if (hp[player.name] === undefined) mergeDelta(hp, player.name, -1);
     }
@@ -773,6 +779,14 @@ export function validateNarratorSemantics(
     const event = availableEvents.get(String(call.arguments.eventId ?? ''));
     return event ? [event] : [];
   });
+  const settledCombatHit = actions.some((action) =>
+    /【检定结果】[^。；！？\n]{0,100}(?:格斗（拳）|CHECK_COMBAT)[^。；！？\n]{0,80}结果[：:]\s*(?:普通成功|成功|困难成功|极难成功|大成功)/.test(action.action)
+  ) && progress.firedEventIds.includes('EV_COMBAT_HIT');
+  const deniesCombatIncapacitation = /(?:并未|没有|未能)(?:立刻|完全)?倒下|仍(?:然)?(?:能够?|可以|在)(?:继续)?(?:战斗|抵抗)/.test(output.narrative);
+  const confirmsCombatIncapacitation = /失去战斗能力|无力再战|退出战斗|无法继续战斗|不再抵抗|被制服/.test(output.narrative);
+  if (settledCombatHit && deniesCombatIncapacitation && !confirmsCombatIncapacitation) {
+    return '结构化战斗命中已使一名深潜者失去战斗能力，正文不得否定该结算';
+  }
   const demandsPendingCheck = /(?:需要|必须|务必|须得)[^。；！？\n]{0,24}检定/.test(
     `${output.narrative}\n${output.nextPrompt}`
   );
