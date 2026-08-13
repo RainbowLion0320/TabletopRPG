@@ -190,7 +190,8 @@ describe('runDmTurn error classification', () => {
     expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_CHOOSE_NEGOTIATION');
     expect(output.legacyResponse.activeNpc).toBe('扶桑花号交涉代表');
     expect(output.legacyResponse.narrative).toContain('暂缓攻击');
-    expect(output.legacyResponse.playerChoices?.艾达?.[0]).toBe('听懂深潜者诉求');
+    expect(output.legacyResponse.playerChoices?.艾达?.[0]).toBe('先听懂对方诉求，再说服其释放埃里克。');
+    expect(output.legacyResponse.playerChoices?.艾达).not.toContain('听懂深潜者诉求');
     expect(output.legacyResponse.playerChoices?.艾达).not.toContain('前往卡森其药店继续调查');
   });
 });

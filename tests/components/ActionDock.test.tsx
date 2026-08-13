@@ -57,4 +57,30 @@ describe('ActionDock player-specific suggestions', () => {
 
     expect(screen.getByRole('button', { name: '掷骰中' })).toBeDisabled();
   });
+
+  it('hides stale suggestions and freezes the action controls while the DM is thinking', () => {
+    const henry = makeInvestigator({ id: 'p-henry', name: '亨利' });
+    const state = makeState({ players: [henry] });
+    state.isThinking = true;
+    state.suggestions = ['追问上一场景人物'];
+    state.suggestionsByPlayerId = { 'p-henry': ['追问上一场景人物'] };
+
+    render(
+      <ActionDock
+        isDiceRolling={false}
+        state={state}
+        onActorChange={vi.fn()}
+        onDeclarationChange={vi.fn()}
+        onSubmit={vi.fn()}
+        onRoll={vi.fn()}
+        onSuggestion={vi.fn()}
+        onSplitPlayerChange={vi.fn()}
+        onSplitSceneChange={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByRole('button', { name: '追问上一场景人物' })).toBeNull();
+    expect(screen.getByPlaceholderText('亨利 想要做什么...')).toBeDisabled();
+    expect(screen.getByRole('button', { name: /亨利 HP/ })).toBeDisabled();
+  });
 });

@@ -76,7 +76,7 @@ export function ActionDock({
         </div>
       ) : null}
 
-      {!state.pendingCheck && currentSuggestions.length ? (
+      {!state.pendingCheck && !state.isThinking && currentSuggestions.length ? (
         <div className="suggestion-row">
           {currentSuggestions.slice(0, 3).map((text) => (
             <button key={text} onClick={() => onSuggestion(text)}>{text}</button>
@@ -90,6 +90,7 @@ export function ActionDock({
             {state.players.map((player, index) => (
               <button
                 className={index === state.currentSplitPlayer ? 'active' : ''}
+                disabled={state.isThinking}
                 key={player.id}
                 onClick={() => onSplitPlayerChange(index)}
               >
@@ -101,6 +102,7 @@ export function ActionDock({
             {sceneList.filter((scene) => splitSceneIds.has(scene.id)).map((scene) => (
               <button
                 className={state.playerLocations[splitActor.id] === scene.id ? 'active' : ''}
+                disabled={state.isThinking}
                 key={scene.id}
                 onClick={() => onSplitSceneChange(state.currentSplitPlayer, scene.id)}
               >
@@ -124,7 +126,7 @@ export function ActionDock({
             <input
               className="dock-input"
               autoFocus
-              disabled={isDiceRolling}
+              disabled={isDiceRolling || state.isThinking}
               value={state.declarations[currentActor.id] ?? ''}
               placeholder={`${currentActor.name} 想要做什么...`}
               onChange={(event) => onDeclarationChange(currentActor.id, event.target.value)}
@@ -155,6 +157,7 @@ export function ActionDock({
           return (
             <button
               className={cardClass}
+              disabled={state.isThinking}
               key={player.id}
               onClick={() => state.exploreMode === 'together' ? onActorChange(index) : onSplitPlayerChange(index)}
               type="button"

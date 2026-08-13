@@ -19,7 +19,9 @@ import { caseBoard as caseBoardDefinition } from '../data/scenarios/wuzhongxiaos
 import {
   getAvailableStoryEvents,
   getAvailableSceneExits,
+  getActiveScenarioBeat,
   getScenarioProgressForState,
+  getVisibleScenarioObjectives,
   npcIdFromName,
   processScenarioTurn
 } from '../scenario/engine';
@@ -105,9 +107,13 @@ function buildSemanticFallbackChoices(
     const scene = kb.scenes[exit.sceneId]?.public;
     return scene ? [`前往${scene.name}继续调查`] : [];
   });
-  const authoredActions = getAvailableStoryEvents(progress, sceneId)
-    .map((event) => event.title)
-    .filter((title) => !/^失败推进|恢复|回收/.test(title));
+  const activeBeat = getActiveScenarioBeat(progress, sceneId);
+  const authoredActions = getVisibleScenarioObjectives(progress)
+    .filter((objective) =>
+      progress.objectiveStates[objective.id] === 'active'
+      && objective.beatId === activeBeat?.id
+    )
+    .map((objective) => objective.playerText);
   const localAction = activeNpcName
     ? `请${activeNpcName}只核对已经确认的事实`
     : '继续观察当前环境';
