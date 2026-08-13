@@ -337,6 +337,33 @@ function pharmacyInvestigationSuggestions(players: Investigator[]): Record<strin
   return Object.fromEntries(players.map((player) => [player.id, [...suggestions]]));
 }
 
+function finaleSuggestions(players: Investigator[], route: unknown): Record<string, string[]> {
+  const suggestions = route === 'combat'
+    ? [
+        '攻击一名仍在抵抗的深潜者，为营救埃里克争取时间',
+        '配合同伴牵制深潜者，并寻找下一次攻击机会',
+        '观察甲板混战后选择一名仍在抵抗的深潜者发动攻击'
+      ]
+    : route === 'negotiation'
+      ? [
+          '保持距离，聆听深潜者代表真正的诉求',
+          '尝试理解深潜者的条件，再决定如何回应',
+          '请同伴警戒，自己专注辨认深潜者的非人声调'
+        ]
+      : [
+          '选择暂缓攻击，与深潜者代表进行交涉',
+          '选择以武力阻止深潜者带走埃里克',
+          '先确认埃里克的处境，再明确选择战斗或交涉'
+        ];
+  return Object.fromEntries(players.map((player) => [player.id, [...suggestions]]));
+}
+
+function containsPharmacyInvestigationSuggestion(suggestionsByPlayerId: Record<string, string[]>): boolean {
+  return Object.values(suggestionsByPlayerId).some((suggestions) => suggestions.some((suggestion) =>
+    /后厅油布包|柜台附近.*雪茄|后门附近.*撤离痕迹/.test(suggestion)
+  ));
+}
+
 function normalizeActionLog(value: unknown, fallback: GameState['actionLog']) {
   if (!Array.isArray(value)) return fallback;
   const logs = value.flatMap((item) => {
@@ -1299,9 +1326,13 @@ export function hydrateGameState(value: unknown): GameState {
     flags: isRecord(source.flags) ? source.flags : {},
     turn: countCompletedGameTurns(rawHistory)
   });
-  const withdrewAutomaticPharmacyMap = scenarioProgress.migrationLog.some((entry) =>
-    entry.includes('撤回旧版进入药店时自动授予的地图')
-  );
+  const withdrewAutomaticPharmacyMap = currentScene === 'S04'
+    && scenarioProgress.clueStates.I07 === 'unknown'
+    && !scenarioProgress.visitedSceneIds.includes('S05')
+    && scenarioProgress.variables.finaleRoute === 'undecided'
+    && scenarioProgress.migrationLog.some((entry) =>
+      entry.includes('撤回旧版进入药店时自动授予的地图')
+    );
   const history = withdrewAutomaticPharmacyMap
     ? rawHistory.filter((turn) => turn.role !== 'assistant' || !referencesWithdrawnPharmacyState(turn.content))
     : rawHistory;
@@ -1311,10 +1342,14 @@ export function hydrateGameState(value: unknown): GameState {
         message.type === 'player' || !referencesWithdrawnPharmacyState(message.text)
       )
     : normalizedMessages;
+  const staleFinaleSuggestions = currentScene === 'S05'
+    && containsPharmacyInvestigationSuggestion(rawSuggestionsByPlayerId);
   const suggestionsByPlayerId = withdrewAutomaticPharmacyMap
     ? pharmacyInvestigationSuggestions(players)
-    : rawSuggestionsByPlayerId;
-  const suggestions = withdrewAutomaticPharmacyMap
+    : staleFinaleSuggestions
+      ? finaleSuggestions(players, scenarioProgress.variables.finaleRoute)
+      : rawSuggestionsByPlayerId;
+  const suggestions = withdrewAutomaticPharmacyMap || staleFinaleSuggestions
     ? firstSuggestionListByPlayerOrder(suggestionsByPlayerId, players, base.suggestions)
     : rawSuggestions;
   const persistedNpcName = typeof source.activeNpcId === 'string'

@@ -657,6 +657,47 @@ describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
     expect(hydrated.prospectiveIntents).toEqual([]);
   });
 
+  it('does not repeat pharmacy cleanup after reaching the finale and repairs stale suggestions', () => {
+    const progress = createScenarioProgress();
+    progress.activeActId = 'A03';
+    progress.beatStates.B01 = 'completed';
+    progress.beatStates.B02 = 'completed';
+    progress.beatStates.B05 = 'completed';
+    progress.beatStates.B06 = 'active';
+    progress.objectiveStates.O05 = 'completed';
+    progress.objectiveStates.O06 = 'completed';
+    progress.objectiveStates.O07 = 'active';
+    progress.clueStates.I07 = 'analyzed';
+    progress.knownFactIds.push('F09');
+    progress.firedEventIds.push('EV_S04_MAP', 'EV_CHOOSE_COMBAT');
+    progress.variables.finaleRoute = 'combat';
+    progress.encounters.ENC01.state = 'active';
+    progress.visitedSceneIds.push('S04', 'S05');
+    progress.migrationLog.push('1.1.6：撤回旧版进入药店时自动授予的地图，保留现场并恢复为可调查状态。');
+
+    const hydrated = hydrateGameState({
+      players: [makeInvestigator({ id: 'p1', name: '托马斯' })],
+      currentScene: 'S05',
+      scenarioProgress: progress,
+      clues: ['I07'],
+      messages: [{
+        id: 'map', type: 'system', text: '后厅油布包中的地图笔记标出了泰晤士港扶桑花号的位置。'
+      }],
+      suggestions: [
+        '搜查后厅油布包，寻找并检查潮湿的地图笔记',
+        '检查柜台附近是否留下雪茄或其他痕迹',
+        '观察浓雾与后门附近的撤离痕迹'
+      ],
+      longTermMemorySummary: '调查员已经抵达扶桑花号并选择战斗。'
+    });
+
+    expect(hydrated.clues.map((clue) => clue.id)).toContain('I07');
+    expect(hydrated.messages.map((message) => message.id)).toContain('map');
+    expect(hydrated.suggestions.every((suggestion) => suggestion.includes('深潜者'))).toBe(true);
+    expect(hydrated.suggestions.some((suggestion) => suggestion.includes('后厅油布包'))).toBe(false);
+    expect(hydrated.longTermMemorySummary).toBe('调查员已经抵达扶桑花号并选择战斗。');
+  });
+
   it('repairs an offstage active NPC to match the persisted scene', () => {
     const hydrated = hydrateGameState({
       players: [makeInvestigator({ id: 'p1', name: '亨利' })],
