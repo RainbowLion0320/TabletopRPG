@@ -13,6 +13,7 @@
  */
 
 import type { PlayerAction } from '../services/aiDm';
+import { isAffirmativeCombatAction } from '../services/actionIntent';
 
 export type IntentKind =
   | 'observe'
@@ -221,6 +222,12 @@ export function classifyIntent(actions: PlayerAction[]): ClassifiedIntent {
   for (const a of actions) {
     const text = (a.action || '').toLowerCase();
     if (!text) continue;
+    const affirmativeCombat = isAffirmativeCombatAction(text);
+    if (affirmativeCombat) {
+      skillSet.add(/(?:开枪|射击|枪击|扣扳机)/.test(text) ? '射击（手枪）' : '格斗（拳）');
+      hasConflict = true;
+      intentKind = 'combat';
+    }
     const onlyDiscussesMovement = /(?:提醒|建议|询问|商量|考虑|计划|打算)[^，。；！？\n]{0,18}(?:前往|赶往|去往|出发|动身|返回|离开|抵达|到达)/.test(text);
     if (!onlyDiscussesMovement && MOVEMENT_KEYWORDS.some((keyword) => text.includes(keyword))) {
       hasMovement = true;

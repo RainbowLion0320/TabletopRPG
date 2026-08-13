@@ -204,6 +204,30 @@ describe('turnGuards', () => {
     expect(inferStoryEventActor(actions, state, 'EV_COMBAT_ATTACK')).toBe('罗伯特');
   });
 
+  it('treats natural weapon strike wording as an authored finale attack', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '罗伯特' }, { '格斗（拳）': 70 })],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.variables.combatRoundStarted = true;
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.clocks.fusangEscape = { value: 3, active: true, visible: true };
+
+    const actions = [{
+      player: '罗伯特',
+      action: '绕过倒地的敌人，向第三名仍在抵抗的深潜者踏步近身，用警棍击打他的膝部使其失去战斗能力。'
+    }];
+
+    expect(inferStoryEventFromActions(actions, state)?.arguments.eventId).toBe('EV_COMBAT_ATTACK');
+    expect(inferStoryEventActor(actions, state, 'EV_COMBAT_ATTACK')).toBe('罗伯特');
+  });
+
   it('lets an authored story event own its structured check', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '亨利' }, { 聆听: 65 })],

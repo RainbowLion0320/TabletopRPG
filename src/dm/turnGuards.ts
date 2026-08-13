@@ -801,7 +801,7 @@ export function validateNarratorSemantics(
   if (settledCombatHit && deniesCombatIncapacitation && !confirmsCombatIncapacitation) {
     return '结构化战斗命中已使一名深潜者失去战斗能力，正文不得否定该结算';
   }
-  const demandsPendingCheck = /(?:需要|必须|务必|须得)[^。；！？\n]{0,24}检定/.test(
+  const demandsPendingCheck = /(?:需要|必须|务必|须得)[^。；！？\n]{0,24}检定|请[^。；！？\n]{0,12}(?:掷骰|进行)[^。；！？\n]{0,12}检定/.test(
     `${output.narrative}\n${output.nextPrompt}`
   );
   const hasAuthorizedCheck = toolCalls.some((call) => call.name === 'request_check')

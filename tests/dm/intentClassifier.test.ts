@@ -32,6 +32,17 @@ describe('intentClassifier', () => {
     expect(result.hasConflict).toBe(true);
   });
 
+  it('classifies a natural weapon strike as combat without treating negated attacks as combat', () => {
+    const strike = classifyIntent([action('用警棍击打深潜者的膝部')]);
+    const guard = classifyIntent([action('举起警棍警戒，本轮不攻击')]);
+
+    expect(strike.intentKind).toBe('combat');
+    expect(strike.relevantSkills).toContain('格斗（拳）');
+    expect(strike.hasConflict).toBe(true);
+    expect(guard.intentKind).not.toBe('combat');
+    expect(guard.hasConflict).toBe(false);
+  });
+
   it('威胁 is social but raises conflict flag', () => {
     const result = classifyIntent([action('我威胁老板交出账本')]);
     expect(result.intentKind).toBe('social');

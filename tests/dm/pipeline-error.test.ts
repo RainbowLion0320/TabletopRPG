@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { runDmTurn } from '../../src/dm/pipeline';
 import { AiResponseFormatError } from '../../src/services/aiDm';
 import { createScenarioProgress } from '../../src/scenario/engine';
+import { gameReducer } from '../../src/state/gameReducer';
 import type { ApiConfig } from '../../src/types/game';
 import { makeInvestigator, makeState } from './fixtures';
 
@@ -91,6 +92,49 @@ describe('runDmTurn error classification', () => {
     expect(fetchMock).not.toHaveBeenCalled();
     expect(output.actorName).toBe('罗伯特');
     expect(output.legacyResponse?.stateUpdate?.storyEventIds).toContain('EV_COMBAT_ATTACK');
+  });
+
+  it('issues the authored combat check for natural weapon strike wording without calling the model', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({
+      players: [makeInvestigator({ name: '罗伯特' }, { '格斗（拳）': 70 })],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.variables.combatRoundStarted = true;
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.clocks.fusangEscape = { value: 3, active: true, visible: true };
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [{
+        player: '罗伯特',
+        action: '绕过倒地的敌人，向第三名仍在抵抗的深潜者踏步近身，用警棍击打他的膝部使其失去战斗能力。'
+      }]
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(output.actorName).toBe('罗伯特');
+    expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_COMBAT_ATTACK');
+
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: output.legacyResponse,
+      raw: output.raw,
+      actorName: output.actorName
+    });
+    expect(next.pendingCheck).toEqual(expect.objectContaining({
+      player: '罗伯特',
+      skill: '格斗（拳）',
+      scenarioCheckId: 'CHECK_COMBAT'
+    }));
+    expect(next.scenarioProgress?.clocks.fusangEscape.value).toBe(3);
   });
 
   it('retries a failed clue roll until narration and the Director-approved failure event agree', async () => {
