@@ -138,6 +138,41 @@ function buildSemanticFallbackChoices(
   }));
 }
 
+function prioritizeNewlyAvailableDestinations(
+  choices: Record<string, string[]>,
+  state: GameState,
+  kb: ReturnType<typeof getActiveKnowledgeBase>,
+  sceneId: SceneId,
+  progressBefore: ReturnType<typeof getScenarioProgressForState>,
+  progressAfter: ReturnType<typeof getScenarioProgressForState>
+): Record<string, string[]> {
+  const previousExitIds = new Set(
+    getAvailableSceneExits(progressBefore, sceneId).map((exit) => exit.sceneId)
+  );
+  const activeBeat = getActiveScenarioBeat(progressAfter);
+  const newlyAvailable = getAvailableSceneExits(progressAfter, sceneId)
+    .filter((exit) => !previousExitIds.has(exit.sceneId))
+    .sort((left, right) => {
+      const leftIsCurrentTarget = Number(activeBeat?.sceneIds.includes(left.sceneId) ?? false);
+      const rightIsCurrentTarget = Number(activeBeat?.sceneIds.includes(right.sceneId) ?? false);
+      return rightIsCurrentTarget - leftIsCurrentTarget;
+    })
+    .flatMap((exit) => {
+      const scene = kb.scenes[exit.sceneId]?.public;
+      return scene ? [`前往${scene.name}继续调查`] : [];
+    });
+
+  if (!newlyAvailable.length) return choices;
+
+  return Object.fromEntries(state.players.map((player) => {
+    const current = choices[player.name] ?? [];
+    const merged = [...newlyAvailable, ...current]
+      .filter((choice, index, all) => all.indexOf(choice) === index)
+      .slice(0, 3);
+    return [player.name, merged];
+  }));
+}
+
 function actionsUseVisibleSuggestions(state: GameState, actions: PlayerAction[]): boolean {
   const normalize = (value: string) => value.replace(/\s+/g, '').replace(/[。！？]+$/g, '');
   const declarations = actions.filter((action) => !/【检定结果】/.test(action.action));
@@ -776,18 +811,37 @@ export async function runDmTurn(
     ...(resolved.legacyResponse.stateUpdate?.newItems ?? [])
   ]);
   const acceptedStoryEventIds = resolved.legacyResponse.stateUpdate?.storyEventIds ?? [];
-  const finaleRoute = acceptedStoryEventIds.includes('EV_CHOOSE_COMBAT')
-    ? 'combat'
-    : acceptedStoryEventIds.includes('EV_CHOOSE_NEGOTIATION')
-      ? 'negotiation'
-      : getScenarioProgressForState(input.state).variables.finaleRoute;
+  const progressBeforeResolution = getScenarioProgressForState(input.state);
+  const projectedTransition = processScenarioTurn(progressBeforeResolution, {
+    currentScene: targetScene,
+    previousScene: targetScene !== input.state.currentScene ? input.state.currentScene : undefined,
+    storyEventIds: acceptedStoryEventIds,
+    turn: currentTurn,
+    completeTurn: false,
+    actorName: input.actions[input.actions.length - 1]?.player
+  });
+  const finaleRoute = projectedTransition.progress.variables.finaleRoute;
+  const safeChoices = sanitizePlayerChoices(
+    narrator.playerChoices,
+    knownItems,
+    kb,
+    targetScene,
+    finaleRoute
+  );
   resolved.legacyResponse = inferNarrativeConsequences({
     ...resolved.legacyResponse,
     stateUpdate: {
       ...resolved.legacyResponse.stateUpdate,
       newItems: resolved.legacyResponse.stateUpdate?.newItems ?? []
     },
-    playerChoices: sanitizePlayerChoices(narrator.playerChoices, knownItems, kb, targetScene, finaleRoute)
+    playerChoices: prioritizeNewlyAvailableDestinations(
+      safeChoices,
+      input.state,
+      kb,
+      targetScene,
+      progressBeforeResolution,
+      projectedTransition.progress
+    )
   }, input.actions, input.state);
 
   timings.totalForeground = elapsedMs(foregroundStart);

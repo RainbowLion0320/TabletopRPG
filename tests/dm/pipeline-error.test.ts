@@ -324,6 +324,41 @@ describe('runDmTurn error classification', () => {
     expect(output.legacyResponse.playerChoices?.亨利).toContain('前往卡森其药店继续调查');
   });
 
+  it('offers a destination unlocked by an accepted story event in the same turn', async () => {
+    const content = JSON.stringify({
+      narrative: '后厅油布包中的地图笔记标出了泰晤士港扶桑花号的位置。',
+      activeNpc: null,
+      nextPrompt: '下一步怎么办？',
+      playerChoices: {
+        托马斯: ['小心检查店内深处是否有其他东西', '再次警戒后门确保退路畅通', '继续观察当前环境']
+      }
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(content)));
+    const state = makeState({
+      players: [makeInvestigator({ name: '托马斯' }, { 侦查: 65 })],
+      currentScene: 'S04'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'active';
+    state.scenarioProgress.objectiveStates.O05 = 'active';
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [
+        { player: '托马斯', action: '搜查后厅油布包，寻找并检查潮湿的地图笔记。' },
+        {
+          player: '托马斯',
+          action: '【检定结果】托马斯 的 侦查检定：掷出 44，阈值 65，结果：普通成功（44）。这是规则事实，不得改写或推翻；请根据结果继续叙述。'
+        }
+      ]
+    });
+
+    expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_S04_MAP');
+    expect(output.legacyResponse.playerChoices?.托马斯?.[0]).toBe('前往泰晤士港·扶桑花号继续调查');
+  });
+
   it('uses authored pre-roll narration without calling the model for a scenario check', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
