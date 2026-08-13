@@ -492,6 +492,34 @@ describe('gameReducer scene focus synchronization', () => {
 });
 
 describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
+  it('repairs an old generic finale persuasion check into the authored listen step', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '艾达' }, { 聆听: 65, 说服: 60 })],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.objectiveStates.O08 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'negotiation';
+    state.pendingCheck = {
+      player: '艾达', skill: '说服', difficulty: '普通', skillVal: 60, threshold: 60
+    };
+
+    const hydrated = hydrateGameState(state);
+
+    expect(hydrated.pendingCheck).toEqual(expect.objectContaining({
+      scenarioCheckId: 'CHECK_LISTEN',
+      player: '艾达',
+      skill: '聆听',
+      difficulty: '普通',
+      skillVal: 65,
+      threshold: 65
+    }));
+  });
+
   it('repairs legacy split saves whose visible scene lagged behind the selected player location', () => {
     const hydrated = hydrateGameState({
       players: [

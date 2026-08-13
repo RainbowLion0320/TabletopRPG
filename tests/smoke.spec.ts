@@ -256,6 +256,18 @@ function createNegotiationCheckSave(): GameState {
   };
 }
 
+function createBypassedNegotiationCheckSave(): GameState {
+  const state = createNegotiationCheckSave();
+  state.pendingCheck = {
+    player: '亨利·格雷',
+    skill: '说服',
+    difficulty: '普通',
+    skillVal: 60,
+    threshold: 60
+  };
+  return state;
+}
+
 function createPoliceStationSave(): GameState {
   const state = createDynamicCaseBoardSave();
   const progress = createSmokeScenarioProgress();
@@ -581,6 +593,14 @@ test('authored negotiation checks chain and settle the ending without another AI
   await page.getByRole('button', { name: '确认结果' }).click();
   await expect(page.locator('.ending-dock')).toContainText('结局C：和平交涉', { timeout: 8_000 });
   expect(aiRequests).toBe(0);
+});
+
+test('loading a bypassed finale persuasion restores the authored listen check', async ({ page }) => {
+  await gotoWithSave(page, createBypassedNegotiationCheckSave());
+  await page.getByRole('button', { name: '继续游戏' }).click();
+
+  await expect(page.locator('.check-card')).toContainText('亨利·格雷 · 聆听');
+  await expect(page.locator('.check-card')).toContainText('普通难度，阈值 65');
 });
 
 test('legacy internal progression prompts stay hidden after loading a save', async ({ page }) => {

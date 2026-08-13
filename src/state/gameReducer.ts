@@ -217,6 +217,28 @@ function normalizeCheck(value: unknown, players: Investigator[]): CheckRequest |
   };
 }
 
+function restoreAuthoredPendingCheck(
+  check: CheckRequest | null,
+  players: Investigator[],
+  currentScene: SceneId,
+  progress: GameState['scenarioProgress']
+): CheckRequest | null {
+  if (!check) return null;
+  const bypassedFinaleListen = currentScene === 'S05'
+    && progress?.variables.finaleRoute === 'negotiation'
+    && progress.objectiveStates.O08 === 'active'
+    && !check.scenarioCheckId
+    && check.skill === '说服';
+  if (!bypassedFinaleListen) return prepareCheck(check, players);
+  return prepareCheck({
+    ...check,
+    scenarioCheckId: 'CHECK_LISTEN',
+    skill: '聆听',
+    difficulty: '普通',
+    reason: '从非人声调中辨认其真正诉求'
+  }, players);
+}
+
 function normalizeConversationHistory(value: unknown): GameState['conversationHistory'] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item) => {
@@ -1267,7 +1289,7 @@ export function hydrateGameState(value: unknown): GameState {
     declarations: normalizeDeclarations(source.declarations, players),
     pendingCheck: (() => {
       const check = normalizeCheck(source.pendingCheck, players);
-      return check ? prepareCheck(check, players) : null;
+      return restoreAuthoredPendingCheck(check, players, currentScene, scenarioProgress);
     })(),
     currentScene,
     activeNpcId: npcIdFromName(activeNpcName),

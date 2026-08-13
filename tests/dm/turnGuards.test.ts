@@ -143,6 +143,13 @@ describe('turnGuards', () => {
     expect(buildRequiredCheck([{
       player: '亨利', action: '专注聆听深潜者的声调，理解它们的诉求。'
     }], state)).toBeNull();
+
+    const directExchange = [{
+      player: '亨利', action: '根据手势提出交换条件，说服它先释放埃里克再和平离港。'
+    }];
+    expect(inferStoryEventFromActions(directExchange, state)?.arguments.eventId)
+      .toBe('EV_NEGOTIATION_LISTEN');
+    expect(buildRequiredCheck(directExchange, state)).toBeNull();
   });
 
   it('settles a natural finale route choice before any follow-up generic check', () => {
