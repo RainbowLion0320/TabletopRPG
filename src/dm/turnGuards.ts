@@ -169,6 +169,16 @@ function sceneTerms(kb: KnowledgeBase, sceneId: SceneId): string[] {
   return scene ? [scene.id, scene.name, ...(scene.aliases ?? [])] : [];
 }
 
+function explicitlyTravelsToScene(text: string, kb: KnowledgeBase, sceneId: SceneId): boolean {
+  return sceneTerms(kb, sceneId).some((term) => {
+    if (!term || term.length < 2) return false;
+    return new RegExp(
+      `(?:前往|返回|回到|赶往|抵达|到达|来到|进入|登上|去往)[^。；！？\\n]{0,16}${escapeRegex(term)}`,
+      'i'
+    ).test(text);
+  });
+}
+
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -448,6 +458,7 @@ export function sanitizePlayerChoices(
       !hiddenTerms.some((term) => choice.includes(term))
       && !offstageNpcNames.some((name) => choice.includes(name))
       && !(sceneId && unavailableNpcRole(choice, kb, sceneId, true))
+      && !(sceneId && explicitlyTravelsToScene(choice, kb, sceneId))
       && !(sceneId === 'S05' && finaleRoute === 'combat'
         && !hasAffirmativeMatch(choice, COMBAT_ACTION_RE))
       && !(sceneId === 'S05' && finaleRoute === 'negotiation'
@@ -707,6 +718,14 @@ export function validateNarratorSemantics(
     const event = availableEvents.get(String(call.arguments.eventId ?? ''));
     return event ? [event] : [];
   });
+  const demandsPendingCheck = /(?:需要|必须|务必|须得)[^。；！？\n]{0,24}检定/.test(
+    `${output.narrative}\n${output.nextPrompt}`
+  );
+  const hasAuthorizedCheck = toolCalls.some((call) => call.name === 'request_check')
+    || proposedEvents.some((event) => event.effects.some((effect) => 'requestCheck' in effect));
+  if (demandsPendingCheck && !hasAuthorizedCheck) {
+    return '正文要求玩家检定时必须在同一响应调用获准的 request_check，不能留下没有掷骰入口的强制检定';
+  }
   const narrativeAuthority = authoredNarrativeCorpus(state, proposedEvents);
   if (state.currentScene === 'S01' && /贝尔街/.test(allText) && !narrativeAuthority.includes('贝尔街')) {
     return '不得在住宅调查取得对应线索前提前透露贝尔街';

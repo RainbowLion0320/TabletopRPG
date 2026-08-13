@@ -479,6 +479,15 @@ describe('turnGuards', () => {
     expect(result.亨利).toContain('询问伊莎贝拉是否认识蒙特利尔');
   });
 
+  it('removes suggestions that tell the party to travel to its current scene', () => {
+    const result = sanitizePlayerChoices({
+      亨利: ['前往泰晤士港·扶桑花号继续调查', '仔细观察甲板上的动静']
+    }, new Set(), kb, 'S05');
+
+    expect(result.亨利).not.toContain('前往泰晤士港·扶桑花号继续调查');
+    expect(result.亨利).toContain('仔细观察甲板上的动静');
+  });
+
   it('keeps finale suggestions within the selected authored route', () => {
     const combat = sanitizePlayerChoices({
       罗伯特: [
@@ -572,6 +581,27 @@ describe('turnGuards', () => {
     expect(validateNarratorSemantics({
       narrative: '蒙特利尔冷冷地拒绝回答。', activeNpc: '洛夫·蒙特利尔', nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/activeNpc|提前点名蒙特利尔/);
+  });
+
+  it('requires an authorized check whenever narration says a check is mandatory', () => {
+    const state = makeState({ currentScene: 'S05', activeNpcName: '扶桑花号交涉代表' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    const output = {
+      narrative: '浓雾遮住甲板深处，接下来的行动存在失败风险，需要先进行侦查检定。',
+      activeNpc: '扶桑花号交涉代表',
+      nextPrompt: '确认周围安全后再决定如何应对。',
+      playerChoices: {}
+    };
+
+    expect(validateNarratorSemantics(output, [], state, kb)).toMatch(/request_check/);
+    expect(validateNarratorSemantics(output, [{
+      name: 'request_check',
+      arguments: { player: '亨利', skill: '侦查', difficulty: '普通', reason: '观察甲板' }
+    }], state, kb)).toBeNull();
   });
 
   it('rejects exact invented clocks and highly repetitive narration', () => {
