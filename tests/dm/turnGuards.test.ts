@@ -1285,6 +1285,10 @@ describe('turnGuards', () => {
       activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
     }, [...event], state, kb)).toMatch(/未调查地点的活动细节/);
     expect(validateNarratorSemantics({
+      narrative: '酒保指出贝尔街14号的废弃药店，又说：“那地方最近有人进出。”',
+      activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
+    }, [...event], state, kb)).toMatch(/未调查地点的活动细节/);
+    expect(validateNarratorSemantics({
       narrative: '酒保说：“我只知道他脸上有伤，手在发抖。”',
       activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/伤情/);
@@ -1322,6 +1326,21 @@ describe('turnGuards', () => {
       narrative: '蒙特利尔回避关键问题，并冷淡地结束了会面。',
       activeNpc: '洛夫·蒙特利尔', nextPrompt: '', playerChoices: {}
     }, [...event], state, kb)).toBeNull();
+  });
+
+  it('keeps relative time-of-day language aligned with the structured world clock', () => {
+    const state = makeState({ currentScene: 'S03', activeNpcName: '老赫特之家酒保' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.worldTime = '1920-07-13T18:30';
+
+    expect(validateNarratorSemantics({
+      narrative: '两人在午后的薄雾里走进酒吧。',
+      activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/时段.*世界时间/);
+    expect(validateNarratorSemantics({
+      narrative: '入夜前的薄雾渐浓，两人走进酒吧。',
+      activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toBeNull();
   });
 
   it('keeps the opening commission within authored testimony', () => {
