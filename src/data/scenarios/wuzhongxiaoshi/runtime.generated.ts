@@ -11,7 +11,7 @@ import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
 import asset9 from '../../../../assets/avatars/deep_one.svg';
 
-export const scenarioContentHash = "33991bac69fb658b";
+export const scenarioContentHash = "7a9fe3252f30b83f";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -1617,7 +1617,7 @@ export const generatedScenarioModule = {
         ],
         "once": true,
         "playerVisible": true,
-        "narrativeCue": "蒙特利尔回避关键问题；调查员离开后，他秘密派出暴徒。"
+        "narrativeCue": "蒙特利尔回避关键问题，并冷淡地结束了会面。"
       },
       {
         "id": "EV_BARTENDER_RAT",

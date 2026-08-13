@@ -168,7 +168,7 @@ storyEvents:
     effects: [{ setVariable: metMontreal, value: true }, { setVariable: thugAlert, value: true }, { completeObjective: O03 }, { completeBeat: B03 }, { advanceTime: 15 }]
     once: true
     playerVisible: true
-    narrativeCue: 蒙特利尔回避关键问题；调查员离开后，他秘密派出暴徒。
+    narrativeCue: 蒙特利尔回避关键问题，并冷淡地结束了会面。
   - id: EV_BARTENDER_RAT
     beatId: B04
     title: 酒保提供“老鼠”线索

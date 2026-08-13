@@ -3,7 +3,7 @@
 
 - 模组 ID：`wuzhongxiaoshi`
 - 内容版本：`1.1.5`
-- 内容哈希：`33991bac69fb658b`
+- 内容哈希：`7a9fe3252f30b83f`
 - 规则：COC 第七版风格 D100
 - 时间：1920年7月13日，英国伦敦
 - 作者：舒爾茲上尉
@@ -122,7 +122,7 @@ flowchart LR
 - **EV_RECOVER_I04 恢复小册子线索** [automatic/once]：烧剩的夹页仍留下“贝尔14”字样，足以继续调查。
 - **EV_RECOVER_I05 恢复粉末证据** [automatic/once]：暗格残留物仍能证明这里存放过鸦片。
 - **EV_RECOVER_I06 恢复报纸信息** [automatic/once]：伊莎贝拉认出残片上的人物是蒙特利尔。
-- **EV_MEET_MONTREAL 蒙特利尔阻挠调查** [manual/once]：蒙特利尔回避关键问题；调查员离开后，他秘密派出暴徒。
+- **EV_MEET_MONTREAL 蒙特利尔阻挠调查** [manual/once]：蒙特利尔回避关键问题，并冷淡地结束了会面。
 - **EV_BARTENDER_RAT 酒保提供“老鼠”线索** [manual/once]：酒保在得到酒水、金钱或可信理由后，指出贝尔街14号的废弃药店。
 - **EV_S04_FOG 深潜者撤离与浓雾** [sceneEnter/once]：非人的身影从后门撤离，咒术浓雾涌入药店；所有在场调查员承受最低1点SAN损失。
 - **EV_S04_MAP 获得地图笔记** [sceneEnter/once]：后厅油布包中的地图笔记标出了泰晤士港扶桑花号的位置。
