@@ -9,7 +9,7 @@ import { makeInvestigator, makeState } from '../dm/fixtures';
 
 describe('narrative markup', () => {
   it('prefers full deterministic entities over aliases and overlapping LLM hints', () => {
-    const state = makeState();
+    const state = makeState({ clueIds: ['I04'] });
     const text = '伊莎贝拉·摩勒握着小册子，要求进行心理学检定。';
     const segments = markNarrativeText(text, state, [
       { text: '伊莎贝拉·摩勒握着小册子', kind: 'clue' },
@@ -29,12 +29,26 @@ describe('narrative markup', () => {
   });
 
   it('maps a safe alias to its canonical person', () => {
-    const state = makeState();
+    const state = makeState({ activeNpcName: '洛夫·蒙特利尔' });
     const marked = markNarrativeText('蒙特利尔局长拒绝回答。', state);
     const person = marked.find((segment) => segment.mark?.kind === 'person');
 
     expect(person?.text).toBe('蒙特利尔局长');
     expect(person?.mark?.canonicalName).toBe('洛夫·蒙特利尔');
+  });
+
+  it('does not link aliases for a future scene before that scene is revealed', () => {
+    const state = makeState({ currentScene: 'S03', activeNpcName: '老赫特之家酒保' });
+    const text = '酒保说港口可能有水手，码头的雾也很重。';
+
+    const hidden = markNarrativeText(text, state);
+    expect(hidden.filter((segment) => segment.mark?.kind === 'location')).toEqual([]);
+
+    state.currentScene = 'S05';
+    state.playerLocations = Object.fromEntries(state.players.map((player) => [player.id, 'S05']));
+    const revealed = markNarrativeText(text, state);
+    expect(revealed.filter((segment) => segment.mark?.kind === 'location').map((segment) => segment.text))
+      .toEqual(['港口', '码头']);
   });
 
   it('assigns stable distinct colors while the palette has capacity', () => {

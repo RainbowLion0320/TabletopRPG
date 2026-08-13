@@ -1,5 +1,7 @@
 import { allSkills } from '../data/skills';
+import { caseBoard } from '../data/scenarios/wuzhongxiaoshi';
 import { storyData } from '../data/storyData';
+import { getVisibleCaseBoard } from '../dm/caseBoard';
 import type { GameState, NarrativeKeywordHint } from '../types/game';
 import { normalizeNarrativeKeywordHints } from './narrativeKeywords';
 
@@ -141,6 +143,25 @@ function addTerm(
 function deterministicTerms(state: GameState): TermDefinition[] {
   const terms: TermDefinition[] = [];
   const seen = new Set<string>();
+  const visibleBoard = getVisibleCaseBoard(caseBoard, state);
+  const visibleNpcNames = new Set(
+    visibleBoard.nodes
+      .filter((node) => node.type === 'npc' && node.refId)
+      .map((node) => node.refId!)
+  );
+  const visibleSceneIds = new Set(
+    visibleBoard.nodes
+      .filter((node) => node.type === 'scene' && node.refId)
+      .map((node) => node.refId!)
+  );
+  const visibleItemIds = new Set(
+    visibleBoard.nodes
+      .filter((node) => node.type === 'item' && node.refId)
+      .map((node) => node.refId!)
+  );
+  if (state.activeNpcName) visibleNpcNames.add(state.activeNpcName);
+  visibleSceneIds.add(state.currentScene);
+  state.clues.forEach((clue) => visibleItemIds.add(clue.id));
 
   state.players.forEach((player) => {
     addTerm(terms, seen, player.name, {
@@ -149,6 +170,7 @@ function deterministicTerms(state: GameState): TermDefinition[] {
   });
 
   Object.entries(storyData.npcs).forEach(([name, npc]) => {
+    if (!visibleNpcNames.has(name)) return;
     const target: NarrativeMarkTarget = {
       kind: 'person', id: name, label: name, source: 'deterministic', canonicalName: name
     };
@@ -157,6 +179,7 @@ function deterministicTerms(state: GameState): TermDefinition[] {
   });
 
   Object.values(storyData.scenes).forEach((scene) => {
+    if (!visibleSceneIds.has(scene.id)) return;
     const target: NarrativeMarkTarget = {
       kind: 'location', id: scene.id, label: scene.name, source: 'deterministic'
     };
@@ -165,6 +188,7 @@ function deterministicTerms(state: GameState): TermDefinition[] {
   });
 
   Object.values(storyData.items).forEach((item) => {
+    if (!visibleItemIds.has(item.id)) return;
     const target: NarrativeMarkTarget = {
       kind: 'item', id: item.id, label: item.name, source: 'deterministic'
     };
