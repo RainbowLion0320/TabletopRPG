@@ -777,7 +777,10 @@ describe('turnGuards', () => {
   });
 
   it('rejects player-injected defeated enemies until combat records a hit', () => {
-    const state = makeState({ currentScene: 'S05', activeNpcName: '扶桑花号交涉代表' });
+    const state = makeState({
+      currentScene: 'S05',
+      activeNpcName: '扶桑花号交涉代表'
+    });
     state.scenarioProgress = createScenarioProgress();
     state.scenarioProgress.beatStates.B06 = 'active';
     state.scenarioProgress.variables.finaleRoute = 'combat';
@@ -995,7 +998,10 @@ describe('turnGuards', () => {
   });
 
   it('requires an affirmative combat action before advancing the finale battle', () => {
-    const state = makeState({ currentScene: 'S05' });
+    const state = makeState({
+      currentScene: 'S05',
+      players: [makeInvestigator({ name: '罗伯特', equipment: ['警用左轮手枪'] })]
+    });
     state.scenarioProgress = createScenarioProgress();
     state.scenarioProgress.beatStates.B01 = 'completed';
     state.scenarioProgress.beatStates.B02 = 'completed';
@@ -1028,13 +1034,17 @@ describe('turnGuards', () => {
   it('rejects narration that contradicts the active authored NPC appearance', () => {
     const state = makeState({ currentScene: 'S03', activeNpcName: '老赫特之家酒保' });
     expect(validateNarratorSemantics({
-      narrative: '吧台后站着一个精瘦的中年男人，正用布擦拭酒杯。',
+      narrative: '吧台后站着一个壮实的中年男人，正用布擦拭酒杯。',
       activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/人物外貌.*老赫特之家酒保/);
     expect(validateNarratorSemantics({
-      narrative: '壮实的中年酒保站在吧台后擦拭酒杯。',
+      narrative: '清瘦的中年酒保站在吧台后擦拭酒杯，下巴刮得干净。',
       activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toBeNull();
+    expect(validateNarratorSemantics({
+      narrative: '清瘦的中年酒保摸了摸浓密胡须。',
+      activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/人物外貌.*老赫特之家酒保/);
   });
 
   it('rejects invented weapons, unsafe medical advice and arrival without state change', () => {
@@ -1042,6 +1052,23 @@ describe('turnGuards', () => {
     expect(validateNarratorSemantics({
       narrative: '亨利拔出手枪警戒。', nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/枪械/);
+    const armed = makeState({
+      currentScene: 'S01',
+      players: [makeInvestigator({ name: '亨利', equipment: ['.32左轮手枪'] })]
+    });
+    expect(validateNarratorSemantics({
+      narrative: '亨利拔出左轮手枪警戒。', nextPrompt: '', playerChoices: {}
+    }, [], armed, kb)).toBeNull();
+    const mixedParty = makeState({
+      currentScene: 'S01',
+      players: [
+        makeInvestigator({ name: '艾达', equipment: [] }),
+        makeInvestigator({ name: '罗伯特', equipment: ['警用左轮手枪'] })
+      ]
+    });
+    expect(validateNarratorSemantics({
+      narrative: '艾达拔出左轮手枪警戒，罗伯特守在她身边。', nextPrompt: '', playerChoices: {}
+    }, [], mixedParty, kb)).toMatch(/艾达没有被记录的枪械/);
     expect(validateNarratorSemantics({
       narrative: '艾达建议注射活性炭。', nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/医疗/);
@@ -1227,6 +1254,17 @@ describe('turnGuards', () => {
     expect(validateNarratorSemantics({
       narrative: '亨利找到埃里克后割断绳索，将他扶回甲板。', nextPrompt: '', playerChoices: {}
     }, [], opening, kb)).toMatch(/剧情结果/);
+    expect(validateNarratorSemantics({
+      narrative: '亨利终于扯开了粗糙的绳结，获救的埃里克大口喘着气。', nextPrompt: '', playerChoices: {}
+    }, [], opening, kb)).toMatch(/剧情结果/);
+
+    const failedFinale = makeState({ currentScene: 'S05' });
+    failedFinale.scenarioProgress = createScenarioProgress();
+    failedFinale.scenarioProgress.endingId = 'END_B';
+    failedFinale.scenarioProgress.variables.ericRescued = false;
+    expect(validateNarratorSemantics({
+      narrative: '获救的埃里克躲到木箱后。', nextPrompt: '', playerChoices: {}
+    }, [], failedFinale, kb)).toMatch(/剧情结果/);
 
     const finale = makeState({ currentScene: 'S05' });
     finale.scenarioProgress = createScenarioProgress();

@@ -9,9 +9,9 @@ import asset5 from '../../../../assets/avatars/isabella.png';
 import asset6 from '../../../../assets/avatars/eric.png';
 import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
-import asset9 from '../../../../assets/avatars/deep_one.svg';
+import asset9 from '../../../../assets/avatars/deep_one_envoy.png';
 
-export const scenarioContentHash = "0380e1c1fe9fa566";
+export const scenarioContentHash = "494364d4cfda2ab2";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -27,7 +27,7 @@ export const scenarioAssetUrls: Record<string, string> = {
 export const generatedScenarioModule = {
   "manifest": {
     "schemaVersion": 1,
-    "contentVersion": "1.1.12",
+    "contentVersion": "1.1.13",
     "id": "wuzhongxiaoshi",
     "title": "雾中消逝",
     "system": "COC 第七版风格 D100",
@@ -65,7 +65,7 @@ export const generatedScenarioModule = {
       "npc.N02": "../../assets/avatars/eric.png",
       "npc.N03": "../../assets/avatars/montreal.png",
       "npc.N04": "../../assets/avatars/bartender.png",
-      "npc.N05": "../../assets/avatars/deep_one.svg"
+      "npc.N05": "../../assets/avatars/deep_one_envoy.png"
     }
   },
   "world": {
@@ -478,7 +478,7 @@ export const generatedScenarioModule = {
         "name": "老赫特之家酒保",
         "role": "街区线人",
         "attitude": "中立",
-        "appearance": "壮实的中年酒保，总在一边擦杯子一边观察客人。",
+        "appearance": "身形清瘦的中年酒保，深色短发，下巴刮得干净，总在一边擦杯子一边观察客人。",
         "aliases": [
           "酒保",
           "老赫特酒保"
@@ -495,7 +495,7 @@ export const generatedScenarioModule = {
         "name": "扶桑花号交涉代表",
         "role": "深潜者代表",
         "attitude": "警惕",
-        "appearance": "灰绿色皮肤覆着湿润鳞片，蹼状双手始终靠近船舷，幽光眼睛警惕地观察来客。",
+        "appearance": "灰绿色皮肤覆着湿润鳞片，蹼状双手戒备地交叠在胸前，幽光眼睛警惕地观察来客。",
         "aliases": [
           "深潜者代表",
           "交涉代表",
@@ -1981,7 +1981,7 @@ export const generatedScenarioModule = {
         ],
         "once": true,
         "playerVisible": true,
-        "narrativeCue": "调查员以武力阻止深潜者，扶桑花号逃脱时钟开始计数；第一次攻击需要通过格斗检定结算。"
+        "narrativeCue": "调查员以武力阻止深潜者，扶桑花号逃脱时钟开始计数；第一次攻击需要通过对应的战斗技能检定结算。"
       },
       {
         "id": "EV_CHOOSE_NEGOTIATION",

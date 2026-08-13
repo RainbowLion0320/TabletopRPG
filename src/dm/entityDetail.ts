@@ -111,6 +111,7 @@ function playerDetail(targetId: string, state: GameState): EntityDetail | null {
     player.background?.belief ? `信念：${player.background.belief}` : '',
     player.background?.importantPerson ? `重要之人：${player.background.importantPerson}` : '',
     player.background?.meaningfulItem ? `珍视之物：${player.background.meaningfulItem}` : '',
+    player.equipment?.length ? `随身装备：${player.equipment.join('、')}` : '',
     player.background?.trait ? `特质：${player.background.trait}` : ''
   ].filter(Boolean).join('\n');
   return {

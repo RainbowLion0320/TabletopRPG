@@ -63,6 +63,7 @@ export function makeInvestigator(
     currentMp: partial.currentMp ?? derived.mp,
     currentSan: partial.currentSan ?? derived.san,
     skills,
+    equipment: partial.equipment,
     background: partial.background
   };
 }

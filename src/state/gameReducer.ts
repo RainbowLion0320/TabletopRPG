@@ -71,6 +71,11 @@ function time() {
   return new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 }
 
+function defaultEquipment(id: string, name: string): string[] {
+  if (id === 'constable' || name === '罗伯特·肖') return ['警用警棍', '警用左轮手枪'];
+  return [];
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -162,6 +167,9 @@ function normalizeInvestigator(value: unknown, index: number): Investigator | nu
     currentMp: clamp(Math.floor(numberValue(value.currentMp, mp)), 0, mp),
     currentSan: clamp(Math.floor(numberValue(value.currentSan, san)), 0, san),
     skills: normalizeSkills(value.skills, attrs),
+    equipment: Array.isArray(value.equipment)
+      ? value.equipment.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      : defaultEquipment(idValue, name),
     background: isRecord(value.background) ? {
       importantPerson: typeof value.background.importantPerson === 'string' ? value.background.importantPerson : undefined,
       belief: typeof value.background.belief === 'string' ? value.background.belief : undefined,
@@ -1502,9 +1510,18 @@ function applyScenarioTransition(
     flags: rewardFlags,
     clues: appendNewClues(state.clues, discoveredIds),
     scenarioProgress: transition.progress,
-    pendingCheck: transition.requestedCheck
-      ? prepareCheck(transition.requestedCheck, state.players)
-      : state.pendingCheck
+    pendingCheck: (() => {
+      const transitioned = transition.requestedCheck
+        ? prepareCheck(transition.requestedCheck, state.players)
+        : null;
+      if (
+        transitioned?.scenarioCheckId
+        && state.pendingCheck?.scenarioCheckId === transitioned.scenarioCheckId
+      ) {
+        return prepareCheck(state.pendingCheck, state.players);
+      }
+      return transitioned ?? state.pendingCheck;
+    })()
   };
   const normalizedNarratorText = narratorText.replace(/\s/g, '');
   for (const cue of transition.narrativeCues) {

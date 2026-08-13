@@ -57,6 +57,7 @@ import {
   inferStoryEventsFromActions,
   inferNarrativeConsequences,
   inferSceneChangeFromActions,
+  combatCheckSkillForActor,
   inferStoryEventActor,
   sanitizePlayerChoices,
   validateNarratorSemantics
@@ -577,6 +578,10 @@ export async function runDmTurn(
       kb
     ) ?? input.actions[input.actions.length - 1]?.player;
     const activeNpc = defaultActiveNpcForScene(input.state.currentScene);
+    const checkEffect = checkEvent.effects.find((effect) => 'requestCheck' in effect);
+    const checkSkill = checkEvent.id === 'EV_CHOOSE_COMBAT' || checkEvent.id === 'EV_COMBAT_ATTACK'
+      ? combatCheckSkillForActor(input.actions, input.state, eventActorName)
+      : null;
     const narrator = {
       raw: JSON.stringify({
         narrative: checkEvent.narrativeCue,
@@ -598,6 +603,15 @@ export async function runDmTurn(
       turn: currentTurn,
       pendingBefore: input.state.pendingConsequences ?? []
     });
+    if (checkEffect && 'requestCheck' in checkEffect) {
+      resolved.legacyResponse.check = {
+        scenarioCheckId: checkEffect.requestCheck,
+        skill: checkSkill ?? checkEffect.skill,
+        difficulty: checkEffect.difficulty,
+        player: checkEffect.player ?? eventActorName,
+        reason: checkEffect.reason
+      };
+    }
     timings.totalForeground = elapsedMs(foregroundStart);
     return {
       raw: narrator.raw,

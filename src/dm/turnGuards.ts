@@ -79,6 +79,11 @@ function buildCandidate(action: PlayerAction): CheckCandidate | null {
   };
 }
 
+function actorHasHandgun(state: GameState, playerName: string): boolean {
+  return state.players.find((player) => player.name === playerName)?.equipment
+    ?.some((item) => /手枪|左轮枪/.test(item)) ?? false;
+}
+
 /** Picks at most one check because the current UI can settle one pending check at a time. */
 export function buildRequiredCheck(actions: PlayerAction[], state: GameState): CheckRequest | null {
   if (actions.some((action) => DICE_RESULT_RE.test(action.action))) return null;
@@ -126,6 +131,7 @@ export function buildRequiredCheck(actions: PlayerAction[], state: GameState): C
   for (const candidate of candidates) {
     const player = state.players.find((item) => item.name === candidate.check.player);
     if (!player) continue;
+    if (candidate.check.skill === '射击（手枪）' && !actorHasHandgun(state, player.name)) continue;
     if (!player.skills[candidate.check.skill]) {
       const fallback = candidate.check.skill === '机械维修' ? '侦查' : null;
       if (!fallback || !player.skills[fallback]) continue;
@@ -219,7 +225,7 @@ export function inferStoryEventActor(
       .map((action, index) => ({
         action,
         index,
-        score: combatActorScore(action, actions)
+        score: combatActorScore(action, actions, state)
       }))
       .filter(({ score }) => score > 0)
       .sort((left, right) => right.score - left.score || left.index - right.index);
@@ -229,9 +235,22 @@ export function inferStoryEventActor(
     .some((call) => call.arguments.eventId === eventId))?.player ?? null;
 }
 
-function combatActorScore(action: PlayerAction, actions: PlayerAction[]): number {
+export function combatCheckSkillForActor(
+  actions: PlayerAction[],
+  state: GameState,
+  actorName: string
+): string {
+  const action = actions.find((candidate) => candidate.player === actorName)?.action ?? '';
+  const actor = state.players.find((candidate) => candidate.name === actorName);
+  if (!/(?:开枪|射击|枪击|扣扳机)/.test(action)) return '格斗（拳）';
+  const hasHandgun = actor?.equipment?.some((item) => /手枪|左轮枪/.test(item)) ?? false;
+  return hasHandgun && actor?.skills['射击（手枪）'] ? '射击（手枪）' : '格斗（拳）';
+}
+
+function combatActorScore(action: PlayerAction, actions: PlayerAction[], state: GameState): number {
   const text = action.action;
   if (!hasAffirmativeMatch(text, COMBAT_ACTION_RE)) return 0;
+  if (/(?:开枪|射击|枪击|扣扳机)/.test(text) && !actorHasHandgun(state, action.player)) return 0;
   let score = 10;
   const namesAnotherAttacker = actions.some((other) => {
     if (other.player === action.player || !text.includes(other.player)) return false;
@@ -434,7 +453,11 @@ export function inferStoryEventFromActions(
   const match = mappings.find(([eventId, pattern]) =>
     available.has(eventId)
     && (eventId === 'EV_COMBAT_ATTACK' || eventId === 'EV_CHOOSE_COMBAT'
-      ? actions.some((action) => hasAffirmativeMatch(action.action, pattern))
+      ? actions.some((action) =>
+          !DICE_RESULT_RE.test(action.action)
+          && hasAffirmativeMatch(action.action, pattern)
+          && (!/(?:开枪|射击|枪击|扣扳机)/.test(action.action) || actorHasHandgun(state, action.player))
+        )
       : pattern.test(text))
     && (!actionIsFailedCheck(actions) || eventId === 'EV_BARTENDER_RAT')
   );
@@ -692,8 +715,9 @@ function lockedSceneReference(
 }
 
 const NPC_APPEARANCE_CONFLICTS: Array<{ authored: RegExp; contradictedBy: RegExp }> = [
-  { authored: /壮实|魁梧|健壮|结实/, contradictedBy: /精瘦|瘦削|消瘦|干瘦|单薄/ },
-  { authored: /精瘦|瘦削|消瘦|干瘦|单薄/, contradictedBy: /壮实|魁梧|健壮|结实/ },
+  { authored: /壮实|魁梧|健壮|结实/, contradictedBy: /清瘦|精瘦|瘦削|消瘦|干瘦|单薄/ },
+  { authored: /清瘦|精瘦|瘦削|消瘦|干瘦|单薄/, contradictedBy: /壮实|魁梧|健壮|结实/ },
+  { authored: /刮得干净|没有胡须|无胡须/, contradictedBy: /络腮胡|大胡子|浓密胡须|留着.{0,4}胡须/ },
   { authored: /二十余岁|年轻/, contradictedBy: /中年|老年|年迈|白发苍苍/ },
   { authored: /中年|四十|五十/, contradictedBy: /少年|十几岁|二十余岁/ }
 ];
@@ -883,7 +907,7 @@ export function validateNarratorSemantics(
   const settledCombatHit = progress.variables.finaleRoute === 'combat'
     && (progress.encounters.ENC01?.defeated ?? 0) > 0
     && actions.some((action) =>
-    /【检定结果】[^。；！？\n]{0,100}(?:格斗（拳）|CHECK_COMBAT)[^。；！？\n]{0,80}结果[：:]\s*(?:普通成功|成功|困难成功|极难成功|大成功)/.test(action.action)
+    /【检定结果】[^。；！？\n]{0,100}(?:格斗（拳）|射击（手枪）|CHECK_COMBAT)[^。；！？\n]{0,80}结果[：:]\s*(?:普通成功|成功|困难成功|极难成功|大成功)/.test(action.action)
     );
   const deniesCombatIncapacitation = /(?:并未|没有|未能)(?:立刻|完全)?倒下|仍(?:然)?(?:能够?|可以|在)(?:继续)?(?:战斗|抵抗)/.test(output.narrative);
   const confirmsCombatIncapacitation = /失去战斗能力|无力再战|退出战斗|无法继续战斗|不再抵抗|被制服/.test(output.narrative);
@@ -1026,11 +1050,12 @@ export function validateNarratorSemantics(
     return `正文发现的线索必须在同一响应调用对应剧情事件，并同步写出事件规定的人物和作者地址：${requirements.join('；')}`;
   }
   const rescueAuthorized = progress.variables.ericRescued === true
-    || Boolean(progress.endingId)
+    || progress.endingId === 'END_A'
+    || progress.endingId === 'END_C'
     || proposedEvents.some((event) => eventAuthorizesOutcome(event, 'rescue'));
   const endingAuthorized = Boolean(progress.endingId)
     || proposedEvents.some((event) => eventAuthorizesOutcome(event, 'ending'));
-  const claimsRescue = /埃里克[^。；！？\n]{0,12}(?:获救|被救出|被释放|脱困)|(?:救出|释放)[^。；！？\n]{0,8}埃里克|(?:割断|解开)[^。；！？\n]{0,8}(?:绳索|绑缚)|埃里克[^。；！？\n]{0,48}(?:被搀扶|重新出现在甲板|离开船舱)/.test(output.narrative);
+  const claimsRescue = /埃里克[^。；！？\n]{0,12}(?:获救|被救出|被释放|脱困)|(?:获救的|被救出的|被释放的)[^。；！？\n]{0,6}埃里克|(?:救出|释放)[^。；！？\n]{0,8}埃里克|(?:割断|解开|扯开|挣开)[^。；！？\n]{0,10}(?:绳索|绳结|绑缚|束缚)|埃里克[^。；！？\n]{0,48}(?:被搀扶|重新出现在甲板|离开船舱)/.test(output.narrative);
   const claimsDeparture = /扶桑花号[^。；！？\n]{0,18}(?:已(?:经)?离港|驶离泊位|驶离港口|离开港口|消失在(?:浓雾|雾中|水面))/.test(output.narrative);
   if ((claimsRescue && !rescueAuthorized) || (claimsDeparture && !endingAuthorized)) {
     return '不得在对应剧情事件结算前宣告权威剧情结果';
@@ -1115,11 +1140,25 @@ export function validateNarratorSemantics(
   if (repeated) return '本轮叙事与近期段落高度重复，必须只写新进展';
 
   const allowedInventory = [
+    ...state.players.flatMap((player) => player.equipment ?? []),
     ...state.players.flatMap((player) => [player.background?.meaningfulItem ?? '']),
     ...state.clues.map((clue) => clue.name)
   ].join('、');
-  if (/手枪|左轮枪|步枪/.test(allText) && !/手枪|左轮枪|步枪/.test(allowedInventory)) {
+  const assertsFirearmUse = /(?:拔出|掏出|抽出|举起|握住|使用|用)[^。；！？\n]{0,12}(?:手枪|左轮枪|步枪)|(?:手枪|左轮枪|步枪)[^。；！？\n]{0,12}(?:开火|射击|击发|命中)/.test(allText);
+  if (assertsFirearmUse && !/手枪|左轮枪|步枪/.test(allowedInventory)) {
     return '调查员没有被记录的枪械，不得凭空赋予武器';
+  }
+  const unarmedFirearmActor = state.players.find((player) => {
+    if (player.equipment?.some((item) => /手枪|左轮枪|步枪/.test(item))) return false;
+    return allText.split(/[。；！？\n]/).some((sentence) => {
+      const actorIndex = sentence.indexOf(player.name);
+      if (actorIndex < 0) return false;
+      return /^(?:.{0,16})(?:拔出|掏出|抽出|举起|握住|使用|用).{0,10}(?:手枪|左轮枪|步枪)/
+        .test(sentence.slice(actorIndex + player.name.length));
+    });
+  });
+  if (unarmedFirearmActor) {
+    return `${unarmedFirearmActor.name}没有被记录的枪械，不得把队友装备转移给该角色`;
   }
 
   const acceptedScene = toolCalls.find((call) => call.name === 'propose_scene_change');

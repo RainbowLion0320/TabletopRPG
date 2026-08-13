@@ -141,6 +141,7 @@ export function CharacterSetup({ onBack, onStart }: CharacterSetupProps) {
                 <div className="preset-background-notes">
                   <span>{preset.background.belief}</span>
                   <span>{preset.background.meaningfulItem}</span>
+                  {preset.equipment.length ? <span>装备：{preset.equipment.join('、')}</span> : null}
                   <span>{preset.background.trait}</span>
                 </div>
               </div>

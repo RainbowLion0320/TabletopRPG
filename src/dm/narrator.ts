@@ -200,7 +200,8 @@ function formatPlayers(dyn: DmContext['dynamic']): string {
     if (sp.background) lines.push(`  背景: ${JSON.stringify(sp.background)}`);
   }
   for (const p of dyn.otherPlayers) {
-    lines.push(`${p.name}（${p.job}） HP ${p.hp} SAN ${p.san}${p.meaningfulItem ? ` 随身物：${p.meaningfulItem}` : ''}`);
+    const carried = [...p.equipment, ...(p.meaningfulItem ? [p.meaningfulItem] : [])];
+    lines.push(`${p.name}（${p.job}） HP ${p.hp} SAN ${p.san}${carried.length ? ` 随身物：${carried.join('、')}` : ''}`);
   }
   return lines.join('\n');
 }

@@ -83,8 +83,8 @@ npcs:
   - { id: N01, name: 伊莎贝拉·摩勒, role: 委托人, attitude: 友好, appearance: 二十余岁，面色苍白，衣着得体但明显缺乏休息。, aliases: [伊莎贝拉, 摩勒小姐], hp: 8, assetId: npc.N01, knowledgeFactIds: [F04], dmFactIds: [F01] }
   - { id: N02, name: 埃里克·摩勒, role: 失踪者, attitude: 未知, appearance: 五十二岁的商人，神情疲惫，留着修整整齐的胡须。, aliases: [埃里克, 摩勒先生], hp: 10, assetId: npc.N02, knowledgeFactIds: [], dmFactIds: [F01] }
   - { id: N03, name: 洛夫·蒙特利尔, role: 警察局长, attitude: 警惕, appearance: 四十八岁，制服笔挺，目光冷淡而审慎。, aliases: [蒙特利尔, 蒙特利尔局长], hp: 13, assetId: npc.N03, knowledgeFactIds: [F02], dmFactIds: [F02, F11] }
-  - { id: N04, name: 老赫特之家酒保, role: 街区线人, attitude: 中立, appearance: 壮实的中年酒保，总在一边擦杯子一边观察客人。, aliases: [酒保, 老赫特酒保], hp: 12, assetId: npc.N04, knowledgeFactIds: [F08], dmFactIds: [] }
-  - { id: N05, name: 扶桑花号交涉代表, role: 深潜者代表, attitude: 警惕, appearance: 灰绿色皮肤覆着湿润鳞片，蹼状双手始终靠近船舷，幽光眼睛警惕地观察来客。, aliases: [深潜者代表, 交涉代表, 深潜者, 混种], hp: 11, assetId: npc.N05, knowledgeFactIds: [], dmFactIds: [F13] }
+  - { id: N04, name: 老赫特之家酒保, role: 街区线人, attitude: 中立, appearance: 身形清瘦的中年酒保，深色短发，下巴刮得干净，总在一边擦杯子一边观察客人。, aliases: [酒保, 老赫特酒保], hp: 12, assetId: npc.N04, knowledgeFactIds: [F08], dmFactIds: [] }
+  - { id: N05, name: 扶桑花号交涉代表, role: 深潜者代表, attitude: 警惕, appearance: 灰绿色皮肤覆着湿润鳞片，蹼状双手戒备地交叠在胸前，幽光眼睛警惕地观察来客。, aliases: [深潜者代表, 交涉代表, 深潜者, 混种], hp: 11, assetId: npc.N05, knowledgeFactIds: [], dmFactIds: [F13] }
 
 encounters:
   - id: ENC01

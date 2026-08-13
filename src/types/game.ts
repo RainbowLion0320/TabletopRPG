@@ -44,6 +44,8 @@ export interface Investigator {
   currentMp: number;
   currentSan: number;
   skills: Record<string, SkillValue>;
+  /** Explicitly carried gear. Weapons must not be inferred from a job title. */
+  equipment?: string[];
   background?: {
     importantPerson?: string;
     belief?: string;
@@ -73,6 +75,7 @@ export interface PresetInvestigator {
   hometown: string;
   attrs: Attributes;
   skills: Record<string, number>;
+  equipment: string[];
   desc: string;
   background: NonNullable<Investigator['background']>;
 }

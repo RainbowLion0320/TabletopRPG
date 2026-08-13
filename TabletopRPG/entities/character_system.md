@@ -4,7 +4,7 @@ title: 角色系统
 tags: [character, coc, game-system]
 sources: [project_plan.md, ../../docs/PRD.md]
 created: 2026-05-18
-updated: 2026-05-29
+updated: 2026-08-14
 ---
 
 # 角色系统
@@ -83,6 +83,8 @@ updated: 2026-05-29
 
 总技能值 = `base + added`。
 
+`equipment` 保存角色明确携带的装备。武器行动必须同时满足“装备清单中有对应武器”和“角色具备对应技能”；职业名称不隐式赋予武器。
+
 ## 角色数据结构
 
 ```ts
@@ -104,6 +106,7 @@ interface Investigator {
   currentMp: number;
   currentSan: number;
   skills: Record<string, SkillValue>;
+  equipment?: string[];
   background?: {
     importantPerson?: string;
     belief?: string;

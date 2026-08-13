@@ -61,6 +61,7 @@ export interface PlayerCardLite {
   hp: string;
   san: string;
   meaningfulItem?: string;
+  equipment: string[];
 }
 
 export interface PlayerCardFull extends PlayerCardLite {
@@ -154,7 +155,8 @@ function toLitePlayerCard(p: Investigator): PlayerCardLite {
     job: p.job,
     hp: `${p.currentHp}/${p.hp}`,
     san: `${p.currentSan}/${p.san}`,
-    meaningfulItem: p.background?.meaningfulItem
+    meaningfulItem: p.background?.meaningfulItem,
+    equipment: [...(p.equipment ?? [])]
   };
 }
 

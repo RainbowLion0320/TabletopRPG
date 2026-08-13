@@ -18,6 +18,7 @@ export const presets: PresetInvestigator[] = [
     hometown: '伦敦',
     attrs: { STR: 65, CON: 60, SIZ: 65, DEX: 60, APP: 55, INT: 75, POW: 60, EDU: 80, Luck: 55 },
     skills: { 侦查: 75, 聆听: 65, 心理学: 70, 说服: 60, 话术: 55, 法律: 50, 图书馆: 65, 母语: 80, '格斗（拳）': 50, 恐吓: 45, 潜行: 40, '驾驶（汽车）': 40 },
+    equipment: [],
     desc: '十年苏格兰场生涯，人心如书般可读。',
     background: {
       importantPerson: '已故搭档汤姆',
@@ -37,6 +38,7 @@ export const presets: PresetInvestigator[] = [
     hometown: '爱丁堡',
     attrs: { STR: 45, CON: 65, SIZ: 50, DEX: 70, APP: 65, INT: 80, POW: 70, EDU: 85, Luck: 60 },
     skills: { 急救: 80, 医学: 75, 心理学: 65, 生物学: 55, 图书馆: 70, 说服: 60, 聆听: 65, 母语: 85, 侦查: 50, 历史: 35, 神秘学: 20 },
+    equipment: [],
     desc: '一战护士经历让她对生死处之泰然。',
     background: {
       importantPerson: '弟弟罗伯特',
@@ -56,6 +58,7 @@ export const presets: PresetInvestigator[] = [
     hometown: '曼彻斯特',
     attrs: { STR: 55, CON: 55, SIZ: 60, DEX: 65, APP: 70, INT: 85, POW: 65, EDU: 75, Luck: 65 },
     skills: { 历史: 55, 图书馆: 70, 母语: 75, 心理学: 60, 侦查: 65, 话术: 65, 说服: 65, 摄影: 55, 聆听: 55, 神秘学: 25, 法律: 30, 潜行: 40 },
+    equipment: [],
     desc: '笔锋犀利，无孔不入。',
     background: {
       importantPerson: '主编海伦',
@@ -75,6 +78,7 @@ export const presets: PresetInvestigator[] = [
     hometown: '伦敦东区',
     attrs: { STR: 75, CON: 70, SIZ: 75, DEX: 60, APP: 55, INT: 60, POW: 55, EDU: 65, Luck: 50 },
     skills: { 急救: 55, 法律: 45, '格斗（拳）': 70, '射击（手枪）': 60, 侦查: 55, 心理学: 45, 潜行: 45, 母语: 65, 恐吓: 55, 聆听: 50, 闪避: 50 },
+    equipment: ['警用警棍', '警用左轮手枪'],
     desc: '街头磨砺的老警察，话不多，但出手利落。',
     background: {
       importantPerson: '妻子玛格丽特',
@@ -115,6 +119,7 @@ export function createInvestigatorFromPreset(preset: PresetInvestigator): Invest
     currentMp: derived.mp,
     currentSan: derived.san,
     skills,
+    equipment: [...preset.equipment],
     background: preset.background
   };
 }
