@@ -567,6 +567,29 @@ describe('turnGuards', () => {
     expect(response.stateUpdate?.hp).toEqual({});
   });
 
+  it('recognizes a named investigator struck before a wound is described', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '艾达' }), makeInvestigator({ name: '罗伯特' })]
+    });
+    const response = inferNarrativeConsequences({
+      narrative: '那名深潜者趁机反手一击，锋利的指甲划过罗伯特的前臂，撕开一道血口。'
+    }, [
+      { player: '艾达', action: '举灯示警' },
+      { player: '罗伯特', action: '攻击深潜者' }
+    ], state);
+
+    expect(response.stateUpdate?.hp).toEqual({ 罗伯特: -1 });
+  });
+
+  it('does not mistake an investigator named as the attacker for the victim', () => {
+    const state = makeState({ players: [makeInvestigator({ name: '罗伯特' })] });
+    const response = inferNarrativeConsequences({
+      narrative: '罗伯特的警棍划伤深潜者的前臂，血口让怪物踉跄后退。'
+    }, [{ player: '罗伯特', action: '挥动警棍攻击' }], state);
+
+    expect(response.stateUpdate?.hp).toEqual({});
+  });
+
   it('rejects narration that negates a resolved structured combat hit', () => {
     const state = makeState({ currentScene: 'S05' });
     state.scenarioProgress = createScenarioProgress();

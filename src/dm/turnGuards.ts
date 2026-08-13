@@ -433,6 +433,20 @@ function mergeDelta(target: Record<string, number>, player: string, delta: numbe
   target[player] = (target[player] ?? 0) + delta;
 }
 
+function narrativeHarmsPlayer(narrative: string, playerName: string): boolean {
+  const player = escapeRegex(playerName);
+  const bodyPart = '(?:头|脸|颈|肩|胸|背|腰|腹|手|手臂|前臂|手掌|手指|指尖|虎口|腿|膝|脚|皮肤)';
+  const injury = '(?:击中|打中|砸中|划伤|抓伤|刺伤|咬伤|撕伤|砍伤|中弹|受伤|流血|渗血|出血|骨折|伤口|血口|血痕|血丝|剧痛|划出.{0,6}(?:伤口|血口|血痕|细痕))';
+  const direct = new RegExp(
+    `${player}(?:的${bodyPart})?(?:被|受到|遭到|挨(?:了)?|中(?:了)?)[^，。；！？\\n]{0,14}${injury}`
+    + `|${player}(?:的${bodyPart})?[^，。；！？\\n]{0,8}(?:受伤|流血|渗血|出血|骨折|出现.{0,4}(?:伤口|血口|血痕)|传来.{0,4}剧痛)`
+  );
+  const struckBodyPart = new RegExp(
+    `(?:击中|打中|砸中|划过|划伤|抓伤|刺伤|咬伤|撕伤|砍伤)[^，。；！？\\n]{0,12}${player}的${bodyPart}`
+  );
+  return direct.test(narrative) || struckBodyPart.test(narrative);
+}
+
 function textSimilarity(left: string, right: string): number {
   const normalize = (value: string) => value.replace(/[\s，。！？、；：“”‘’（）—…,.!?;:'"()-]/g, '');
   const a = normalize(left);
@@ -457,13 +471,13 @@ export function inferNarrativeConsequences(
   const hp = { ...(response.stateUpdate?.hp ?? {}) };
   const involved = new Set(actions.map((action) => action.player));
 
-  const harmPattern = /中弹|被[^，。；！？\n]{0,12}击中|受伤|流血|灼伤|划伤|划出(?:一道)?(?:伤口|血痕|细痕)|骨折|剧痛/;
+  const harmPattern = /中弹|被[^，。；！？\n]{0,12}击中|受伤|流血|渗血|出血|血口|血痕|血丝|灼伤|划伤|划过|抓伤|刺伤|咬伤|撕伤|划出(?:一道)?(?:伤口|血痕|细痕)|骨折|剧痛/;
   if (harmPattern.test(narrative)) {
     const harmClauses = narrative
       .split(/[，。；！？\n]/)
       .filter((clause) => harmPattern.test(clause));
     const namedVictims = state.players.filter((player) =>
-      harmClauses.some((clause) => clause.includes(player.name))
+      narrativeHarmsPlayer(narrative, player.name)
     );
     const explicitlyTargetsInvestigator = harmClauses.some((clause) =>
       /(?:调查员|玩家角色|你(?:被|的|受到)|你们(?:被|受到))/.test(clause)
