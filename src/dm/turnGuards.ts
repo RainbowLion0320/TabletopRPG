@@ -423,13 +423,26 @@ export function sanitizePlayerChoices(
   choices: Record<string, string[]>,
   discoveredIds: ReadonlySet<string>,
   kb: KnowledgeBase,
-  sceneId?: SceneId
+  sceneId?: SceneId,
+  finaleRoute?: unknown
 ): Record<string, string[]> {
   const hiddenTerms = Object.entries(kb.items)
     .filter(([id]) => !discoveredIds.has(id))
     .flatMap(([, entry]) => [entry.public.name, ...(entry.public.aliases ?? [])])
     .filter((term) => term.length >= 2);
-  const fallback = ['继续观察当前环境', '与在场人物核对已知事实', '整理已经发现的线索'];
+  const fallback = sceneId === 'S05' && finaleRoute === 'combat'
+    ? [
+        '攻击一名仍在抵抗的深潜者，为营救埃里克争取时间',
+        '挥动随身武器攻击一名仍在抵抗的深潜者',
+        '配合同伴发动攻击，试图制服一名仍在抵抗的深潜者'
+      ]
+    : sceneId === 'S05' && finaleRoute === 'negotiation'
+      ? [
+          '保持距离，聆听深潜者代表真正的诉求',
+          '尝试理解深潜者的条件，再决定如何回应',
+          '请同伴警戒，自己专注辨认深潜者的非人声调'
+        ]
+      : ['继续观察当前环境', '与在场人物核对已知事实', '整理已经发现的线索'];
   const offstageNpcNames = sceneId
     ? Object.keys(kb.npcs).filter((name) => !kb.scenes[sceneId]?.public.npcs.includes(name))
     : [];
@@ -438,6 +451,10 @@ export function sanitizePlayerChoices(
       !hiddenTerms.some((term) => choice.includes(term))
       && !offstageNpcNames.some((name) => choice.includes(name))
       && !(sceneId && unavailableNpcRole(choice, kb, sceneId, true))
+      && !(sceneId === 'S05' && finaleRoute === 'combat'
+        && !/攻击|搏斗|出拳|制服|击败|警棍|射击|开枪|擒抱|摔倒|猛击/.test(choice))
+      && !(sceneId === 'S05' && finaleRoute === 'negotiation'
+        && /攻击|搏斗|出拳|制服|击败|警棍|射击|开枪|擒抱|摔倒|猛击/.test(choice))
     );
     for (const item of fallback) {
       if (safe.length >= 3) break;

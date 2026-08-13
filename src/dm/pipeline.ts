@@ -718,13 +718,19 @@ export async function runDmTurn(
     ...input.state.clues.map((clue) => clue.id),
     ...(resolved.legacyResponse.stateUpdate?.newItems ?? [])
   ]);
+  const acceptedStoryEventIds = resolved.legacyResponse.stateUpdate?.storyEventIds ?? [];
+  const finaleRoute = acceptedStoryEventIds.includes('EV_CHOOSE_COMBAT')
+    ? 'combat'
+    : acceptedStoryEventIds.includes('EV_CHOOSE_NEGOTIATION')
+      ? 'negotiation'
+      : getScenarioProgressForState(input.state).variables.finaleRoute;
   resolved.legacyResponse = inferNarrativeConsequences({
     ...resolved.legacyResponse,
     stateUpdate: {
       ...resolved.legacyResponse.stateUpdate,
       newItems: resolved.legacyResponse.stateUpdate?.newItems ?? []
     },
-    playerChoices: sanitizePlayerChoices(narrator.playerChoices, knownItems, kb, targetScene)
+    playerChoices: sanitizePlayerChoices(narrator.playerChoices, knownItems, kb, targetScene, finaleRoute)
   }, input.actions, input.state);
 
   timings.totalForeground = elapsedMs(foregroundStart);

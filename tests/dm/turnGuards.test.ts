@@ -424,6 +424,23 @@ describe('turnGuards', () => {
     expect(result.亨利).toContain('询问伊莎贝拉是否认识蒙特利尔');
   });
 
+  it('keeps finale suggestions within the selected authored route', () => {
+    const combat = sanitizePlayerChoices({
+      罗伯特: ['再次用警棍攻击深潜者', '冲向埃里克解开束缚', '要求深潜者代表谈判']
+    }, new Set(), kb, 'S05', 'combat');
+    expect(combat.罗伯特).toHaveLength(3);
+    expect(combat.罗伯特.every((choice) =>
+      /攻击|搏斗|出拳|制服|击败|警棍|射击|开枪|擒抱|摔倒|猛击/.test(choice)
+    )).toBe(true);
+    expect(combat.罗伯特.some((choice) => /谈判|交涉/.test(choice))).toBe(false);
+
+    const negotiation = sanitizePlayerChoices({
+      艾达: ['专心聆听深潜者的诉求', '拔枪攻击深潜者', '尝试理解对方条件']
+    }, new Set(), kb, 'S05', 'negotiation');
+    expect(negotiation.艾达).toHaveLength(3);
+    expect(negotiation.艾达.some((choice) => /攻击|拔枪/.test(choice))).toBe(false);
+  });
+
   it('rejects narration that contradicts the active authored NPC appearance', () => {
     const state = makeState({ currentScene: 'S03', activeNpcName: '老赫特之家酒保' });
     expect(validateNarratorSemantics({
