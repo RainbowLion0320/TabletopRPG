@@ -187,7 +187,7 @@ storyEvents:
     effects: [{ setVariable: hybridEscaped, value: true }, { applyDelta: san, target: party, value: -1 }, { advanceTime: 10 }]
     once: true
     playerVisible: true
-    narrativeCue: 非人的身影从后门撤离，咒术浓雾涌入药店；所有在场调查员承受最低1点SAN损失。
+    narrativeCue: 非人的身影从内侧撞开后门撤离，调查员随即进入药店；咒术浓雾在店内涌动，所有在场调查员承受最低1点SAN损失。
   - id: EV_S04_MAP
     beatId: B05
     title: 获得地图笔记

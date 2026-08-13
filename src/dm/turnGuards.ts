@@ -1066,6 +1066,12 @@ export function validateNarratorSemantics(
   const acceptedScene = toolCalls.find((call) => call.name === 'propose_scene_change');
   const targetId = acceptedScene ? String(acceptedScene.arguments.targetSceneId ?? '') : '';
   const outputSceneId = (targetId || state.currentScene) as SceneId;
+  const pharmacyEntrySettled = targetId === 'S04'
+    || (state.currentScene === 'S04' && progress.firedEventIds.includes('EV_S04_FOG'));
+  const framesPharmacyAsInaccessible = /(?:正门|木门|店门|门板)[^。；！？\n]{0,24}(?:紧闭|上锁|锁住|无法打开)|(?:锁头|门锁|锁扣)[^。；！？\n]{0,20}(?:落着灰尘|仍在|完好|锁着)|(?:停在|站在|留在)[^。；！？\n]{0,16}(?:药店)?(?:门外|店外)/.test(allText);
+  if (pharmacyEntrySettled && framesPharmacyAsInaccessible) {
+    return 'S04 入场事件已将后门从内侧撞开并让调查员进入药店，正文和建议不得又把入口写成锁死的额外关卡';
+  }
   if (targetId && targetId !== state.currentScene) {
     const sourceTerms = sceneTerms(kb, state.currentScene);
     const targetTerms = sceneTerms(kb, outputSceneId);

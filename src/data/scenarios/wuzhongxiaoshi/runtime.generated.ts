@@ -11,7 +11,7 @@ import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
 import asset9 from '../../../../assets/avatars/deep_one.svg';
 
-export const scenarioContentHash = "3acb27b69a49d649";
+export const scenarioContentHash = "a8f320e27561ac6f";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -27,7 +27,7 @@ export const scenarioAssetUrls: Record<string, string> = {
 export const generatedScenarioModule = {
   "manifest": {
     "schemaVersion": 1,
-    "contentVersion": "1.1.10",
+    "contentVersion": "1.1.11",
     "id": "wuzhongxiaoshi",
     "title": "雾中消逝",
     "system": "COC 第七版风格 D100",
@@ -327,7 +327,7 @@ export const generatedScenarioModule = {
         "id": "S04",
         "name": "卡森其药店",
         "chapterTitle": "第二幕：街区调查",
-        "description": "贝尔街14号一间废弃多年的药店，门面破败，门锁仍在，内部没有营业迹象。",
+        "description": "贝尔街14号一间废弃多年的药店。非人身影撤离时已从内侧撞开后门，调查员进入店内，内部没有营业迹象。",
         "aliases": [
           "药店",
           "废弃药店"
@@ -1713,7 +1713,7 @@ export const generatedScenarioModule = {
         ],
         "once": true,
         "playerVisible": true,
-        "narrativeCue": "非人的身影从后门撤离，咒术浓雾涌入药店；所有在场调查员承受最低1点SAN损失。"
+        "narrativeCue": "非人的身影从内侧撞开后门撤离，调查员随即进入药店；咒术浓雾在店内涌动，所有在场调查员承受最低1点SAN损失。"
       },
       {
         "id": "EV_S04_MAP",

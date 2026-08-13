@@ -985,6 +985,22 @@ describe('turnGuards', () => {
     }, [], state, kb)).toMatch(/activeNpc|提前点名蒙特利尔/);
   });
 
+  it('does not strand investigators outside S04 after its authored entry event has settled', () => {
+    const state = makeState({ currentScene: 'S03', activeNpcName: '老赫特之家酒保' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.knownFactIds = ['F08'];
+    const move = [{ name: 'propose_scene_change', arguments: { targetSceneId: 'S04' } }] as const;
+
+    expect(validateNarratorSemantics({
+      narrative: '你们抵达卡森其药店，木门紧闭，锁头上落着灰尘，只能留在门外。',
+      activeNpc: null, nextPrompt: '想办法开门。', playerChoices: { 亨利: ['撬开药店门锁'] }
+    }, [...move], state, kb)).toMatch(/S04 入场事件/);
+    expect(validateNarratorSemantics({
+      narrative: '非人身影从内侧撞开后门撤离，你们随即进入卡森其药店，店内浓雾涌动。',
+      activeNpc: null, nextPrompt: '在店内调查。', playerChoices: { 亨利: ['检查后厅的油布包'] }
+    }, [...move], state, kb)).toBeNull();
+  });
+
   it('requires an authorized check whenever narration says a check is mandatory', () => {
     const state = makeState({ currentScene: 'S05', activeNpcName: '扶桑花号交涉代表' });
     state.scenarioProgress = createScenarioProgress();
