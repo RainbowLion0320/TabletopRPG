@@ -90,6 +90,26 @@ describe('turnGuards', () => {
     }], state)).toEqual(expect.objectContaining({ skill: '格斗（拳）' }));
   });
 
+  it('does not treat carrying or declining a first-aid kit as a First Aid action', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '艾达' }, { 急救: 80, 侦查: 50 })],
+      currentScene: 'S04'
+    });
+
+    expect(buildRequiredCheck([{
+      player: '艾达',
+      action: '携带急救包但不擅自使用；观察气味、门窗和可能需要医疗帮助的人。'
+    }], state)).toEqual(expect.objectContaining({ player: '艾达', skill: '侦查' }));
+    expect(buildRequiredCheck([{
+      player: '艾达',
+      action: '本轮不使用急救，只为同伴携带急救包并保持警戒。'
+    }], state)).toBeNull();
+    expect(buildRequiredCheck([{
+      player: '艾达',
+      action: '打开急救包为亨利包扎止血。'
+    }], state)).toEqual(expect.objectContaining({ player: '艾达', skill: '急救' }));
+  });
+
   it('does not make legal travel depend on a risky follow-up observation', () => {
     const state = makeState({
       players: [
@@ -300,6 +320,44 @@ describe('turnGuards', () => {
     expect(inferStoryEventsFromActions(failed, state, kb)).toEqual([
       expect.objectContaining({ arguments: expect.objectContaining({ eventId: 'EV_FAIL_I07' }) })
     ]);
+  });
+
+  it('uses the authored clue check when natural wording names search areas without a generic search verb', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利' }, { 急救: 55, 侦查: 55 }),
+        makeInvestigator({ name: '艾达' }, { 急救: 80, 侦查: 50 })
+      ],
+      currentScene: 'S04'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'active';
+    state.scenarioProgress.objectiveStates.O05 = 'active';
+    const actions = [
+      { player: '亨利', action: '为艾达照明并警戒；本轮不搜索、不使用急救，只保护同伴。' },
+      { player: '艾达', action: '沿后厅柜台、油布包和散落纸张进行侦查，寻找埃里克姓名、船名或具体泊位地图。' }
+    ];
+
+    expect(buildRequiredCheck(actions, state)).toEqual(expect.objectContaining({
+      player: '艾达', skill: '侦查', difficulty: '普通'
+    }));
+    expect(inferStoryEventsFromActions(actions, state, kb)).toEqual([
+      expect.objectContaining({ arguments: expect.objectContaining({ eventId: 'EV_S04_MAP' }) }),
+      expect.objectContaining({ arguments: expect.objectContaining({ eventId: 'EV_S04_CIGAR' }) })
+    ]);
+  });
+
+  it('does not add a roll for an authored automatic clue', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' }, { 侦查: 70 })],
+      currentScene: 'S01'
+    });
+
+    expect(buildRequiredCheck([{
+      player: '亨利', action: '检查文件堆和桌角，寻找公开摆放的资料。'
+    }], state)).toBeNull();
   });
 
   it('rejects an invented berth number appended to the authored pharmacy map result', () => {

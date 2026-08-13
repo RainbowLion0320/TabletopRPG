@@ -55,7 +55,7 @@ function buildCandidate(action: PlayerAction): CheckCandidate | null {
     { pattern: /潜入|潜行|蹑手蹑脚|躲藏|尾随/, skill: '潜行', score: 88, reason: '不被察觉地完成行动' },
     { pattern: /撬锁|开锁|撬开|拆开|修理|修复/, skill: '机械维修', score: 84, reason: '完成精细的机械操作' },
     { pattern: /高速|追车|甩开|危险驾驶|强行驾车/, skill: '驾驶（汽车）', score: 82, difficulty: '困难', reason: '在危险条件下驾驶' },
-    { pattern: /急救|止血|包扎|抢救/, skill: '急救', score: 80, reason: '实施紧急救治' },
+    { pattern: /急救(?!包|箱|器材)|止血|包扎|抢救/, skill: '急救', score: 80, reason: '实施紧急救治' },
     { pattern: /诊断|化验|解剖|中毒|药剂|粉末|医学检查/, skill: '医学', score: 76, reason: '判断医学或药物线索' },
     { pattern: /威胁|恐吓|逼问/, skill: '恐吓', score: 72, reason: '迫使对方提供信息' },
     { pattern: /说服|劝说|谈判|请求/, skill: '说服', score: 70, reason: '改变对方的态度' },
@@ -63,7 +63,7 @@ function buildCandidate(action: PlayerAction): CheckCandidate | null {
     { pattern: /查阅|档案|文献|图书馆|翻书/, skill: '图书馆', score: 62, reason: '从资料中定位可靠信息' },
     { pattern: /观察[^，。；！？\n]{0,16}(?:表情|神色|脸色|肢体|反应)|判断[^，。；！？\n]{0,12}(?:真假|说谎|隐瞒)|是否说谎|心理/, skill: '心理学', score: 60, reason: '判断对方的真实反应' },
     { pattern: /聆听|偷听|听清|门外动静/, skill: '聆听', score: 56, reason: '分辨不易察觉的声音' },
-    { pattern: /搜查|搜索|搜寻|检查|观察|查看/, skill: '侦查', score: 52, reason: '发现不明显的线索' }
+    { pattern: /搜查|搜索|搜寻|检查|观察|查看|侦查/, skill: '侦查', score: 52, reason: '发现不明显的线索' }
   ];
 
   const spec = specs.find((item) => hasAffirmativeMatch(text, item.pattern));
@@ -82,6 +82,18 @@ function buildCandidate(action: PlayerAction): CheckCandidate | null {
 /** Picks at most one check because the current UI can settle one pending check at a time. */
 export function buildRequiredCheck(actions: PlayerAction[], state: GameState): CheckRequest | null {
   if (actions.some((action) => DICE_RESULT_RE.test(action.action))) return null;
+  const kb = getActiveKnowledgeBase();
+  const targetedItems = explicitlyTargetedScenarioItemActions(actions, state, kb);
+  if (targetedItems.length) {
+    const authoredCheck = targetedItems.find(({ item }) => item.discovery.difficulty !== '自动');
+    if (!authoredCheck) return null;
+    return {
+      player: authoredCheck.action.player,
+      skill: authoredCheck.item.discovery.skill,
+      difficulty: authoredCheck.item.discovery.difficulty as CheckRequest['difficulty'],
+      reason: `调查作者线索 ${authoredCheck.item.name}`
+    };
+  }
   const storyCall = inferStoryEventFromActions(actions, state);
   if (storyCall) {
     const eventId = String(storyCall.arguments.eventId ?? '');
@@ -93,7 +105,6 @@ export function buildRequiredCheck(actions: PlayerAction[], state: GameState): C
     // keyword checks must not add a second gate before or after that event.
     if (event) return null;
   }
-  const kb = getActiveKnowledgeBase();
   const sceneChange = inferSceneChangeFromActions(actions, state, kb);
   const targetScene = sceneChange
     ? String(sceneChange.arguments.targetSceneId) as SceneId
@@ -120,26 +131,44 @@ export function buildRequiredCheck(actions: PlayerAction[], state: GameState): C
   return null;
 }
 
-function explicitlyTargetedScenarioItems(
+const AUTHORED_ITEM_SEARCH_RE = /搜查|搜索|搜寻|寻找|检查|观察|查看|侦查|翻找|调查|辨认|比对|分析/;
+
+function explicitlyTargetedScenarioItemActions(
   actions: PlayerAction[],
   state: GameState,
   kb: KnowledgeBase
 ) {
   const definition = getScenarioDefinition();
   const discovered = new Set(state.clues.map((clue) => clue.id));
-  const actionText = actions
-    .filter((action) => !DICE_RESULT_RE.test(action.action))
-    .map((action) => action.action)
-    .join('\n');
-  return definition.world.items.filter((item) => {
-    if (item.sceneId !== state.currentScene || discovered.has(item.id)) return false;
-    return [
-      item.name,
-      ...(kb.items[item.id]?.public.aliases ?? []),
-      ...item.discovery.searchTerms
-    ]
-      .some((term) => term && actionText.includes(term));
+  return definition.world.items.flatMap((item) => {
+    if (item.sceneId !== state.currentScene || discovered.has(item.id)) return [];
+    const action = actions.find((candidate) => {
+      if (DICE_RESULT_RE.test(candidate.action)
+        || !hasAffirmativeMatch(candidate.action, AUTHORED_ITEM_SEARCH_RE)) return false;
+      const targeted = [
+        item.name,
+        ...(kb.items[item.id]?.public.aliases ?? []),
+        ...item.discovery.searchTerms
+      ].some((term) => term && candidate.action.includes(term));
+      return targeted;
+    });
+    return action ? [{ action, item }] : [];
   });
+}
+
+function explicitlyTargetedScenarioItems(
+  actions: PlayerAction[],
+  state: GameState,
+  kb: KnowledgeBase
+) {
+  const seen = new Set<string>();
+  return explicitlyTargetedScenarioItemActions(actions, state, kb)
+    .map(({ item }) => item)
+    .filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
 }
 
 /**

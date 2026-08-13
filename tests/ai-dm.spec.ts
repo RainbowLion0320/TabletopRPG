@@ -262,10 +262,18 @@ test('AI DM scene changes update the chapter, backdrop, party location, and resi
   await page.getByRole('button', { name: '提交' }).click();
   await expect(page.getByText('你们正式接受了伊莎贝拉的委托。')).toBeVisible();
 
-  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('我们找到埃里克与蒙特利尔的合影照片。');
+  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('搜查书桌抽屉，寻找埃里克留下的合影照片。');
   await page.getByRole('button', { name: '下一位' }).click();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('收好这张合影。');
+  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('为亨利照明并记录抽屉中实际发现的物品。');
   await page.getByRole('button', { name: '提交' }).click();
+  await expect(page.getByText('亨利·格雷 · 侦查')).toBeVisible();
+  await page.evaluate(() => {
+    Math.random = () => 0.41;
+  });
+  await page.getByRole('button', { name: '掷骰' }).click();
+  const clueDiceDialog = page.getByRole('dialog', { name: '命运检定' });
+  await expect(clueDiceDialog).toHaveClass(/revealed/, { timeout: 5_000 });
+  await clueDiceDialog.getByRole('button', { name: '确认结果' }).click();
   await expect(page.getByText('合影把埃里克与蒙特利尔联系起来，警察局成为了明确的去处。')).toBeVisible();
 
   await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('我们前往上城区第二分局。');
