@@ -229,6 +229,13 @@ function restoreAuthoredPendingCheck(
     && progress.objectiveStates.O08 === 'active'
     && !check.scenarioCheckId
     && check.skill === '说服';
+  const bypassedBookletAnalysis = currentScene === 'S01'
+    && progress?.clueStates.I04 === 'discovered'
+    && !check.scenarioCheckId
+    && check.continuationActions?.some((action) =>
+      /(?:加热|烘烤|显字|隐写|解读|解码).{0,16}(?:小册子|夹页)|(?:小册子|夹页).{0,16}(?:加热|烘烤|显字|隐写|解读|解码)/.test(action.action)
+    );
+  if (bypassedBookletAnalysis) return null;
   if (!bypassedFinaleListen) return prepareCheck(check, players);
   return prepareCheck({
     ...check,

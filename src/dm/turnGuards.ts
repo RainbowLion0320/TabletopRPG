@@ -83,14 +83,13 @@ export function buildRequiredCheck(actions: PlayerAction[], state: GameState): C
   const storyCall = inferStoryEventFromActions(actions, state);
   if (storyCall) {
     const eventId = String(storyCall.arguments.eventId ?? '');
-    // Route selection is an atomic authored decision. Let it settle before a
-    // follow-up attack/listen keyword can create an untracked generic check.
-    if (eventId === 'EV_CHOOSE_NEGOTIATION' || eventId === 'EV_CHOOSE_COMBAT') return null;
     const event = getAvailableStoryEvents(
       getScenarioProgressForState(state),
       state.currentScene
     ).find((candidate) => candidate.id === eventId);
-    if (event?.effects.some((effect) => 'requestCheck' in effect)) return null;
+    // A legal authored event owns both its prerequisites and effects. Generic
+    // keyword checks must not add a second gate before or after that event.
+    if (event) return null;
   }
   const kb = getActiveKnowledgeBase();
   const sceneChange = inferSceneChangeFromActions(actions, state, kb);

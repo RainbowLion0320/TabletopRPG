@@ -152,6 +152,24 @@ describe('turnGuards', () => {
     expect(buildRequiredCheck(directExchange, state)).toBeNull();
   });
 
+  it('lets a direct authored clue-analysis event bypass generic investigation checks', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '托马斯' }, { 侦查: 65 })],
+      currentScene: 'S01'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'active';
+    state.scenarioProgress.clueStates.I04 = 'discovered';
+    state.clues = [{ id: 'I04', name: '小册子', description: '', discoveredAt: 1 }];
+    const actions = [{
+      player: '托马斯', action: '检查小册子夹页并谨慎加热，使隐写显字。'
+    }];
+
+    expect(inferStoryEventFromActions(actions, state)?.arguments.eventId).toBe('EV_FIND_I04');
+    expect(buildRequiredCheck(actions, state)).toBeNull();
+  });
+
   it('settles a natural finale route choice before any follow-up generic check', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '艾达' }, { 聆听: 65 })],

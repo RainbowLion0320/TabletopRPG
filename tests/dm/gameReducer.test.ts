@@ -492,6 +492,26 @@ describe('gameReducer scene focus synchronization', () => {
 });
 
 describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
+  it('clears an old generic check that intercepted authored booklet analysis', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '托马斯' }, { 侦查: 65 })],
+      currentScene: 'S01'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'active';
+    state.scenarioProgress.clueStates.I04 = 'discovered';
+    state.clues = [{ id: 'I04', name: '小册子', description: '', discoveredAt: 1 }];
+    state.pendingCheck = {
+      player: '托马斯', skill: '侦查', difficulty: '普通', skillVal: 65, threshold: 65,
+      continuationActions: [{ player: '托马斯', action: '检查小册子夹页并谨慎加热，使隐写显字。' }]
+    };
+
+    const hydrated = hydrateGameState(state);
+
+    expect(hydrated.pendingCheck).toBeNull();
+  });
+
   it('repairs an old generic finale persuasion check into the authored listen step', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '艾达' }, { 聆听: 65, 说服: 60 })],
