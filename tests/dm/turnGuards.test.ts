@@ -114,6 +114,40 @@ describe('turnGuards', () => {
     }], state)).toEqual(expect.objectContaining({ skill: '心理学', difficulty: '困难' }));
   });
 
+  it('settles the Montreal meeting through natural questioning, rolled observation, or explicit closure', () => {
+    const state = makeState({ currentScene: 'S02' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B03 = 'active';
+    state.scenarioProgress.objectiveStates.O03 = 'active';
+
+    expect(inferStoryEventFromActions([{
+      player: '艾达',
+      action: '向值班警员出示合影，请求面见蒙特利尔局长。'
+    }], state)).toBeNull();
+    expect(inferStoryEventFromActions([{
+      player: '艾达',
+      action: '把合影递给蒙特利尔，请他说明与埃里克何时认识、最近一次见面在哪里。'
+    }], state)).toEqual(expect.objectContaining({
+      arguments: expect.objectContaining({ eventId: 'EV_MEET_MONTREAL' })
+    }));
+
+    const rolledObservation = [
+      { player: '罗伯特', action: '观察蒙特利尔看到合影时的眼神、停顿与手部动作。' },
+      { player: '罗伯特', action: '【检定结果】罗伯特 的 侦查检定：掷出 65，结果：失败。' }
+    ];
+    expect(inferStoryEventFromActions(rolledObservation, state)).toEqual(expect.objectContaining({
+      arguments: expect.objectContaining({ eventId: 'EV_MEET_MONTREAL' })
+    }));
+    expect(inferStoryEventFromActions([{
+      player: '罗伯特',
+      action: '将蒙特利尔的拒绝和离场时间记入笔记，结束会面并离开警察局。'
+    }], state)).toEqual(expect.objectContaining({
+      arguments: expect.objectContaining({ eventId: 'EV_MEET_MONTREAL' })
+    }));
+  });
+
   it('does not turn explicitly negated violence into a combat check', () => {
     const state = makeState({ players: [makeInvestigator({ name: '亨利' }, { '格斗（拳）': 50 })] });
 

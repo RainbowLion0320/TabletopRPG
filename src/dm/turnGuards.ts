@@ -326,7 +326,6 @@ export function inferStoryEventFromActions(
   const mappings: Array<[string, RegExp]> = [
     ['EV_ACCEPT_COMMISSION', /接受.{0,8}委托|确认.{0,8}委托/],
     ['EV_FIND_I04', /加热|烘烤|显字|破译|解读.{0,8}(?:小册子|隐写)|(?:小册子|隐写).{0,8}(?:解读|解码)/],
-    ['EV_MEET_MONTREAL', /质询.{0,8}蒙特利尔|蒙特利尔.{0,8}关系/],
     ['EV_BARTENDER_RAT', /酒保[\s\S]{0,20}(?:老鼠|贝尔街)|(?:老鼠|贝尔街)[\s\S]{0,20}酒保/],
     ['EV_S04_CIGAR', /雪茄/],
     ['EV_CHOOSE_NEGOTIATION', /选择.{0,8}交涉|和平交涉|愿意.{0,8}交涉|尝试.{0,8}交涉|暂缓攻击|不(?:发动|使用).{0,6}(?:攻击|武力)/],
@@ -342,12 +341,31 @@ export function inferStoryEventFromActions(
     && (eventId === 'EV_COMBAT_ATTACK'
       ? actions.some((action) => hasAffirmativeMatch(action.action, pattern))
       : pattern.test(text))
-    && (!actionIsFailedCheck(actions) || eventId === 'EV_BARTENDER_RAT' || eventId === 'EV_MEET_MONTREAL')
+    && (!actionIsFailedCheck(actions) || eventId === 'EV_BARTENDER_RAT')
   );
+  if (available.has('EV_MEET_MONTREAL') && matchesMontrealMeetingEvent(actions, text)) {
+    return {
+      name: 'propose_story_event',
+      arguments: { eventId: 'EV_MEET_MONTREAL', reason: '玩家已实际质询蒙特利尔或完成会面收尾' }
+    };
+  }
   return match ? {
     name: 'propose_story_event',
     arguments: { eventId: match[0], reason: '玩家行动明确满足作者事件意图' }
   } : null;
+}
+
+function matchesMontrealMeetingEvent(actions: PlayerAction[], text: string): boolean {
+  if (!/蒙特利尔/.test(text)) return false;
+
+  const discussesCase = /(?:质询|询问|追问|提问|请|要求|出示|递给|交给)[\s\S]{0,80}蒙特利尔[\s\S]{0,80}(?:埃里克|合影|照片|关系)/.test(text)
+    || /蒙特利尔[\s\S]{0,80}(?:埃里克|合影|照片|关系)[\s\S]{0,40}(?:质询|询问|追问|提问|回答|说明|辨认)/.test(text);
+  const closesMeeting = /蒙特利尔[\s\S]{0,60}(?:拒绝|拒答|回避|最后答复|离场|离开)[\s\S]{0,60}(?:记录|结束会面|不再纠缠|离开警察局|离开分局)/.test(text)
+    || /(?:记录|确认)[\s\S]{0,40}蒙特利尔[\s\S]{0,40}(?:拒绝|拒答|回避|离场|最后答复)/.test(text);
+  const settlesObservation = actions.some((action) => DICE_RESULT_RE.test(action.action))
+    && /(?:观察|反应|表情|眼神|停顿|手部动作)[\s\S]{0,80}蒙特利尔|蒙特利尔[\s\S]{0,80}(?:观察|反应|表情|眼神|停顿|手部动作)/.test(text);
+
+  return discussesCase || closesMeeting || settlesObservation;
 }
 
 function actionIsFailedCheck(actions: PlayerAction[]): boolean {
