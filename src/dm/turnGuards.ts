@@ -39,6 +39,8 @@ interface CheckCandidate {
 function buildCandidate(action: PlayerAction): CheckCandidate | null {
   const text = action.action.trim();
   if (!text || DICE_RESULT_RE.test(text)) return null;
+  const describesAssistingAnother = /(?:在|当)(?:他|她|同伴|队友|[\u4e00-\u9fff·]{2,10})[^，。；！？\n]{0,24}时[^。；！？\n]{0,16}(?:提供照明|警戒|把风|记录|协助|帮助|配合)/.test(text)
+    || /(?:协助|帮助|配合)(?:他|她|同伴|队友|[\u4e00-\u9fff·]{2,10})[^，。；！？\n]{0,16}(?:操作|检查|搜查|撬锁|开锁|撬开)/.test(text);
 
   const specs: Array<{
     pattern: RegExp;
@@ -51,7 +53,7 @@ function buildCandidate(action: PlayerAction): CheckCandidate | null {
     { pattern: COMBAT_ACTION_RE, skill: '格斗（拳）', score: 95, difficulty: '困难', reason: '冲突行动存在受伤风险' },
     { pattern: /闪避|躲开|避开|逃脱/, skill: '闪避', score: 92, difficulty: '困难', reason: '避开迫近的危险' },
     { pattern: /潜入|潜行|蹑手蹑脚|躲藏|尾随/, skill: '潜行', score: 88, reason: '不被察觉地完成行动' },
-    { pattern: /撬锁|开锁|拆开|修理|修复/, skill: '机械维修', score: 84, reason: '完成精细的机械操作' },
+    { pattern: /撬锁|开锁|撬开|拆开|修理|修复/, skill: '机械维修', score: 84, reason: '完成精细的机械操作' },
     { pattern: /高速|追车|甩开|危险驾驶|强行驾车/, skill: '驾驶（汽车）', score: 82, difficulty: '困难', reason: '在危险条件下驾驶' },
     { pattern: /急救|止血|包扎|抢救/, skill: '急救', score: 80, reason: '实施紧急救治' },
     { pattern: /诊断|化验|解剖|中毒|药剂|粉末|医学检查/, skill: '医学', score: 76, reason: '判断医学或药物线索' },
@@ -67,7 +69,7 @@ function buildCandidate(action: PlayerAction): CheckCandidate | null {
   const spec = specs.find((item) => hasAffirmativeMatch(text, item.pattern));
   if (!spec) return null;
   return {
-    score: spec.score,
+    score: spec.score - (describesAssistingAnother ? 50 : 0),
     check: {
       player: action.player,
       skill: spec.skill,
@@ -759,6 +761,17 @@ export function validateNarratorSemantics(
     return '正文要求玩家检定时必须在同一响应调用获准的 request_check，不能留下没有掷骰入口的强制检定';
   }
   const narrativeAuthority = authoredNarrativeCorpus(state, proposedEvents);
+  const failedMechanicalCheck = actions.some((action) =>
+    /【检定结果】[^。；！？\n]{0,80}的\s*机械维修\s*检定[^。；！？\n]{0,80}结果[：:]\s*(?:失败|大失败)/.test(action.action)
+  );
+  const opensLockedEntry = /(?:门锁|锁具|锁芯)[^。；！？\n]{0,24}(?:弹开|打开|开启|解开|被撬开|成功撬开)|(?:成功|终于|顺利)[^。；！？\n]{0,20}(?:撬开|打开|开启)[^。；！？\n]{0,12}(?:门|锁)/;
+  if (
+    failedMechanicalCheck
+    && opensLockedEntry.test(output.narrative)
+    && !opensLockedEntry.test(narrativeAuthority)
+  ) {
+    return '机械维修检定失败后不得让另一角色无检定接手并直接打开门锁';
+  }
   if (state.currentScene === 'S01' && /贝尔街/.test(allText) && !narrativeAuthority.includes('贝尔街')) {
     return '不得在住宅调查取得对应线索前提前透露贝尔街';
   }

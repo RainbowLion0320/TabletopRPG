@@ -33,6 +33,23 @@ describe('turnGuards', () => {
     ], state)).toBeNull();
   });
 
+  it('assigns a lock-picking check to the declared operator instead of a supporting investigator', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '艾达' }, { 机械维修: 45 }),
+        makeInvestigator({ name: '罗伯特' }, { 机械维修: 10 })
+      ]
+    });
+
+    expect(buildRequiredCheck([
+      { player: '罗伯特', action: '守在艾达身侧，在她撬锁时提供照明并警戒。' },
+      { player: '艾达', action: '用随身工具谨慎撬开药店门锁。' }
+    ], state)).toEqual(expect.objectContaining({
+      player: '艾达',
+      skill: '机械维修'
+    }));
+  });
+
   it('does not gate ordinary movement or information-only wording with an investigation roll', () => {
     const state = makeState({
       players: [
@@ -995,6 +1012,29 @@ describe('turnGuards', () => {
         playerChoices: {}
       }, [], state, kb)).toBeNull();
     }
+  });
+
+  it('does not overturn a failed lock-picking check by letting another investigator auto-succeed', () => {
+    const state = makeState({ currentScene: 'S04', activeNpcName: null });
+    const actions = [
+      { player: '艾达', action: '用工具谨慎撬开药店门锁。' },
+      { player: '罗伯特', action: '在她撬锁时提供照明。' },
+      { player: '艾达', action: '【检定结果】艾达 的 机械维修 检定：掷出 78，阈值 45，结果：失败（78）。' }
+    ];
+
+    expect(validateNarratorSemantics({
+      narrative: '艾达的工具滑脱。罗伯特接过工具，终于听见咔哒一声，门锁弹开。',
+      activeNpc: null,
+      nextPrompt: '',
+      playerChoices: {}
+    }, [], state, kb, actions)).toMatch(/不得让另一角色无检定接手/);
+
+    expect(validateNarratorSemantics({
+      narrative: '艾达的工具滑脱，门锁仍然紧闭。你们需要寻找别的入口或承担新的风险。',
+      activeNpc: null,
+      nextPrompt: '',
+      playerChoices: {}
+    }, [], state, kb, actions)).toBeNull();
   });
 
   it('does not add transport markings to the booklet before analysis', () => {
