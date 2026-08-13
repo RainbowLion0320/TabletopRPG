@@ -100,6 +100,7 @@ export function CaseBoard({ state }: CaseBoardProps) {
   }, [selectedId]);
 
   const neighbors = neighborIds(selectedId, filtered.edges);
+  const latestVisibleTurn = Math.max(0, ...model.nodes.map((node) => node.latestUpdateTurn));
   const flowNodes: Array<Node<CaseBoardFlowNodeData>> = layouted.map((node) => ({
     id: node.id,
     type: 'caseBoardNode',
@@ -111,7 +112,7 @@ export function CaseBoard({ state }: CaseBoardProps) {
     data: {
       node,
       faded: Boolean(selectedId && !neighbors.has(node.id)),
-      recent: Boolean(node.latestUpdateTurn && node.latestUpdateTurn === state.caseBoard?.lastUpdatedTurn)
+      recent: Boolean(node.latestUpdateTurn && node.latestUpdateTurn === latestVisibleTurn)
     }
   }));
   const flowEdges: Edge[] = filtered.edges.map((edge) => {

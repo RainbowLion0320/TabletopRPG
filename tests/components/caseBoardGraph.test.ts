@@ -42,6 +42,46 @@ describe('case board graph model and layout', () => {
     expect(model.summary).not.toMatch(/鸦片|蒙特利尔关系网|泰晤士港/);
   });
 
+  it('keeps the current finale scene and NPC newer than stale dynamic discoveries', () => {
+    const conversationHistory = Array.from({ length: 8 }, (_, index) => [
+      { role: 'user' as const, content: `第 ${index + 1} 回合行动` },
+      { role: 'assistant' as const, content: `第 ${index + 1} 回合结果` }
+    ]).flat();
+    const state = makeState({
+      currentScene: 'S05',
+      activeNpcName: '扶桑花号交涉代表',
+      conversationHistory
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.visitedSceneIds = ['S01', 'S05'];
+    state.caseBoard = {
+      nodes: [{
+        id: 'dynamic-montreal',
+        semanticKey: 'npc:montreal',
+        type: 'npc',
+        title: '洛夫·蒙特利尔',
+        importance: 4,
+        source: 'ai',
+        certainty: 'confirmed',
+        sourceFactIds: [],
+        sourceEventIds: [],
+        sourceClueIds: [],
+        createdTurn: 3,
+        updatedTurn: 3,
+        status: 'active'
+      }],
+      edges: [],
+      insights: [],
+      lastUpdatedTurn: 3
+    };
+
+    const model = buildCaseBoardGraphModel(state);
+    expect(model.nodes.find((node) => node.id === 'scene-s05')?.latestUpdateTurn).toBe(8);
+    expect(model.nodes.find((node) => node.id === 'npc-hybrid-envoy')?.latestUpdateTurn).toBe(8);
+    expect(model.summary).toContain('最近更新：扶桑花号');
+    expect(model.summary).not.toContain('最近更新：洛夫·蒙特利尔');
+  });
+
   it('lays out fourteen mixed nodes without rectangle overlap', async () => {
     const nodes = Array.from({ length: 14 }, (_, index) => displayNode(index));
     const edges: CaseBoardDisplayEdge[] = nodes.slice(1).map((node, index) => ({

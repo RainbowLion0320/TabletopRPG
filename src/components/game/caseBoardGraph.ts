@@ -3,6 +3,7 @@ import ElkWorker from 'elkjs/lib/elk-worker.min.js?worker';
 import { caseBoard } from '../../data/scenarios/wuzhongxiaoshi';
 import { storyData } from '../../data/storyData';
 import { getVisibleCaseBoard } from '../../dm/caseBoard';
+import { countCompletedGameTurns } from '../../services/turns';
 import type {
   CaseBoardCertainty,
   CaseBoardEdgeTone,
@@ -133,6 +134,7 @@ function deriveThreads(nodes: CaseBoardDisplayNode[], edges: CaseBoardDisplayEdg
 
 export function buildCaseBoardGraphModel(state: GameState): CaseBoardGraphModel {
   const visible = getVisibleCaseBoard(caseBoard, state);
+  const currentTurn = countCompletedGameTurns(state.conversationHistory);
   const activeInsights = (state.caseBoard?.insights ?? []).filter((insight) => insight.status === 'active');
   const insightCount = new Map<string, number>();
   const latestInsightTurn = new Map<string, number>();
@@ -140,18 +142,27 @@ export function buildCaseBoardGraphModel(state: GameState): CaseBoardGraphModel 
     insightCount.set(insight.ownerNodeId, (insightCount.get(insight.ownerNodeId) ?? 0) + 1);
     latestInsightTurn.set(insight.ownerNodeId, Math.max(latestInsightTurn.get(insight.ownerNodeId) ?? 0, insight.updatedTurn));
   });
-  const staticNodes: CaseBoardDisplayNode[] = visible.nodes.map((node) => ({
-    id: node.id,
-    type: node.type,
-    refId: node.refId,
-    title: node.title,
-    subtitle: node.subtitle,
-    importance: node.importance ?? 3,
-    certainty: 'confirmed',
-    portrait: node.type === 'npc' && node.refId ? storyData.npcs[node.refId]?.portrait : undefined,
-    insightCount: insightCount.get(node.id) ?? 0,
-    latestUpdateTurn: latestInsightTurn.get(node.id) ?? 0
-  }));
+  const staticNodes: CaseBoardDisplayNode[] = visible.nodes.map((node) => {
+    const isCurrentScene = node.type === 'scene' && node.refId === state.currentScene;
+    const isActiveNpc = node.type === 'npc'
+      && Boolean(state.activeNpcName)
+      && (node.refId === state.activeNpcName || node.title === state.activeNpcName);
+    return {
+      id: node.id,
+      type: node.type,
+      refId: node.refId,
+      title: node.title,
+      subtitle: node.subtitle,
+      importance: node.importance ?? 3,
+      certainty: 'confirmed',
+      portrait: node.type === 'npc' && node.refId ? storyData.npcs[node.refId]?.portrait : undefined,
+      insightCount: insightCount.get(node.id) ?? 0,
+      latestUpdateTurn: Math.max(
+        latestInsightTurn.get(node.id) ?? 0,
+        isCurrentScene || isActiveNpc ? currentTurn : 0
+      )
+    };
+  });
   const dynamicNodes: CaseBoardDisplayNode[] = (state.caseBoard?.nodes ?? [])
     .filter((node) => node.status === 'active')
     .map((node) => ({
