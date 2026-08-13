@@ -504,6 +504,30 @@ describe('turnGuards', () => {
     }, [], state, kb)).toBeNull();
   });
 
+  it('requires an accepted scene change to narrate the destination as already current', () => {
+    const state = makeState({ currentScene: 'S04', activeNpcName: null, clueIds: ['I07'] });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.knownFactIds = ['F09'];
+    const sceneCall = [{
+      name: 'propose_scene_change' as const,
+      arguments: { targetSceneId: 'S05', reason: '玩家明确前往扶桑花号' }
+    }];
+
+    expect(validateNarratorSemantics({
+      narrative: '根据权威剧情状态，你们目前仍在卡森其药店，尚未抵达泰晤士港。你们朝港口方向走去。',
+      activeNpc: null,
+      nextPrompt: '是否沿地图路线继续前行？',
+      playerChoices: { 托马斯: ['沿地图路线继续前行至扶桑花号泊位'] }
+    }, sceneCall, state, kb)).toMatch(/原子结算/);
+
+    expect(validateNarratorSemantics({
+      narrative: '你们抵达泰晤士港的偏僻泊位，扶桑花号在浓雾中准备离港。',
+      activeNpc: '扶桑花号交涉代表',
+      nextPrompt: '如何应对？',
+      playerChoices: {}
+    }, sceneCall, state, kb)).toBeNull();
+  });
+
   it('rejects unauthorised schedule and route details invented for a known clue', () => {
     const state = makeState({ currentScene: 'S04', activeNpcName: null, clueIds: ['I07'] });
     state.scenarioProgress = createScenarioProgress();

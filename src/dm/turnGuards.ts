@@ -197,6 +197,18 @@ function framesForeignSceneAsCurrent(text: string, terms: string[]): boolean {
   });
 }
 
+function deniesArrivalAtScene(text: string, terms: string[]): boolean {
+  return terms.some((term) => {
+    if (!term || term.length < 2) return false;
+    const escaped = escapeRegex(term);
+    return new RegExp(
+      `(?:尚未|还未|仍未|没有|并未|未能)[^。；！？\\n]{0,16}(?:抵达|到达|进入|来到|赶到|登上)[^。；！？\\n]{0,12}${escaped}`
+      + `|(?:尚未|还未|仍未|没有|并未|未能)[^。；！？\\n]{0,16}${escaped}`,
+      'i'
+    ).test(text);
+  });
+}
+
 function sceneNpcTerms(kb: KnowledgeBase, sceneId: SceneId): string[] {
   return (kb.scenes[sceneId]?.public.npcs ?? []).flatMap((name) => {
     const npc = kb.npcs[name]?.public;
@@ -801,6 +813,19 @@ export function validateNarratorSemantics(
   const acceptedScene = toolCalls.find((call) => call.name === 'propose_scene_change');
   const targetId = acceptedScene ? String(acceptedScene.arguments.targetSceneId ?? '') : '';
   const outputSceneId = (targetId || state.currentScene) as SceneId;
+  if (targetId && targetId !== state.currentScene) {
+    const sourceTerms = sceneTerms(kb, state.currentScene);
+    const targetTerms = sceneTerms(kb, outputSceneId);
+    if (framesForeignSceneAsCurrent(allText, sourceTerms)) {
+      return `场景切换已原子结算为${kb.scenes[outputSceneId]?.public.name ?? outputSceneId}，不得继续把${kb.scenes[state.currentScene]?.public.name ?? state.currentScene}写成当前环境`;
+    }
+    if (deniesArrivalAtScene(allText, targetTerms)) {
+      return `场景切换已原子结算，不得声称尚未抵达${kb.scenes[outputSceneId]?.public.name ?? outputSceneId}`;
+    }
+    if (!targetTerms.some((term) => allText.includes(term))) {
+      return `场景切换正文必须说明已经抵达${kb.scenes[outputSceneId]?.public.name ?? outputSceneId}`;
+    }
+  }
   if (
     output.activeNpc
     && !kb.scenes[outputSceneId]?.public.npcs.includes(output.activeNpc)
