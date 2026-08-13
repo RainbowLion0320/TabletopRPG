@@ -129,7 +129,9 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
             <div className="objective-list">
               {objectives.map((objective) => (
                 <div className={`objective-row ${progress.objectiveStates[objective.id]}`} key={objective.id}>
-                  <span>{progress.objectiveStates[objective.id] === 'completed' ? '已完成' : '进行中'}</span>
+                  <span>{progress.objectiveStates[objective.id] === 'completed'
+                    ? '已完成'
+                    : progress.objectiveStates[objective.id] === 'failed' ? '未完成' : '进行中'}</span>
                   <strong>{objective.playerText}</strong>
                 </div>
               ))}

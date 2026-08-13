@@ -910,6 +910,14 @@ button {
   text-decoration: line-through;
 }
 
+.objective-row.failed span {
+  color: #bf8d75;
+}
+
+.objective-row.failed strong {
+  color: rgba(255, 255, 255, 0.58);
+}
+
 .progress-stat,
 .clock-row {
   color: rgba(255, 255, 255, 0.76);

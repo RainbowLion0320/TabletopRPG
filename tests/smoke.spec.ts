@@ -175,15 +175,17 @@ async function gotoWithSave(page: Page, gameState: GameState) {
 function createV8EndingSave(): GameState {
   const state = createDynamicCaseBoardSave();
   const progress = createSmokeScenarioProgress();
-  progress.activeActId = 'A03';
+  progress.activeActId = 'A02';
   progress.endingId = 'END_C';
   progress.settledEndingIds = ['END_C'];
   progress.beatStates.B01 = 'completed';
   progress.beatStates.B02 = 'completed';
+  progress.beatStates.B03 = 'active';
   progress.beatStates.B05 = 'completed';
   progress.beatStates.B06 = 'completed';
   progress.objectiveStates.O01 = 'completed';
   progress.objectiveStates.O02 = 'completed';
+  progress.objectiveStates.O03 = 'active';
   progress.objectiveStates.O05 = 'completed';
   progress.objectiveStates.O06 = 'completed';
   progress.objectiveStates.O08 = 'completed';
@@ -553,6 +555,11 @@ test('v8 ending save locks the action area and preserves the authored ending', a
   await expect(page.getByText('结局C：和平交涉')).toBeVisible();
   await expect(page.getByText('调查员听懂并说服深潜者释放埃里克，扶桑花号随后和平离港。')).toBeVisible();
   await expect(page.locator('.dock-input')).toHaveCount(0);
+  await page.getByRole('button', { name: '资料', exact: true }).click();
+  await page.getByRole('button', { name: '进度' }).click();
+  const skippedObjective = page.locator('.objective-row').filter({ hasText: '调查蒙特利尔与埃里克的关系' });
+  await expect(skippedObjective).toContainText('未完成');
+  await expect(skippedObjective).not.toContainText('进行中');
 });
 
 test('pending check plays the dice ritual before revealing its result', async ({ page }) => {

@@ -372,6 +372,26 @@ function updateStructuralStates(progress: ScenarioProgress, currentScene: SceneI
   if (activeBeat) progress.activeActId = activeBeat.actId;
 }
 
+function closeOpenStepsAtEnding(progress: ScenarioProgress, currentScene: SceneId): void {
+  for (const beat of scenario.progression.beats) {
+    if (progress.beatStates[beat.id] !== 'active') continue;
+    settleBeat(progress, beat.id, 'failed');
+    for (const objectiveId of beat.objectiveIds) {
+      if (progress.objectiveStates[objectiveId] === 'active') {
+        progress.objectiveStates[objectiveId] = 'failed';
+      }
+    }
+  }
+  const finaleBeat = scenario.progression.beats
+    .filter((beat) => beat.kind === 'finale' && beat.sceneIds.includes(currentScene))
+    .sort((left, right) => {
+      const leftOrder = scenario.progression.acts.find((act) => act.id === left.actId)?.order ?? 0;
+      const rightOrder = scenario.progression.acts.find((act) => act.id === right.actId)?.order ?? 0;
+      return rightOrder - leftOrder;
+    })[0];
+  if (finaleBeat) progress.activeActId = finaleBeat.actId;
+}
+
 function eventIsAllowed(event: StoryEvent, progress: ScenarioProgress, currentScene: SceneId): boolean {
   const beat = beatsById.get(event.beatId);
   const beatStatus = progress.beatStates[event.beatId];
@@ -424,9 +444,13 @@ function settleEnding(result: ScenarioTransitionResult, options: ProcessScenario
     .sort((left, right) => right.priority - left.priority)[0];
   if (!selected) return;
   progress.endingId = selected.id;
-  if (progress.settledEndingIds.includes(selected.id)) return;
+  if (progress.settledEndingIds.includes(selected.id)) {
+    closeOpenStepsAtEnding(progress, options.currentScene);
+    return;
+  }
   progress.settledEndingIds.push(selected.id);
   for (const effect of selected.effects) applyEffect(progress, effect, result, options.actorName, options.random ?? Math.random);
+  closeOpenStepsAtEnding(progress, options.currentScene);
   result.narrativeCues.push(`${selected.title}：${selected.summary}`);
 }
 
@@ -862,6 +886,7 @@ export function hydrateScenarioProgress(
       `模组内容 ${String(raw.moduleVersion)} -> ${scenario.manifest.contentVersion}：同步规则、目标状态与终幕检定，保留既有剧情进度。`
     );
   }
+  if (hydrated.endingId) closeOpenStepsAtEnding(hydrated, legacy.currentScene);
   return hydrated;
 }
 

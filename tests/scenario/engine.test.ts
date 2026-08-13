@@ -259,6 +259,8 @@ describe('scenario progression engine', () => {
 
   it('chains listening and persuasion from resolved checks before ending C', () => {
     let progress = reachFinale();
+    progress.beatStates.B03 = 'active';
+    progress.objectiveStates.O03 = 'active';
     progress = apply(progress, 'S05', 5, { events: ['EV_CHOOSE_NEGOTIATION'] }).progress;
     const worldTimeBefore = progress.worldTime;
     const listen = apply(progress, 'S05', 6, { events: ['EV_NEGOTIATION_LISTEN'] });
@@ -277,6 +279,9 @@ describe('scenario progression engine', () => {
     });
     expect(success.progress.endingId).toBe('END_C');
     expect(success.progress.variables.ericRescued).toBe(true);
+    expect(success.progress.beatStates.B03).toBe('failed');
+    expect(success.progress.objectiveStates.O03).toBe('failed');
+    expect(success.progress.activeActId).toBe('A03');
   });
 
   it('ends with escape ending B when the final persuasion fails', () => {
