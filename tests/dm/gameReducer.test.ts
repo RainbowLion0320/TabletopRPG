@@ -176,6 +176,33 @@ describe('gameReducer applyAiResponse pendingConsequences merge', () => {
     expect(state.scenarioProgress.knownFactIds).toContain('F09');
   });
 
+  it('does not display an authored event cue twice when the narrator already says it verbatim', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '艾达' }, { 侦查: 50 })],
+      currentScene: 'S04'
+    });
+    state.messages = [];
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'active';
+    state.scenarioProgress.objectiveStates.O05 = 'active';
+    const cue = '后厅油布包中的地图笔记标出了泰晤士港扶桑花号的位置。';
+
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: {
+        narrative: cue,
+        stateUpdate: { storyEventIds: ['EV_S04_MAP'] }
+      },
+      raw: '{}',
+      actorName: '艾达'
+    });
+
+    expect(next.messages.filter((message) => message.text === cue)).toHaveLength(1);
+    expect(next.messages.find((message) => message.text === cue)?.type).toBe('dm');
+  });
+
   it('keeps the authored follow-up check after a successful listening roll', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '亨利' }, { 聆听: 65, 说服: 60 })],

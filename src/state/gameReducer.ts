@@ -1471,7 +1471,8 @@ function appendNewClues(clues: StoryItem[], ids: string[] | undefined) {
 function applyScenarioTransition(
   state: GameState,
   transition: ReturnType<typeof processScenarioTurn>,
-  actorName?: string
+  actorName?: string,
+  narratorText = ''
 ): GameState {
   const discoveredIds = Object.entries(transition.progress.clueStates)
     .filter(([, status]) => status === 'discovered' || status === 'analyzed')
@@ -1505,7 +1506,9 @@ function applyScenarioTransition(
       ? prepareCheck(transition.requestedCheck, state.players)
       : state.pendingCheck
   };
+  const normalizedNarratorText = narratorText.replace(/\s/g, '');
   for (const cue of transition.narrativeCues) {
+    if (normalizedNarratorText.includes(cue.replace(/\s/g, ''))) continue;
     next = addMessage(next, { type: 'system', text: cue });
   }
   for (const eventId of transition.firedEventIds) next = addLog(next, `剧情事件：${eventId}`);
@@ -1696,7 +1699,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       nextState = applyScenarioTransition(
         nextState,
         scenarioTransition,
-        action.actorName ?? state.players[state.currentActorIndex]?.name
+        action.actorName ?? state.players[state.currentActorIndex]?.name,
+        response.narrative
       );
       if (response.narrative) {
         nextState = addMessage(nextState, {
