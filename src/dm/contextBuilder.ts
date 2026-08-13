@@ -102,6 +102,16 @@ export interface DmContextDynamic {
     worldTime: string;
     actTitle: string;
     beatTitle: string;
+    finaleRoute: string | null;
+    encounters: Array<{
+      id: string;
+      name: string;
+      state: string;
+      total: number;
+      defeated: number;
+      remaining: number;
+      round: number;
+    }>;
     dmFacts: string[];
     knownFacts: string[];
     objectives: Array<{ id: string; text: string; status: string }>;
@@ -321,6 +331,7 @@ export function buildDmContext(
   const activeBeat = getActiveScenarioBeat(scenarioProgress, state.currentScene);
   const activeAct = scenarioDefinition.progression.acts.find((act) => act.id === scenarioProgress.activeActId);
   const factsById = new Map(scenarioDefinition.world.facts.map((fact) => [fact.id, fact]));
+  const encountersById = new Map(scenarioDefinition.world.encounters.map((encounter) => [encounter.id, encounter]));
   const dmFactIds = new Set([
     ...(activeBeat?.dmFactIds ?? []),
     ...(scenarioDefinition.world.scenes.find((scene) => scene.id === state.currentScene)?.dmFactIds ?? [])
@@ -357,6 +368,24 @@ export function buildDmContext(
         worldTime: scenarioProgress.worldTime,
         actTitle: activeAct?.title ?? '',
         beatTitle: activeBeat?.title ?? '',
+        finaleRoute: typeof scenarioProgress.variables.finaleRoute === 'string'
+          ? scenarioProgress.variables.finaleRoute
+          : null,
+        encounters: Object.entries(scenarioProgress.encounters)
+          .filter(([, encounter]) => encounter.state !== 'inactive')
+          .flatMap(([id, encounter]) => {
+            const definition = encountersById.get(id);
+            if (!definition) return [];
+            return [{
+              id,
+              name: definition.name,
+              state: encounter.state,
+              total: definition.count,
+              defeated: encounter.defeated,
+              remaining: Math.max(0, definition.count - encounter.defeated),
+              round: encounter.round
+            }];
+          }),
         dmFacts: [...dmFactIds].flatMap((id) => factsById.get(id)?.statement ?? []),
         knownFacts: scenarioProgress.knownFactIds.flatMap((id) => factsById.get(id)?.statement ?? []),
         objectives: getVisibleScenarioObjectives(scenarioProgress).map((objective) => ({

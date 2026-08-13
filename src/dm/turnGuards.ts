@@ -811,6 +811,26 @@ export function validateNarratorSemantics(
   ) {
     return '没有结构化战斗命中时，正文不得把玩家自述的倒地深潜者当作既成战果';
   }
+  if (progress.variables.finaleRoute === 'combat') {
+    const pivotsToNegotiation = /(?:可以|不妨|愿意|还是|试着|尝试|转而|改为|开始)[^。；！？\n]{0,16}(?:谈谈|谈判|进行交涉|谈条件)|(?:与|和)[^。；！？\n]{0,12}(?:谈判|交涉|谈条件)|各取所需|不必再流血/.test(allText);
+    if (pivotsToNegotiation) {
+      return '战斗路线已经结构化锁定，正文和建议不得擅自转入交涉路线';
+    }
+    const inventsDeepOneReinforcements = /(?:船舱|舱口)[^。；！？\n]{0,32}(?:(?:还有|藏着|聚集着)[^。；！？\n]{0,12}(?:族人|深潜者|灰绿色[^。；！？\n]{0,4}身影)|(?:更多|大批|成群)[^。；！？\n]{0,8}(?:族人|深潜者|灰绿色[^。；！？\n]{0,4}身影)[^。；！？\n]{0,8}(?:涌出|冲出|出现))/.test(output.narrative);
+    if (inventsDeepOneReinforcements) {
+      return '结构化遭遇已限定深潜者总数，正文不得虚构船舱援军或额外敌人';
+    }
+  }
+  for (const action of actions) {
+    if (!/(?:灯光|举灯|提灯|手电)/.test(action.action)) continue;
+    const player = escapeRegex(action.player);
+    const replacesLightWithMedicalKit = new RegExp(
+      `${player}[^。；！？\\n]{0,28}(?:举着|拿着|握着|用)[^。；！？\\n]{0,16}(?:急救包|医疗箱|急救箱|金属箱)`
+    ).test(output.narrative);
+    if (replacesLightWithMedicalKit) {
+      return `正文不得把${action.player}本轮明确使用的灯光替换成未声明使用的急救装备`;
+    }
+  }
   const demandsPendingCheck = /(?:需要|必须|务必|须得)[^。；！？\n]{0,24}检定|请[^。；！？\n]{0,12}(?:掷骰|进行)[^。；！？\n]{0,12}检定/.test(
     `${output.narrative}\n${output.nextPrompt}`
   );

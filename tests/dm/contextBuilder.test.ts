@@ -119,6 +119,25 @@ describe('contextBuilder', () => {
     expect(ctx.dynamic.scenario.dmFacts.join('\n')).not.toContain('深潜者');
   });
 
+  it('gives the narrator the locked finale route and authoritative encounter count', () => {
+    const state = makeState({ currentScene: 'S05' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.encounters.ENC01.defeated = 3;
+    state.scenarioProgress.encounters.ENC01.round = 4;
+
+    const ctx = buildDmContext(state, kb, { mode: 'together' });
+    expect(ctx.dynamic.scenario.finaleRoute).toBe('combat');
+    expect(ctx.dynamic.scenario.encounters).toContainEqual(expect.objectContaining({
+      id: 'ENC01', total: 4, defeated: 3, remaining: 1, round: 4
+    }));
+
+    const prompt = buildNarratorSystemPrompt(ctx);
+    expect(prompt).toContain('终幕路线：combat（已锁定；除作者事件外不得改换路线）');
+    expect(prompt).toContain('总数4，已失去战斗能力3，剩余1，第4轮');
+  });
+
   it('exposes summary from state when not overridden', () => {
     const state = makeState();
     state.longTermMemorySummary = 'previous summary';

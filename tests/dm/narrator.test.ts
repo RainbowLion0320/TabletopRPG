@@ -36,6 +36,19 @@ const ctx: DmContext = {
     items: [],
     playerLocations: { 亨利: '雾港' },
     knownClueNames: [],
+    recentFacts: [],
+    scenario: {
+      worldTime: '1920-07-13T17:30:00',
+      actTitle: '第一幕',
+      beatTitle: '接受委托',
+      finaleRoute: null,
+      encounters: [],
+      dmFacts: [],
+      knownFacts: [],
+      objectives: [],
+      allowedEvents: [],
+      softEscalation: null
+    },
     workingMemory: {
       turnCount: 0,
       visitedScenes: ['S01'],

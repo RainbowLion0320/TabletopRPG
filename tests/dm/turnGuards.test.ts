@@ -671,6 +671,53 @@ describe('turnGuards', () => {
     }, [], state, kb, actions)).toBeNull();
   });
 
+  it('keeps a locked combat finale from inventing negotiation or reinforcements', () => {
+    const state = makeState({ currentScene: 'S05', activeNpcName: '扶桑花号交涉代表' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.encounters.ENC01.defeated = 3;
+
+    expect(validateNarratorSemantics({
+      narrative: '交涉代表举起双手：“我们可以谈谈条件，各取所需，不必再流血。”',
+      activeNpc: '扶桑花号交涉代表', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/战斗路线.*不得擅自转入交涉/);
+
+    expect(validateNarratorSemantics({
+      narrative: '交涉代表冷笑：“船舱里还有十几个我的族人，你们赢不了。”',
+      activeNpc: '扶桑花号交涉代表', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/不得虚构船舱援军/);
+
+    expect(validateNarratorSemantics({
+      narrative: '船舱口的铁门打开，更多灰绿色的身影正在涌出。',
+      activeNpc: '扶桑花号交涉代表', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/不得虚构船舱援军/);
+
+    expect(validateNarratorSemantics({
+      narrative: '交涉代表仍在船尾观望。',
+      activeNpc: '扶桑花号交涉代表', nextPrompt: '',
+      playerChoices: { 罗伯特: ['喝令交涉代表停手，否则继续攻击'] }
+    }, [], state, kb)).toBeNull();
+  });
+
+  it('does not replace a declared light with an investigator background item', () => {
+    const ada = makeInvestigator({
+      name: '艾达',
+      background: { meaningfulItem: '战地急救包' }
+    });
+    const state = makeState({ players: [ada], currentScene: 'S05' });
+    const actions = [{ player: '艾达', action: '用灯光照住深潜者，为罗伯特警戒，本轮不攻击。' }];
+
+    expect(validateNarratorSemantics({
+      narrative: '艾达举着战地急救包的金属箱挡在身侧，为罗伯特照看侧翼。',
+      nextPrompt: '', playerChoices: {}
+    }, [], state, kb, actions)).toMatch(/不得把艾达.*灯光替换/);
+    expect(validateNarratorSemantics({
+      narrative: '艾达的灯光稳稳照住深潜者，为罗伯特照看侧翼。',
+      nextPrompt: '', playerChoices: {}
+    }, [], state, kb, actions)).toBeNull();
+  });
+
   it('removes suggestions that reveal undiscovered item names', () => {
     const result = sanitizePlayerChoices({
       亨利: ['检查白色粉末样品', '询问伊莎贝拉']

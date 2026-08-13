@@ -258,7 +258,7 @@ function formatRecentFacts(facts: DmContext['dynamic']['recentFacts']): string {
 export function buildNarratorSystemPrompt(ctx: DmContext): string {
   const scenarioState = ctx.dynamic.scenario ?? {
     worldTime: '（未提供）', actTitle: '', beatTitle: '', dmFacts: [], knownFacts: [],
-    objectives: [], allowedEvents: [], softEscalation: null
+    finaleRoute: null, encounters: [], objectives: [], allowedEvents: [], softEscalation: null
   };
   const sections = [
     NARRATOR_SYSTEM_PROMPT_HEAD,
@@ -269,6 +269,10 @@ export function buildNarratorSystemPrompt(ctx: DmContext): string {
 世界时间：${scenarioState.worldTime}
 活动幕：${scenarioState.actTitle || '（无）'}
 活动节点：${scenarioState.beatTitle || '（无）'}
+终幕路线：${scenarioState.finaleRoute || '（未选择）'}${scenarioState.finaleRoute && scenarioState.finaleRoute !== 'undecided' ? '（已锁定；除作者事件外不得改换路线）' : ''}
+结构化遭遇：${scenarioState.encounters.map((item) =>
+    `${item.id} ${item.name}[${item.state}] 总数${item.total}，已失去战斗能力${item.defeated}，剩余${item.remaining}，第${item.round}轮`
+  ).join('；') || '（无）'}
 当前节点 DM 事实：${scenarioState.dmFacts.join('；') || '（无）'}
 玩家已知事实：${scenarioState.knownFacts.join('；') || '（无）'}
 玩家目标：${scenarioState.objectives.map((item) => `${item.id}[${item.status}] ${item.text}`).join('；') || '（无）'}
@@ -304,7 +308,7 @@ export function buildNarratorUserMessage(
   mode: 'together' | 'split'
 ): string {
   if (mode === 'together') {
-    return `【本轮行动宣言】\n${actions.map((a) => `${a.player}：${a.action}`).join('\n')}\n【共同调查规则】按声明顺序结算；若其中有人明确前往新场景，前置行动完成后全队同行，不得写成分头留在不同地点。`;
+    return `【本轮行动宣言】\n${actions.map((a) => `${a.player}：${a.action}`).join('\n')}\n【共同调查规则】按声明顺序结算；若其中有人明确前往新场景，前置行动完成后全队同行，不得写成分头留在不同地点。严格保留每位调查员本轮明确使用的物件和姿态，不得擅自换成其背包中的其他装备。`;
   }
   const a = actions[0];
   return `【${a.player} 在 ${a.scene ?? '当前场景'}】${a.action}`;
