@@ -242,7 +242,12 @@ export function useGameController() {
       const prepared = legacyResponse.check
         ? { ...legacyResponse, check: prepareCheck(legacyResponse.check, turnState.players) }
         : legacyResponse;
-      dispatch({ type: 'applyAiResponse', response: prepared, raw });
+      dispatch({
+        type: 'applyAiResponse',
+        response: prepared,
+        raw,
+        actorName: actions[actions.length - 1]?.player ?? turnState.players[turnState.currentActorIndex]?.name
+      });
       if (events && events.length) {
         dispatch({ type: 'appendEvents', events });
       }

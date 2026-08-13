@@ -4,6 +4,7 @@ import {
   getActiveScenarioBeat,
   getAvailableSceneExits,
   getAvailableStoryEvents,
+  getVisibleScenarioObjectives,
   hydrateScenarioProgress,
   migrateLegacyScenarioProgress,
   processScenarioTurn,
@@ -265,6 +266,14 @@ describe('scenario progression engine', () => {
     expect(success.progress.variables.ericRescued).toBe(true);
   });
 
+  it('hides unfinished optional objectives after their act has passed', () => {
+    const progress = reachFinale();
+    progress.beatStates.B03 = 'active';
+    progress.objectiveStates.O03 = 'active';
+    expect(getVisibleScenarioObjectives(progress).map((objective) => objective.id)).not.toContain('O03');
+    expect(getVisibleScenarioObjectives(progress).map((objective) => objective.id)).toContain('O06');
+  });
+
   it('rejects corrupted ids and malformed clocks in a current v8 save', () => {
     const valid = createScenarioProgress();
     expect(() => hydrateScenarioProgress({ ...valid, endingId: 'END_UNKNOWN' }, {
@@ -309,11 +318,11 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: [], flags: {}, turn: 3
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.3');
+    expect(migrated.moduleVersion).toBe('1.1.4');
     expect(migrated.beatStates.B02).toBe('active');
     expect(migrated.objectiveStates.O01).toBe('completed');
     expect(migrated.objectiveStates.O02).toBe('active');
-    expect(migrated.migrationLog.at(-1)).toContain('1.0.0 -> 1.1.3');
+    expect(migrated.migrationLog.at(-1)).toContain('1.0.0 -> 1.1.4');
   });
 
   it('migrates the immediately previous scenario content version', () => {
@@ -327,9 +336,9 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: [], flags: {}, turn: 3
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.3');
+    expect(migrated.moduleVersion).toBe('1.1.4');
     expect(migrated.beatStates.B02).toBe('active');
-    expect(migrated.migrationLog.at(-1)).toContain('1.0.1 -> 1.1.3');
+    expect(migrated.migrationLog.at(-1)).toContain('1.0.1 -> 1.1.4');
   });
 
   it('migrates saves from the pre-fix 1.1.0 runtime', () => {
@@ -342,8 +351,8 @@ describe('scenario progression engine', () => {
     });
 
     expect(migrated.contentHash).not.toBe(previous.contentHash);
-    expect(migrated.moduleVersion).toBe('1.1.3');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.3');
+    expect(migrated.moduleVersion).toBe('1.1.4');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.4');
   });
 
   it('migrates saves from the latest 1.1.0 runtime', () => {
@@ -355,9 +364,9 @@ describe('scenario progression engine', () => {
       currentScene: 'S05', clueIds: ['I04', 'I07'], flags: {}, turn: 12
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.3');
+    expect(migrated.moduleVersion).toBe('1.1.4');
     expect(migrated.contentHash).not.toBe(previous.contentHash);
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.3');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.4');
   });
 
   it('migrates the saved real-play state from scenario 1.1.1', () => {
@@ -371,9 +380,9 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: [], flags: {}, turn: 2
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.3');
+    expect(migrated.moduleVersion).toBe('1.1.4');
     expect(migrated.beatStates.B02).toBe('active');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.1 -> 1.1.3');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.1 -> 1.1.4');
   });
 
   it('migrates the saved real-play state from scenario 1.1.2', () => {
@@ -388,9 +397,9 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: ['I04'], flags: {}, turn: 3
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.3');
+    expect(migrated.moduleVersion).toBe('1.1.4');
     expect(migrated.clueStates.I04).toBe('discovered');
     expect(migrated.knownFactIds).not.toContain('F06');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.2 -> 1.1.3');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.2 -> 1.1.4');
   });
 });

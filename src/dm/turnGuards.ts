@@ -83,6 +83,9 @@ export function buildRequiredCheck(actions: PlayerAction[], state: GameState): C
   const storyCall = inferStoryEventFromActions(actions, state);
   if (storyCall) {
     const eventId = String(storyCall.arguments.eventId ?? '');
+    // Route selection is an atomic authored decision. Let it settle before a
+    // follow-up attack/listen keyword can create an untracked generic check.
+    if (eventId === 'EV_CHOOSE_NEGOTIATION' || eventId === 'EV_CHOOSE_COMBAT') return null;
     const event = getAvailableStoryEvents(
       getScenarioProgressForState(state),
       state.currentScene
@@ -315,7 +318,7 @@ export function inferStoryEventFromActions(
     ['EV_MEET_MONTREAL', /质询.{0,8}蒙特利尔|蒙特利尔.{0,8}关系/],
     ['EV_BARTENDER_RAT', /酒保[\s\S]{0,20}(?:老鼠|贝尔街)|(?:老鼠|贝尔街)[\s\S]{0,20}酒保/],
     ['EV_S04_CIGAR', /雪茄/],
-    ['EV_CHOOSE_NEGOTIATION', /选择.{0,8}交涉|和平交涉|暂缓攻击/],
+    ['EV_CHOOSE_NEGOTIATION', /选择.{0,8}交涉|和平交涉|愿意.{0,8}交涉|尝试.{0,8}交涉|暂缓攻击|不(?:发动|使用).{0,6}(?:攻击|武力)/],
     ['EV_NEGOTIATION_LISTEN', /聆听.{0,12}诉求|理解.{0,12}诉求/],
     ['EV_CHOOSE_COMBAT', /选择.{0,8}战斗|立即.{0,8}战斗|攻击.{0,8}深潜者/],
     ['EV_COMBAT_ATTACK', /攻击|搏斗|出拳|制服|击败/]
@@ -506,6 +509,10 @@ const PLOT_CLAIM_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
   {
     label: '未解锁的日期或行动时刻',
     pattern: /(?:地图|笔记|扶桑花号)[^。；！？\n]{0,96}(?:7月14日|子时|午夜|开船时间|离港时间)/
+  },
+  {
+    label: '交涉条件',
+    pattern: /(?:深潜者|混种|交涉代表)[^。；！？\n]{0,72}(?:带走.{0,8}货物|不(?:要|得)?追击|安全离港|释放埃里克|放走埃里克)/
   }
 ];
 
@@ -516,9 +523,15 @@ function authoredNarrativeCorpus(
   const definition = getScenarioDefinition();
   const progress = getScenarioProgressForState(state);
   const factById = new Map(definition.world.facts.map((fact) => [fact.id, fact.statement]));
+  const ending = definition.progression.endings.find((candidate) => candidate.id === progress.endingId);
+  const firedEvents = progress.firedEventIds.flatMap((id) =>
+    definition.progression.storyEvents.find((event) => event.id === id)?.narrativeCue ?? []
+  );
   return [
     ...progress.knownFactIds.flatMap((id) => factById.get(id) ?? []),
-    ...proposedEvents.map((event) => event.narrativeCue)
+    ...firedEvents,
+    ...proposedEvents.map((event) => event.narrativeCue),
+    ending?.summary ?? ''
   ].join('\n');
 }
 
@@ -617,7 +630,7 @@ export function validateNarratorSemantics(
     || proposedEvents.some((event) => eventAuthorizesOutcome(event, 'rescue'));
   const endingAuthorized = Boolean(progress.endingId)
     || proposedEvents.some((event) => eventAuthorizesOutcome(event, 'ending'));
-  const claimsRescue = /埃里克[^。；！？\n]{0,12}(?:获救|被救出|被释放)|(?:救出|释放)[^。；！？\n]{0,8}埃里克/.test(output.narrative);
+  const claimsRescue = /埃里克[^。；！？\n]{0,12}(?:获救|被救出|被释放|脱困)|(?:救出|释放)[^。；！？\n]{0,8}埃里克|(?:割断|解开)[^。；！？\n]{0,8}(?:绳索|绑缚)|埃里克[^。；！？\n]{0,48}(?:被搀扶|重新出现在甲板|离开船舱)/.test(output.narrative);
   const claimsDeparture = /扶桑花号[^。；！？\n]{0,18}(?:已(?:经)?离港|驶离泊位|驶离港口|离开港口|消失在(?:浓雾|雾中|水面))/.test(output.narrative);
   if ((claimsRescue && !rescueAuthorized) || (claimsDeparture && !endingAuthorized)) {
     return '不得在对应剧情事件结算前宣告权威剧情结果';

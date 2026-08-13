@@ -91,6 +91,40 @@ describe('gameReducer applyAiResponse pendingConsequences merge', () => {
     }));
   });
 
+  it('uses the submitted actor for authored checks after the shared turn resets', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利' }, { 聆听: 40 }),
+        makeInvestigator({ name: '艾达' }, { 聆听: 65 })
+      ],
+      currentScene: 'S05'
+    });
+    state.currentActorIndex = 0;
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'negotiation';
+
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: {
+        narrative: '艾达开始辨认深潜者的声调。',
+        stateUpdate: { storyEventIds: ['EV_NEGOTIATION_LISTEN'] }
+      },
+      raw: '{}',
+      actorName: '艾达'
+    });
+
+    expect(next.pendingCheck).toEqual(expect.objectContaining({
+      scenarioCheckId: 'CHECK_LISTEN',
+      player: '艾达',
+      skillVal: 65,
+      threshold: 65
+    }));
+  });
+
   it('clears a resolved check instead of leaving the rolled request active', () => {
     const state = makeState({ players: [makeInvestigator({ name: '亨利' }, { 侦查: 60 })] });
     state.pendingCheck = {

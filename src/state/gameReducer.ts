@@ -36,7 +36,7 @@ export type GameAction =
   | { type: 'advanceActor' }
   | { type: 'appendMessage'; message: Omit<NarrativeMessage, 'id'> }
   | { type: 'appendHistory'; role: 'user' | 'assistant'; content: string }
-  | { type: 'applyAiResponse'; response: AiResponse; raw: string }
+  | { type: 'applyAiResponse'; response: AiResponse; raw: string; actorName?: string }
   | { type: 'setPendingCheck'; check: CheckRequest | null }
   | { type: 'applyDiceResult'; result: DiceResult }
   | { type: 'setSuggestions'; suggestions: string[] }
@@ -1549,9 +1549,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         storyEventIds: response.stateUpdate?.storyEventIds,
         turn: countCompletedGameTurns(state.conversationHistory),
         completeTurn: !response.check,
-        actorName: state.players[state.currentActorIndex]?.name
+        actorName: action.actorName ?? state.players[state.currentActorIndex]?.name
       });
-      nextState = applyScenarioTransition(nextState, scenarioTransition, state.players[state.currentActorIndex]?.name);
+      nextState = applyScenarioTransition(
+        nextState,
+        scenarioTransition,
+        action.actorName ?? state.players[state.currentActorIndex]?.name
+      );
       if (response.narrative) {
         nextState = addMessage(nextState, {
           type: 'dm',

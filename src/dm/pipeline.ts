@@ -502,6 +502,10 @@ export async function runDmTurn(
 
   // 3) 计算本轮允许工具集 + lookup 解析器，调主 LLM
   const inferredStoryCalls = inferStoryEventsFromActions(input.actions, input.state, kb);
+  const settlesFinaleRoute = inferredStoryCalls.some((call) =>
+    call.arguments.eventId === 'EV_CHOOSE_NEGOTIATION'
+    || call.arguments.eventId === 'EV_CHOOSE_COMBAT'
+  );
   const revealCtx = deriveRevealContext(input.state);
   const revealedSet = computeRevealedSecretIds(kb, revealCtx);
 
@@ -613,6 +617,7 @@ export async function runDmTurn(
     ...inferredStoryCalls,
     ...narrator.toolCalls.filter((call) =>
       call.name !== 'propose_scene_change'
+      && !(settlesFinaleRoute && call.name === 'request_check')
       && !(call.name === 'propose_story_event' && inferredStoryCalls.some((inferred) =>
         inferred.arguments.eventId === call.arguments.eventId
       ))

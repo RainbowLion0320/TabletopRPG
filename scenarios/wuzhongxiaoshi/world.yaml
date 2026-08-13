@@ -11,6 +11,7 @@ facts:
   - { id: F10, category: evidence, scope: player, statement: 雪茄头能证明埃里克近期到过卡森其药店。 }
   - { id: F11, category: threat, scope: dm, immutable: true, statement: 调查员见过蒙特利尔后，晚间到贝尔街会遭遇三名暴徒。 }
   - { id: F12, category: threat, scope: dm, immutable: true, statement: 扶桑花号战斗持续七轮后，深潜者会带船逃脱。 }
+  - { id: F13, category: truth, scope: dm, immutable: true, statement: 扶桑花号的深潜者只要求带走走私货物并安全离港；若调查员承诺不追击，他们愿意释放埃里克。 }
 
 scenes:
   - id: S01
@@ -72,9 +73,9 @@ scenes:
     description: 泰晤士港的偏僻泊位，浓雾覆盖水面，扶桑花号正准备离港。
     aliases: [泰晤士港, 港口, 码头, 码头区, 扶桑花号]
     assetId: scene.S05
-    npcIds: [N02]
+    npcIds: [N05, N02]
     itemIds: []
-    dmFactIds: [F01, F03, F12]
+    dmFactIds: [F01, F03, F12, F13]
     exits:
       - { to: S04, travelMinutes: 25, when: { not: { encounter: ENC01, state: active } }, blockedText: 遭遇尚未解决，无法安全离开。 }
 
@@ -83,6 +84,7 @@ npcs:
   - { id: N02, name: 埃里克·摩勒, role: 失踪者, attitude: 未知, appearance: 五十二岁的商人，神情疲惫，留着修整整齐的胡须。, aliases: [埃里克, 摩勒先生], hp: 10, assetId: npc.N02, knowledgeFactIds: [], dmFactIds: [F01] }
   - { id: N03, name: 洛夫·蒙特利尔, role: 警察局长, attitude: 警惕, appearance: 四十八岁，制服笔挺，目光冷淡而审慎。, aliases: [蒙特利尔, 蒙特利尔局长], hp: 13, assetId: npc.N03, knowledgeFactIds: [F02], dmFactIds: [F02, F11] }
   - { id: N04, name: 老赫特之家酒保, role: 街区线人, attitude: 中立, appearance: 壮实的中年酒保，总在一边擦杯子一边观察客人。, aliases: [酒保, 老赫特酒保], hp: 12, assetId: npc.N04, knowledgeFactIds: [F08], dmFactIds: [] }
+  - { id: N05, name: 扶桑花号交涉代表, role: 深潜者代表, attitude: 警惕, appearance: 灰绿色皮肤覆着湿润鳞片，蹼状双手始终靠近船舷，幽光眼睛警惕地观察来客。, aliases: [深潜者代表, 交涉代表, 深潜者, 混种], hp: 11, assetId: npc.N05, knowledgeFactIds: [], dmFactIds: [F13] }
 
 encounters:
   - id: ENC01

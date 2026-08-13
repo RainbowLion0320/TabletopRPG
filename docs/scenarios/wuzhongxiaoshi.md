@@ -2,8 +2,8 @@
 # 《雾中消逝》KP 模组手册
 
 - 模组 ID：`wuzhongxiaoshi`
-- 内容版本：`1.1.3`
-- 内容哈希：`a65a4b4b398d405d`
+- 内容版本：`1.1.4`
+- 内容哈希：`a30bd9e43e729d45`
 - 规则：COC 第七版风格 D100
 - 时间：1920年7月13日，英国伦敦
 - 作者：舒爾茲上尉
@@ -97,6 +97,7 @@ flowchart LR
 - **F03**：深潜者混种藏身卡森其药店，并计划于7月14日乘船离开。
 - **F11**：调查员见过蒙特利尔后，晚间到贝尔街会遭遇三名暴徒。
 - **F12**：扶桑花号战斗持续七轮后，深潜者会带船逃脱。
+- **F13**：扶桑花号的深潜者只要求带走走私货物并安全离港；若调查员承诺不追击，他们愿意释放埃里克。
 
 ## 剧情事件
 
@@ -133,13 +134,13 @@ flowchart LR
 - **EV_RECOVER_I07 恢复港口位置** [automatic/once]：地图残片与港口灯号相互印证，恢复了扶桑花号泊位。
 - **EV_RECOVER_I08 恢复雪茄证据** [automatic/once]：柜台残留的烟灰品牌仍能与埃里克的雪茄盒对应。
 - **EV_CHOOSE_COMBAT 选择战斗路线** [manual/once]：调查员以武力阻止深潜者，扶桑花号逃脱时钟开始计数。
-- **EV_CHOOSE_NEGOTIATION 选择交涉路线** [manual/once]：调查员暂缓攻击，尝试听懂深潜者的诉求。
+- **EV_CHOOSE_NEGOTIATION 选择交涉路线** [manual/once]：调查员暂缓攻击，与扶桑花号交涉代表保持距离，尝试听懂深潜者的诉求。
 - **EV_COMBAT_ROUND 战斗轮推进** [turnEnd/repeatable]：船员继续收缆，扶桑花号距离逃脱又近一轮。
 - **EV_COMBAT_ATTACK 攻击深潜者** [manual/repeatable]：调查员抓住机会攻击一名仍在抵抗的深潜者。
 - **EV_COMBAT_HIT 有效命中深潜者** [checkResolved/repeatable]：攻击奏效，一名深潜者失去战斗能力。
 - **EV_COMBAT_WIN 击败深潜者** [automatic/once]：四名深潜者失去战斗能力，调查员及时救出埃里克。
 - **EV_NEGOTIATION_LISTEN 听懂深潜者诉求** [manual/repeatable]：调查员需要先通过聆听检定理解对方的真正诉求。
-- **EV_NEGOTIATION_UNDERSTOOD 理解深潜者诉求** [checkResolved/repeatable]：调查员已经听懂诉求，现在必须说服深潜者释放埃里克。
+- **EV_NEGOTIATION_UNDERSTOOD 理解深潜者诉求** [checkResolved/repeatable]：调查员听懂了深潜者的底线：他们只要求带走走私货物并安全离港；若调查员承诺不追击，他们愿意释放埃里克。现在必须完成说服。
 - **EV_NEGOTIATION_SUCCESS 交涉成功** [checkResolved/once]：说服奏效，深潜者释放埃里克并同意和平离港。
 - **EV_RESCUE_ERIC 救出埃里克** [automatic/once]：埃里克获救，但其走私身份也随证据暴露。
 

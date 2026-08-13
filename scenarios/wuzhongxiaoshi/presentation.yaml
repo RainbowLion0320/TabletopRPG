@@ -15,6 +15,7 @@ caseBoard:
     - { id: npc-eric, type: npc, refId: N02, title: 埃里克·摩勒, subtitle: 失踪者, importance: 5, when: { always: true } }
     - { id: npc-montreal, type: npc, refId: N03, title: 洛夫·蒙特利尔, subtitle: 警察局长, importance: 4, when: { factKnown: F05 } }
     - { id: npc-bartender, type: npc, refId: N04, title: 老赫特之家酒保, subtitle: 线人消息来源, importance: 3, when: { sceneVisited: S03 } }
+    - { id: npc-hybrid-envoy, type: npc, refId: N05, title: 扶桑花号交涉代表, subtitle: 终幕中的深潜者代表, importance: 5, when: { sceneVisited: S05 } }
     - { id: item-i01, type: item, refId: I01, title: 便签, subtitle: “别来找我”, importance: 3, when: { clue: I01, status: discovered } }
     - { id: item-i02, type: item, refId: I02, title: 合影照片, subtitle: 蒙特利尔与埃里克, importance: 4, when: { clue: I02, status: discovered } }
     - { id: item-i03, type: item, refId: I03, title: 名片, subtitle: 埃里克留下的旧公司地址, importance: 3, when: { clue: I03, status: discovered } }
@@ -42,3 +43,5 @@ caseBoard:
     - { id: CBE_05, from: theory-rat, to: scene-s04, label: 贝尔街方向, tone: route, when: { factKnown: F08 } }
     - { id: CBE_06, from: item-i07, to: scene-s05, label: 定位扶桑花号, tone: route, when: { factKnown: F09 } }
     - { id: CBE_07, from: item-i08, to: npc-eric, label: 近期到过药店, tone: evidence, when: { factKnown: F10 } }
+    - { id: CBE_08, from: scene-s05, to: npc-hybrid-envoy, label: 守在船上, tone: danger, when: { sceneVisited: S05 } }
+    - { id: CBE_09, from: npc-hybrid-envoy, to: npc-eric, label: 扣押, tone: danger, when: { factKnown: F01 } }

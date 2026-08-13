@@ -106,7 +106,7 @@ beats:
     activation: { factKnown: F09 }
     completion: { any: [{ encounter: ENC01, state: won }, { eventFired: EV_NEGOTIATION_SUCCESS }, { clock: fusangEscape, op: gte, value: 7 }] }
     objectiveIds: [O06, O07, O08]
-    dmFactIds: [F01, F03, F12]
+    dmFactIds: [F01, F03, F12, F13]
     allowedEventIds: [EV_CHOOSE_COMBAT, EV_CHOOSE_NEGOTIATION, EV_COMBAT_ATTACK, EV_COMBAT_HIT, EV_COMBAT_ROUND, EV_COMBAT_WIN, EV_NEGOTIATION_LISTEN, EV_NEGOTIATION_UNDERSTOOD, EV_NEGOTIATION_SUCCESS, EV_RESCUE_ERIC]
     softEscalationAfter: 3
     hardRecoveryAfter: 6
@@ -228,7 +228,7 @@ storyEvents:
     effects: [{ setVariable: finaleRoute, value: negotiation }, { completeObjective: O06 }, { activateObjective: O08 }]
     once: true
     playerVisible: true
-    narrativeCue: 调查员暂缓攻击，尝试听懂深潜者的诉求。
+    narrativeCue: 调查员暂缓攻击，与扶桑花号交涉代表保持距离，尝试听懂深潜者的诉求。
   - id: EV_COMBAT_ROUND
     beatId: B06
     title: 战斗轮推进
@@ -282,7 +282,7 @@ storyEvents:
     effects: [{ requestCheck: CHECK_PERSUADE, skill: 说服, difficulty: 困难, reason: 说服深潜者释放埃里克并和平离开 }]
     once: false
     playerVisible: true
-    narrativeCue: 调查员已经听懂诉求，现在必须说服深潜者释放埃里克。
+    narrativeCue: 调查员听懂了深潜者的底线：他们只要求带走走私货物并安全离港；若调查员承诺不追击，他们愿意释放埃里克。现在必须完成说服。
   - id: EV_NEGOTIATION_SUCCESS
     beatId: B06
     title: 交涉成功

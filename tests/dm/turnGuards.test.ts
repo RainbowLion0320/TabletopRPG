@@ -145,6 +145,25 @@ describe('turnGuards', () => {
     }], state)).toBeNull();
   });
 
+  it('settles a natural finale route choice before any follow-up generic check', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '艾达' }, { 聆听: 65 })],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+
+    const actions = [{
+      player: '艾达',
+      action: '不使用武力，愿意与深潜者交涉，并专心聆听它的诉求。'
+    }];
+    expect(inferStoryEventFromActions(actions, state)?.arguments.eventId).toBe('EV_CHOOSE_NEGOTIATION');
+    expect(buildRequiredCheck(actions, state)).toBeNull();
+  });
+
   it('does not infer a spatial move while its story prerequisite is locked', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '亨利' }), makeInvestigator({ name: '艾达' })],
@@ -455,6 +474,9 @@ describe('turnGuards', () => {
     const opening = makeState({ currentScene: 'S01' });
     expect(validateNarratorSemantics({
       narrative: '埃里克已经获救，扶桑花号也驶离泊位。', nextPrompt: '', playerChoices: {}
+    }, [], opening, kb)).toMatch(/剧情结果/);
+    expect(validateNarratorSemantics({
+      narrative: '亨利找到埃里克后割断绳索，将他扶回甲板。', nextPrompt: '', playerChoices: {}
     }, [], opening, kb)).toMatch(/剧情结果/);
 
     const finale = makeState({ currentScene: 'S05' });

@@ -81,7 +81,8 @@ const previousContentVersions = new Set([
   '1.1.0#2f9f28cd2a887698',
   '1.1.0#9aa4d2e09756fc0a',
   '1.1.1#df77e2dcefd534f1',
-  '1.1.2#f6d2725f8d274d21'
+  '1.1.2#f6d2725f8d274d21',
+  '1.1.3#a65a4b4b398d405d'
 ]);
 
 function statusRecord(ids: string[], activeId?: string): Record<string, ScenarioStepStatus> {
@@ -534,9 +535,15 @@ export function getActiveScenarioBeat(progress: ScenarioProgress, currentScene?:
 }
 
 export function getVisibleScenarioObjectives(progress: ScenarioProgress) {
-  return scenario.progression.objectives.filter((objective) =>
-    progress.objectiveStates[objective.id] !== 'locked'
-  );
+  const activeActOrder = scenario.progression.acts.find((act) => act.id === progress.activeActId)?.order ?? 0;
+  return scenario.progression.objectives.filter((objective) => {
+    const status = progress.objectiveStates[objective.id];
+    if (status === 'locked') return false;
+    if (status === 'completed' || status === 'failed') return true;
+    const beat = beatsById.get(objective.beatId);
+    const objectiveActOrder = scenario.progression.acts.find((act) => act.id === beat?.actId)?.order ?? 0;
+    return beat?.kind !== 'optional' || objectiveActOrder >= activeActOrder;
+  });
 }
 
 export function getScenarioDefinition() {

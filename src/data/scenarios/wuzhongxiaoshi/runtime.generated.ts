@@ -9,8 +9,9 @@ import asset5 from '../../../../assets/avatars/isabella.png';
 import asset6 from '../../../../assets/avatars/eric.png';
 import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
+import asset9 from '../../../../assets/avatars/deep_one.svg';
 
-export const scenarioContentHash = "a65a4b4b398d405d";
+export const scenarioContentHash = "a30bd9e43e729d45";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -20,12 +21,13 @@ export const scenarioAssetUrls: Record<string, string> = {
   "npc.N01": asset5,
   "npc.N02": asset6,
   "npc.N03": asset7,
-  "npc.N04": asset8
+  "npc.N04": asset8,
+  "npc.N05": asset9
 };
 export const generatedScenarioModule = {
   "manifest": {
     "schemaVersion": 1,
-    "contentVersion": "1.1.3",
+    "contentVersion": "1.1.4",
     "id": "wuzhongxiaoshi",
     "title": "雾中消逝",
     "system": "COC 第七版风格 D100",
@@ -62,7 +64,8 @@ export const generatedScenarioModule = {
       "npc.N01": "../../assets/avatars/isabella.png",
       "npc.N02": "../../assets/avatars/eric.png",
       "npc.N03": "../../assets/avatars/montreal.png",
-      "npc.N04": "../../assets/avatars/bartender.png"
+      "npc.N04": "../../assets/avatars/bartender.png",
+      "npc.N05": "../../assets/avatars/deep_one.svg"
     }
   },
   "world": {
@@ -143,6 +146,13 @@ export const generatedScenarioModule = {
         "scope": "dm",
         "immutable": true,
         "statement": "扶桑花号战斗持续七轮后，深潜者会带船逃脱。"
+      },
+      {
+        "id": "F13",
+        "category": "truth",
+        "scope": "dm",
+        "immutable": true,
+        "statement": "扶桑花号的深潜者只要求带走走私货物并安全离港；若调查员承诺不追击，他们愿意释放埃里克。"
       }
     ],
     "scenes": [
@@ -381,13 +391,15 @@ export const generatedScenarioModule = {
         ],
         "assetId": "scene.S05",
         "npcIds": [
+          "N05",
           "N02"
         ],
         "itemIds": [],
         "dmFactIds": [
           "F01",
           "F03",
-          "F12"
+          "F12",
+          "F13"
         ],
         "exits": [
           {
@@ -477,6 +489,25 @@ export const generatedScenarioModule = {
           "F08"
         ],
         "dmFactIds": []
+      },
+      {
+        "id": "N05",
+        "name": "扶桑花号交涉代表",
+        "role": "深潜者代表",
+        "attitude": "警惕",
+        "appearance": "灰绿色皮肤覆着湿润鳞片，蹼状双手始终靠近船舷，幽光眼睛警惕地观察来客。",
+        "aliases": [
+          "深潜者代表",
+          "交涉代表",
+          "深潜者",
+          "混种"
+        ],
+        "hp": 11,
+        "assetId": "npc.N05",
+        "knowledgeFactIds": [],
+        "dmFactIds": [
+          "F13"
+        ]
       }
     ],
     "encounters": [
@@ -1059,7 +1090,8 @@ export const generatedScenarioModule = {
         "dmFactIds": [
           "F01",
           "F03",
-          "F12"
+          "F12",
+          "F13"
         ],
         "allowedEventIds": [
           "EV_CHOOSE_COMBAT",
@@ -1929,7 +1961,7 @@ export const generatedScenarioModule = {
         ],
         "once": true,
         "playerVisible": true,
-        "narrativeCue": "调查员暂缓攻击，尝试听懂深潜者的诉求。"
+        "narrativeCue": "调查员暂缓攻击，与扶桑花号交涉代表保持距离，尝试听懂深潜者的诉求。"
       },
       {
         "id": "EV_COMBAT_ROUND",
@@ -2121,7 +2153,7 @@ export const generatedScenarioModule = {
         ],
         "once": false,
         "playerVisible": true,
-        "narrativeCue": "调查员已经听懂诉求，现在必须说服深潜者释放埃里克。"
+        "narrativeCue": "调查员听懂了深潜者的底线：他们只要求带走走私货物并安全离港；若调查员承诺不追击，他们愿意释放埃里克。现在必须完成说服。"
       },
       {
         "id": "EV_NEGOTIATION_SUCCESS",
@@ -2502,6 +2534,17 @@ export const generatedScenarioModule = {
           }
         },
         {
+          "id": "npc-hybrid-envoy",
+          "type": "npc",
+          "refId": "N05",
+          "title": "扶桑花号交涉代表",
+          "subtitle": "终幕中的深潜者代表",
+          "importance": 5,
+          "when": {
+            "sceneVisited": "S05"
+          }
+        },
+        {
           "id": "item-i01",
           "type": "item",
           "refId": "I01",
@@ -2780,6 +2823,26 @@ export const generatedScenarioModule = {
           "tone": "evidence",
           "when": {
             "factKnown": "F10"
+          }
+        },
+        {
+          "id": "CBE_08",
+          "from": "scene-s05",
+          "to": "npc-hybrid-envoy",
+          "label": "守在船上",
+          "tone": "danger",
+          "when": {
+            "sceneVisited": "S05"
+          }
+        },
+        {
+          "id": "CBE_09",
+          "from": "npc-hybrid-envoy",
+          "to": "npc-eric",
+          "label": "扣押",
+          "tone": "danger",
+          "when": {
+            "factKnown": "F01"
           }
         }
       ]

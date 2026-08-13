@@ -1,5 +1,5 @@
 schemaVersion: 1
-contentVersion: 1.1.3
+contentVersion: 1.1.4
 id: wuzhongxiaoshi
 title: 雾中消逝
 system: COC 第七版风格 D100
@@ -25,3 +25,4 @@ assets:
   npc.N02: ../../assets/avatars/eric.png
   npc.N03: ../../assets/avatars/montreal.png
   npc.N04: ../../assets/avatars/bartender.png
+  npc.N05: ../../assets/avatars/deep_one.svg
