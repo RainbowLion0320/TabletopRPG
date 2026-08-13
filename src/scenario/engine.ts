@@ -82,7 +82,8 @@ const previousContentVersions = new Set([
   '1.1.0#9aa4d2e09756fc0a',
   '1.1.1#df77e2dcefd534f1',
   '1.1.2#f6d2725f8d274d21',
-  '1.1.3#a65a4b4b398d405d'
+  '1.1.3#a65a4b4b398d405d',
+  '1.1.4#a30bd9e43e729d45'
 ]);
 
 function statusRecord(ids: string[], activeId?: string): Record<string, ScenarioStepStatus> {

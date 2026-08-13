@@ -107,7 +107,7 @@ beats:
     completion: { any: [{ encounter: ENC01, state: won }, { eventFired: EV_NEGOTIATION_SUCCESS }, { clock: fusangEscape, op: gte, value: 7 }] }
     objectiveIds: [O06, O07, O08]
     dmFactIds: [F01, F03, F12, F13]
-    allowedEventIds: [EV_CHOOSE_COMBAT, EV_CHOOSE_NEGOTIATION, EV_COMBAT_ATTACK, EV_COMBAT_HIT, EV_COMBAT_ROUND, EV_COMBAT_WIN, EV_NEGOTIATION_LISTEN, EV_NEGOTIATION_UNDERSTOOD, EV_NEGOTIATION_SUCCESS, EV_RESCUE_ERIC]
+    allowedEventIds: [EV_CHOOSE_COMBAT, EV_CHOOSE_NEGOTIATION, EV_COMBAT_ATTACK, EV_COMBAT_HIT, EV_COMBAT_ROUND, EV_COMBAT_WIN, EV_NEGOTIATION_LISTEN, EV_NEGOTIATION_UNDERSTOOD, EV_NEGOTIATION_LISTEN_FAILED, EV_NEGOTIATION_SUCCESS, EV_NEGOTIATION_FAILED, EV_RESCUE_ERIC]
     softEscalationAfter: 3
     hardRecoveryAfter: 6
     softPrompt: 船笛和收缆声提醒调查员，扶桑花号即将离港，必须立刻选择行动路线。
@@ -279,10 +279,19 @@ storyEvents:
     title: 理解深潜者诉求
     trigger: checkResolved
     when: { check: CHECK_LISTEN, outcome: success }
-    effects: [{ requestCheck: CHECK_PERSUADE, skill: 说服, difficulty: 困难, reason: 说服深潜者释放埃里克并和平离开 }]
+    effects: [{ revealFact: F13 }, { requestCheck: CHECK_PERSUADE, skill: 说服, difficulty: 困难, reason: 说服深潜者释放埃里克并和平离开 }]
     once: false
     playerVisible: true
     narrativeCue: 调查员听懂了深潜者的底线：他们只要求带走走私货物并安全离港；若调查员承诺不追击，他们愿意释放埃里克。现在必须完成说服。
+  - id: EV_NEGOTIATION_LISTEN_FAILED
+    beatId: B06
+    title: 失败推进·交涉聆听
+    trigger: checkResolved
+    when: { any: [{ check: CHECK_LISTEN, outcome: fail }, { check: CHECK_LISTEN, outcome: fumble }] }
+    effects: [{ revealFact: F13 }, { advanceTime: 5 }, { requestCheck: CHECK_PERSUADE, skill: 说服, difficulty: 极难, reason: 未能听清声调，只能依据反复手势在对方失去耐心前完成交涉 }]
+    once: false
+    playerVisible: true
+    narrativeCue: 调查员没能听清非人声调，但反复手势仍表明深潜者只要求带走走私货物并安全离港；迟疑消磨了对方耐心，仍可尝试说服其释放埃里克，但难度提高为极难。
   - id: EV_NEGOTIATION_SUCCESS
     beatId: B06
     title: 交涉成功
@@ -292,6 +301,15 @@ storyEvents:
     once: true
     playerVisible: true
     narrativeCue: 说服奏效，深潜者释放埃里克并同意和平离港。
+  - id: EV_NEGOTIATION_FAILED
+    beatId: B06
+    title: 交涉破裂
+    trigger: checkResolved
+    when: { any: [{ check: CHECK_PERSUADE, outcome: fail }, { check: CHECK_PERSUADE, outcome: fumble }] }
+    effects: [{ failObjective: O08 }, { setEnding: END_B }]
+    once: true
+    playerVisible: true
+    narrativeCue: 最后的说服没有奏效，深潜者终止交涉，扶桑花号带着埃里克驶入浓雾。
   - { id: EV_RESCUE_ERIC, beatId: B06, title: 救出埃里克, trigger: automatic, when: { variable: ericRescued, op: eq, value: true }, effects: [{ revealFact: F01 }], once: true, playerVisible: true, narrativeCue: 埃里克获救，但其走私身份也随证据暴露。 }
 
 endings:
@@ -303,7 +321,7 @@ endings:
     priority: 30
   - id: END_B
     title: 结局B：深潜者逃脱
-    summary: 七轮时钟耗尽，扶桑花号载着深潜者和埃里克消失在泰晤士河浓雾中。
+    summary: 调查员未能及时救出埃里克，扶桑花号载着深潜者和埃里克消失在泰晤士河浓雾中。
     when: { all: [{ variable: finaleRoute, op: eq, value: combat }, { clock: fusangEscape, op: gte, value: 7 }] }
     effects: [{ resolveEncounter: ENC01, state: lost }, { stopClock: fusangEscape }, { setEnding: END_B }]
     priority: 10

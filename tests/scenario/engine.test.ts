@@ -117,7 +117,7 @@ describe('scenario progression engine', () => {
     expect(rejectedNegotiation.progress.encounters.ENC01.state).toBe('active');
   });
 
-  it('does not count a resolved structured check as an idle turn during its narration continuation', () => {
+  it('fails forward from a missed listen into an extreme persuasion check', () => {
     let progress = reachFinale();
     progress = apply(progress, 'S05', 5, { events: ['EV_CHOOSE_NEGOTIATION'] }).progress;
     progress.idleTurns = 2;
@@ -128,10 +128,13 @@ describe('scenario progression engine', () => {
       completeTurn: false,
       check: { id: 'CHECK_LISTEN', outcome: 'fail' }
     });
-    const narrated = apply(failed.progress, 'S05', 6);
-
-    expect(narrated.progress.idleTurns).toBe(0);
-    expect(narrated.progress.variables.finaleRoute).toBe('negotiation');
+    expect(failed.firedEventIds).toContain('EV_NEGOTIATION_LISTEN_FAILED');
+    expect(failed.progress.knownFactIds).toContain('F13');
+    expect(failed.requestedCheck).toEqual(expect.objectContaining({
+      scenarioCheckId: 'CHECK_PERSUADE',
+      difficulty: '极难'
+    }));
+    expect(failed.progress.variables.finaleRoute).toBe('negotiation');
   });
 
   it('fires stable once events idempotently', () => {
@@ -257,6 +260,7 @@ describe('scenario progression engine', () => {
       check: { id: 'CHECK_LISTEN', outcome: 'success' }
     });
     expect(understood.requestedCheck?.scenarioCheckId).toBe('CHECK_PERSUADE');
+    expect(understood.progress.knownFactIds).toContain('F13');
     expect(understood.progress.endingId).toBeNull();
     const success = apply(understood.progress, 'S05', 6, {
       completeTurn: false,
@@ -264,6 +268,24 @@ describe('scenario progression engine', () => {
     });
     expect(success.progress.endingId).toBe('END_C');
     expect(success.progress.variables.ericRescued).toBe(true);
+  });
+
+  it('ends with escape ending B when the final persuasion fails', () => {
+    let progress = reachFinale();
+    progress = apply(progress, 'S05', 5, { events: ['EV_CHOOSE_NEGOTIATION'] }).progress;
+    const listen = apply(progress, 'S05', 6, { events: ['EV_NEGOTIATION_LISTEN'] });
+    const understood = apply(listen.progress, 'S05', 6, {
+      completeTurn: false,
+      check: { id: 'CHECK_LISTEN', outcome: 'success' }
+    });
+    const failed = apply(understood.progress, 'S05', 6, {
+      completeTurn: false,
+      check: { id: 'CHECK_PERSUADE', outcome: 'fail' }
+    });
+
+    expect(failed.firedEventIds).toContain('EV_NEGOTIATION_FAILED');
+    expect(failed.progress.objectiveStates.O08).toBe('failed');
+    expect(failed.progress.endingId).toBe('END_B');
   });
 
   it('hides unfinished optional objectives after their act has passed', () => {
@@ -318,11 +340,11 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: [], flags: {}, turn: 3
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.4');
+    expect(migrated.moduleVersion).toBe('1.1.5');
     expect(migrated.beatStates.B02).toBe('active');
     expect(migrated.objectiveStates.O01).toBe('completed');
     expect(migrated.objectiveStates.O02).toBe('active');
-    expect(migrated.migrationLog.at(-1)).toContain('1.0.0 -> 1.1.4');
+    expect(migrated.migrationLog.at(-1)).toContain('1.0.0 -> 1.1.5');
   });
 
   it('migrates the immediately previous scenario content version', () => {
@@ -336,9 +358,9 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: [], flags: {}, turn: 3
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.4');
+    expect(migrated.moduleVersion).toBe('1.1.5');
     expect(migrated.beatStates.B02).toBe('active');
-    expect(migrated.migrationLog.at(-1)).toContain('1.0.1 -> 1.1.4');
+    expect(migrated.migrationLog.at(-1)).toContain('1.0.1 -> 1.1.5');
   });
 
   it('migrates saves from the pre-fix 1.1.0 runtime', () => {
@@ -351,8 +373,8 @@ describe('scenario progression engine', () => {
     });
 
     expect(migrated.contentHash).not.toBe(previous.contentHash);
-    expect(migrated.moduleVersion).toBe('1.1.4');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.4');
+    expect(migrated.moduleVersion).toBe('1.1.5');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.5');
   });
 
   it('migrates saves from the latest 1.1.0 runtime', () => {
@@ -364,9 +386,9 @@ describe('scenario progression engine', () => {
       currentScene: 'S05', clueIds: ['I04', 'I07'], flags: {}, turn: 12
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.4');
+    expect(migrated.moduleVersion).toBe('1.1.5');
     expect(migrated.contentHash).not.toBe(previous.contentHash);
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.4');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.5');
   });
 
   it('migrates the saved real-play state from scenario 1.1.1', () => {
@@ -380,9 +402,9 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: [], flags: {}, turn: 2
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.4');
+    expect(migrated.moduleVersion).toBe('1.1.5');
     expect(migrated.beatStates.B02).toBe('active');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.1 -> 1.1.4');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.1 -> 1.1.5');
   });
 
   it('migrates the saved real-play state from scenario 1.1.2', () => {
@@ -397,9 +419,32 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: ['I04'], flags: {}, turn: 3
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.4');
+    expect(migrated.moduleVersion).toBe('1.1.5');
     expect(migrated.clueStates.I04).toBe('discovered');
     expect(migrated.knownFactIds).not.toContain('F06');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.2 -> 1.1.4');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.2 -> 1.1.5');
+  });
+
+  it('migrates the saved real-play state from scenario 1.1.4', () => {
+    const previous = createScenarioProgress();
+    previous.moduleVersion = '1.1.4';
+    previous.contentHash = 'a30bd9e43e729d45';
+    previous.beatStates.B01 = 'completed';
+    previous.beatStates.B02 = 'completed';
+    previous.beatStates.B05 = 'completed';
+    previous.beatStates.B06 = 'active';
+    previous.objectiveStates.O06 = 'completed';
+    previous.objectiveStates.O08 = 'active';
+    previous.variables.finaleRoute = 'negotiation';
+
+    const migrated = hydrateScenarioProgress(previous, {
+      currentScene: 'S05', clueIds: ['I04', 'I07'], flags: {}, turn: 24
+    });
+
+    expect(migrated.moduleVersion).toBe('1.1.5');
+    expect(migrated.beatStates.B06).toBe('active');
+    expect(migrated.objectiveStates.O08).toBe('active');
+    expect(migrated.variables.finaleRoute).toBe('negotiation');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.4 -> 1.1.5');
   });
 });

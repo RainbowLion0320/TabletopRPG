@@ -167,6 +167,35 @@ describe('gameReducer applyAiResponse pendingConsequences merge', () => {
     expect(next.scenarioProgress?.endingId).toBeNull();
   });
 
+  it('turns a failed authored listen into an extreme persuasion check without AI continuation', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '艾达' }, { 聆听: 65, 说服: 60 })],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'negotiation';
+    state.pendingCheck = {
+      scenarioCheckId: 'CHECK_LISTEN', player: '艾达', skill: '聆听', difficulty: '普通', skillVal: 65, threshold: 65
+    };
+
+    const next = gameReducer(state, {
+      type: 'applyDiceResult',
+      result: { roll: 89, level: 'fail', label: '失败（89）' }
+    });
+
+    expect(next.pendingCheck).toEqual(expect.objectContaining({
+      scenarioCheckId: 'CHECK_PERSUADE',
+      player: '艾达',
+      difficulty: '极难',
+      threshold: 12
+    }));
+    expect(next.messages.some((message) => message.text.includes('难度提高为极难'))).toBe(true);
+  });
+
   it('moves every investigator location when together-mode scene state changes', () => {
     const henry = makeInvestigator({ id: 'p-henry', name: '亨利' });
     const ada = makeInvestigator({ id: 'p-ada', name: '艾达' });

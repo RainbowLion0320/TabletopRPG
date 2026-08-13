@@ -11,7 +11,7 @@ import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
 import asset9 from '../../../../assets/avatars/deep_one.svg';
 
-export const scenarioContentHash = "a30bd9e43e729d45";
+export const scenarioContentHash = "4d651496e9200891";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -27,7 +27,7 @@ export const scenarioAssetUrls: Record<string, string> = {
 export const generatedScenarioModule = {
   "manifest": {
     "schemaVersion": 1,
-    "contentVersion": "1.1.4",
+    "contentVersion": "1.1.5",
     "id": "wuzhongxiaoshi",
     "title": "雾中消逝",
     "system": "COC 第七版风格 D100",
@@ -1102,7 +1102,9 @@ export const generatedScenarioModule = {
           "EV_COMBAT_WIN",
           "EV_NEGOTIATION_LISTEN",
           "EV_NEGOTIATION_UNDERSTOOD",
+          "EV_NEGOTIATION_LISTEN_FAILED",
           "EV_NEGOTIATION_SUCCESS",
+          "EV_NEGOTIATION_FAILED",
           "EV_RESCUE_ERIC"
         ],
         "softEscalationAfter": 3,
@@ -2145,6 +2147,9 @@ export const generatedScenarioModule = {
         },
         "effects": [
           {
+            "revealFact": "F13"
+          },
+          {
             "requestCheck": "CHECK_PERSUADE",
             "skill": "说服",
             "difficulty": "困难",
@@ -2154,6 +2159,41 @@ export const generatedScenarioModule = {
         "once": false,
         "playerVisible": true,
         "narrativeCue": "调查员听懂了深潜者的底线：他们只要求带走走私货物并安全离港；若调查员承诺不追击，他们愿意释放埃里克。现在必须完成说服。"
+      },
+      {
+        "id": "EV_NEGOTIATION_LISTEN_FAILED",
+        "beatId": "B06",
+        "title": "失败推进·交涉聆听",
+        "trigger": "checkResolved",
+        "when": {
+          "any": [
+            {
+              "check": "CHECK_LISTEN",
+              "outcome": "fail"
+            },
+            {
+              "check": "CHECK_LISTEN",
+              "outcome": "fumble"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "revealFact": "F13"
+          },
+          {
+            "advanceTime": 5
+          },
+          {
+            "requestCheck": "CHECK_PERSUADE",
+            "skill": "说服",
+            "difficulty": "极难",
+            "reason": "未能听清声调，只能依据反复手势在对方失去耐心前完成交涉"
+          }
+        ],
+        "once": false,
+        "playerVisible": true,
+        "narrativeCue": "调查员没能听清非人声调，但反复手势仍表明深潜者只要求带走走私货物并安全离港；迟疑消磨了对方耐心，仍可尝试说服其释放埃里克，但难度提高为极难。"
       },
       {
         "id": "EV_NEGOTIATION_SUCCESS",
@@ -2179,6 +2219,35 @@ export const generatedScenarioModule = {
         "once": true,
         "playerVisible": true,
         "narrativeCue": "说服奏效，深潜者释放埃里克并同意和平离港。"
+      },
+      {
+        "id": "EV_NEGOTIATION_FAILED",
+        "beatId": "B06",
+        "title": "交涉破裂",
+        "trigger": "checkResolved",
+        "when": {
+          "any": [
+            {
+              "check": "CHECK_PERSUADE",
+              "outcome": "fail"
+            },
+            {
+              "check": "CHECK_PERSUADE",
+              "outcome": "fumble"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "failObjective": "O08"
+          },
+          {
+            "setEnding": "END_B"
+          }
+        ],
+        "once": true,
+        "playerVisible": true,
+        "narrativeCue": "最后的说服没有奏效，深潜者终止交涉，扶桑花号带着埃里克驶入浓雾。"
       },
       {
         "id": "EV_RESCUE_ERIC",
@@ -2240,7 +2309,7 @@ export const generatedScenarioModule = {
       {
         "id": "END_B",
         "title": "结局B：深潜者逃脱",
-        "summary": "七轮时钟耗尽，扶桑花号载着深潜者和埃里克消失在泰晤士河浓雾中。",
+        "summary": "调查员未能及时救出埃里克，扶桑花号载着深潜者和埃里克消失在泰晤士河浓雾中。",
         "when": {
           "all": [
             {
