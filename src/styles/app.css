@@ -755,6 +755,14 @@ button {
   filter: brightness(1.18);
 }
 
+.narrative-mark-static {
+  cursor: text;
+}
+
+.narrative-mark-static:hover {
+  filter: none;
+}
+
 .narrative-mark:focus-visible,
 .npc-nameplate:focus-visible {
   outline: 2px solid currentColor;

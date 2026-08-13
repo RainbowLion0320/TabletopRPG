@@ -6,7 +6,7 @@ const GENERIC_KEYWORDS = new Set([
 ]);
 
 export const MAX_NARRATIVE_KEYWORDS = 6;
-export const MAX_NARRATIVE_KEYWORD_LENGTH = 24;
+export const MAX_NARRATIVE_KEYWORD_LENGTH = 12;
 
 export function normalizeNarrativeKeywordHints(
   value: unknown,

@@ -47,6 +47,8 @@ describe('NarrativePanel', () => {
     expect(paragraph?.querySelector('.narrative-mark-location')?.textContent).toBe('摩勒住宅');
     expect(paragraph?.querySelector('.narrative-mark-clue')?.textContent).toBe('水里的东西');
     expect(paragraph?.querySelector('.narrative-mark-skill')?.textContent).toBe('心理学');
+    expect(paragraph?.querySelector('.narrative-mark-skill')?.tagName).toBe('SPAN');
+    expect(screen.queryByRole('button', { name: '查看心理学详情' })).not.toBeInTheDocument();
     expect(container.querySelector('[style*="background"]')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: '查看水里的东西详情' }));
@@ -54,6 +56,17 @@ describe('NarrativePanel', () => {
       expect.objectContaining({ source: 'llm', kind: 'clue' }),
       state.messages[0].text
     );
+  });
+
+  it('emphasizes dice outcomes without exposing empty detail controls', () => {
+    const state = makeState();
+    state.messages = [{ id: 'dice-result', type: 'system', text: '检定结果：普通成功（42）' }];
+
+    const { container } = render(<NarrativePanel state={state} />);
+
+    expect(container.querySelector('.narrative-mark-success')?.textContent).toBe('普通成功');
+    expect(container.querySelector('.narrative-mark-success')?.tagName).toBe('SPAN');
+    expect(screen.queryByRole('button', { name: '查看普通成功详情' })).not.toBeInTheDocument();
   });
 
   it('hides internal progression prompts while keeping other system feedback', () => {

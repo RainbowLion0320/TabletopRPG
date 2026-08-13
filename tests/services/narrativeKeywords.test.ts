@@ -20,14 +20,22 @@ describe('normalizeNarrativeKeywordHints', () => {
     ]);
   });
 
-  it('drops overlong hints and caps output at six entries', () => {
+  it('drops sentence-like hints over twelve characters and caps output at six entries', () => {
     const words = ['甲一', '乙二', '丙三', '丁四', '戊五', '己六', '庚七'];
-    const narrative = `${words.join('，')}，${'很'.repeat(25)}`;
+    const narrative = `${words.join('，')}，${'很'.repeat(13)}`;
     const result = normalizeNarrativeKeywordHints([
       ...words.map((text) => ({ text, kind: 'state' })),
-      { text: '很'.repeat(25), kind: 'state' }
+      { text: '很'.repeat(13), kind: 'state' }
     ], narrative);
 
     expect(result.map((item) => item.text)).toEqual(words.slice(0, 6));
+  });
+
+  it('rejects full-sentence transient highlights observed during real play', () => {
+    const narrative = '船缆仍未解开，但锅炉的汽笛已经嘶鸣起来。';
+
+    expect(normalizeNarrativeKeywordHints([{
+      text: '船缆仍未解开，但锅炉的汽笛已经嘶鸣', kind: 'state'
+    }], narrative)).toEqual([]);
   });
 });

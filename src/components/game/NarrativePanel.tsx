@@ -27,6 +27,13 @@ function markStyle(target: NarrativeMarkTarget, state: GameState): CSSProperties
   } as CSSProperties;
 }
 
+function markIsInteractive(target: NarrativeMarkTarget): boolean {
+  return target.kind === 'person'
+    || target.kind === 'location'
+    || target.kind === 'item'
+    || target.kind === 'clue';
+}
+
 function RichNarrativeText({ message, onMarkOpen, state }: RichNarrativeTextProps) {
   const segments = markNarrativeText(
     message.text,
@@ -34,18 +41,25 @@ function RichNarrativeText({ message, onMarkOpen, state }: RichNarrativeTextProp
     message.type === 'dm' ? message.keywords : undefined,
     message.type === 'dm'
   );
-  return <>{segments.map((segment, index) => segment.mark ? (
-    <button
-      aria-label={`查看${segment.mark.label}详情`}
-      className={`narrative-mark narrative-mark-${segment.mark.kind}${segment.mark.source === 'llm' ? ' narrative-mark-inferred' : ''}`}
-      key={`${index}-${segment.mark.id}`}
-      onClick={() => onMarkOpen?.(segment.mark!, message.text)}
-      style={markStyle(segment.mark, state)}
-      type="button"
-    >
-      {segment.text}
-    </button>
-  ) : <span key={index}>{segment.text}</span>)}</>;
+  return <>{segments.map((segment, index) => {
+    if (!segment.mark) return <span key={index}>{segment.text}</span>;
+    const className = `narrative-mark narrative-mark-${segment.mark.kind}${segment.mark.source === 'llm' ? ' narrative-mark-inferred' : ''}`;
+    if (!markIsInteractive(segment.mark)) {
+      return <span className={`${className} narrative-mark-static`} key={`${index}-${segment.mark.id}`}>{segment.text}</span>;
+    }
+    return (
+      <button
+        aria-label={`查看${segment.mark.label}详情`}
+        className={className}
+        key={`${index}-${segment.mark.id}`}
+        onClick={() => onMarkOpen?.(segment.mark!, message.text)}
+        style={markStyle(segment.mark, state)}
+        type="button"
+      >
+        {segment.text}
+      </button>
+    );
+  })}</>;
 }
 
 export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {

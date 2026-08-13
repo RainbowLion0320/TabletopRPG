@@ -96,7 +96,7 @@ const NARRATOR_SYSTEM_PROMPT_HEAD = `你是 COC 第七版 AI DM Agent，主持�
   "keywords": [{ "text": "正文中连续出现的临时关键词", "kind": "clue" }]
 }
 - playerChoices 必须按玩家姓名分组；每名玩家 2-3 条，结合其职业、位置、状态、已知线索和本轮行动，不要给所有玩家返回完全相同的建议。
-- keywords 最多 6 个，每个 2-24 字，text 必须是 narrative 中连续存在的原文；kind 只能是 clue、danger、state。
+- keywords 最多 6 个，每个 2-12 字，text 必须是 narrative 中连续存在的原文；kind 只能是 clue、danger、state。
 - keywords 只标注本轮自由叙事中新出现、前端词典无法确定的线索、危险或状态。不要标人物、已知地点、物品、技能，不要输出 HTML、Markdown、颜色、字符坐标或展示标记。
 其余规则裁决（检定 / 状态变更 / 场景切换 / 内幕解锁）一律通过工具调用，不要写在 narrative 里描述具体数值。`;
 
