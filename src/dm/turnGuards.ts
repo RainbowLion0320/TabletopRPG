@@ -95,15 +95,13 @@ export function buildRequiredCheck(actions: PlayerAction[], state: GameState): C
     };
   }
   const storyCall = inferStoryEventFromActions(actions, state);
+  let authoredEvent: ReturnType<typeof getAvailableStoryEvents>[number] | undefined;
   if (storyCall) {
     const eventId = String(storyCall.arguments.eventId ?? '');
-    const event = getAvailableStoryEvents(
+    authoredEvent = getAvailableStoryEvents(
       getScenarioProgressForState(state),
       state.currentScene
     ).find((candidate) => candidate.id === eventId);
-    // A legal authored event owns both its prerequisites and effects. Generic
-    // keyword checks must not add a second gate before or after that event.
-    if (event) return null;
   }
   const sceneChange = inferSceneChangeFromActions(actions, state, kb);
   const targetScene = sceneChange
@@ -118,6 +116,13 @@ export function buildRequiredCheck(actions: PlayerAction[], state: GameState): C
     })
     .filter((item): item is CheckCandidate => Boolean(item))
     .sort((a, b) => b.score - a.score);
+  // Most authored events own their complete resolution and must not acquire a
+  // second generic gate. Montreal is intentionally different: a companion's
+  // explicit behavioral read is a hard Psychology check before the meeting
+  // event settles, while ordinary questioning still resolves without a roll.
+  if (authoredEvent
+    && !(authoredEvent.id === 'EV_MEET_MONTREAL'
+      && candidates.some((candidate) => candidate.check.skill === '心理学'))) return null;
   for (const candidate of candidates) {
     const player = state.players.find((item) => item.name === candidate.check.player);
     if (!player) continue;
@@ -713,7 +718,7 @@ const PLOT_CLAIM_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
   },
   {
     label: '未解锁人物介入调查',
-    pattern: /蒙特利尔[^。；！？\n]{0,40}(?:(?:亲自|表示|说|承诺|答应|保证)[^。；！？\n]{0,20}(?:会调查|负责调查|关照|接手|处理)|(?:接手|负责|受理|处理)[^。；！？\n]{0,12}(?:案子|案件|调查))/
+    pattern: /蒙特利尔[^。；！？\n]{0,56}(?:(?:亲自|表示|说|承诺|答应|保证)[^。；！？\n]{0,20}(?:会调查|负责调查|关照|接手|处理)|(?:接手|负责|受理|处理)[^。；！？\n]{0,12}(?:案子|案件|调查)|(?:已经|曾经|早已)?(?:派人)?调查(?:过|了)?[^。；！？\n]{0,20}(?:没有|未|没)[^。；！？\n]{0,10}(?:发现|结果|进展|可疑))|(?:失踪案|案件)[^。；！？\n]{0,32}(?:已经|曾经|早已)(?:派人)?调查(?:过|了)/
   },
   {
     label: '人物身份或背景',

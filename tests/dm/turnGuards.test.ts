@@ -152,6 +152,30 @@ describe('turnGuards', () => {
     }], state)).toEqual(expect.objectContaining({ skill: '心理学', difficulty: '困难' }));
   });
 
+  it('does not let the Montreal meeting event swallow a companion Psychology check', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利' }, { 心理学: 45 }),
+        makeInvestigator({ name: '罗伯特' }, { 心理学: 45 })
+      ],
+      currentScene: 'S02'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B03 = 'active';
+    state.scenarioProgress.objectiveStates.O03 = 'active';
+    const actions = [
+      { player: '亨利', action: '出示合影，请蒙特利尔确认是否认识埃里克，并说明警方为何没有进展。' },
+      { player: '罗伯特', action: '只观察蒙特利尔看到合影时的即时表情与手部动作。' }
+    ];
+
+    expect(inferStoryEventFromActions(actions, state)?.arguments.eventId).toBe('EV_MEET_MONTREAL');
+    expect(buildRequiredCheck(actions, state)).toEqual(expect.objectContaining({
+      player: '罗伯特', skill: '心理学', difficulty: '困难'
+    }));
+  });
+
   it('settles the Montreal meeting through natural questioning, rolled observation, or explicit closure', () => {
     const state = makeState({ currentScene: 'S02' });
     state.scenarioProgress = createScenarioProgress();
@@ -1278,6 +1302,26 @@ describe('turnGuards', () => {
       narrative: '伊莎贝拉说埃里克参与毒品运输，后来被同伙绑架。',
       activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}
     }, [], opening, kb)).toMatch(/犯罪、交易/);
+  });
+
+  it('rejects invented Montreal investigation results beyond the authored meeting event', () => {
+    const state = makeState({ currentScene: 'S02', activeNpcName: '洛夫·蒙特利尔' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B03 = 'active';
+    state.scenarioProgress.objectiveStates.O03 = 'active';
+    state.scenarioProgress.knownFactIds = ['F05'];
+    const event = [{ name: 'propose_story_event', arguments: { eventId: 'EV_MEET_MONTREAL' } }] as const;
+
+    expect(validateNarratorSemantics({
+      narrative: '蒙特利尔承认埃里克是旧识，又称失踪案已经派人调查过，没有发现可疑之处。',
+      activeNpc: '洛夫·蒙特利尔', nextPrompt: '', playerChoices: {}
+    }, [...event], state, kb)).toMatch(/未解锁人物介入调查/);
+    expect(validateNarratorSemantics({
+      narrative: '蒙特利尔回避关键问题，并冷淡地结束了会面。',
+      activeNpc: '洛夫·蒙特利尔', nextPrompt: '', playerChoices: {}
+    }, [...event], state, kb)).toBeNull();
   });
 
   it('keeps the opening commission within authored testimony', () => {
