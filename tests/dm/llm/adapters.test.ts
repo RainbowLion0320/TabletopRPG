@@ -28,6 +28,7 @@ describe('LLM provider adapters', () => {
     };
     const fetchMock = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) =>
       new Response(JSON.stringify({
+        status: 'completed',
         output_text: '{"narrative":"responses ok"}',
         output: [
           {
@@ -84,6 +85,7 @@ describe('LLM provider adapters', () => {
       })
     ]);
     expect(result.rawText).toBe('{"narrative":"responses ok"}');
+    expect(result.finishReason).toBe('completed');
     expect(result.toolCalls).toEqual([
       {
         id: 'fc_1',
@@ -107,6 +109,7 @@ describe('LLM provider adapters', () => {
       new Response(JSON.stringify({
         choices: [
           {
+            finish_reason: 'stop',
             message: {
               role: 'assistant',
               content: '{"narrative":"chat ok"}',
@@ -167,6 +170,7 @@ describe('LLM provider adapters', () => {
       })
     ]);
     expect(result.rawText).toBe('{"narrative":"chat ok"}');
+    expect(result.finishReason).toBe('stop');
     expect(result.toolCalls).toEqual([
       {
         id: 'call_1',
@@ -175,5 +179,44 @@ describe('LLM provider adapters', () => {
         arguments: { skill: '聆听', difficulty: '困难', player: '艾达' }
       }
     ]);
+  });
+
+  it('retries a provider-aborted partial chat completion before returning JSON', async () => {
+    const config: ApiConfig = {
+      provider: 'mimo',
+      protocol: 'chat-completions',
+      endpoint: 'https://gateway.test/v1',
+      apiKey: 'unit-key',
+      model: 'gateway-model'
+    };
+    const fetchMock = vi.fn(async () => {
+      const attempt = fetchMock.mock.calls.length;
+      const aborted = attempt === 1;
+      return new Response(JSON.stringify({
+        choices: [{
+          finish_reason: aborted ? 'abort' : 'stop',
+          message: {
+            role: 'assistant',
+            content: aborted ? '{"narrative":"partial' : '{"narrative":"complete"}'
+          }
+        }]
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await generateJson(config, {
+      label: 'unit',
+      instructions: 'system prompt',
+      input: [{ role: 'user', content: 'hello' }],
+      schemaName: 'unit_response',
+      schema
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.finishReason).toBe('stop');
+    expect(result.rawText).toBe('{"narrative":"complete"}');
   });
 });

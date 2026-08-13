@@ -484,7 +484,7 @@ function parseNarratorJson(raw: string): NarratorJsonShape {
   }
   if (import.meta.env.DEV) {
     // eslint-disable-next-line no-console
-    console.error('[narrator] All JSON candidates failed. Raw response:', raw.slice(0, 1000));
+    console.warn('[narrator] All JSON candidates failed. Raw response:', raw.slice(0, 1000));
   }
   throw new NarratorError(`Narrator JSON 解析失败：${lastErr}`);
 }

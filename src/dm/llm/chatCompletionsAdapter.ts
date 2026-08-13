@@ -75,8 +75,19 @@ export async function requestChatCompletionsJson(
   return {
     rawText: extractChatText(message?.content),
     toolCalls,
-    outputItems: toolCalls.map(toOutputItem)
+    outputItems: toolCalls.map(toOutputItem),
+    finishReason: firstFinishReason(data)
   };
+}
+
+function firstFinishReason(data: ChatCompletionJson): string | null {
+  const choices = Array.isArray(data.choices) ? data.choices : [];
+  for (const choice of choices) {
+    if (!choice || typeof choice !== 'object') continue;
+    const reason = (choice as Record<string, unknown>).finish_reason;
+    if (typeof reason === 'string' && reason.trim()) return reason;
+  }
+  return null;
 }
 
 function toChatMessages(

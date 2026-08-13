@@ -47,4 +47,6 @@ export interface LlmResult {
   rawText: string;
   toolCalls: LlmToolCall[];
   outputItems: LlmInputItem[];
+  /** Provider termination status, used to distinguish complete JSON from interrupted partial output. */
+  finishReason: string | null;
 }

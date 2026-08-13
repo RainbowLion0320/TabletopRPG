@@ -14,10 +14,17 @@ export async function generateJson(
   request: LlmJsonRequest
 ): Promise<LlmResult> {
   const resolved = resolveRuntimeConfig(config);
-  if (resolved.protocol === 'responses') {
-    return requestResponsesJson(resolved, request);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const result = resolved.protocol === 'responses'
+      ? await requestResponsesJson(resolved, request)
+      : await requestChatCompletionsJson(resolved, request);
+    if (result.finishReason !== 'abort' || attempt === 1) return result;
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.warn(`[llm] ${request.label} provider aborted partial output; retrying once`);
+    }
   }
-  return requestChatCompletionsJson(resolved, request);
+  throw new Error(`${request.label} generation ended unexpectedly`);
 }
 
 function resolveRuntimeConfig(config: ApiConfig): ResolvedApiConfig {

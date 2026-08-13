@@ -12,6 +12,8 @@ import type {
 interface ResponsesJson {
   output_text?: unknown;
   output?: unknown;
+  status?: unknown;
+  incomplete_details?: unknown;
   error?: { message?: string };
 }
 
@@ -62,8 +64,16 @@ export async function requestResponsesJson(
   return {
     rawText: extractResponsesText(data),
     toolCalls: parseResponsesToolCalls(rawFunctionItems),
-    outputItems: rawFunctionItems.map(toOutputItem)
+    outputItems: rawFunctionItems.map(toOutputItem),
+    finishReason: responseFinishReason(data)
   };
+}
+
+function responseFinishReason(data: ResponsesJson): string | null {
+  if (data.status !== 'incomplete') return typeof data.status === 'string' ? data.status : null;
+  if (!data.incomplete_details || typeof data.incomplete_details !== 'object') return 'incomplete';
+  const reason = (data.incomplete_details as Record<string, unknown>).reason;
+  return typeof reason === 'string' && reason.trim() ? reason : 'incomplete';
 }
 
 function toResponsesInput(input: LlmInputItem[]): Array<Record<string, unknown>> {
