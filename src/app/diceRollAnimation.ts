@@ -6,4 +6,5 @@ export interface DiceRollPresentation {
   check: CheckRequest;
   result: DiceResult;
   phase: 'rolling' | 'revealed';
+  revealAt?: number;
 }

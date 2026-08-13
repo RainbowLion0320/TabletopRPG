@@ -44,12 +44,25 @@ export function useGameController() {
 
   useEffect(() => {
     if (!diceRoll || diceRoll.phase !== 'rolling') return;
-    const revealTimer = window.setTimeout(() => {
+    const revealAt = diceRoll.revealAt ?? Date.now() + DICE_ROLL_DURATION_MS;
+    const revealIfDue = () => {
+      if (Date.now() < revealAt) return;
       setDiceRoll((current) => current?.phase === 'rolling'
-        ? { ...current, phase: 'revealed' }
+        ? { ...current, phase: 'revealed', revealAt: undefined }
         : current);
-    }, DICE_ROLL_DURATION_MS);
-    return () => window.clearTimeout(revealTimer);
+    };
+    const revealTimer = window.setTimeout(revealIfDue, Math.max(0, revealAt - Date.now()));
+    window.addEventListener('focus', revealIfDue);
+    window.addEventListener('pointerdown', revealIfDue, true);
+    window.addEventListener('keydown', revealIfDue, true);
+    document.addEventListener('visibilitychange', revealIfDue);
+    return () => {
+      window.clearTimeout(revealTimer);
+      window.removeEventListener('focus', revealIfDue);
+      window.removeEventListener('pointerdown', revealIfDue, true);
+      window.removeEventListener('keydown', revealIfDue, true);
+      document.removeEventListener('visibilitychange', revealIfDue);
+    };
   }, [diceRoll]);
 
   function cancelDiceRoll() {
@@ -313,7 +326,12 @@ export function useGameController() {
     const check = state.pendingCheck;
     const result = rollD100(check);
     diceRollInFlightRef.current = true;
-    setDiceRoll({ check, result, phase: 'rolling' });
+    setDiceRoll({
+      check,
+      result,
+      phase: 'rolling',
+      revealAt: Date.now() + DICE_ROLL_DURATION_MS
+    });
   }
 
   function confirmDiceResult() {
