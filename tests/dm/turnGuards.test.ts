@@ -199,6 +199,25 @@ describe('turnGuards', () => {
     ]);
   });
 
+  it('rejects an invented berth number appended to the authored pharmacy map result', () => {
+    const state = makeState({ currentScene: 'S04' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'active';
+    state.scenarioProgress.objectiveStates.O05 = 'active';
+
+    expect(validateNarratorSemantics({
+      narrative: '托马斯展开潮湿的手绘地图，看见泰晤士港的偏僻泊位和扶桑花号标记。罗伯特护住纸张边缘，托马斯将路线和泊位编号逐字记录。',
+      activeNpc: null,
+      nextPrompt: '下一步怎么办？',
+      playerChoices: {}
+    }, [{
+      name: 'propose_story_event',
+      arguments: { eventId: 'EV_S04_MAP', reason: '玩家明确搜查地图' }
+    }], state, kb)).toContain('线索中的路线或设施细节');
+  });
+
   it('settles a natural finale route choice before any follow-up generic check', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '艾达' }, { 聆听: 65 })],

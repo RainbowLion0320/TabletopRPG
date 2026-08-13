@@ -139,6 +139,43 @@ describe('gameReducer applyAiResponse pendingConsequences merge', () => {
     expect(next.pendingCheck).toBeNull();
   });
 
+  it('advances world time exactly once when a generic clue check settles through its continuation', () => {
+    let state = makeState({
+      players: [makeInvestigator({ name: '托马斯' }, { 侦查: 65 })],
+      currentScene: 'S04'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.worldTime = '1920-07-13T19:20';
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'active';
+    state.scenarioProgress.objectiveStates.O05 = 'active';
+    state.pendingCheck = {
+      player: '托马斯', skill: '侦查', difficulty: '普通', skillVal: 65, threshold: 65
+    };
+    state.conversationHistory = [{ role: 'user', content: '搜查后厅油布包中的地图。' }];
+
+    state = gameReducer(state, {
+      type: 'applyDiceResult',
+      result: { roll: 30, level: 'hard', label: '困难成功（30）' }
+    });
+    expect(state.scenarioProgress.worldTime).toBe('1920-07-13T19:20');
+
+    state = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: {
+        narrative: '地图标出了扶桑花号的位置。',
+        stateUpdate: { storyEventIds: ['EV_S04_MAP'] }
+      },
+      raw: '{}',
+      actorName: '托马斯'
+    });
+
+    expect(state.scenarioProgress.worldTime).toBe('1920-07-13T19:25');
+    expect(state.scenarioProgress.firedEventIds).toContain('EV_S04_MAP');
+    expect(state.scenarioProgress.knownFactIds).toContain('F09');
+  });
+
   it('keeps the authored follow-up check after a successful listening roll', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '亨利' }, { 聆听: 65, 说服: 60 })],
