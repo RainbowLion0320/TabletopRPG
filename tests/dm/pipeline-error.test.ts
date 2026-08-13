@@ -195,6 +195,59 @@ describe('runDmTurn error classification', () => {
     expect(output.legacyResponse.playerChoices?.亨利).not.toContain('请老赫特之家酒保只核对已经确认的事实');
   });
 
+  it('does not blame players when a visible suggestion is followed but model narration violates clue authority', async () => {
+    const invalidDiscovery = JSON.stringify({
+      narrative: '两人从窄窗进入药店，立刻在柜台附近发现了雪茄头。',
+      activeNpc: null,
+      nextPrompt: '检查雪茄头。',
+      playerChoices: { 亨利: ['检查雪茄头'] }
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(invalidDiscovery)));
+    const player = makeInvestigator({ name: '亨利' });
+    const state = makeState({ players: [player], currentScene: 'S04' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'active';
+    state.suggestions = ['侧身从窄窗翻入药店内部'];
+    state.suggestionsByPlayerId = { [player.id]: [...state.suggestions] };
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [{ player: '亨利', action: '侧身从窄窗翻入药店内部' }]
+    });
+
+    expect(output.legacyResponse.narrative).toContain('按刚才选定的方式继续行动');
+    expect(output.legacyResponse.narrative).not.toContain('声明中的新信息无法');
+    expect(output.legacyResponse.stateUpdate?.storyEventIds).not.toContain('EV_S04_CIGAR');
+  });
+
+  it('prioritizes the destination of the active mandatory beat in semantic fallback choices', async () => {
+    const invalidDiscovery = JSON.stringify({
+      narrative: '亨利在桌面上又发现了一张便签。',
+      activeNpc: '伊莎贝拉·摩勒',
+      nextPrompt: '查看便签。',
+      playerChoices: { 亨利: ['查看便签'] }
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(invalidDiscovery)));
+    const state = makeState({ players: [makeInvestigator({ name: '亨利' })], currentScene: 'S01' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B03 = 'active';
+    state.scenarioProgress.beatStates.B04 = 'active';
+    state.scenarioProgress.beatStates.B05 = 'active';
+    state.scenarioProgress.knownFactIds = ['F05', 'F06'];
+    state.scenarioProgress.variables.oldHethLead = true;
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [{ player: '亨利', action: '原地整理刚才的记录。' }]
+    });
+
+    expect(output.legacyResponse.playerChoices?.亨利).toContain('前往卡森其药店继续调查');
+  });
+
   it('uses authored pre-roll narration without calling the model for a scenario check', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);

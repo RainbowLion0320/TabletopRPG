@@ -103,7 +103,13 @@ function buildSemanticFallbackChoices(
   activeNpcName: string | null,
   progress = getScenarioProgressForState(state)
 ): Record<string, string[]> {
-  const exits = getAvailableSceneExits(progress, sceneId);
+  const campaignBeat = getActiveScenarioBeat(progress);
+  const exits = getAvailableSceneExits(progress, sceneId)
+    .sort((left, right) => {
+      const leftIsCurrentTarget = Number(campaignBeat?.sceneIds.includes(left.sceneId) ?? false);
+      const rightIsCurrentTarget = Number(campaignBeat?.sceneIds.includes(right.sceneId) ?? false);
+      return rightIsCurrentTarget - leftIsCurrentTarget;
+    });
   const destinations = exits.flatMap((exit) => {
     const scene = kb.scenes[exit.sceneId]?.public;
     return scene ? [`前往${scene.name}继续调查`] : [];
@@ -129,6 +135,20 @@ function buildSemanticFallbackChoices(
       '整理已经发现的线索，决定下一步行动'
     ].filter((choice, choiceIndex, all) => all.indexOf(choice) === choiceIndex).slice(0, 3)];
   }));
+}
+
+function actionsUseVisibleSuggestions(state: GameState, actions: PlayerAction[]): boolean {
+  const normalize = (value: string) => value.replace(/\s+/g, '').replace(/[。！？]+$/g, '');
+  const declarations = actions.filter((action) => !/【检定结果】/.test(action.action));
+  if (!declarations.length) return false;
+  return declarations.every((action) => {
+    const player = state.players.find((candidate) => candidate.name === action.player);
+    const visible = player
+      ? state.suggestionsByPlayerId[player.id] ?? state.suggestions
+      : state.suggestions;
+    const selected = normalize(action.action);
+    return visible.some((suggestion) => normalize(suggestion) === selected);
+  });
 }
 
 function getCompletedTurnCount(state: GameState): number {
@@ -686,11 +706,14 @@ export async function runDmTurn(
               ? '这次交涉检定未能奏效；调查员仍须依据当前有效目标继续处理交涉。'
               : '交涉仍在继续，调查员需要先听懂对方诉求，再说服其释放埃里克。'
           : '';
+      const followedVisibleSuggestions = actionsUseVisibleSuggestions(input.state, input.actions);
       const narrative = eventNarrative || finaleNarrative || (changedScene
         ? `你们已经抵达${sceneName}。声明中的其他新信息无法由现有证据确认，只能依据已经确认的线索继续调查。`
         : activeNpcName
           ? `${activeNpcName}没有提供更多可核实的信息。你们仍在${sceneName}，只能依据已经确认的线索继续调查。`
-          : `声明中的新信息无法由现有证据确认。你们仍在${sceneName}，可以换一种调查方式或核对已知线索。`);
+          : followedVisibleSuggestions
+            ? `你们按刚才选定的方式继续行动，暂时没有发现可核实的新线索。你们仍在${sceneName}，可以继续调查。`
+            : `这次行动暂时没有带来可核实的新线索。你们仍在${sceneName}，可以换一种调查方式。`);
       const playerChoices = buildSemanticFallbackChoices(
         input.state,
         kb,
