@@ -483,14 +483,36 @@ export async function runDmTurn(
 
   // 0) 意图分类（规则版）
   const intent = classifyIntent(input.actions);
-  const directorCtx = { state: input.state, kb, actions: input.actions };
-  const allowed = allowedTools(directorCtx, { intent, mode: input.state.exploreMode });
-  const inferredSceneCall = allowed.includes('propose_scene_change')
-    ? inferSceneChangeFromActions(input.actions, input.state, kb)
-    : null;
+  const baseDirectorCtx = { state: input.state, kb, actions: input.actions };
+  const allowed = allowedTools(baseDirectorCtx, { intent, mode: input.state.exploreMode });
   const inferredStoryCalls = inferStoryEventsFromActions(input.actions, input.state, kb);
-  const hasAuthoritativeTransition = Boolean(inferredSceneCall || inferredStoryCalls.length);
   const requiredCheck = buildRequiredCheck(input.actions, input.state);
+  const progressBefore = getScenarioProgressForState(input.state);
+  const storyPreview = !requiredCheck && inferredStoryCalls.length
+    ? processScenarioTurn(progressBefore, {
+        currentScene: input.state.currentScene,
+        storyEventIds: inferredStoryCalls.map((call) => String(call.arguments.eventId ?? '')),
+        turn: currentTurn,
+        completeTurn: false,
+        actorName: inferStoryEventActor(
+          input.actions,
+          input.state,
+          String(inferredStoryCalls[0]?.arguments.eventId ?? ''),
+          kb
+        ) ?? input.actions[input.actions.length - 1]?.player
+      })
+    : null;
+  const sceneInferenceState = storyPreview
+    ? { ...input.state, scenarioProgress: storyPreview.progress }
+    : input.state;
+  const inferredSceneCall = allowed.includes('propose_scene_change')
+    ? inferSceneChangeFromActions(input.actions, sceneInferenceState, kb)
+    : null;
+  const directorCtx = {
+    ...baseDirectorCtx,
+    scenarioProgressForSceneValidation: storyPreview?.progress
+  };
+  const hasAuthoritativeTransition = Boolean(inferredSceneCall || inferredStoryCalls.length);
   if (requiredCheck) {
     const targetSceneId = inferredSceneCall
       ? String(inferredSceneCall.arguments.targetSceneId) as SceneId
@@ -540,7 +562,6 @@ export async function runDmTurn(
       timings
     };
   }
-  const progressBefore = getScenarioProgressForState(input.state);
   const availableEvents = new Map(
     getAvailableStoryEvents(progressBefore, input.state.currentScene).map((event) => [event.id, event])
   );

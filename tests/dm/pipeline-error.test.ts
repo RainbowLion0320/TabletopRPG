@@ -228,6 +228,57 @@ describe('runDmTurn error classification', () => {
     expect(next.scenarioProgress?.clocks.fusangEscape.value).toBe(3);
   });
 
+  it('settles a source clue and its newly unlocked travel in one real turn', async () => {
+    const response = JSON.stringify({
+      narrative: '酒保收下酒钱，明确指出“老鼠”在贝尔街14号废弃药店出没。你们随即抵达药店后门。',
+      activeNpc: null,
+      nextPrompt: '药店后门已经敞开，下一步怎么做？',
+      playerChoices: {
+        亨利: ['进入药店调查'],
+        罗伯特: ['警戒后门']
+      },
+      keywords: []
+    });
+    const fetchMock = vi.fn(async () => jsonResponse(response));
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' }), makeInvestigator({ name: '罗伯特' })],
+      currentScene: 'S03',
+      activeNpcName: '老赫特之家酒保'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B04 = 'active';
+    state.scenarioProgress.objectiveStates.O04 = 'active';
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [
+        { player: '亨利', action: '给酒保酒钱，请他说明“老鼠”和贝尔街14号的确切关系。' },
+        { player: '罗伯特', action: '根据酒保刚确认的地址，立即与亨利一起前往卡森其药店。' }
+      ]
+    });
+
+    expect(countNarratorRequests(fetchMock)).toBe(1);
+    expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_BARTENDER_RAT');
+    expect(output.legacyResponse.stateUpdate?.sceneChange).toBe('S04');
+
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: output.legacyResponse,
+      raw: output.raw,
+      actorName: output.actorName
+    });
+    expect(next.currentScene).toBe('S04');
+    expect(next.scenarioProgress?.knownFactIds).toContain('F08');
+    expect(next.scenarioProgress?.firedEventIds).toEqual(expect.arrayContaining([
+      'EV_BARTENDER_RAT',
+      'EV_S04_FOG'
+    ]));
+    expect(next.players.every((player) => player.currentSan === player.san - 1)).toBe(true);
+  });
+
   it('falls back immediately when clue narration disagrees with an authored failure event', async () => {
     const narrative = JSON.stringify({
       narrative: '尽管亨利没能判断便签上笔触是否异常，他仍看清了桌面上那张写有“别来找我”的字条。',

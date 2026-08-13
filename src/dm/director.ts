@@ -37,6 +37,7 @@ export interface DirectorContext {
   state: GameState;
   kb: KnowledgeBase;
   actions?: Array<{ action: string }>;
+  scenarioProgressForSceneValidation?: GameState['scenarioProgress'];
 }
 
 export interface AllowedToolsOptions {
@@ -162,7 +163,8 @@ function validateSceneChange(call: DmToolCall, ctx: DirectorContext): SemanticRe
     return { ok: false, reason: `propose_scene_change.targetSceneId 不存在：${target}` };
   }
   if (target === ctx.state.currentScene) return { ok: true };
-  const reachable = getAvailableSceneExits(getScenarioProgressForState(ctx.state), ctx.state.currentScene).map((exit) => exit.sceneId);
+  const progress = ctx.scenarioProgressForSceneValidation ?? getScenarioProgressForState(ctx.state);
+  const reachable = getAvailableSceneExits(progress, ctx.state.currentScene).map((exit) => exit.sceneId);
   if (!reachable.includes(target as SceneId)) {
     return { ok: false, reason: `${target} 不是 ${ctx.state.currentScene} 的邻接场景` };
   }
