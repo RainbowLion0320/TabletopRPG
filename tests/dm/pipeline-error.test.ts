@@ -106,4 +106,33 @@ describe('runDmTurn error classification', () => {
     expect(output.legacyResponse?.narrative).toContain('仍在摩勒住宅');
     expect(output.legacyResponse?.stateUpdate?.sceneChange).toBeNull();
   });
+
+  it('keeps fallback narration and NPC synchronized with an accepted scene change', async () => {
+    const unsupportedClaim = JSON.stringify({
+      narrative: '你们抵达卡森其药店，发现埃里克脸上有伤，手一直在发抖。',
+      activeNpc: '老赫特之家酒保',
+      nextPrompt: '追问酒保。',
+      playerChoices: { 亨利: ['追问酒保'] }
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(unsupportedClaim)));
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' })],
+      currentScene: 'S03',
+      activeNpcName: '老赫特之家酒保'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.knownFactIds = ['F08'];
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [{ player: '亨利', action: '离开酒吧，立即前往卡森其药店。' }]
+    });
+
+    expect(output.legacyResponse.stateUpdate?.sceneChange).toBe('S04');
+    expect(output.legacyResponse.activeNpc).toBeNull();
+    expect(output.legacyResponse.narrative).toContain('已经抵达卡森其药店');
+    expect(output.legacyResponse.narrative).not.toContain('仍在老赫特酒吧');
+    expect(output.legacyResponse.narrative).not.toContain('老赫特之家酒保');
+    expect(output.legacyResponse.playerChoices?.亨利).not.toContain('请老赫特之家酒保只核对已经确认的事实');
+  });
 });

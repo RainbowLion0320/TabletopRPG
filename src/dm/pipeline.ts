@@ -16,7 +16,11 @@ import { AiResponseFormatError, type PlayerAction } from '../services/aiDm';
 import { countCompletedGameTurns, getDmRequestTurn } from '../services/turns';
 import { storyData } from '../data/storyData';
 import { caseBoard as caseBoardDefinition } from '../data/scenarios/wuzhongxiaoshi';
-import { npcIdFromName } from '../scenario/engine';
+import {
+  getAvailableSceneExits,
+  getScenarioProgressForState,
+  npcIdFromName
+} from '../scenario/engine';
 import { buildDmContext } from './contextBuilder';
 import {
   computeRevealedSecretIds,
@@ -85,6 +89,32 @@ function devWarn(message: string, err: unknown): void {
 function pickSpotlightPlayer(actions: PlayerAction[]): string | null {
   if (actions.length === 1) return actions[0].player;
   return null;
+}
+
+function buildSemanticFallbackChoices(
+  state: GameState,
+  kb: ReturnType<typeof getActiveKnowledgeBase>,
+  sceneId: SceneId,
+  activeNpcName: string | null
+): Record<string, string[]> {
+  const exits = getAvailableSceneExits(getScenarioProgressForState(state), sceneId);
+  const destinations = exits.flatMap((exit) => {
+    const scene = kb.scenes[exit.sceneId]?.public;
+    return scene ? [`前往${scene.name}继续调查`] : [];
+  });
+  const localAction = activeNpcName
+    ? `请${activeNpcName}只核对已经确认的事实`
+    : '继续观察当前环境';
+  return Object.fromEntries(state.players.map((player, index) => {
+    const orderedDestinations = destinations.length
+      ? [...destinations.slice(index), ...destinations.slice(0, index)]
+      : [];
+    return [player.name, [
+      ...orderedDestinations,
+      localAction,
+      '整理已经发现的线索，决定下一步行动'
+    ].filter((choice, choiceIndex, all) => all.indexOf(choice) === choiceIndex).slice(0, 3)];
+  }));
 }
 
 function getCompletedTurnCount(state: GameState): number {
@@ -541,14 +571,30 @@ export async function runDmTurn(
     });
   } catch (err) {
     if (err instanceof NarratorSemanticError) {
-      const sceneName = kb.scenes[input.state.currentScene]?.public.name ?? input.state.currentScene;
-      const narrative = `你们尝试执行声明的行动，但当前信息不足以确认新的地点或剧情结果。你们仍在${sceneName}，可以换一种调查方式或核对已知线索。`;
+      const projectedScene = inferredSceneCall
+        ? String(inferredSceneCall.arguments.targetSceneId) as SceneId
+        : input.state.currentScene;
+      const sceneName = kb.scenes[projectedScene]?.public.name ?? projectedScene;
+      const changedScene = projectedScene !== input.state.currentScene;
+      const activeNpcName = resolveActiveNpcForScene({
+        previousScene: input.state.currentScene,
+        nextScene: projectedScene,
+        previousActiveNpc: input.state.activeNpcName,
+        requestedActiveNpc: changedScene ? null : input.state.activeNpcName,
+        requestedActiveNpcProvided: true
+      });
+      const narrative = changedScene
+        ? `你们已经抵达${sceneName}。声明中的其他新信息无法由现有证据确认，只能依据已经确认的线索继续调查。`
+        : activeNpcName
+          ? `${activeNpcName}没有提供更多可核实的信息。你们仍在${sceneName}，只能依据已经确认的线索继续调查。`
+          : `声明中的新信息无法由现有证据确认。你们仍在${sceneName}，可以换一种调查方式或核对已知线索。`;
+      const playerChoices = buildSemanticFallbackChoices(input.state, kb, projectedScene, activeNpcName);
       narrator = {
-        raw: JSON.stringify({ narrative, activeNpc: input.state.activeNpcName, nextPrompt: '请根据当前目标继续行动。', playerChoices: {} }),
+        raw: JSON.stringify({ narrative, activeNpc: activeNpcName, nextPrompt: '下一步要从哪条已确认线索着手？', playerChoices }),
         narrative,
-        activeNpc: input.state.activeNpcName,
-        nextPrompt: '请根据当前目标继续行动。',
-        playerChoices: {},
+        activeNpc: activeNpcName,
+        nextPrompt: '下一步要从哪条已确认线索着手？',
+        playerChoices,
         keywords: [],
         toolCalls: [],
         usedFunctionCalling: false

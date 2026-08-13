@@ -66,6 +66,9 @@ function hasAffirmativeMatch(text: string, pattern: RegExp): boolean {
   for (const match of text.matchAll(matcher)) {
     const prefix = text.slice(0, match.index ?? 0).slice(-12);
     if (/不得不[^，。；！？\n]{0,4}$/.test(prefix)) return true;
+    if (/(?:询问|追问|问|确认|说明|调查|判断|回忆|是否|有没有|有无|曾否|是不是|是不是曾)[^，。；！？\n]{0,10}$/.test(prefix)) {
+      continue;
+    }
     if (/(?:不|未|没有|并未|并不|不要|不再|暂不|暂缓|停止|避免|放弃|拒绝|无意|不想)[^，。；！？\n]{0,6}$/.test(prefix)) {
       continue;
     }
@@ -174,6 +177,22 @@ function sceneTerms(kb: KnowledgeBase, sceneId: SceneId): string[] {
   return scene ? [scene.id, scene.name, ...(scene.aliases ?? [])] : [];
 }
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function framesForeignSceneAsCurrent(text: string, terms: string[]): boolean {
+  return terms.some((term) => {
+    if (!term || term.length < 2) return false;
+    const escaped = escapeRegex(term);
+    return new RegExp(
+      `(?:仍在|正在|身处|留在|待在|站在|坐在|回到|进入|走进|来到|抵达|到达|赶到)[^。；！？\\n]{0,12}${escaped}`
+      + `|${escaped}(?:里|内|中|外|门口|门廊|大厅|办公室|吧台|柜台|后厅)[^。；！？\\n]{0,24}(?:仍|正|有|坐|站|走|聚|传来|响起|闲聊|说话)`,
+      'i'
+    ).test(text);
+  });
+}
+
 function sceneNpcTerms(kb: KnowledgeBase, sceneId: SceneId): string[] {
   return (kb.scenes[sceneId]?.public.npcs ?? []).flatMap((name) => {
     const npc = kb.npcs[name]?.public;
@@ -193,6 +212,10 @@ function unavailableNpcRole(text: string, kb: KnowledgeBase, sceneId: SceneId, d
 }
 
 function explicitlyRequestsMove(text: string) {
+  if (
+    /(?:本轮|这轮|现在|目前|暂时)[^，。；！？\n]{0,12}(?:不动身|不出发|不离开|不前往|不去)/.test(text)
+    || /(?:留在|待在|停留在)[^，。；！？\n]{0,32}(?:只讨论|不动身|不出发|不离开|不前往|不去)/.test(text)
+  ) return false;
   if (movementIsOnlyDiscussed(text)) return false;
   if (MOVE_VERB_RE.test(text)) return true;
   if (!/去/.test(text)) return false;
@@ -200,7 +223,7 @@ function explicitlyRequestsMove(text: string) {
 }
 
 function movementIsOnlyDiscussed(text: string): boolean {
-  return /(?:提醒|建议|询问|商量|考虑|计划|打算)[^，。；！？\n]{0,18}(?:前往|赶往|去往|出发|动身|返回|离开|抵达|到达)/.test(text);
+  return /(?:提醒|建议|询问|商量|考虑|计划|打算|准备|讨论|提议)[^，。；！？\n]{0,18}(?:前往|赶往|去往|出发|动身|返回|离开|抵达|到达)/.test(text);
 }
 
 function sceneMentionFollowsDestinationVerb(text: string, terms: string[]): boolean {
@@ -459,6 +482,58 @@ function eventAuthorizesOutcome(
   });
 }
 
+const PLOT_CLAIM_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
+  {
+    label: '人物身份或背景',
+    pattern: /(?:老鼠|埃里克|蒙特利尔)[^。；！？\n]{0,32}(?:东欧口音|瘦子|走私者|帮派成员|船员|水手|毒贩)/
+  },
+  {
+    label: '犯罪、交易或胁迫关系',
+    pattern: /(?:老鼠|埃里克|蒙特利尔)[^。；！？\n]{0,40}(?:运过.{0,6}货|运输|走私|贩卖|交易|生意往来|同伙|绑架|雇佣|指使|收买|勾连|翻脸|不肯放手|不想干|退出)/
+  },
+  {
+    label: '人物伤情',
+    pattern: /(?:埃里克|他)[^。；！？\n]{0,48}(?:受伤|有伤|带伤|伤痕|淤青|青肿|嘴角.{0,4}肿|伤口|流血|骨折|手(?:一直|不停|不断)?(?:在)?(?:抖|发抖|颤抖))/
+  },
+  {
+    label: '未确认的威胁经历',
+    pattern: /(?:埃里克[^。；！？\n]{0,32})?(?:被人盯上|遭人跟踪|被追杀|遭到殴打)/
+  },
+  {
+    label: '线索中的路线或设施细节',
+    pattern: /(?:地图|笔记)[^。；！？\n]{0,96}(?:泊位编号|仓库(?:布局|排列|分布)|绕过海关|海关检查站|秘密路线|逃生路线)/
+  },
+  {
+    label: '未解锁的日期或行动时刻',
+    pattern: /(?:地图|笔记|扶桑花号)[^。；！？\n]{0,96}(?:7月14日|子时|午夜|开船时间|离港时间)/
+  }
+];
+
+function authoredNarrativeCorpus(
+  state: GameState,
+  proposedEvents: ReturnType<typeof getAvailableStoryEvents>
+): string {
+  const definition = getScenarioDefinition();
+  const progress = getScenarioProgressForState(state);
+  const factById = new Map(definition.world.facts.map((fact) => [fact.id, fact.statement]));
+  return [
+    ...progress.knownFactIds.flatMap((id) => factById.get(id) ?? []),
+    ...proposedEvents.map((event) => event.narrativeCue)
+  ].join('\n');
+}
+
+function unsupportedPlotClaim(
+  narrative: string,
+  authority: string
+): string | null {
+  for (const { label, pattern } of PLOT_CLAIM_PATTERNS) {
+    if (pattern.test(narrative) && !pattern.test(authority)) {
+      return `不得用自由叙事创造未获作者授权的${label}`;
+    }
+  }
+  return null;
+}
+
 export function validateNarratorSemantics(
   output: { narrative: string; activeNpc?: string | null; nextPrompt: string; playerChoices: Record<string, string[]> },
   toolCalls: DmToolCall[],
@@ -591,8 +666,10 @@ export function validateNarratorSemantics(
   if (/ICU|重症监护室|床旁心电监护|防化服|特警队/.test(allText)) {
     return `叙事必须符合${kb.era}，不得出现时代错误的设备或机构`;
   }
-  if (/\b\d{1,2}[:：]\d{2}\b|(?:凌晨|上午|下午|晚上|夜里)\s*\d{1,2}\s*点/.test(allText)) {
-    return '权威状态没有世界时钟，不得编造精确钟点';
+  if (
+    /\b\d{1,2}[:：]\d{2}\b|(?:凌晨|上午|中午|下午|傍晚|晚上|夜里)?\s*(?:[零一二两三四五六七八九十]{1,3}|\d{1,2})\s*(?:点(?:半|一刻|三刻)?|时整)|钟(?:声)?(?:敲|响)(?:了)?(?:[零一二两三四五六七八九十]{1,3}|\d{1,2})(?:下|声)|(?:子时|午夜|正午)/.test(allText)
+  ) {
+    return '不得在自由叙事中复述精确钟点；世界时钟由规则结算并以界面世界时间为准';
   }
   if (/(?:抵达|到达|进入|来到|赶到)[^。；\n]{0,12}(?:医院|仓库|教堂|洞穴)/.test(output.narrative)) {
     return '不得把知识库外地点叙述为已经抵达的新主场景';
@@ -629,6 +706,11 @@ export function validateNarratorSemantics(
   if (inventedSpeaker) {
     return `当前场景没有已登记的${inventedSpeaker}，不得让未授权 NPC 参与对话`;
   }
+  const plotClaimIssue = unsupportedPlotClaim(
+    output.narrative,
+    authoredNarrativeCorpus(state, proposedEvents)
+  );
+  if (plotClaimIssue) return plotClaimIssue;
   const unknownVenueArrival = output.narrative.match(
     /(?:抵达|到达|进入|来到|赶到|回到|走进|拜访)[^。；！？\n]{0,16}(?:贸易行|事务所|诊所|商店|旅馆|餐馆)/
   )?.[0];
@@ -646,6 +728,9 @@ export function validateNarratorSemantics(
     const mentionsScene = sceneTerms(kb, sceneId).some((term) => output.narrative.includes(term));
     if (mentionsScene && /抵达|到达|进入|来到|赶到|回到/.test(output.narrative)) {
       return `叙事声称抵达${entry.public.name}，但没有对应的合法场景切换`;
+    }
+    if (framesForeignSceneAsCurrent(output.narrative, sceneTerms(kb, sceneId))) {
+      return `叙事把${entry.public.name}写成当前环境，但没有对应的合法场景切换`;
     }
   }
   return null;

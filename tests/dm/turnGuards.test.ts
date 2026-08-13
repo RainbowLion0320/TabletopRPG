@@ -56,6 +56,22 @@ describe('turnGuards', () => {
     ], state)).toBeNull();
   });
 
+  it('does not treat questions about past violence as a combat action', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' }, { '格斗（拳）': 50 })],
+      currentScene: 'S03'
+    });
+
+    expect(buildRequiredCheck([{
+      player: '亨利',
+      action: '请酒保说明埃里克是否曾被老鼠殴打，以及他有没有受伤。'
+    }], state)).toBeNull();
+    expect(buildRequiredCheck([{
+      player: '亨利',
+      action: '亨利挥拳攻击并试图制服眼前的暴徒。'
+    }], state)).toEqual(expect.objectContaining({ skill: '格斗（拳）' }));
+  });
+
   it('does not make legal travel depend on a risky follow-up observation', () => {
     const state = makeState({
       players: [
@@ -160,6 +176,34 @@ describe('turnGuards', () => {
     }));
     expect(inferSceneChangeFromActions([
       { player: '亨利', action: '我们暂不去警局。' }
+    ], state, kb)).toBeNull();
+  });
+
+  it('does not move when players only prepare to visit an unlocked destination', () => {
+    const state = makeState({ currentScene: 'S03' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.knownFactIds = ['F08'];
+
+    expect(inferSceneChangeFromActions([{
+      player: '艾达',
+      action: '不再追问未经证实的伤情，只根据已确认的贝尔街14号线索与亨利准备前往药店。'
+    }], state, kb)).toBeNull();
+  });
+
+  it('does not move when players explicitly stay and only discuss a later return', () => {
+    const state = makeState({ currentScene: 'S04' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.knownFactIds = ['F08', 'F09'];
+
+    expect(inferSceneChangeFromActions([
+      {
+        player: '亨利',
+        action: '留在卡森其药店检查地图上的港口标记，只讨论以后是否返回酒吧，本轮不动身。'
+      },
+      {
+        player: '艾达',
+        action: '同意留在卡森其药店，继续核对地图与当前药店环境，不前往任何其他地点。'
+      }
     ], state, kb)).toBeNull();
   });
 
@@ -325,12 +369,66 @@ describe('turnGuards', () => {
     expect(validateNarratorSemantics({
       narrative: '晚上10点，调查员决定继续行动。', nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/世界时钟/);
+    expect(validateNarratorSemantics({
+      narrative: '吧台后的老钟敲了六下，已是傍晚六点。', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/世界时间/);
 
     const repeated = '雨水敲打窗户，亨利检查桌面，艾达站在门边警戒，屋内没有出现新的变化。';
     state.messages = [{ id: 'old', type: 'dm', text: repeated }];
     expect(validateNarratorSemantics({
       narrative: repeated, nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/高度重复/);
+  });
+
+  it('rejects treating a merely discussed destination as the current environment', () => {
+    const state = makeState({ currentScene: 'S04', activeNpcName: null, clueIds: ['I07'] });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.knownFactIds = ['F08', 'F09'];
+
+    expect(validateNarratorSemantics({
+      narrative: '两人铺开地图核对港口标记。老赫特酒吧里酒客们仍在低声闲聊，吧台后的老钟缓缓走着。',
+      activeNpc: null,
+      nextPrompt: '是否继续整理地图？',
+      playerChoices: {}
+    }, [], state, kb)).toMatch(/当前环境/);
+
+    expect(validateNarratorSemantics({
+      narrative: '两人在卡森其药店核对地图，准备稍后返回老赫特酒吧，但现在不动身。',
+      activeNpc: null,
+      nextPrompt: '是否继续整理地图？',
+      playerChoices: {}
+    }, [], state, kb)).toBeNull();
+  });
+
+  it('rejects unauthorised schedule and route details invented for a known clue', () => {
+    const state = makeState({ currentScene: 'S04', activeNpcName: null, clueIds: ['I07'] });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.knownFactIds = ['F08', 'F09'];
+
+    expect(validateNarratorSemantics({
+      narrative: '地图角落写着扶桑花号将在7月14日开船。',
+      activeNpc: null,
+      nextPrompt: '下一步怎么办？',
+      playerChoices: {}
+    }, [], state, kb)).toMatch(/日期|行动时刻/);
+    expect(validateNarratorSemantics({
+      narrative: '地图标出了泊位编号、仓库布局和一条绕过海关检查站的路线。',
+      activeNpc: null,
+      nextPrompt: '下一步怎么办？',
+      playerChoices: {}
+    }, [], state, kb)).toMatch(/路线或设施/);
+    expect(validateNarratorSemantics({
+      narrative: '潮湿的地图笔记标出扶桑花号泊位，仓库排列清晰可辨。',
+      activeNpc: null,
+      nextPrompt: '下一步怎么办？',
+      playerChoices: {}
+    }, [], state, kb)).toMatch(/路线或设施/);
+    expect(validateNarratorSemantics({
+      narrative: '地图笔记标出了泰晤士港扶桑花号的停泊位置。',
+      activeNpc: null,
+      nextPrompt: '下一步怎么办？',
+      playerChoices: {}
+    }, [], state, kb)).toBeNull();
   });
 
   it('rejects invented addresses, numbered warehouses, items, and affiliations', () => {
@@ -430,7 +528,7 @@ describe('turnGuards', () => {
     }, [{ name: 'propose_story_event', arguments: { eventId: 'EV_FIND_I01' } }], state, kb)).toBeNull();
   });
 
-  it('allows an authored NPC role to speak in its declared scene', () => {
+  it('allows an authored NPC to repeat non-authoritative local color and known leads', () => {
     const state = makeState({ currentScene: 'S03', activeNpcName: '老赫特之家酒保' });
 
     expect(validateNarratorSemantics({
@@ -439,5 +537,41 @@ describe('turnGuards', () => {
       nextPrompt: '还要继续追问吗？',
       playerChoices: {}
     }, [], state, kb)).toBeNull();
+
+    expect(validateNarratorSemantics({
+      narrative: '酒保摇头：“关于老鼠，我不知道更多，也不敢胡乱猜测。”',
+      activeNpc: '老赫特之家酒保',
+      nextPrompt: '是否前往已知地点？',
+      playerChoices: {}
+    }, [], state, kb)).toBeNull();
+  });
+
+  it('rejects unsupported identity, criminal relationship, injury, and threat claims', () => {
+    const state = makeState({ currentScene: 'S03', activeNpcName: '老赫特之家酒保' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B04 = 'active';
+    state.scenarioProgress.variables.oldHethLead = true;
+
+    const event = [{ name: 'propose_story_event', arguments: { eventId: 'EV_BARTENDER_RAT' } }] as const;
+    expect(validateNarratorSemantics({
+      narrative: '酒保指出贝尔街14号的废弃药店，又说：“老鼠是个东欧口音的瘦子，埃里克替他运过几次货，后来不想干了。”',
+      activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
+    }, [...event], state, kb)).toMatch(/人物身份|犯罪、交易/);
+    expect(validateNarratorSemantics({
+      narrative: '酒保先指出贝尔街14号的废弃药店，又说埃里克脸上有淤青，嘴角肿着，像是被人盯上了。',
+      activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
+    }, [...event], state, kb)).toMatch(/伤情|威胁经历/);
+    expect(validateNarratorSemantics({
+      narrative: '酒保说：“我只知道他脸上有伤，手在发抖。”',
+      activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/伤情/);
+
+    const opening = makeState({ currentScene: 'S01' });
+    expect(validateNarratorSemantics({
+      narrative: '伊莎贝拉说埃里克参与毒品运输，后来被同伙绑架。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}
+    }, [], opening, kb)).toMatch(/犯罪、交易/);
   });
 });

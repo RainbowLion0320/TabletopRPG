@@ -315,7 +315,10 @@ export function buildDmContext(
     : wm;
   const scenarioDefinition = getScenarioDefinition();
   const scenarioProgress = getScenarioProgressForState(state);
-  const activeBeat = getActiveScenarioBeat(scenarioProgress);
+  // A later beat may already be unlocked before the party enters its scene.
+  // Do not expose that beat's DM facts while they are still wrapping up the
+  // previous location.
+  const activeBeat = getActiveScenarioBeat(scenarioProgress, state.currentScene);
   const activeAct = scenarioDefinition.progression.acts.find((act) => act.id === scenarioProgress.activeActId);
   const factsById = new Map(scenarioDefinition.world.facts.map((fact) => [fact.id, fact]));
   const dmFactIds = new Set([

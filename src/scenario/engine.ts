@@ -518,9 +518,12 @@ export function getAvailableStoryEvents(progress: ScenarioProgress, currentScene
   );
 }
 
-export function getActiveScenarioBeat(progress: ScenarioProgress) {
+export function getActiveScenarioBeat(progress: ScenarioProgress, currentScene?: SceneId) {
   return scenario.progression.beats
-    .filter((beat) => progress.beatStates[beat.id] === 'active')
+    .filter((beat) =>
+      progress.beatStates[beat.id] === 'active'
+      && (!currentScene || beat.sceneIds.includes(currentScene))
+    )
     .sort((left, right) => {
       const leftAct = scenario.progression.acts.find((act) => act.id === left.actId)?.order ?? 0;
       const rightAct = scenario.progression.acts.find((act) => act.id === right.actId)?.order ?? 0;

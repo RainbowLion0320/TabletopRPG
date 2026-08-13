@@ -101,6 +101,24 @@ describe('contextBuilder', () => {
     ]));
   });
 
+  it('does not expose an unlocked future beat before entering its scene', () => {
+    const state = makeState({ currentScene: 'S03' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.activeActId = 'A02';
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B04 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'active';
+    state.scenarioProgress.knownFactIds = ['F08'];
+
+    const ctx = buildDmContext(state, kb, { mode: 'together' });
+    expect(ctx.dynamic.scenario.beatTitle).toBe('');
+    expect(ctx.dynamic.scenario.dmFacts).toEqual([
+      '老赫特酒保掌握“老鼠”线索，可提供贝尔街方向。'
+    ]);
+    expect(ctx.dynamic.scenario.dmFacts.join('\n')).not.toContain('深潜者');
+  });
+
   it('exposes summary from state when not overridden', () => {
     const state = makeState();
     state.longTermMemorySummary = 'previous summary';
