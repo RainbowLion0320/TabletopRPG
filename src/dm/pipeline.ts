@@ -489,6 +489,7 @@ export async function runDmTurn(
     ? inferSceneChangeFromActions(input.actions, input.state, kb)
     : null;
   const inferredStoryCalls = inferStoryEventsFromActions(input.actions, input.state, kb);
+  const hasAuthoritativeTransition = Boolean(inferredSceneCall || inferredStoryCalls.length);
   const requiredCheck = buildRequiredCheck(input.actions, input.state);
   if (requiredCheck) {
     const targetSceneId = inferredSceneCall
@@ -702,10 +703,14 @@ export async function runDmTurn(
         kb,
         input.actions
       ),
+      recoveryMode: hasAuthoritativeTransition ? 'authoritative-fallback' : 'standard',
       signal: input.signal
     });
   } catch (err) {
-    if (err instanceof NarratorSemanticError) {
+    if (
+      err instanceof NarratorSemanticError
+      || (hasAuthoritativeTransition && err instanceof NarratorError)
+    ) {
       const projectedScene = inferredSceneCall
         ? String(inferredSceneCall.arguments.targetSceneId) as SceneId
         : input.state.currentScene;

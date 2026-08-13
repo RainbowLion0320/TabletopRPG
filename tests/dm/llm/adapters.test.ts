@@ -219,4 +219,37 @@ describe('LLM provider adapters', () => {
     expect(result.finishReason).toBe('stop');
     expect(result.rawText).toBe('{"narrative":"complete"}');
   });
+
+  it('does not retry an aborted response when an authored fallback is available', async () => {
+    const config: ApiConfig = {
+      provider: 'mimo',
+      protocol: 'chat-completions',
+      endpoint: 'https://gateway.test/v1',
+      apiKey: 'unit-key',
+      model: 'gateway-model'
+    };
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      choices: [{
+        finish_reason: 'abort',
+        message: { role: 'assistant', content: '{"narrative":"partial' }
+      }]
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await generateJson(config, {
+      label: 'unit',
+      instructions: 'system prompt',
+      input: [{ role: 'user', content: 'hello' }],
+      schemaName: 'unit_response',
+      schema,
+      retryOnAbort: false
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.finishReason).toBe('abort');
+    expect(result.rawText).toBe('{"narrative":"partial');
+  });
 });

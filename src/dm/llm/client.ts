@@ -14,11 +14,12 @@ export async function generateJson(
   request: LlmJsonRequest
 ): Promise<LlmResult> {
   const resolved = resolveRuntimeConfig(config);
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  const maxAttempts = request.retryOnAbort === false ? 1 : 2;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const result = resolved.protocol === 'responses'
       ? await requestResponsesJson(resolved, request)
       : await requestChatCompletionsJson(resolved, request);
-    if (result.finishReason !== 'abort' || attempt === 1) return result;
+    if (result.finishReason !== 'abort' || attempt === maxAttempts - 1) return result;
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
       console.warn(`[llm] ${request.label} provider aborted partial output; retrying once`);

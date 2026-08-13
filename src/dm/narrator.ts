@@ -614,6 +614,7 @@ async function requestNarrator(
   systemPrompt: string,
   inputItems: LlmInputItem[],
   options: NarratorRequestOptions,
+  retryOnAbort: boolean,
   signal?: AbortSignal
 ): Promise<RawNarratorPayload> {
   const result = await generateJson(config, {
@@ -625,6 +626,7 @@ async function requestNarrator(
     schema: NARRATOR_RESPONSE_SCHEMA,
     tools: options.tools ?? DM_TOOLS,
     useTools: options.useFunctionCalling !== false,
+    retryOnAbort,
     signal
   });
   return {
@@ -654,6 +656,8 @@ export interface CallNarratorInput {
     output: Pick<NarratorOutput, 'narrative' | 'activeNpc' | 'nextPrompt' | 'playerChoices' | 'keywords'>,
     toolCalls: DmToolCall[]
   ) => string | null;
+  /** Authored transitions already have a rule-owned fallback in the pipeline. */
+  recoveryMode?: 'standard' | 'authoritative-fallback';
   signal?: AbortSignal;
 }
 
@@ -735,14 +739,16 @@ export async function callNarrator(
   let lookupRoundsUsed = 0;
   let lastMalformedRaw = '';
   let semanticCorrection = '';
+  const maxAttempts = input.recoveryMode === 'authoritative-fallback' ? 1 : 2;
+  const retryOnAbort = input.recoveryMode !== 'authoritative-fallback';
 
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
       while (true) {
         const payload = await requestNarrator(config, systemPrompt, messages, {
           useFunctionCalling: useFnCall,
           tools
-        }, input.signal);
+        }, retryOnAbort, input.signal);
         const parsedCalls = parseResponseToolCalls(payload.rawToolCalls);
 
         // 检查是否仅 lookup_entity 且未产出 narrative：有 resolver 且轮数未超限则回填后重试。
@@ -796,7 +802,7 @@ export async function callNarrator(
           err instanceof Error ? err.message : err
         );
       }
-      if (attempt === 1) {
+      if (attempt === maxAttempts - 1) {
         throw err instanceof NarratorError
           ? err
           : new NarratorError('Narrator 连续返回无效格式');

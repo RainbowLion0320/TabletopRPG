@@ -57,6 +57,15 @@ function jsonResponseWithStoryEvent(content: string, eventId: string): Response 
   );
 }
 
+function countNarratorRequests(fetchMock: ReturnType<typeof vi.fn>): number {
+  return fetchMock.mock.calls.filter(([, init]) => {
+    const body = JSON.parse(String((init as RequestInit | undefined)?.body ?? '{}')) as {
+      text?: { format?: { name?: string } };
+    };
+    return body.text?.format?.name === 'narrator_response';
+  }).length;
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -178,7 +187,7 @@ describe('runDmTurn error classification', () => {
     expect(next.scenarioProgress?.clocks.fusangEscape.value).toBe(3);
   });
 
-  it('retries a failed clue roll until narration and the Director-approved failure event agree', async () => {
+  it('falls back immediately when clue narration disagrees with an authored failure event', async () => {
     const narrative = JSON.stringify({
       narrative: '尽管亨利没能判断便签上笔触是否异常，他仍看清了桌面上那张写有“别来找我”的字条。',
       activeNpc: '伊莎贝拉·摩勒',
@@ -186,8 +195,7 @@ describe('runDmTurn error classification', () => {
       playerChoices: { 亨利: ['记录便签'] }
     });
     const fetchMock = vi.fn()
-      .mockResolvedValueOnce(jsonResponseWithStoryEvent(narrative, 'EV_FIND_I01'))
-      .mockResolvedValueOnce(jsonResponseWithStoryEvent(narrative, 'EV_FAIL_I01'));
+      .mockResolvedValueOnce(jsonResponseWithStoryEvent(narrative, 'EV_FIND_I01'));
     vi.stubGlobal('fetch', fetchMock);
     const state = makeState({
       players: [makeInvestigator({ name: '亨利' })],
@@ -206,7 +214,7 @@ describe('runDmTurn error classification', () => {
       ]
     });
 
-    expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(countNarratorRequests(fetchMock)).toBe(1);
     expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_FAIL_I01');
     expect(output.legacyResponse.stateUpdate?.storyEventIds).not.toContain('EV_FIND_I01');
     expect(output.legacyResponse.narrative).toContain('别来找我');
@@ -434,7 +442,8 @@ describe('runDmTurn error classification', () => {
       nextPrompt: '带埃里克离开。',
       playerChoices: { 艾达: ['返回药店'] }
     });
-    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(invalidOutcome)));
+    const fetchMock = vi.fn(async () => jsonResponse(invalidOutcome));
+    vi.stubGlobal('fetch', fetchMock);
     const state = makeState({
       players: [makeInvestigator({ name: '艾达' })],
       currentScene: 'S05',
@@ -451,6 +460,7 @@ describe('runDmTurn error classification', () => {
       actions: [{ player: '艾达', action: '不使用武力，正式选择和平交涉路线。' }]
     });
 
+    expect(countNarratorRequests(fetchMock)).toBe(1);
     expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_CHOOSE_NEGOTIATION');
     expect(output.legacyResponse.activeNpc).toBe('扶桑花号交涉代表');
     expect(output.legacyResponse.narrative).toContain('暂缓攻击');

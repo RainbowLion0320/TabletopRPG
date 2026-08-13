@@ -40,6 +40,8 @@ export interface LlmJsonRequest {
   maxOutputTokens?: number;
   tools?: OpenAiTool[];
   useTools?: boolean;
+  /** Defaults to true. Authored turns can fail fast into deterministic narration. */
+  retryOnAbort?: boolean;
   signal?: AbortSignal;
 }
 
