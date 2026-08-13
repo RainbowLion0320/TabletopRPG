@@ -513,6 +513,20 @@ describe('turnGuards', () => {
     expect(response.stateUpdate?.san).toBeUndefined();
   });
 
+  it('assigns narrated harm only to the investigator named as injured', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '艾达' }), makeInvestigator({ name: '罗伯特' })]
+    });
+    const response = inferNarrativeConsequences({
+      narrative: '艾达的指尖被锈迹划出一道细痕，罗伯特仍在一旁照明。'
+    }, [
+      { player: '艾达', action: '尝试撬锁' },
+      { player: '罗伯特', action: '提供照明' }
+    ], state);
+
+    expect(response.stateUpdate?.hp).toEqual({ 艾达: -1 });
+  });
+
   it('removes suggestions that reveal undiscovered item names', () => {
     const result = sanitizePlayerChoices({
       亨利: ['检查白色粉末样品', '询问伊莎贝拉']
@@ -1024,6 +1038,13 @@ describe('turnGuards', () => {
 
     expect(validateNarratorSemantics({
       narrative: '艾达的工具滑脱。罗伯特接过工具，终于听见咔哒一声，门锁弹开。',
+      activeNpc: null,
+      nextPrompt: '',
+      playerChoices: {}
+    }, [], state, kb, actions)).toMatch(/不得让另一角色无检定接手/);
+
+    expect(validateNarratorSemantics({
+      narrative: '罗伯特用警棍抵住门锁一撬，老旧锁扣应声脱落，门板向内敞开。',
       activeNpc: null,
       nextPrompt: '',
       playerChoices: {}

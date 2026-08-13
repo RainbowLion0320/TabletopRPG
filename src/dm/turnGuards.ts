@@ -446,9 +446,19 @@ export function inferNarrativeConsequences(
   const hp = { ...(response.stateUpdate?.hp ?? {}) };
   const involved = new Set(actions.map((action) => action.player));
 
-  if (/中弹|被击中|受伤|流血|灼伤|划伤|骨折|剧痛/.test(narrative)) {
-    for (const player of state.players) {
-      if (involved.has(player.name) && hp[player.name] === undefined) mergeDelta(hp, player.name, -1);
+  const harmPattern = /中弹|被击中|受伤|流血|灼伤|划伤|划出(?:一道)?(?:伤口|血痕|细痕)|骨折|剧痛/;
+  if (harmPattern.test(narrative)) {
+    const harmClauses = narrative
+      .split(/[，。；！？\n]/)
+      .filter((clause) => harmPattern.test(clause));
+    const namedVictims = state.players.filter((player) =>
+      harmClauses.some((clause) => clause.includes(player.name))
+    );
+    const victims = namedVictims.length
+      ? namedVictims
+      : state.players.filter((player) => involved.has(player.name));
+    for (const player of victims) {
+      if (hp[player.name] === undefined) mergeDelta(hp, player.name, -1);
     }
   }
   return {
@@ -764,7 +774,7 @@ export function validateNarratorSemantics(
   const failedMechanicalCheck = actions.some((action) =>
     /【检定结果】[^。；！？\n]{0,80}的\s*机械维修\s*检定[^。；！？\n]{0,80}结果[：:]\s*(?:失败|大失败)/.test(action.action)
   );
-  const opensLockedEntry = /(?:门锁|锁具|锁芯)[^。；！？\n]{0,24}(?:弹开|打开|开启|解开|被撬开|成功撬开)|(?:成功|终于|顺利)[^。；！？\n]{0,20}(?:撬开|打开|开启)[^。；！？\n]{0,12}(?:门|锁)/;
+  const opensLockedEntry = /(?:门锁|锁具|锁芯|锁扣)[^。；！？\n]{0,24}(?:弹开|打开|开启|解开|脱落|断裂|失效|被撬开|成功撬开)|(?:门板|房门|木门|大门)[^。；！？\n]{0,20}(?:敞开|打开|开启|被推开)|(?:成功|终于|顺利)[^。；！？\n]{0,20}(?:撬开|打开|开启|破门|进入)[^。；！？\n]{0,12}(?:门|锁|药店)/;
   if (
     failedMechanicalCheck
     && opensLockedEntry.test(output.narrative)
