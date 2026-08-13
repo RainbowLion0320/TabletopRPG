@@ -396,6 +396,36 @@ describe('turnGuards', () => {
       kb,
       'S01'
     )).toEqual([]);
+    expect(inferDiscoveredItems(
+      '尽管亨利没能判断便签上笔触是否异常，他仍看清了桌面上那张写有“别来找我”的字条。',
+      [],
+      state,
+      kb,
+      'S01'
+    )).toContain('I01');
+  });
+
+  it('requires a Director-approved event for the exact failed-roll clue wording seen in play', () => {
+    const state = makeState({ currentScene: 'S01', activeNpcName: '伊莎贝拉·摩勒' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'active';
+    const output = {
+      narrative: '尽管亨利没能判断便签上笔触是否异常，他仍看清了桌面上那张写有“别来找我”的字条。',
+      activeNpc: '伊莎贝拉·摩勒',
+      nextPrompt: '下一步怎么做？',
+      playerChoices: {}
+    };
+    const actions = [{
+      player: '亨利',
+      action: '【检定结果】亨利的侦查检定：掷出84，结果：失败。'
+    }];
+
+    expect(validateNarratorSemantics(output, [], state, kb, actions)).toMatch(/便签 -> EV_FAIL_I01/);
+    expect(validateNarratorSemantics(output, [{
+      name: 'propose_story_event',
+      arguments: { eventId: 'EV_FAIL_I01' }
+    }], state, kb, actions)).toBeNull();
   });
 
   it('infers minimal physical harm but never invents SAN loss from creature names', () => {

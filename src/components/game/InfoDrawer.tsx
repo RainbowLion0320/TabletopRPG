@@ -19,7 +19,7 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
   const progress = getScenarioProgressForState(state);
   const objectives = getVisibleScenarioObjectives(progress);
   const visibleClocks = Object.entries(progress.clocks).filter(([, clock]) => clock.visible);
-  const clockPresentation = new Map(scenario.presentation.clocks.map((clock) => [clock.id, clock]));
+  const clockPresentation = new Map((scenario.presentation.clocks ?? []).map((clock) => [clock.id, clock]));
 
   // 拖拽状态
   const tabRef = useRef<HTMLButtonElement>(null);

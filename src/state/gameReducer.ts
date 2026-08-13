@@ -513,11 +513,20 @@ function resolveActiveNpcAfterResponse(
   nextScene: SceneId,
   previousActiveNpc: string | null
 ) {
+  const explicitlyCleared = hasOwn(response, 'activeNpc') && response.activeNpc === null;
+  const previousNpc = previousActiveNpc ? storyData.npcs[previousActiveNpc] : null;
+  const stillMentionsPreviousNpc = previousNpc && [
+    previousActiveNpc,
+    ...(previousNpc.aliases ?? [])
+  ].some((term) => term && response.narrative?.includes(term));
+
   return resolveActiveNpcForScene({
     previousScene,
     nextScene,
     previousActiveNpc,
-    requestedActiveNpc: response.activeNpc,
+    requestedActiveNpc: explicitlyCleared && previousScene === nextScene && stillMentionsPreviousNpc
+      ? previousActiveNpc
+      : response.activeNpc,
     requestedActiveNpcProvided: hasOwn(response, 'activeNpc')
   });
 }

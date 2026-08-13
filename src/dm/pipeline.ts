@@ -66,6 +66,7 @@ import type {
   DmBackgroundUpdate,
   DmMemoryUpdate,
   DmMindUpdate,
+  DmToolCall,
   DmTurnInput,
   DmTurnOutput,
   DmTurnTiming
@@ -426,7 +427,7 @@ export async function runDmTurn(
 
   // 0) 意图分类（规则版）
   const intent = classifyIntent(input.actions);
-  const directorCtx = { state: input.state, kb };
+  const directorCtx = { state: input.state, kb, actions: input.actions };
   const allowed = allowedTools(directorCtx, { intent, mode: input.state.exploreMode });
   const inferredSceneCall = allowed.includes('propose_scene_change')
     ? inferSceneChangeFromActions(input.actions, input.state, kb)
@@ -559,6 +560,19 @@ export async function runDmTurn(
     call.arguments.eventId === 'EV_CHOOSE_NEGOTIATION'
     || call.arguments.eventId === 'EV_CHOOSE_COMBAT'
   );
+  const buildCandidateCalls = (modelCalls: DmToolCall[]) => [
+    ...(inferredSceneCall ? [inferredSceneCall] : []),
+    ...inferredStoryCalls,
+    ...modelCalls.filter((call) =>
+      call.name !== 'propose_scene_change'
+      && !(settlesFinaleRoute && call.name === 'request_check')
+      && !(call.name === 'propose_story_event' && inferredStoryCalls.some((inferred) =>
+        inferred.arguments.eventId === call.arguments.eventId
+      ))
+    )
+  ];
+  const reviewCandidateCalls = (modelCalls: DmToolCall[]) =>
+    validateToolCalls(buildCandidateCalls(modelCalls), directorCtx, allowed);
   const revealCtx = deriveRevealContext(input.state);
   const revealedSet = computeRevealedSecretIds(kb, revealCtx);
 
@@ -620,9 +634,10 @@ export async function runDmTurn(
       lookupResolver,
       validateOutput: (output, toolCalls) => validateNarratorSemantics(
         output,
-        [inferredSceneCall, ...inferredStoryCalls, ...toolCalls].filter((call): call is NonNullable<typeof call> => Boolean(call)),
+        reviewCandidateCalls(toolCalls).accepted,
         input.state,
-        kb
+        kb,
+        input.actions
       ),
       signal: input.signal
     });
@@ -707,18 +722,7 @@ export async function runDmTurn(
   timings.narrator = elapsedMs(narratorStart);
 
   // 4) 出口护栏：逐个语义校验工具调用，同时检查是否越出 allowed 集
-  const candidateCalls = [
-    ...(inferredSceneCall ? [inferredSceneCall] : []),
-    ...inferredStoryCalls,
-    ...narrator.toolCalls.filter((call) =>
-      call.name !== 'propose_scene_change'
-      && !(settlesFinaleRoute && call.name === 'request_check')
-      && !(call.name === 'propose_story_event' && inferredStoryCalls.some((inferred) =>
-        inferred.arguments.eventId === call.arguments.eventId
-      ))
-    )
-  ];
-  const directorResult = validateToolCalls(candidateCalls, directorCtx, allowed);
+  const directorResult = reviewCandidateCalls(narrator.toolCalls);
 
   if (import.meta.env.DEV && directorResult.rejected.length) {
     // eslint-disable-next-line no-console

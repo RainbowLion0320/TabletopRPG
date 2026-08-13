@@ -505,6 +505,22 @@ describe('gameReducer scene focus synchronization', () => {
     expect(next.activeNpcName).toBeNull();
   });
 
+  it('keeps the resident NPC focused when the narration still shows them reacting', () => {
+    const state = makeState({ currentScene: 'S01', activeNpcName: '伊莎贝拉·摩勒' });
+
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: {
+        narrative: '伊莎贝拉皱着眉望向书房门口。',
+        activeNpc: null
+      },
+      raw: '{}'
+    });
+
+    expect(next.activeNpcId).toBe('N01');
+    expect(next.activeNpcName).toBe('伊莎贝拉·摩勒');
+  });
+
   it('moves the visible stage with the selected investigator in split mode', () => {
     const henry = makeInvestigator({ id: 'p-henry', name: '亨利' });
     const ada = makeInvestigator({ id: 'p-ada', name: '艾达' });

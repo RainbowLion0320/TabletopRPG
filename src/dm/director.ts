@@ -18,6 +18,7 @@ import { validateToolCallShape } from './tools';
 import {
   getAvailableSceneExits,
   getAvailableStoryEvents,
+  getScenarioDefinition,
   getScenarioProgressForState,
   isDeclaredScenarioVariable
 } from '../scenario/engine';
@@ -35,6 +36,7 @@ export interface DirectorResult {
 export interface DirectorContext {
   state: GameState;
   kb: KnowledgeBase;
+  actions?: Array<{ action: string }>;
 }
 
 export interface AllowedToolsOptions {
@@ -172,6 +174,25 @@ function validateStoryEvent(call: DmToolCall, ctx: DirectorContext): SemanticRes
   const allowed = getAvailableStoryEvents(getScenarioProgressForState(ctx.state), ctx.state.currentScene);
   if (!allowed.some((event) => event.id === eventId)) {
     return { ok: false, reason: `剧情事件 ${eventId} 不属于当前活动节点或条件尚未满足` };
+  }
+  const actionText = ctx.actions?.map((action) => action.action).join('\n') ?? '';
+  const failed = /【检定结果】[\s\S]*结果[：:]\s*(?:失败|大失败)/.test(actionText);
+  const succeeded = /【检定结果】[\s\S]*结果[：:]\s*(?:成功|普通成功|困难成功|极难成功|大成功)/.test(actionText);
+  if (failed || succeeded) {
+    const mismatchedItem = getScenarioDefinition().world.items.find((item) =>
+      failed
+        ? item.discovery.successEventId === eventId && item.discovery.failureEventId !== eventId
+        : item.discovery.failureEventId === eventId && item.discovery.successEventId !== eventId
+    );
+    if (mismatchedItem) {
+      const expectedEventId = failed
+        ? mismatchedItem.discovery.failureEventId
+        : mismatchedItem.discovery.successEventId;
+      return {
+        ok: false,
+        reason: `${eventId} 与本轮${failed ? '失败' : '成功'}检定不符；${mismatchedItem.id} 应结算 ${expectedEventId}`
+      };
+    }
   }
   return { ok: true };
 }

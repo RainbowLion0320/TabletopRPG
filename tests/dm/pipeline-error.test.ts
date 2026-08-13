@@ -31,11 +31,70 @@ function jsonResponse(content: string): Response {
   );
 }
 
+function jsonResponseWithStoryEvent(content: string, eventId: string): Response {
+  return new Response(
+    JSON.stringify({
+      output_text: content,
+      output: [
+        {
+          type: 'function_call',
+          id: `fc-${eventId}`,
+          call_id: `call-${eventId}`,
+          name: 'propose_story_event',
+          arguments: JSON.stringify({ eventId })
+        },
+        {
+          type: 'message',
+          content: [{ type: 'output_text', text: content }]
+        }
+      ]
+    }),
+    {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    }
+  );
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 describe('runDmTurn error classification', () => {
+  it('retries a failed clue roll until narration and the Director-approved failure event agree', async () => {
+    const narrative = JSON.stringify({
+      narrative: '尽管亨利没能判断便签上笔触是否异常，他仍看清了桌面上那张写有“别来找我”的字条。',
+      activeNpc: '伊莎贝拉·摩勒',
+      nextPrompt: '下一步怎么做？',
+      playerChoices: { 亨利: ['记录便签'] }
+    });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponseWithStoryEvent(narrative, 'EV_FIND_I01'))
+      .mockResolvedValueOnce(jsonResponseWithStoryEvent(narrative, 'EV_FAIL_I01'));
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' })],
+      currentScene: 'S01',
+      activeNpcName: '伊莎贝拉·摩勒'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'active';
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [
+        { player: '亨利', action: '系统搜查书房桌面、抽屉和书架夹缝。' },
+        { player: '亨利', action: '【检定结果】亨利的侦查检定：掷出84，结果：失败。' }
+      ]
+    });
+
+    expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_FAIL_I01');
+    expect(output.legacyResponse.stateUpdate?.storyEventIds).not.toContain('EV_FIND_I01');
+    expect(output.legacyResponse.narrative).toContain('别来找我');
+  });
+
   it('settles legal travel before requesting a risky destination follow-up check', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);

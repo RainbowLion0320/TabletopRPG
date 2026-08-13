@@ -3,6 +3,7 @@ import { allowedTools, validateToolCalls } from '../../src/dm/director';
 import type { ClassifiedIntent } from '../../src/dm/intentClassifier';
 import type { DmToolCall } from '../../src/dm/types';
 import { wuzhongxiaoshi } from '../../src/data/scenarios/wuzhongxiaoshi';
+import { createScenarioProgress } from '../../src/scenario/engine';
 import { makeInvestigator, makeState } from './fixtures';
 
 const kb = wuzhongxiaoshi;
@@ -74,6 +75,24 @@ describe('director.allowedTools', () => {
 });
 
 describe('director.validateToolCalls', () => {
+  it('requires the authored failure event after a failed clue check', () => {
+    const context = {
+      ...ctx('S01'),
+      actions: [{ action: '【检定结果】亨利的侦查检定：掷出84，结果：失败。' }]
+    };
+    context.state.scenarioProgress = createScenarioProgress();
+    context.state.scenarioProgress.beatStates.B01 = 'completed';
+    context.state.scenarioProgress.beatStates.B02 = 'active';
+
+    const result = validateToolCalls([
+      { name: 'propose_story_event', arguments: { eventId: 'EV_FIND_I01' } },
+      { name: 'propose_story_event', arguments: { eventId: 'EV_FAIL_I01' } }
+    ], context);
+
+    expect(result.accepted.map((call) => call.arguments.eventId)).toEqual(['EV_FAIL_I01']);
+    expect(result.rejected[0]?.reason).toMatch(/EV_FAIL_I01/);
+  });
+
   it('rejects tool not in allowed set', () => {
     const calls: DmToolCall[] = [
       {

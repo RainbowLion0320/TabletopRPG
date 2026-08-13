@@ -356,8 +356,15 @@ export function inferDiscoveredItems(
     const match = terms.find((term) => narrative.includes(term));
     if (!match) continue;
     const index = narrative.indexOf(match);
-    const prefix = index >= 0 ? narrative.slice(Math.max(0, index - 10), index) : '';
-    if (/没有|未能|没能|找不到|未发现|并无/.test(prefix)) continue;
+    const context = index >= 0
+      ? narrative.slice(Math.max(0, index - 14), index + match.length)
+      : '';
+    const item = escapeRegex(match);
+    const discoveryDenied = new RegExp(
+      `(?:没有|未能|没能|并未)[^，。；！？\\n]{0,6}(?:发现|找到|取得|获得|拿到|看见|看到|辨认)[^，。；！？\\n]{0,3}${item}`
+      + `|(?:找不到|未发现|并无)[^，。；！？\\n]{0,3}${item}`
+    ).test(context);
+    if (discoveryDenied) continue;
     out.push(id);
   }
   return out;
@@ -646,7 +653,8 @@ export function validateNarratorSemantics(
   output: { narrative: string; activeNpc?: string | null; nextPrompt: string; playerChoices: Record<string, string[]> },
   toolCalls: DmToolCall[],
   state: GameState,
-  kb: KnowledgeBase
+  kb: KnowledgeBase,
+  actions: PlayerAction[] = []
 ): string | null {
   const allText = [
     output.narrative,
@@ -701,17 +709,37 @@ export function validateNarratorSemantics(
     if ('analyzeClue' in effect) return [effect.analyzeClue];
     return [];
   })));
+  const actionText = actions.map((action) => action.action).join('\n');
+  const hasCheckOutcome = /【检定结果】/.test(actionText);
+  const failedCheck = actionIsFailedCheck(actions);
   const uncommittedClueIds = inferDiscoveredItems(
     output.narrative,
     [],
     state,
     kb,
     state.currentScene
-  ).filter((clueId) => !proposedClueIds.has(clueId));
+  ).filter((clueId) => {
+    if (!hasCheckOutcome) return !proposedClueIds.has(clueId);
+    const item = getScenarioDefinition().world.items.find((candidate) => candidate.id === clueId);
+    const expectedEventId = item
+      ? failedCheck ? item.discovery.failureEventId : item.discovery.successEventId
+      : null;
+    return expectedEventId
+      ? !proposedEvents.some((event) => event.id === expectedEventId)
+      : !proposedClueIds.has(clueId);
+  });
   if (uncommittedClueIds.length) {
     const requirements = uncommittedClueIds.map((clueId) => {
       const item = kb.items[clueId]?.public;
-      const event = [...availableEvents.values()].find((candidate) =>
+      const scenarioItem = getScenarioDefinition().world.items.find((candidate) => candidate.id === clueId);
+      const expectedEventId = hasCheckOutcome && scenarioItem
+        ? failedCheck
+          ? scenarioItem.discovery.failureEventId
+          : scenarioItem.discovery.successEventId
+        : null;
+      const event = expectedEventId
+        ? availableEvents.get(expectedEventId)
+        : [...availableEvents.values()].find((candidate) =>
         candidate.effects.some((effect) =>
           ('discoverClue' in effect && effect.discoverClue === clueId)
           || ('analyzeClue' in effect && effect.analyzeClue === clueId)
