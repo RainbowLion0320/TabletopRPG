@@ -376,6 +376,18 @@ describe('turnGuards', () => {
     expect(result.亨利).toContain('询问伊莎贝拉是否认识蒙特利尔');
   });
 
+  it('rejects narration that contradicts the active authored NPC appearance', () => {
+    const state = makeState({ currentScene: 'S03', activeNpcName: '老赫特之家酒保' });
+    expect(validateNarratorSemantics({
+      narrative: '吧台后站着一个精瘦的中年男人，正用布擦拭酒杯。',
+      activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/人物外貌.*老赫特之家酒保/);
+    expect(validateNarratorSemantics({
+      narrative: '壮实的中年酒保站在吧台后擦拭酒杯。',
+      activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toBeNull();
+  });
+
   it('rejects invented weapons, unsafe medical advice and arrival without state change', () => {
     const state = makeState({ currentScene: 'S01' });
     expect(validateNarratorSemantics({

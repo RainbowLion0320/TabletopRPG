@@ -509,6 +509,32 @@ function lockedSceneReference(
   return null;
 }
 
+const NPC_APPEARANCE_CONFLICTS: Array<{ authored: RegExp; contradictedBy: RegExp }> = [
+  { authored: /壮实|魁梧|健壮|结实/, contradictedBy: /精瘦|瘦削|消瘦|干瘦|单薄/ },
+  { authored: /精瘦|瘦削|消瘦|干瘦|单薄/, contradictedBy: /壮实|魁梧|健壮|结实/ },
+  { authored: /二十余岁|年轻/, contradictedBy: /中年|老年|年迈|白发苍苍/ },
+  { authored: /中年|四十|五十/, contradictedBy: /少年|十几岁|二十余岁/ }
+];
+
+function activeNpcAppearanceConflict(
+  narrative: string,
+  activeNpcName: string | null | undefined,
+  sceneId: SceneId,
+  kb: KnowledgeBase
+): string | null {
+  if (!activeNpcName) return null;
+  const npc = kb.npcs[activeNpcName]?.public;
+  if (!npc) return null;
+  const sceneNpcNames = kb.scenes[sceneId]?.public.npcs ?? [];
+  const terms = [npc.name, npc.role, ...(npc.aliases ?? [])].filter((term) => term.length >= 2);
+  const refersToActiveNpc = sceneNpcNames.length === 1 || terms.some((term) => narrative.includes(term));
+  if (!refersToActiveNpc) return null;
+  const conflict = NPC_APPEARANCE_CONFLICTS.find(({ authored, contradictedBy }) =>
+    authored.test(npc.appearance) && contradictedBy.test(narrative)
+  );
+  return conflict ? npc.name : null;
+}
+
 function eventAuthorizesOutcome(
   event: ReturnType<typeof getAvailableStoryEvents>[number],
   outcome: 'rescue' | 'ending'
@@ -776,6 +802,15 @@ export function validateNarratorSemantics(
     && !kb.scenes[outputSceneId]?.public.npcs.includes(output.activeNpc)
   ) {
     return `activeNpc 指向不在当前场景的 ${output.activeNpc}`;
+  }
+  const appearanceConflict = activeNpcAppearanceConflict(
+    output.narrative,
+    output.activeNpc,
+    outputSceneId,
+    kb
+  );
+  if (appearanceConflict) {
+    return `不得改写权威人物外貌：${appearanceConflict}`;
   }
   const inventedSpeaker = unavailableNpcRole(output.narrative, kb, outputSceneId);
   if (inventedSpeaker) {
