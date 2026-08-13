@@ -276,8 +276,13 @@ function sceneMentionFollowsDestinationVerb(text: string, terms: string[]): bool
     const destinationVerbs = [...prefix.matchAll(new RegExp(MOVE_DESTINATION_RE.source, 'g'))];
     const lastDestinationVerb = destinationVerbs[destinationVerbs.length - 1];
     if (!lastDestinationVerb) return false;
-    const between = prefix.slice((lastDestinationVerb.index ?? 0) + lastDestinationVerb[0].length);
-    return !/[，。；！？\n]/.test(between) && lastDestinationVerb[0] !== '离开';
+    const verbIndex = lastDestinationVerb.index ?? 0;
+    const beforeVerb = prefix.slice(Math.max(0, verbIndex - 8), verbIndex);
+    const between = prefix.slice(verbIndex + lastDestinationVerb[0].length);
+    const negated = /(?:暂(?:时|且)?|先|明确)?(?:不|别|勿|不要|并不|无需)(?:再)?$/.test(beforeVerb);
+    return !negated
+      && !/[，。；！？\n]/.test(between)
+      && lastDestinationVerb[0] !== '离开';
   });
 }
 

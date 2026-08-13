@@ -374,6 +374,26 @@ describe('turnGuards', () => {
     ], state, kb)).toBeNull();
   });
 
+  it('does not let a negated optional destination override the declared destination', () => {
+    const state = makeState({ currentScene: 'S01' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.knownFactIds = ['F05'];
+    state.scenarioProgress.variables.oldHethLead = true;
+
+    expect(inferSceneChangeFromActions([
+      {
+        player: '亨利',
+        action: '依据伊莎贝拉提供的生活线索，带上埃里克照片离开住宅，直接前往老赫特酒吧询问他最后出现的情况，暂不去警局。'
+      },
+      {
+        player: '托马斯',
+        action: '与亨利同行去老赫特酒吧，在途中整理埃里克照片和伊莎贝拉证词，准备以记者身份礼貌询问酒保。'
+      }
+    ], state, kb)).toEqual(expect.objectContaining({
+      arguments: expect.objectContaining({ targetSceneId: 'S03' })
+    }));
+  });
+
   it('does not move when players only prepare to visit an unlocked destination', () => {
     const state = makeState({ currentScene: 'S03' });
     state.scenarioProgress = createScenarioProgress();
