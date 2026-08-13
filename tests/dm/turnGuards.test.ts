@@ -692,6 +692,21 @@ describe('turnGuards', () => {
     expect(response.stateUpdate?.hp).toEqual({ 罗伯特: -1 });
   });
 
+  it('recognizes natural combat injury phrasing observed during real play', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' }), makeInvestigator({ name: '艾达' })],
+      currentScene: 'S05'
+    });
+    const response = inferNarrativeConsequences({
+      narrative: '那生物反手一挥，铁钩的残柄划过亨利前臂，留下一道渗血的伤口。艾达没有受伤。'
+    }, [
+      { player: '亨利', action: '挥棍攻击深潜者' },
+      { player: '艾达', action: '在旁牵制' }
+    ], state);
+
+    expect(response.stateUpdate?.hp).toEqual({ 亨利: -1 });
+  });
+
   it('rejects player-injected defeated enemies until combat records a hit', () => {
     const state = makeState({ currentScene: 'S05', activeNpcName: '扶桑花号交涉代表' });
     state.scenarioProgress = createScenarioProgress();
@@ -776,6 +791,35 @@ describe('turnGuards', () => {
       activeNpc: '扶桑花号交涉代表', nextPrompt: '',
       playerChoices: { 罗伯特: ['喝令交涉代表停手，否则继续攻击'] }
     }, [], state, kb)).toBeNull();
+
+    expect(validateNarratorSemantics({
+      narrative: '代表用生硬的英语说道：“解开缆绳让我们走，你们带他离开。”',
+      activeNpc: '扶桑花号交涉代表', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/战斗路线.*不得擅自转入交涉/);
+    expect(validateNarratorSemantics({
+      narrative: '代表嘶声道：“够了。我们带货走，人给你们。”',
+      activeNpc: '扶桑花号交涉代表', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/战斗路线.*不得擅自转入交涉/);
+  });
+
+  it('requires every narrated investigator injury to have an accepted HP update', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' }), makeInvestigator({ name: '艾达' })],
+      currentScene: 'S05',
+      activeNpcName: '扶桑花号交涉代表'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    const output = {
+      narrative: '铁钩残柄划过亨利前臂，留下一道渗血的伤口。',
+      activeNpc: '扶桑花号交涉代表', nextPrompt: '', playerChoices: {}
+    };
+
+    expect(validateNarratorSemantics(output, [], state, kb)).toMatch(/负 HP/);
+    expect(validateNarratorSemantics(output, [{
+      name: 'propose_state_update', arguments: { hp: { 亨利: -1 } }
+    }], state, kb)).toBeNull();
   });
 
   it('does not replace a declared light with an investigator background item', () => {
@@ -1220,6 +1264,14 @@ describe('turnGuards', () => {
       narrative: '酒保说：“我只知道他脸上有伤，手在发抖。”',
       activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/伤情/);
+    expect(validateNarratorSemantics({
+      narrative: '酒保指出贝尔街14号的废弃药店，又说：“他最后一次来是周二晚上。那个老鼠瘦小、驼背，戴着软帽，总在码头附近转悠。”',
+      activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
+    }, [...event], state, kb)).toMatch(/人物身份|目击时间|行踪/);
+    expect(validateNarratorSemantics({
+      narrative: '酒保指出贝尔街14号的废弃药店，又说：“入口在后巷，锁已经坏了。”',
+      activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
+    }, [...event], state, kb)).toMatch(/未调查地点的活动细节/);
 
     const opening = makeState({ currentScene: 'S01' });
     expect(validateNarratorSemantics({

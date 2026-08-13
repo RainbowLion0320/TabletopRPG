@@ -469,16 +469,23 @@ function mergeDelta(target: Record<string, number>, player: string, delta: numbe
 
 function narrativeHarmsPlayer(narrative: string, playerName: string): boolean {
   const player = escapeRegex(playerName);
+  const text = narrative.replace(new RegExp(
+    `${player}[^，。；！？\\n]{0,8}(?:没有|并未|未曾|未)(?:受到|遭受)?[^，。；！？\\n]{0,4}(?:受伤|流血|渗血|出血|骨折|伤口|血痕|剧痛)[^，。；！？\\n]*`,
+    'g'
+  ), '');
   const bodyPart = '(?:头|脸|颈|肩|胸|背|腰|腹|手|手臂|前臂|小臂|手掌|手指|指尖|虎口|腿|膝|脚|皮肤)';
-  const injury = '(?:击中|打中|砸中|划伤|抓伤|刺伤|咬伤|撕伤|砍伤|中弹|受伤|流血|渗血|出血|骨折|伤口|血口|血痕|血丝|剧痛|划出.{0,6}(?:伤口|血口|血痕|细痕))';
+  const injury = '(?:击中|打中|砸中|撞上|划伤|抓伤|刺伤|咬伤|撕伤|撕裂|砍伤|中弹|受伤|流血|渗血|出血|鲜血|骨折|伤口|旧伤|血口|血痕|血丝|剧痛|划出.{0,6}(?:伤口|血口|血痕|细痕))';
   const direct = new RegExp(
-    `${player}(?:的${bodyPart})?(?:被|受到|遭到|挨(?:了)?|中(?:了)?)[^，。；！？\\n]{0,14}${injury}`
-    + `|${player}(?:的${bodyPart})?[^，。；！？\\n]{0,8}(?:受伤|流血|渗血|出血|骨折|出现.{0,4}(?:伤口|血口|血痕)|传来.{0,4}剧痛)`
+    `${player}(?:的?${bodyPart})?(?:被|受到|遭到|挨(?:了)?|中(?:了)?)[^，。；！？\\n]{0,18}${injury}`
+    + `|${player}(?:的?${bodyPart})?[^，。；！？\\n]{0,16}(?:受伤|流血|渗血|出血|鲜血|骨折|出现.{0,4}(?:伤口|血口|血痕)|传来.{0,4}剧痛|旧伤[^，。；！？\\n]{0,8}(?:撕裂|更深|加重)|伤口[^，。；！？\\n]{0,8}(?:撕裂|更大|更深|加重))`
   );
   const struckBodyPart = new RegExp(
-    `(?:击中|打中|砸中|划过|划伤|抓伤|刺伤|咬伤|撕伤|砍伤)[^，。；！？\\n]{0,12}${player}的${bodyPart}`
+    `(?:击中|打中|砸中|撞上|划过|划伤|抓向|抓伤|刺伤|咬伤|撕伤|撕裂|砍伤)[^，。；！？\\n]{0,16}${player}的?${bodyPart}`
   );
-  return direct.test(narrative) || struckBodyPart.test(narrative);
+  const pronounInjury = new RegExp(
+    `${player}[^。；！？\\n]{0,100}(?:他的|其)${bodyPart}[^。；！？\\n]{0,28}${injury}`
+  );
+  return direct.test(text) || struckBodyPart.test(text) || pronounInjury.test(text);
 }
 
 function textSimilarity(left: string, right: string): number {
@@ -710,7 +717,11 @@ const PLOT_CLAIM_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
   },
   {
     label: '人物身份或背景',
-    pattern: /(?:老鼠|埃里克|蒙特利尔)[^。；！？\n]{0,32}(?:东欧口音|瘦子|走私者|帮派成员|船员|水手|毒贩)/
+    pattern: /(?:老鼠|埃里克|蒙特利尔|那人)[^。；！？\n]{0,40}(?:东欧口音|瘦子|瘦小|驼背|软帽|走私者|帮派成员|船员|水手|毒贩)/
+  },
+  {
+    label: '未授权的目击时间或行踪',
+    pattern: /(?:最后一次|上次)[^。；！？\n]{0,28}(?:来|出现|见到)[^。；！？\n]{0,28}(?:周[一二三四五六日天]|星期[一二三四五六日天]|十天前)|(?:周[一二三四五六日天]|星期[一二三四五六日天]|十天前)[^。；！？\n]{0,36}(?:最后一次|来过|出现|见到)|(?:老鼠|那人)[^。；！？\n]{0,36}(?:总在|常在|经常在)[^。；！？\n]{0,12}(?:码头|港口)/
   },
   {
     label: '犯罪、交易或胁迫关系',
@@ -730,7 +741,7 @@ const PLOT_CLAIM_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
   },
   {
     label: '未调查地点的活动细节',
-    pattern: /(?:(?:药店|贝尔街14号|那地方)[^。；！？\n]{0,64}(?:晚上|夜里|夜间)[^。；！？\n]{0,20}(?:亮灯|灯光|灯亮)|(?:药店|贝尔街14号|那地方)[^。；！？\n]{0,64}(?:马车|车辆)[^。；！？\n]{0,20}(?:出入|进出|停靠)|(?:药店|贝尔街14号|那地方)[^。；！？\n]{0,64}(?:转运|装卸)[^。；！？\n]{0,20}(?:货|货物)|蒙特利尔[^。；！？\n]{0,24}(?:手下|的人|派的人)[^。；！？\n]{0,16}(?:去过|到过|出入))/
+    pattern: /(?:(?:药店|贝尔街14号|那地方)[^。；！？\n]{0,64}(?:晚上|夜里|夜间)[^。；！？\n]{0,20}(?:亮灯|灯光|灯亮)|(?:药店|贝尔街14号|那地方)[^。；！？\n]{0,64}(?:马车|车辆)[^。；！？\n]{0,20}(?:出入|进出|停靠)|(?:药店|贝尔街14号|那地方)[^。；！？\n]{0,64}(?:转运|装卸)[^。；！？\n]{0,20}(?:货|货物)|蒙特利尔[^。；！？\n]{0,24}(?:手下|的人|派的人)[^。；！？\n]{0,16}(?:去过|到过|出入)|(?:入口|后门)[^。；！？\n]{0,20}(?:后巷|后街|锁[^。；！？\n]{0,6}(?:坏|断|开)))/
   },
   {
     label: '未解锁的日期或行动时刻',
@@ -847,7 +858,8 @@ export function validateNarratorSemantics(
   }
   if (progress.variables.finaleRoute === 'combat') {
     const pivotsToNegotiation = /(?:可以|不妨|愿意|还是|试着|尝试|转而|改为|开始)[^。；！？\n]{0,16}(?:谈谈|谈判|进行交涉|谈条件)|(?:与|和)[^。；！？\n]{0,12}(?:谈判|交涉|谈条件)|各取所需|不必再流血/.test(allText);
-    if (pivotsToNegotiation) {
+    const offersCombatRouteTrade = /(?:解开|解掉|割断|松开)[^。；！？\n]{0,10}(?:船缆|缆绳)[^。；！？\n]{0,24}(?:让我们走|放我们走|你们带走|人给你们)|(?:让我们走|放我们走)[^。；！？\n]{0,28}(?:你们带走|带他离开|人给你们|否则|他死)|(?:我们|深潜者)[^。；！？\n]{0,12}带货走[^。；！？\n]{0,12}(?:人给你们|你们带人)|(?:人给你们|货归我们)|最后机会[^。；！？\n]{0,20}(?:让我们走|放我们走)/.test(allText);
+    if (pivotsToNegotiation || offersCombatRouteTrade) {
       return '战斗路线已经结构化锁定，正文和建议不得擅自转入交涉路线';
     }
     const inventsDeepOneReinforcements = /(?:船舱|舱口)[^。；！？\n]{0,32}(?:(?:还有|藏着|聚集着)[^。；！？\n]{0,12}(?:族人|深潜者|灰绿色[^。；！？\n]{0,4}身影)|(?:更多|大批|成群)[^。；！？\n]{0,8}(?:族人|深潜者|灰绿色[^。；！？\n]{0,4}身影)[^。；！？\n]{0,8}(?:涌出|冲出|出现))/.test(output.narrative);
@@ -872,6 +884,19 @@ export function validateNarratorSemantics(
     || proposedEvents.some((event) => event.effects.some((effect) => 'requestCheck' in effect));
   if (demandsPendingCheck && !hasAuthorizedCheck) {
     return '正文要求玩家检定时必须在同一响应调用获准的 request_check，不能留下没有掷骰入口的强制检定';
+  }
+  const harmedPlayers = state.players.filter((player) => narrativeHarmsPlayer(output.narrative, player.name));
+  const hpDeltas = toolCalls.reduce<Record<string, number>>((deltas, call) => {
+    if (call.name !== 'propose_state_update' || !call.arguments.hp
+      || typeof call.arguments.hp !== 'object' || Array.isArray(call.arguments.hp)) return deltas;
+    for (const [player, value] of Object.entries(call.arguments.hp as Record<string, unknown>)) {
+      if (typeof value === 'number') deltas[player] = (deltas[player] ?? 0) + value;
+    }
+    return deltas;
+  }, {});
+  const uncommittedHarm = harmedPlayers.find((player) => !(hpDeltas[player.name] < 0));
+  if (uncommittedHarm) {
+    return `正文写明${uncommittedHarm.name}受到实际伤害时，必须同步调用 propose_state_update 写入负 HP`;
   }
   const narrativeAuthority = authoredNarrativeCorpus(state, proposedEvents);
   const failedMechanicalCheck = actions.some((action) =>
