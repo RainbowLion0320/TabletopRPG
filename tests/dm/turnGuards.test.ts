@@ -463,6 +463,12 @@ describe('turnGuards', () => {
       player: '罗伯特', action: '继续警戒，但不要攻击深潜者。'
     }], state)).toBeNull();
     expect(inferStoryEventFromActions([{
+      player: '罗伯特', action: '配合同伴牵制深潜者，并寻找下一次攻击机会。'
+    }], state)).toBeNull();
+    expect(buildRequiredCheck([{
+      player: '罗伯特', action: '配合同伴牵制深潜者，并寻找下一次攻击机会。'
+    }], state)).toBeNull();
+    expect(inferStoryEventFromActions([{
       player: '罗伯特', action: '拔出手枪射击最后一名深潜者护卫。'
     }], state)).toEqual(expect.objectContaining({
       arguments: expect.objectContaining({ eventId: 'EV_COMBAT_ATTACK' })

@@ -12,6 +12,7 @@ import {
 import { normalizeNarrativeKeywordHints } from '../services/narrativeKeywords';
 import { prepareCheck } from '../services/dice';
 import { countCompletedGameTurns } from '../services/turns';
+import { isAffirmativeCombatAction } from '../services/actionIntent';
 import { allSkills } from '../data/skills';
 import { deriveInvestigatorStats, gameRules, resolveSkillBase } from '../data/gameRules';
 import {
@@ -341,7 +342,7 @@ function finaleSuggestions(players: Investigator[], route: unknown): Record<stri
   const suggestions = route === 'combat'
     ? [
         '攻击一名仍在抵抗的深潜者，为营救埃里克争取时间',
-        '配合同伴牵制深潜者，并寻找下一次攻击机会',
+        '配合同伴发动攻击，试图制服一名仍在抵抗的深潜者',
         '观察甲板混战后选择一名仍在抵抗的深潜者发动攻击'
       ]
     : route === 'negotiation'
@@ -362,6 +363,23 @@ function containsPharmacyInvestigationSuggestion(suggestionsByPlayerId: Record<s
   return Object.values(suggestionsByPlayerId).some((suggestions) => suggestions.some((suggestion) =>
     /后厅油布包|柜台附近.*雪茄|后门附近.*撤离痕迹/.test(suggestion)
   ));
+}
+
+function containsInvalidFinaleSuggestion(
+  suggestionsByPlayerId: Record<string, string[]>,
+  route: unknown
+): boolean {
+  if (route === 'combat') {
+    return Object.values(suggestionsByPlayerId).some((suggestions) =>
+      suggestions.some((suggestion) => !isAffirmativeCombatAction(suggestion))
+    );
+  }
+  if (route === 'negotiation') {
+    return Object.values(suggestionsByPlayerId).some((suggestions) =>
+      suggestions.some(isAffirmativeCombatAction)
+    );
+  }
+  return false;
 }
 
 function normalizeActionLog(value: unknown, fallback: GameState['actionLog']) {
@@ -1343,7 +1361,10 @@ export function hydrateGameState(value: unknown): GameState {
       )
     : normalizedMessages;
   const staleFinaleSuggestions = currentScene === 'S05'
-    && containsPharmacyInvestigationSuggestion(rawSuggestionsByPlayerId);
+    && (
+      containsPharmacyInvestigationSuggestion(rawSuggestionsByPlayerId)
+      || containsInvalidFinaleSuggestion(rawSuggestionsByPlayerId, scenarioProgress.variables.finaleRoute)
+    );
   const suggestionsByPlayerId = withdrewAutomaticPharmacyMap
     ? pharmacyInvestigationSuggestions(players)
     : staleFinaleSuggestions

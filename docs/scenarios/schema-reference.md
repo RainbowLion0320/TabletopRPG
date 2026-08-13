@@ -9,7 +9,7 @@ Schema：`https://tabletop-rpg.local/schema/scenario-v1.json`
 - `world`：事实、场景、NPC、遭遇和物品。
 - `progression`：幕、节点、目标、事件和结局。
 - `rules`：可执行规则与支持模式。
-- `presentation`：开场、建议和案件板。
+- `presentation`：开场、建议、公开时钟和案件板。
 
 ## 定义索引
 

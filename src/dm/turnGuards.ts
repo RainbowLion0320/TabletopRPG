@@ -3,6 +3,7 @@ import type { PlayerAction } from '../services/aiDm';
 import { getDmRequestTurn } from '../services/turns';
 import type { DmToolCall, KnowledgeBase } from './types';
 import { getActiveKnowledgeBase } from './knowledgeBase';
+import { COMBAT_ACTION_RE, hasAffirmativeMatch } from '../services/actionIntent';
 import {
   getScenarioDefinition,
   getAvailableSceneExits,
@@ -14,7 +15,6 @@ import {
 const DICE_RESULT_RE = /【检定结果】|结果[：:]\s*(?:失败|大失败|成功|困难成功|极难成功|大成功)/;
 const MOVE_VERB_RE = /前往|赶往|去往|转往|改去|改从|出发|动身|返回|回到|离开|开车|驾车|驱车|驶向|跟随|追到|抵达|到达/;
 const MOVE_DESTINATION_RE = /前往|赶往|去往|转往|改去|改从|驶向|追到|抵达|到达|进入|登上|回到|返回|去/;
-const COMBAT_ACTION_RE = /攻击|搏斗|出拳|制服|击败|殴打|近战|射击|开枪|擒抱|摔倒|猛击|砸向|砸击/;
 const NPC_ROLE_TERMS = ['店主', '老板', '伙计', '服务生', '医生', '护士', '牧师', '管理员', '警员', '警察', '酒保'];
 
 interface CheckCandidate {
@@ -34,7 +34,7 @@ function buildCandidate(action: PlayerAction): CheckCandidate | null {
     reason: string;
   }> = [
     { pattern: /开枪|射击|瞄准|扣扳机/, skill: '射击（手枪）', score: 100, difficulty: '困难', reason: '在压力下完成射击' },
-    { pattern: /攻击|搏斗|出拳|殴打|近战|制服/, skill: '格斗（拳）', score: 95, difficulty: '困难', reason: '冲突行动存在受伤风险' },
+    { pattern: COMBAT_ACTION_RE, skill: '格斗（拳）', score: 95, difficulty: '困难', reason: '冲突行动存在受伤风险' },
     { pattern: /闪避|躲开|避开|逃脱/, skill: '闪避', score: 92, difficulty: '困难', reason: '避开迫近的危险' },
     { pattern: /潜入|潜行|蹑手蹑脚|躲藏|尾随/, skill: '潜行', score: 88, reason: '不被察觉地完成行动' },
     { pattern: /撬锁|开锁|拆开|修理|修复/, skill: '机械维修', score: 84, reason: '完成精细的机械操作' },
@@ -61,23 +61,6 @@ function buildCandidate(action: PlayerAction): CheckCandidate | null {
       reason: spec.reason
     }
   };
-}
-
-function hasAffirmativeMatch(text: string, pattern: RegExp): boolean {
-  const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
-  const matcher = new RegExp(pattern.source, flags);
-  for (const match of text.matchAll(matcher)) {
-    const prefix = text.slice(0, match.index ?? 0).slice(-12);
-    if (/不得不[^，。；！？\n]{0,4}$/.test(prefix)) return true;
-    if (/(?:询问|追问|问|确认|说明|调查|判断|回忆|是否|有没有|有无|曾否|是不是|是不是曾)[^，。；！？\n]{0,10}$/.test(prefix)) {
-      continue;
-    }
-    if (/(?:不|未|没有|并未|并不|不要|不再|暂不|暂缓|停止|避免|放弃|拒绝|无意|不想)[^，。；！？\n]{0,6}$/.test(prefix)) {
-      continue;
-    }
-    return true;
-  }
-  return false;
 }
 
 /** Picks at most one check because the current UI can settle one pending check at a time. */

@@ -698,6 +698,36 @@ describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
     expect(hydrated.longTermMemorySummary).toBe('调查员已经抵达扶桑花号并选择战斗。');
   });
 
+  it('repairs persisted finale suggestions that describe an attack opportunity without attacking', () => {
+    const progress = createScenarioProgress();
+    progress.activeActId = 'A03';
+    progress.beatStates.B06 = 'active';
+    progress.variables.finaleRoute = 'combat';
+    progress.encounters.ENC01.state = 'active';
+    progress.visitedSceneIds.push('S05');
+
+    const hydrated = hydrateGameState({
+      players: [makeInvestigator({ id: 'p1', name: '罗伯特' })],
+      currentScene: 'S05',
+      scenarioProgress: progress,
+      suggestionsByPlayerId: {
+        p1: [
+          '攻击一名仍在抵抗的深潜者，为营救埃里克争取时间',
+          '配合同伴牵制深潜者，并寻找下一次攻击机会',
+          '观察甲板混战后选择一名仍在抵抗的深潜者发动攻击'
+        ]
+      }
+    });
+
+    expect(hydrated.suggestionsByPlayerId.p1).not.toContain(
+      '配合同伴牵制深潜者，并寻找下一次攻击机会'
+    );
+    expect(hydrated.suggestionsByPlayerId.p1).toHaveLength(3);
+    expect(hydrated.suggestionsByPlayerId.p1.every((suggestion) =>
+      /攻击|制服/.test(suggestion)
+    )).toBe(true);
+  });
+
   it('repairs an offstage active NPC to match the persisted scene', () => {
     const hydrated = hydrateGameState({
       players: [makeInvestigator({ id: 'p1', name: '亨利' })],

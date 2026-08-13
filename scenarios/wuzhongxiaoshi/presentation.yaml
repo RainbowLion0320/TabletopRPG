@@ -3,6 +3,8 @@ openingNarrative: |-
 
   信中写道：「我父亲埃里克·摩勒于三日前失踪，警察局毫无进展。若您能找到他，必有重谢。」
 initialSuggestions: [接受委托并询问失踪经过, 观察伊莎贝拉的状态, 要求查看埃里克的书房]
+clocks:
+  - { id: fusangEscape, label: 扶桑花号离港, max: 7 }
 caseBoard:
   summary: 围绕埃里克·摩勒失踪案，整理人物、地点、物证与待验证推测。
   nodes:

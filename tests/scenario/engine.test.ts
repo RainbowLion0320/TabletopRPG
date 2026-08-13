@@ -349,11 +349,11 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: [], flags: {}, turn: 3
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.7');
+    expect(migrated.moduleVersion).toBe('1.1.8');
     expect(migrated.beatStates.B02).toBe('active');
     expect(migrated.objectiveStates.O01).toBe('completed');
     expect(migrated.objectiveStates.O02).toBe('active');
-    expect(migrated.migrationLog.at(-1)).toContain('1.0.0 -> 1.1.7');
+    expect(migrated.migrationLog.at(-1)).toContain('1.0.0 -> 1.1.8');
   });
 
   it('migrates the immediately previous scenario content version', () => {
@@ -367,9 +367,9 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: [], flags: {}, turn: 3
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.7');
+    expect(migrated.moduleVersion).toBe('1.1.8');
     expect(migrated.beatStates.B02).toBe('active');
-    expect(migrated.migrationLog.at(-1)).toContain('1.0.1 -> 1.1.7');
+    expect(migrated.migrationLog.at(-1)).toContain('1.0.1 -> 1.1.8');
   });
 
   it('restores the combat round consumed by selecting the route in 1.1.6', () => {
@@ -388,7 +388,7 @@ describe('scenario progression engine', () => {
       currentScene: 'S05', clueIds: ['I04', 'I07'], flags: {}, turn: 12
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.7');
+    expect(migrated.moduleVersion).toBe('1.1.8');
     expect(migrated.clocks.fusangEscape.value).toBe(0);
     expect(migrated.encounters.ENC01.round).toBe(0);
     expect(migrated.variables.combatRoundStarted).toBe(false);
@@ -416,7 +416,7 @@ describe('scenario progression engine', () => {
       currentScene: 'S04', clueIds: ['I07'], flags: {}, turn: 9
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.7');
+    expect(migrated.moduleVersion).toBe('1.1.8');
     expect(migrated.clueStates.I07).toBe('unknown');
     expect(migrated.knownFactIds).not.toContain('F09');
     expect(migrated.firedEventIds).not.toContain('EV_S04_MAP');
@@ -438,8 +438,8 @@ describe('scenario progression engine', () => {
     });
 
     expect(migrated.contentHash).not.toBe(previous.contentHash);
-    expect(migrated.moduleVersion).toBe('1.1.7');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.7');
+    expect(migrated.moduleVersion).toBe('1.1.8');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.8');
   });
 
   it('migrates saves from the latest 1.1.0 runtime', () => {
@@ -451,9 +451,9 @@ describe('scenario progression engine', () => {
       currentScene: 'S05', clueIds: ['I04', 'I07'], flags: {}, turn: 12
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.7');
+    expect(migrated.moduleVersion).toBe('1.1.8');
     expect(migrated.contentHash).not.toBe(previous.contentHash);
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.7');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.8');
   });
 
   it('migrates the saved real-play state from scenario 1.1.1', () => {
@@ -467,9 +467,9 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: [], flags: {}, turn: 2
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.7');
+    expect(migrated.moduleVersion).toBe('1.1.8');
     expect(migrated.beatStates.B02).toBe('active');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.1 -> 1.1.7');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.1 -> 1.1.8');
   });
 
   it('migrates the saved real-play state from scenario 1.1.2', () => {
@@ -484,10 +484,10 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: ['I04'], flags: {}, turn: 3
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.7');
+    expect(migrated.moduleVersion).toBe('1.1.8');
     expect(migrated.clueStates.I04).toBe('discovered');
     expect(migrated.knownFactIds).not.toContain('F06');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.2 -> 1.1.7');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.2 -> 1.1.8');
   });
 
   it('migrates the saved real-play state from scenario 1.1.4', () => {
@@ -506,10 +506,10 @@ describe('scenario progression engine', () => {
       currentScene: 'S05', clueIds: ['I04', 'I07'], flags: {}, turn: 24
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.7');
+    expect(migrated.moduleVersion).toBe('1.1.8');
     expect(migrated.beatStates.B06).toBe('active');
     expect(migrated.objectiveStates.O08).toBe('active');
     expect(migrated.variables.finaleRoute).toBe('negotiation');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.4 -> 1.1.7');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.4 -> 1.1.8');
   });
 });

@@ -342,6 +342,11 @@ export interface Rules {
 export interface Presentation {
   openingNarrative: Text;
   initialSuggestions: StringList;
+  clocks: {
+    id: Id;
+    label: Text;
+    max: number;
+  }[];
   caseBoard: {
     summary: Text;
     nodes: {

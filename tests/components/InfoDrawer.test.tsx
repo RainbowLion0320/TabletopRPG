@@ -81,4 +81,16 @@ describe('InfoDrawer v7 investigation workspace', () => {
     expect(screen.queryByRole('button', { name: '线索' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '人物' })).not.toBeInTheDocument();
   });
+
+  it('shows authored clock labels and limits instead of internal ids', async () => {
+    const state = makeState({ activeNpcName: '扶桑花号交涉代表', currentScene: 'S05' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.clocks.fusangEscape = { value: 6, active: true, visible: true };
+    renderDrawer(state);
+    fireEvent.click(screen.getByRole('button', { name: '进度' }));
+
+    expect(screen.getByText('扶桑花号离港')).toBeInTheDocument();
+    expect(screen.getByText('6 / 7')).toBeInTheDocument();
+    expect(screen.queryByText('fusangEscape')).not.toBeInTheDocument();
+  });
 });

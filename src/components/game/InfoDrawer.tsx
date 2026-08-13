@@ -19,6 +19,7 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
   const progress = getScenarioProgressForState(state);
   const objectives = getVisibleScenarioObjectives(progress);
   const visibleClocks = Object.entries(progress.clocks).filter(([, clock]) => clock.visible);
+  const clockPresentation = new Map(scenario.presentation.clocks.map((clock) => [clock.id, clock]));
 
   // 拖拽状态
   const tabRef = useRef<HTMLButtonElement>(null);
@@ -140,9 +141,15 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
               {' · '}已分析 {Object.values(progress.clueStates).filter((status) => status === 'analyzed').length}
             </p>
             {visibleClocks.length ? <h3><Clock3 size={17} />可见时钟</h3> : null}
-            {visibleClocks.map(([clockId, clock]) => (
-              <div className="clock-row" key={clockId}><strong>{clockId}</strong><span>{clock.value} / 7</span></div>
-            ))}
+            {visibleClocks.map(([clockId, clock]) => {
+              const presentation = clockPresentation.get(clockId);
+              if (!presentation) return null;
+              return (
+                <div className="clock-row" key={clockId}>
+                  <strong>{presentation.label}</strong><span>{clock.value} / {presentation.max}</span>
+                </div>
+              );
+            })}
           </section>
         ) : null}
 
