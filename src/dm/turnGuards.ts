@@ -403,7 +403,6 @@ export function inferNarrativeConsequences(
 ): AiResponse {
   const narrative = response.narrative ?? '';
   const hp = { ...(response.stateUpdate?.hp ?? {}) };
-  const san = { ...(response.stateUpdate?.san ?? {}) };
   const involved = new Set(actions.map((action) => action.player));
 
   if (/中弹|被击中|受伤|流血|灼伤|划伤|骨折|剧痛/.test(narrative)) {
@@ -411,18 +410,11 @@ export function inferNarrativeConsequences(
       if (involved.has(player.name) && hp[player.name] === undefined) mergeDelta(hp, player.name, -1);
     }
   }
-  if (/深潜者|非人的怪物|不可名状|触手|活祭|献祭|异形生物/.test(narrative)) {
-    for (const player of state.players) {
-      if (involved.has(player.name) && san[player.name] === undefined) mergeDelta(san, player.name, -1);
-    }
-  }
-
   return {
     ...response,
     stateUpdate: {
       ...response.stateUpdate,
-      hp,
-      san
+      hp
     }
   };
 }

@@ -398,13 +398,13 @@ describe('turnGuards', () => {
     )).toEqual([]);
   });
 
-  it('adds minimal HP and SAN consequences when narration forgot state tools', () => {
+  it('infers minimal physical harm but never invents SAN loss from creature names', () => {
     const state = makeState({ players: [makeInvestigator({ name: '亨利' })] });
     const response = inferNarrativeConsequences({
       narrative: '亨利被深潜者击中，伤口开始流血。'
     }, [{ player: '亨利', action: '迎战怪物' }], state);
     expect(response.stateUpdate?.hp).toEqual({ 亨利: -1 });
-    expect(response.stateUpdate?.san).toEqual({ 亨利: -1 });
+    expect(response.stateUpdate?.san).toBeUndefined();
   });
 
   it('removes suggestions that reveal undiscovered item names', () => {
