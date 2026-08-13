@@ -625,6 +625,10 @@ describe('turnGuards', () => {
       activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
     }, [...event], state, kb)).toMatch(/伤情|威胁经历/);
     expect(validateNarratorSemantics({
+      narrative: '酒保指出贝尔街14号的废弃药店，又说那地方晚上有灯光、马车进出并转运货物，蒙特利尔的人也去过。',
+      activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
+    }, [...event], state, kb)).toMatch(/未调查地点的活动细节/);
+    expect(validateNarratorSemantics({
       narrative: '酒保说：“我只知道他脸上有伤，手在发抖。”',
       activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/伤情/);
