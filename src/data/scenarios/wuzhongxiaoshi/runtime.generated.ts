@@ -11,7 +11,7 @@ import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
 import asset9 from '../../../../assets/avatars/deep_one_envoy.png';
 
-export const scenarioContentHash = "81228f7e3d0436a0";
+export const scenarioContentHash = "5a09ca5048dba14a";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -27,7 +27,7 @@ export const scenarioAssetUrls: Record<string, string> = {
 export const generatedScenarioModule = {
   "manifest": {
     "schemaVersion": 1,
-    "contentVersion": "1.1.14",
+    "contentVersion": "1.1.15",
     "id": "wuzhongxiaoshi",
     "title": "雾中消逝",
     "system": "COC 第七版风格 D100",
@@ -732,8 +732,10 @@ export const generatedScenarioModule = {
           "difficulty": "普通",
           "searchTerms": [
             "后厅油布包",
+            "后室油布包",
             "油布包",
-            "后厅"
+            "后厅",
+            "后室"
           ],
           "failForward": "失败仍能从残片辨认扶桑花号泊位，但暴徒或深潜者警觉度增加。",
           "successEventId": "EV_S04_MAP",

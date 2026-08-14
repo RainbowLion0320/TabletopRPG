@@ -467,6 +467,30 @@ describe('turnGuards', () => {
     ]);
   });
 
+  it('treats the natural back-room synonym as the authored pharmacy map area', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '托马斯' }, { 侦查: 65 })],
+      currentScene: 'S04'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'active';
+    state.scenarioProgress.objectiveStates.O05 = 'active';
+    const actions = [{
+      player: '托马斯',
+      action: '仔细搜查柜台、抽屉和后室，寻找账本、货单或标有港口去向的文件。'
+    }];
+
+    expect(buildRequiredCheck(actions, state)).toEqual(expect.objectContaining({
+      player: '托马斯', skill: '侦查', difficulty: '普通'
+    }));
+    expect(inferStoryEventsFromActions(actions, state, kb)).toEqual([
+      expect.objectContaining({ arguments: expect.objectContaining({ eventId: 'EV_S04_MAP' }) }),
+      expect.objectContaining({ arguments: expect.objectContaining({ eventId: 'EV_S04_CIGAR' }) })
+    ]);
+  });
+
   it('does not add a roll for an authored automatic clue', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '亨利' }, { 侦查: 70 })],
