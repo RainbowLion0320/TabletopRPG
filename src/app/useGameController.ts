@@ -426,6 +426,7 @@ export function useGameController() {
     diceRoll,
     drawerOpen,
     handleRoll,
+    incompatibleSaves: saveSlots.incompatibleSaves,
     journalOpen,
     loadCurrentLatest,
     loadLatest,

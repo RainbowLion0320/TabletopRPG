@@ -1,7 +1,8 @@
-import type { ApiConfig, GameState, SaveSlot } from '../types/game';
+import type { ApiConfig, GameState, IncompatibleSaveSlot, SaveSlot } from '../types/game';
 import { isAiProtocol, isAiProvider, normalizeApiConfig } from '../config/aiConfig';
 import { storyData } from '../data/storyData';
 import { hydrateGameState } from '../state/gameReducer';
+import { ScenarioContentMismatchError } from '../scenario/engine';
 
 const SAVE_KEY = 'trpg-saves-v2';
 const API_KEY = 'trpg-api';
@@ -53,30 +54,61 @@ function normalizeSaveSlot(value: unknown): SaveSlot | null {
   };
 }
 
-export function readSaves(): SaveSlot[] {
-  const merged = parseArray(SAVE_KEY)
-    .flatMap((slot) => {
-      try {
-        const normalized = normalizeSaveSlot(slot);
-        return normalized ? [normalized] : [];
-      } catch (error) {
-        console.warn('[storage] 存档因模组版本不兼容而拒绝载入：', error instanceof Error ? error.message : error);
-        return [];
+export interface SaveLibrary {
+  saves: SaveSlot[];
+  incompatible: IncompatibleSaveSlot[];
+}
+
+function incompatibleSaveSlot(value: unknown, reason: string): IncompatibleSaveSlot | null {
+  if (!isRecord(value)) return null;
+  const id = Number(value.id);
+  if (!Number.isFinite(id)) return null;
+  return {
+    id,
+    savedAt: typeof value.savedAt === 'string' ? value.savedAt : '时间未知',
+    scene: typeof value.scene === 'string' ? value.scene : '未知场景',
+    players: typeof value.players === 'string' ? value.players : '调查员未知',
+    reason
+  };
+}
+
+export function readSaveLibrary(): SaveLibrary {
+  const merged: SaveSlot[] = [];
+  const incompatible: IncompatibleSaveSlot[] = [];
+  for (const slot of parseArray(SAVE_KEY)) {
+    try {
+      const normalized = normalizeSaveSlot(slot);
+      if (normalized) merged.push(normalized);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      console.warn('[storage] 存档因模组版本不兼容而拒绝载入：', reason);
+      if (error instanceof ScenarioContentMismatchError) {
+        const blocked = incompatibleSaveSlot(slot, reason);
+        if (blocked) incompatible.push(blocked);
       }
-    })
-    .sort((a, b) => b.id - a.id);
+    }
+  }
+  merged.sort((a, b) => b.id - a.id);
+  incompatible.sort((a, b) => b.id - a.id);
 
   const deduped = new Map<number, SaveSlot>();
   merged.forEach((slot) => {
     if (!deduped.has(slot.id)) deduped.set(slot.id, slot);
   });
 
-  return [...deduped.values()].slice(0, MAX_SAVES);
+  return {
+    saves: [...deduped.values()].slice(0, MAX_SAVES),
+    incompatible: incompatible.slice(0, MAX_SAVES)
+  };
+}
+
+export function readSaves(): SaveSlot[] {
+  return readSaveLibrary().saves;
 }
 
 export function saveGameState(gameState: GameState) {
   const normalizedState = hydrateGameState(gameState);
-  const saves = readSaves();
+  const rawSaves = parseArray(SAVE_KEY);
   const slot: SaveSlot = {
     id: Date.now(),
     savedAt: new Date().toLocaleString('zh-CN'),
@@ -88,14 +120,17 @@ export function saveGameState(gameState: GameState) {
     contentHash: normalizedState.scenarioProgress.contentHash,
     version: 8
   };
-  localStorage.setItem(SAVE_KEY, JSON.stringify([slot, ...saves.filter((save) => save.id !== slot.id)].slice(0, MAX_SAVES)));
+  localStorage.setItem(SAVE_KEY, JSON.stringify([
+    slot,
+    ...rawSaves.filter((save) => !isRecord(save) || Number(save.id) !== slot.id)
+  ].slice(0, MAX_SAVES)));
   return slot;
 }
 
 export function deleteSave(id: number) {
-  const saves = readSaves().filter((slot) => slot.id !== id);
-  localStorage.setItem(SAVE_KEY, JSON.stringify(saves));
-  return saves;
+  const rawSaves = parseArray(SAVE_KEY).filter((slot) => !isRecord(slot) || Number(slot.id) !== id);
+  localStorage.setItem(SAVE_KEY, JSON.stringify(rawSaves));
+  return readSaveLibrary();
 }
 
 /**

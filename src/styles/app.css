@@ -2822,6 +2822,14 @@ button.case-board-node:hover {
   gap: 8px;
 }
 
+.save-slot-incompatible {
+  border-color: rgba(194, 91, 75, 0.55);
+}
+
+.save-slot-incompatible strong {
+  color: #d99b8e;
+}
+
 /* ---------- DmDebugDrawer (DEV only) ---------- */
 .dm-debug-fab {
   position: fixed;

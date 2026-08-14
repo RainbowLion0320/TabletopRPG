@@ -396,6 +396,26 @@ describe('scenario progression engine', () => {
     expect(migrated.migrationLog.at(-1)).toContain('1.1.12 -> 1.1.14');
   });
 
+  it('migrates the 1.1.13 live-play save without losing its current scene', () => {
+    const previous = createScenarioProgress();
+    previous.moduleVersion = '1.1.13';
+    previous.contentHash = '494364d4cfda2ab2';
+    previous.beatStates.B01 = 'completed';
+    previous.beatStates.B02 = 'completed';
+    previous.beatStates.B04 = 'active';
+    previous.knownFactIds = ['F05'];
+    previous.visitedSceneIds = ['S01', 'S02', 'S03'];
+
+    const migrated = hydrateScenarioProgress(previous, {
+      currentScene: 'S03', clueIds: ['I02', 'I04'], flags: {}, turn: 11
+    });
+
+    expect(migrated.moduleVersion).toBe('1.1.14');
+    expect(migrated.visitedSceneIds).toEqual(['S01', 'S02', 'S03']);
+    expect(migrated.knownFactIds).toContain('F05');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.13 -> 1.1.14');
+  });
+
   it('migrates the 1.1.9 live-play content version without losing progress', () => {
     const previous = createScenarioProgress();
     previous.moduleVersion = '1.1.9';

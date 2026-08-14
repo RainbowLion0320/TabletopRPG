@@ -60,6 +60,7 @@ export function GameScreen({ controller, onHome, onRestart }: GameScreenProps) {
       <SaveManagerModal
         open={controller.saveManagerOpen}
         saves={controller.saves}
+        incompatibleSaves={controller.incompatibleSaves}
         onClose={() => controller.setSaveManagerOpen(false)}
         onDelete={controller.deleteSaveSlot}
         onLoad={(save) => controller.loadSaveSlot(save.gameState)}

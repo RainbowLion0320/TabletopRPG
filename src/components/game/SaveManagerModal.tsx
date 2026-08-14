@@ -1,14 +1,22 @@
-import type { SaveSlot } from '../../types/game';
+import type { IncompatibleSaveSlot, SaveSlot } from '../../types/game';
 
 interface SaveManagerModalProps {
   open: boolean;
   saves: SaveSlot[];
+  incompatibleSaves: IncompatibleSaveSlot[];
   onClose: () => void;
   onDelete: (id: number) => void;
   onLoad: (save: SaveSlot) => void;
 }
 
-export function SaveManagerModal({ onClose, onDelete, onLoad, open, saves }: SaveManagerModalProps) {
+export function SaveManagerModal({
+  incompatibleSaves = [],
+  onClose,
+  onDelete,
+  onLoad,
+  open,
+  saves
+}: SaveManagerModalProps) {
   if (!open) return null;
 
   return (
@@ -17,7 +25,7 @@ export function SaveManagerModal({ onClose, onDelete, onLoad, open, saves }: Sav
         <h2 id="save-manager-title">存档管理</h2>
         <p>选择一个存档载入，或删除不需要的本地存档。</p>
 
-        {saves.length ? (
+        {saves.length || incompatibleSaves.length ? (
           <div className="save-list">
             {saves.map((save) => (
               <article className="save-slot-card" key={save.id}>
@@ -28,6 +36,19 @@ export function SaveManagerModal({ onClose, onDelete, onLoad, open, saves }: Sav
                 </div>
                 <div className="save-slot-actions">
                   <button className="primary-btn compact" onClick={() => onLoad(save)}>载入存档</button>
+                  <button className="ghost-btn compact danger" onClick={() => onDelete(save.id)}>删除存档</button>
+                </div>
+              </article>
+            ))}
+            {incompatibleSaves.map((save) => (
+              <article className="save-slot-card save-slot-incompatible" key={`incompatible-${save.id}`}>
+                <div>
+                  <strong>{save.scene} · 无法载入</strong>
+                  <span>{save.players}</span>
+                  <small>{save.savedAt}</small>
+                  <small>{save.reason}</small>
+                </div>
+                <div className="save-slot-actions">
                   <button className="ghost-btn compact danger" onClick={() => onDelete(save.id)}>删除存档</button>
                 </div>
               </article>

@@ -554,3 +554,11 @@ export interface SaveSlot {
   /** 存档格式版本；v8 起包含模组版本、内容哈希和 ScenarioProgress。 */
   version?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 }
+
+export interface IncompatibleSaveSlot {
+  id: number;
+  savedAt: string;
+  scene: string;
+  players: string;
+  reason: string;
+}
