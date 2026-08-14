@@ -1,7 +1,7 @@
 import type { Investigator } from '../types/game';
 import { isAffirmativeCombatAction } from './actionIntent';
 
-const NEGOTIATION_RE = /谈判|交涉|谈条件|和平离港|交换条件/;
+const NEGOTIATION_RE = /谈判|交涉|谈条件|和平离港|交换条件|(?:听清|聆听|倾听|理解|回应)[^，。；！？\n]{0,16}(?:诉求|条件)/;
 const PREMATURE_RESCUE_RE = /救出埃里克|释放埃里克|(?:解开|割断|剪断|挣脱)[^，。；！？\n]{0,16}(?:绳|束缚|绑缚)|(?:带|护送|扶着|搀扶)[^，。；！？\n]{0,12}埃里克[^，。；！？\n]{0,12}(?:离开|撤离|下船|码头)/;
 
 export function isFinaleChoiceCompatible(

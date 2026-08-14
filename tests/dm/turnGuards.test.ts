@@ -1137,6 +1137,21 @@ describe('turnGuards', () => {
     expect(cleared.艾达.some((choice) => /寻找埃里克|营救埃里克/.test(choice))).toBe(true);
   });
 
+  it('removes indirect negotiation suggestions after the combat route is locked', () => {
+    const players = [makeInvestigator({ id: 'thomas', name: '托马斯', equipment: [] })];
+    const result = sanitizePlayerChoices({
+      托马斯: [
+        '与船上代表保持距离并听清它的诉求',
+        '观察埃里克和甲板守卫的当前状态',
+        '寻找掩护观察仍在抵抗的深潜者'
+      ]
+    }, new Set(), kb, 'S05', 'combat', 2, players);
+
+    expect(result.托马斯).not.toContain('与船上代表保持距离并听清它的诉求');
+    expect(result.托马斯).toContain('寻找掩护观察仍在抵抗的深潜者');
+    expect(result.托马斯).toHaveLength(3);
+  });
+
   it('rejects revolver mechanics borrowed from a semi-automatic pistol', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '罗伯特', equipment: ['警用左轮手枪'] })],
