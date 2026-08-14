@@ -1234,6 +1234,10 @@ describe('turnGuards', () => {
       activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/人物外貌.*老赫特之家酒保/);
     expect(validateNarratorSemantics({
+      narrative: '酒馆里，一名身材发福、留着乱糟糟胡子的酒保正在吧台后擦杯子。',
+      activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/人物外貌.*老赫特之家酒保/);
+    expect(validateNarratorSemantics({
       narrative: '清瘦的中年酒保站在吧台后擦拭酒杯，下巴刮得干净。',
       activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toBeNull();

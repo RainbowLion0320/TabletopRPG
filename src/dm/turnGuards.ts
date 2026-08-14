@@ -740,9 +740,12 @@ function lockedSceneReference(
 }
 
 const NPC_APPEARANCE_CONFLICTS: Array<{ authored: RegExp; contradictedBy: RegExp }> = [
-  { authored: /壮实|魁梧|健壮|结实|矮胖|肥胖|臃肿/, contradictedBy: /清瘦|精瘦|瘦削|消瘦|干瘦|单薄/ },
-  { authored: /清瘦|精瘦|瘦削|消瘦|干瘦|单薄/, contradictedBy: /壮实|魁梧|健壮|结实|矮胖|肥胖|臃肿/ },
-  { authored: /刮得干净|没有胡须|无胡须/, contradictedBy: /络腮胡|大胡子|浓密胡须|留着.{0,4}胡须/ },
+  { authored: /壮实|魁梧|健壮|结实|矮胖|肥胖|发福|臃肿/, contradictedBy: /清瘦|精瘦|瘦削|消瘦|干瘦|单薄/ },
+  { authored: /清瘦|精瘦|瘦削|消瘦|干瘦|单薄/, contradictedBy: /壮实|魁梧|健壮|结实|矮胖|肥胖|发福|臃肿/ },
+  {
+    authored: /刮得干净|没有胡须|无胡须/,
+    contradictedBy: /络腮胡|大胡子|浓密胡须|胡子拉碴|乱糟糟(?:的)?胡子|留着[^。；，]{0,8}胡须|摸了摸[^。；，]{0,6}(?:胡须|胡子)/
+  },
   { authored: /二十余岁|年轻/, contradictedBy: /中年|老年|年迈|白发苍苍/ },
   { authored: /中年|四十|五十/, contradictedBy: /少年|十几岁|二十余岁/ }
 ];
