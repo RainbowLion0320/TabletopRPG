@@ -413,6 +413,13 @@ describe('turnGuards', () => {
     state.currentScene = 'S03';
     expect(inferStoryEventFromActions(actions, state)?.arguments.eventId).toBe('EV_FIND_I04');
     expect(buildRequiredCheck(actions, state)).toBeNull();
+
+    const naturalReview = [{
+      player: '托马斯',
+      action: '把小册子重新置于稳定灯光下，只复核受热隐写中能够明确辨认的完整地址。'
+    }];
+    expect(inferStoryEventFromActions(naturalReview, state)?.arguments.eventId).toBe('EV_FIND_I04');
+    expect(buildRequiredCheck(naturalReview, state)).toBeNull();
   });
 
   it('requires a real roll before the pharmacy map event and uses its authored fail-forward', () => {
@@ -1641,6 +1648,10 @@ describe('turnGuards', () => {
       activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
     }, [...event], state, kb)).toMatch(/未调查地点的活动细节/);
     expect(validateNarratorSemantics({
+      narrative: '酒保朝门外努嘴：“贝尔街往东走，穿过两个路口就到。”',
+      activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/具体路线指引/);
+    expect(validateNarratorSemantics({
       narrative: '酒保说埃里克偶尔带着油布包，里面像是文书或账本；他最后一次来是在七月初。',
       activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/包裹或账本证词/);
@@ -1814,6 +1825,11 @@ describe('turnGuards', () => {
       .toBeNull();
 
     searching.scenarioProgress.clueStates.I04 = 'discovered';
+    searching.clues = [{ id: 'I04', name: '小册子', description: '', discoveredAt: 1 }];
+    expect(validateNarratorSemantics({
+      narrative: '小册子夹页上的隐写字迹逐渐清晰浮现。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '是否前往药店？', playerChoices: {}
+    }, [], searching, kb)).toMatch(/EV_FIND_I04/);
     expect(validateNarratorSemantics({
       narrative: '加热小册子夹页，显出隐写文字“贝尔街14号卡森其药店”。',
       activeNpc: '伊莎贝拉·摩勒', nextPrompt: '是否前往药店？', playerChoices: {}
@@ -1824,5 +1840,20 @@ describe('turnGuards', () => {
       activeNpc: '伊莎贝拉·摩勒', nextPrompt: '是否前往药店？', playerChoices: {}
     }, [{ name: 'propose_story_event', arguments: { eventId: 'EV_FIND_I04' } }], searching, kb))
       .toMatch(/锁定地点.*扶桑花号/);
+  });
+
+  it('keeps descriptive time of day aligned with the structured clock', () => {
+    const state = makeState({ currentScene: 'S03' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.worldTime = '1920-07-13T18:55';
+
+    expect(validateNarratorSemantics({
+      narrative: '你们收好笔记，酒吧外夜色已深。',
+      activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/20:00 前不得写成深夜/);
+    expect(validateNarratorSemantics({
+      narrative: '你们收好笔记，酒吧外天色渐暗。',
+      activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toBeNull();
   });
 });
