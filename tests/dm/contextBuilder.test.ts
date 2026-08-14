@@ -84,6 +84,7 @@ describe('contextBuilder', () => {
 
     const prompt = buildNarratorSystemPrompt(ctx);
     expect(prompt).toContain('权威公开人物目录');
+    expect(prompt).toContain('当前规则不追踪弹药');
     expect(prompt).toContain('洛夫·蒙特利尔｜警察局长');
     expect(prompt).not.toContain('贝尔街14号卡森其药店');
 

@@ -1126,6 +1126,22 @@ describe('turnGuards', () => {
     }, [], state, kb)).toMatch(/左轮手枪没有半自动手枪/);
   });
 
+  it('rejects invented ammunition tracking while allowing ordinary gunfire narration', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '罗伯特', equipment: ['警用左轮手枪'] })],
+      currentScene: 'S05'
+    });
+
+    expect(validateNarratorSemantics({
+      narrative: '六发弹巢中已连射四发，剩余两颗子弹。子弹所剩无几，若再失手就必须重新装填。',
+      nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/未启用弹药计数/);
+    expect(validateNarratorSemantics({
+      narrative: '罗伯特扣下扳机，子弹擦过船舷，枪声在浓雾中炸响。',
+      nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toBeNull();
+  });
+
   it('rejects rescuing Eric or clearing all enemies before structured combat allows it', () => {
     const state = makeState({ currentScene: 'S05' });
     state.scenarioProgress = createScenarioProgress();
