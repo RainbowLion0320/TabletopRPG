@@ -555,6 +555,8 @@ test('v8 ending save locks the action area and preserves the authored ending', a
   await expect(page.getByText('结局C：和平交涉')).toBeVisible();
   await expect(page.getByText('调查员听懂并说服深潜者释放埃里克，扶桑花号随后和平离港。')).toBeVisible();
   await expect(page.locator('.dock-input')).toHaveCount(0);
+  await expect(page.locator('.scene-npc')).toHaveCount(0);
+  await expect(page.locator('.npc-nameplate')).toHaveCount(0);
   await page.getByRole('button', { name: '资料', exact: true }).click();
   await page.getByRole('button', { name: '进度' }).click();
   const skippedObjective = page.locator('.objective-row').filter({ hasText: '调查蒙特利尔与埃里克的关系' });

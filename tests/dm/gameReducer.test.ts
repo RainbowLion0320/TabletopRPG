@@ -232,6 +232,52 @@ describe('gameReducer applyAiResponse pendingConsequences merge', () => {
     expect(next.scenarioProgress?.endingId).toBeNull();
   });
 
+  it('clears the defeated NPC focus when a structured combat roll settles an ending', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '罗伯特' }, { '射击（手枪）': 60 })],
+      currentScene: 'S05',
+      activeNpcName: '扶桑花号交涉代表'
+    });
+    state.activeNpcId = 'N06';
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.variables.combatRoundStarted = true;
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.encounters.ENC01.opponentHp = 11;
+    state.scenarioProgress.encounters.ENC01.defeated = 3;
+    state.scenarioProgress.clocks.fusangEscape = { value: 4, active: true, visible: true };
+    state.pendingCheck = {
+      scenarioCheckId: 'CHECK_COMBAT', player: '罗伯特', skill: '射击（手枪）',
+      difficulty: '普通', skillVal: 60, threshold: 60
+    };
+
+    const next = gameReducer(state, {
+      type: 'applyDiceResult',
+      result: { roll: 8, level: 'crit', label: '极难成功（8）' }
+    });
+
+    expect(next.scenarioProgress?.endingId).toBe('END_A');
+    expect(next.activeNpcId).toBeNull();
+    expect(next.activeNpcName).toBeNull();
+  });
+
+  it('does not restore an active NPC focus from a completed ending save', () => {
+    const state = makeState({ currentScene: 'S05', activeNpcName: '扶桑花号交涉代表' });
+    state.activeNpcId = 'N06';
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.endingId = 'END_A';
+    state.scenarioProgress.settledEndingIds = ['END_A'];
+
+    const hydrated = hydrateGameState(state);
+
+    expect(hydrated.activeNpcId).toBeNull();
+    expect(hydrated.activeNpcName).toBeNull();
+  });
+
   it('refreshes stale pre-finale choices after the combat route settles', () => {
     const player = makeInvestigator({ id: 'p-robert', name: '罗伯特', equipment: ['警用警棍'] });
     const state = makeState({ players: [player], currentScene: 'S05' });

@@ -1386,9 +1386,11 @@ export function hydrateGameState(value: unknown): GameState {
   const persistedNpcName = typeof source.activeNpcId === 'string'
     ? npcNameFromId(source.activeNpcId)
     : normalizeNpcName(source.activeNpcName);
-  const activeNpcName = persistedNpcName && storyData.scenes[currentScene].npcs.includes(persistedNpcName)
-    ? persistedNpcName
-    : storyData.scenes[currentScene].npcs[0] ?? null;
+  const activeNpcName = scenarioProgress.endingId
+    ? null
+    : persistedNpcName && storyData.scenes[currentScene].npcs.includes(persistedNpcName)
+      ? persistedNpcName
+      : storyData.scenes[currentScene].npcs[0] ?? null;
 
   const hydrated: GameState = {
     ...base,
@@ -1503,6 +1505,8 @@ function applyScenarioTransition(
     flags: rewardFlags,
     clues: appendNewClues(state.clues, discoveredIds),
     scenarioProgress: transition.progress,
+    activeNpcId: transition.progress.endingId ? null : state.activeNpcId,
+    activeNpcName: transition.progress.endingId ? null : state.activeNpcName,
     pendingCheck: (() => {
       const transitioned = transition.requestedCheck
         ? prepareCheck(transition.requestedCheck, state.players)
