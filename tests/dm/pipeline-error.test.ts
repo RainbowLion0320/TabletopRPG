@@ -339,6 +339,46 @@ describe('runDmTurn error classification', () => {
     expect(next.players.every((player) => player.currentSan === player.san - 1)).toBe(true);
   });
 
+  it('does not travel to a scene unlocked in the same turn when it is only mentioned in testimony', async () => {
+    const response = JSON.stringify({
+      narrative: '伊莎贝拉确认委托，允许调查员继续在住宅内检查埃里克留下的个人物品。',
+      activeNpc: '伊莎贝拉·摩勒',
+      nextPrompt: '先检查住宅里的哪一处？',
+      playerChoices: {
+        托马斯: ['检查书桌抽屉与相框'],
+        罗伯特: ['检查书架夹缝与垃圾桶']
+      },
+      keywords: []
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(response)));
+    const state = makeState({
+      players: [makeInvestigator({ name: '托马斯' }), makeInvestigator({ name: '罗伯特' })],
+      currentScene: 'S01',
+      activeNpcName: '伊莎贝拉·摩勒'
+    });
+    state.scenarioProgress = createScenarioProgress();
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [
+        { player: '托马斯', action: '接受伊莎贝拉的正式委托，请她说明警方已做过的调查。' },
+        { player: '罗伯特', action: '确认共同接受委托，询问伊莎贝拉埃里克常去的酒吧、书房和可供搜查的个人物品。' }
+      ]
+    });
+
+    expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_ACCEPT_COMMISSION');
+    expect(output.legacyResponse.stateUpdate?.sceneChange).toBeNull();
+
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: output.legacyResponse,
+      raw: output.raw,
+      actorName: output.actorName
+    });
+    expect(next.currentScene).toBe('S01');
+    expect(next.scenarioProgress?.beatStates.B02).toBe('active');
+  });
+
   it('falls back immediately when clue narration disagrees with an authored failure event', async () => {
     const narrative = JSON.stringify({
       narrative: '尽管亨利没能判断便签上笔触是否异常，他仍看清了桌面上那张写有“别来找我”的字条。',

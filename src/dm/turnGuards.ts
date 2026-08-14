@@ -374,7 +374,10 @@ function sceneMentionFollowsDestinationVerb(text: string, terms: string[]): bool
     const beforeVerb = prefix.slice(Math.max(0, verbIndex - 8), verbIndex);
     const between = prefix.slice(verbIndex + lastDestinationVerb[0].length);
     const negated = /(?:暂(?:时|且)?|先|明确)?(?:不|别|勿|不要|并不|无需)(?:再)?$/.test(beforeVerb);
+    const attributiveGo = lastDestinationVerb[0] === '去'
+      && (/(?:常|曾|会|想|要|能|可|失|过)$/.test(beforeVerb) || /^的/.test(between));
     return destinationFollowsScene || (!negated
+      && !attributiveGo
       && !/[，。；！？\n]/.test(between)
       && lastDestinationVerb[0] !== '离开');
   });

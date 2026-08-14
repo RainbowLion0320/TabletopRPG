@@ -585,6 +585,17 @@ describe('turnGuards', () => {
     ], state, kb)).toBeNull();
   });
 
+  it('does not treat an unlocked scene mentioned as a habitual destination as immediate travel', () => {
+    const state = makeState({ currentScene: 'S01' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.variables.oldHethLead = true;
+
+    expect(inferSceneChangeFromActions([{
+      player: '罗伯特',
+      action: '询问伊莎贝拉埃里克常去的酒吧、书房和可供搜查的个人物品。'
+    }], state, kb)).toBeNull();
+  });
+
   it('recognizes the written-out street address as the authored pharmacy', () => {
     const state = makeState({ currentScene: 'S03' });
     state.scenarioProgress = createScenarioProgress();
