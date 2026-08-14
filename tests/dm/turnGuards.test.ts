@@ -1141,6 +1141,10 @@ describe('turnGuards', () => {
       nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/未启用弹药计数/);
     expect(validateNarratorSemantics({
+      narrative: '深潜者仍在逼近。',
+      nextPrompt: '', playerChoices: { 罗伯特: ['将手枪抵近射击，最后一发子弹必须命中'] }
+    }, [], state, kb)).toMatch(/未启用弹药计数/);
+    expect(validateNarratorSemantics({
       narrative: '罗伯特扣下扳机，子弹擦过船舷，枪声在浓雾中炸响。',
       nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toBeNull();
