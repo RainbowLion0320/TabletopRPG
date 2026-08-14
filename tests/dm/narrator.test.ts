@@ -142,6 +142,29 @@ describe('callNarrator retry repair', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('strips unsupported inline Markdown from every player-visible model field', async () => {
+    const content = JSON.stringify({
+      narrative: '你们来到了位于街角的**老赫特酒吧**，酒保放下`酒杯`。',
+      activeNpc: '**老赫特之家酒保**',
+      nextPrompt: '是否查看[合影](https://invalid.example)？',
+      playerChoices: { 亨利: ['向**酒保**出示合影'] },
+      keywords: []
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(content)));
+
+    const output = await callNarrator(config, {
+      ctx,
+      actions: [{ player: '亨利', action: '进入酒吧。' }],
+      mode: 'together',
+      history: []
+    });
+
+    expect(output.narrative).toBe('你们来到了位于街角的老赫特酒吧，酒保放下酒杯。');
+    expect(output.activeNpc).toBe('老赫特之家酒保');
+    expect(output.nextPrompt).toBe('是否查看合影？');
+    expect(output.playerChoices.亨利).toEqual(['向酒保出示合影']);
+  });
+
   it('repairs unescaped dialogue quotes locally without another model request', async () => {
     const malformed = '{"narrative":"老人说什么"水里的东西"，随后闭口不言。","activeNpc":null,"nextPrompt":"继续追问吗？","playerChoices":{"亨利":["追问细节"]}}';
     const fetchMock = vi.fn(async () => jsonResponse(malformed));

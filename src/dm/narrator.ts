@@ -499,7 +499,14 @@ function coerceStringArray(v: unknown): string[] {
 }
 
 function normalizeModelText(value: string): string {
-  return value.trim().replace(/\\"/g, '"').replace(/\\n/g, '\n');
+  return value
+    .trim()
+    .replace(/\\"/g, '"')
+    .replace(/\\n/g, '\n')
+    .replace(/\[([^\]\n]+)\]\([^\n)]+\)/g, '$1')
+    .replace(/\*\*([^*\n]+)\*\*/g, '$1')
+    .replace(/__([^_\n]+)__/g, '$1')
+    .replace(/`([^`\n]+)`/g, '$1');
 }
 
 function coercePlayerChoices(v: unknown, playerNames: string[]): Record<string, string[]> {
