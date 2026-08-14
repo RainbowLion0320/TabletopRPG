@@ -105,6 +105,15 @@ function lintModule(module) {
   for (const clockId of ids.clockPresentation) {
     if (!clocks.has(clockId)) errors.push(`presentation.clocks 引用未声明的 clock：${clockId}`);
   }
+  const suggestionScenes = new Set();
+  for (const entry of presentation.sceneSuggestions) {
+    if (!ids.scene.has(entry.sceneId)) errors.push(`presentation.sceneSuggestions 引用未声明的 scene：${entry.sceneId}`);
+    if (suggestionScenes.has(entry.sceneId)) errors.push(`presentation.sceneSuggestions 重复声明 scene：${entry.sceneId}`);
+    suggestionScenes.add(entry.sceneId);
+  }
+  for (const sceneId of ids.scene) {
+    if (!suggestionScenes.has(sceneId)) errors.push(`scene ${sceneId} 缺少 presentation.sceneSuggestions 降级行动建议`);
+  }
 
   const assertRef = (kind, id, source) => {
     const map = {
@@ -308,6 +317,7 @@ function authorGuide() {
     '- `world.facts` 分离 DM 真相与玩家事实；进入场景不等于发现事实。',
     '- `progression.beats` 定义硬主线，`storyEvents` 是唯一权威剧情效果入口。',
     '- 每个运行时时钟都必须在 `presentation.clocks` 声明玩家可见名称和最大值，UI 不显示内部 ID。',
+    '- 每个场景必须在 `presentation.sceneSuggestions` 提供 2-5 条不泄露答案的具体行动，用于模型响应被拒绝时安全降级。',
     '- 必经节点必须配置 3 回合软提示、6 回合 fail-forward 和有效 `recoveryEventId`。',
     '- 关键线索必须配置 `fallbackEventId`，任何检定失败或物证损坏后仍须存在合法主线路径。',
     '- 每条物证的 `discovery.searchTerms` 必须列出玩家在不知道线索名称时会自然调查的区域词；不要要求玩家先说出答案才能命中剧情事件。',

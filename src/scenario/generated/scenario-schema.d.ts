@@ -346,6 +346,14 @@ export interface Rules {
 export interface Presentation {
   openingNarrative: Text;
   initialSuggestions: StringList;
+  sceneSuggestions: {
+    sceneId: Id;
+    /**
+     * @minItems 2
+     * @maxItems 5
+     */
+    actions: [Text, Text] | [Text, Text, Text] | [Text, Text, Text, Text] | [Text, Text, Text, Text, Text];
+  }[];
   clocks: {
     id: Id;
     label: Text;

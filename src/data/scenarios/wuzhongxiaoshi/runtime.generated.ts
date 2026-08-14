@@ -11,7 +11,7 @@ import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
 import asset9 from '../../../../assets/avatars/deep_one_envoy.png';
 
-export const scenarioContentHash = "456078c98be5a163";
+export const scenarioContentHash = "1ff75c089908b22a";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -2549,6 +2549,48 @@ export const generatedScenarioModule = {
       "接受委托并询问失踪经过",
       "观察伊莎贝拉的状态",
       "要求查看埃里克的书房"
+    ],
+    "sceneSuggestions": [
+      {
+        "sceneId": "S01",
+        "actions": [
+          "检查书桌抽屉与相框是否藏有文件",
+          "查看书架夹页和书本缝隙",
+          "请伊莎贝拉只补充她亲眼确认的失踪经过"
+        ]
+      },
+      {
+        "sceneId": "S02",
+        "actions": [
+          "出示合影并请蒙特利尔解释已知关系",
+          "观察蒙特利尔回答时的神态与停顿",
+          "核对警方已经公开的失踪案记录"
+        ]
+      },
+      {
+        "sceneId": "S03",
+        "actions": [
+          "出示合影请酒保只核对见过的人和地点",
+          "以酒水或小费换取可确认的街区消息",
+          "检查随身线索中尚未分析的异常内容"
+        ]
+      },
+      {
+        "sceneId": "S04",
+        "actions": [
+          "搜查后厅被翻动的区域和遗留包裹",
+          "检查柜台附近的烟灰与使用痕迹",
+          "确认后门、窗户和暴徒离去后的退路"
+        ]
+      },
+      {
+        "sceneId": "S05",
+        "actions": [
+          "与船上代表保持距离并听清它的诉求",
+          "观察埃里克和甲板守卫的当前状态",
+          "根据当前路线继续交涉或制止扶桑花号离港"
+        ]
+      }
     ],
     "clocks": [
       {

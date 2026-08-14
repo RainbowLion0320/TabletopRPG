@@ -560,6 +560,38 @@ describe('runDmTurn error classification', () => {
     expect(output.legacyResponse.playerChoices?.托马斯?.[0]).toBe('前往泰晤士港·扶桑花号继续调查');
   });
 
+  it('uses authored scene actions instead of objective text in semantic fallback choices', async () => {
+    const invalid = JSON.stringify({
+      narrative: '药店窗外停着一辆近期反复转运货物的马车。',
+      activeNpc: null,
+      nextPrompt: '追查马车。',
+      playerChoices: { 亨利: ['追查马车'] }
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(invalid)));
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' })],
+      currentScene: 'S04',
+      activeNpcName: null
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'active';
+    state.scenarioProgress.objectiveStates.O05 = 'active';
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [{ player: '亨利', action: '原地整理已经确认的记录。' }]
+    });
+
+    expect(output.legacyResponse.playerChoices?.亨利).toEqual([
+      '搜查后厅被翻动的区域和遗留包裹',
+      '检查柜台附近的烟灰与使用痕迹',
+      '确认后门、窗户和暴徒离去后的退路'
+    ]);
+    expect(output.legacyResponse.playerChoices?.亨利).not.toContain('应对浓雾与追兵，找到扶桑花号的位置。');
+  });
+
   it('uses authored pre-roll narration without calling the model for a scenario check', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);

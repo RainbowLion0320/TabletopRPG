@@ -113,28 +113,40 @@ function buildSemanticFallbackChoices(
       const rightIsCurrentTarget = Number(campaignBeat?.sceneIds.includes(right.sceneId) ?? false);
       return rightIsCurrentTarget - leftIsCurrentTarget;
     });
-  const destinations = exits.flatMap((exit) => {
+  const destinationFor = (exit: (typeof exits)[number]) => {
     const scene = kb.scenes[exit.sceneId]?.public;
-    return scene ? [`前往${scene.name}继续调查`] : [];
-  });
-  const activeBeat = getActiveScenarioBeat(progress, sceneId);
-  const authoredActions = getVisibleScenarioObjectives(progress)
-    .filter((objective) =>
-      progress.objectiveStates[objective.id] === 'active'
-      && objective.beatId === activeBeat?.id
-    )
-    .map((objective) => objective.playerText);
+    return scene ? `前往${scene.name}继续调查` : null;
+  };
+  const priorityDestinations = exits
+    .filter((exit) => campaignBeat?.sceneIds.includes(exit.sceneId))
+    .map(destinationFor)
+    .filter((choice): choice is string => Boolean(choice));
+  const otherDestinations = exits
+    .filter((exit) => !campaignBeat?.sceneIds.includes(exit.sceneId))
+    .map(destinationFor)
+    .filter((choice): choice is string => Boolean(choice));
+  const finaleObjectives = campaignBeat?.kind === 'finale'
+    ? getVisibleScenarioObjectives(progress)
+      .filter((objective) =>
+        objective.beatId === campaignBeat.id
+        && progress.objectiveStates[objective.id] === 'active'
+      )
+      .map((objective) => objective.playerText)
+    : [];
+  const authoredActions = getScenarioDefinition().presentation.sceneSuggestions
+    .find((entry) => entry.sceneId === sceneId)?.actions ?? [];
   const localAction = activeNpcName
     ? `请${activeNpcName}只核对已经确认的事实`
     : '继续观察当前环境';
   return Object.fromEntries(state.players.map((player, index) => {
-    const orderedDestinations = destinations.length
-      ? [...destinations.slice(index), ...destinations.slice(0, index)]
-      : [];
+    const orderedActions = authoredActions.length
+      ? [...authoredActions.slice(index), ...authoredActions.slice(0, index)]
+      : [localAction];
     return [player.name, [
-      ...authoredActions,
-      localAction,
-      ...(authoredActions.length ? [] : orderedDestinations),
+      ...finaleObjectives,
+      ...priorityDestinations,
+      ...orderedActions,
+      ...otherDestinations,
       '整理已经发现的线索，决定下一步行动'
     ].filter((choice, choiceIndex, all) => all.indexOf(choice) === choiceIndex).slice(0, 3)];
   }));
