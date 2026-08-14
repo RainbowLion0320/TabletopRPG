@@ -1232,6 +1232,15 @@ export function validateNarratorSemantics(
   if (pharmacyEntrySettled && framesPharmacyAsInaccessible) {
     return 'S04 入场事件已将后门从内侧撞开并让调查员进入药店，正文和建议不得又把入口写成锁死的额外关卡';
   }
+  const repeatsPharmacyEntry = state.currentScene === 'S04'
+    && progress.firedEventIds.includes('EV_S04_FOG')
+    && /(?:推开|撞开|打开|撬开)[^。；！？\n]{0,18}(?:后门|店门)|(?:后门|店门)[^。；！？\n]{0,12}(?:推开|撞开|打开|撬开)|(?:再次|重新)[^。；！？\n]{0,12}(?:进入|走进)[^。；！？\n]{0,8}(?:药店|店内)/.test(allText);
+  if (repeatsPharmacyEntry) {
+    return 'S04 入场事件已经结算，调查员已在药店内，不得重复开门或重新进入药店';
+  }
+  if (/(?:没有|没能|未能|完全没有)[^。；！？\n]{0,24}(?:发现|注意|察觉|看见)[^。；！？\n]{0,40}(?:人影|身影|跟踪者|尾随者)/.test(output.narrative)) {
+    return '不得通过全知叙事向玩家泄露调查员检定失败后未察觉的人物或跟踪者';
+  }
   if (targetId && targetId !== state.currentScene) {
     const sourceTerms = sceneTerms(kb, state.currentScene);
     const targetTerms = sceneTerms(kb, outputSceneId);

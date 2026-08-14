@@ -1334,6 +1334,25 @@ describe('turnGuards', () => {
     }, [...move], state, kb)).toBeNull();
   });
 
+  it('does not repeat S04 entry or reveal an unseen follower after a failed check', () => {
+    const state = makeState({ currentScene: 'S04', activeNpcName: null });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.firedEventIds = ['EV_S04_FOG'];
+
+    expect(validateNarratorSemantics({
+      narrative: '在托马斯的协助下，你们推开了卡森其药店腐朽的后门。',
+      activeNpc: null, nextPrompt: '进入店内。', playerChoices: {}
+    }, [], state, kb)).toMatch(/已经结算.*重复开门/);
+    expect(validateNarratorSemantics({
+      narrative: '罗伯特完全没有发现远处屋檐下那道一闪而过的人影。',
+      activeNpc: null, nextPrompt: '继续调查。', playerChoices: {}
+    }, [], state, kb)).toMatch(/全知叙事.*未察觉/);
+    expect(validateNarratorSemantics({
+      narrative: '罗伯特没能分辨街上的脚步声，你们已经站在药店后厅内。',
+      activeNpc: null, nextPrompt: '调查后厅。', playerChoices: {}
+    }, [], state, kb)).toBeNull();
+  });
+
   it('requires an authorized check whenever narration says a check is mandatory', () => {
     const state = makeState({ currentScene: 'S05', activeNpcName: '扶桑花号交涉代表' });
     state.scenarioProgress = createScenarioProgress();
