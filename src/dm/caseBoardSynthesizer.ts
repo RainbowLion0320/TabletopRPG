@@ -258,6 +258,17 @@ const CASE_SIGNAL_TERMS = [
   '承认', '否认', '隐瞒', '可疑', '异常', '暗格', '纸条', '信件', '照片', '地图', '账本'
 ];
 
+function compactObservationTitle(text: string): string {
+  const evidence = text.match(
+    /(?:(门缝|门廊|门口|窗边|窗台|墙根|地面|桌面|柜台|后厅|抽屉|书架)(?:处|旁|上|内|里)?(?:有|留下了?|出现了?|可见)?[的]?)?((?:(?:新鲜|可疑|异常|未干|潮湿|破损|烧焦|拖拽)[的]?){0,2})(脚印(?:痕迹)?|指纹|血迹|刮痕|污渍|暗格|纸条|信件|照片|地图|账本)/
+  );
+  if (evidence) {
+    const modifier = (evidence[2] ?? '').replace(/的/g, '');
+    return `${evidence[1] ? `${evidence[1]}的` : ''}${modifier}${evidence[3]}`.slice(0, 24);
+  }
+  return text.length > 24 ? `${text.slice(0, 23)}…` : text;
+}
+
 function fallbackFromNarrative(input: CaseBoardSynthesizerInput): CaseBoardPatch {
   if (input.playerActions.some((action) =>
     /【检定结果】[\s\S]*结果[：:]\s*(?:失败|大失败)/.test(action.action)
@@ -288,7 +299,7 @@ function fallbackFromNarrative(input: CaseBoardSynthesizerInput): CaseBoardPatch
     id: nodeId,
     semanticKey,
     type: uncertain ? 'theory' : 'event',
-    title: candidate.text.length > 30 ? `${candidate.text.slice(0, 29)}…` : candidate.text,
+    title: compactObservationTitle(candidate.text),
     subtitle: uncertain ? '待验证推测' : '本轮关键发现',
     detail: candidate.text,
     importance: uncertain ? 4 : 3,

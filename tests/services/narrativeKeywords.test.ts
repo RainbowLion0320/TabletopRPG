@@ -58,4 +58,14 @@ describe('normalizeNarrativeKeywordHints', () => {
       { text: '黏液', kind: 'clue' }
     ], narrative)).toEqual([]);
   });
+
+  it('drops transient prose fragments that should not become entity buttons', () => {
+    const narrative = '办公室里毫无记录，后门半掩，空气中残留着陈腐药味。';
+
+    expect(normalizeNarrativeKeywordHints([
+      { text: '毫无记录', kind: 'clue' },
+      { text: '后门半掩', kind: 'clue' },
+      { text: '陈腐药味', kind: 'clue' }
+    ], narrative)).toEqual([]);
+  });
 });

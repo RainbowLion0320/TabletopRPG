@@ -14,7 +14,7 @@ import {
 } from '../scenario/engine';
 
 const DICE_RESULT_RE = /【检定结果】|结果[：:]\s*(?:失败|大失败|成功|困难成功|极难成功|大成功)/;
-const MOVE_VERB_RE = /前往|赶往|去往|转往|改去|改从|出发|动身|返回|回到|离开|开车|驾车|驱车|驶向|跟随|追到|抵达|到达/;
+const MOVE_VERB_RE = /前往|赶往|去往|转往|改去|改从|出发|动身|返回|回到|离开|进入|走进|登上|开车|驾车|驱车|驶向|跟随|追到|抵达|到达/;
 const MOVE_DESTINATION_RE = /前往|赶往|去往|转往|改去|改从|驶向|追到|抵达|到达|进入|登上|回到|返回|去/;
 const NPC_ROLE_TERMS = ['店主', '老板', '伙计', '服务生', '医生', '护士', '牧师', '管理员', '警员', '警察', '酒保'];
 
@@ -365,14 +365,18 @@ function sceneMentionFollowsDestinationVerb(text: string, terms: string[]): bool
     const prefix = text.slice(Math.max(0, index - 24), index);
     const destinationVerbs = [...prefix.matchAll(new RegExp(MOVE_DESTINATION_RE.source, 'g'))];
     const lastDestinationVerb = destinationVerbs[destinationVerbs.length - 1];
-    if (!lastDestinationVerb) return false;
+    const suffix = text.slice(index + term.length, index + term.length + 24);
+    const destinationFollowsScene = /^(?:[^，。；！？\n]{0,10})?(?:便|就|则)?(?:从[^，。；！？\n]{0,8})?(?:进入|走进|抵达|到达|来到|登上)/.test(suffix)
+      && !/^(?:[^，。；！？\n]{0,10})?(?:不|别|勿|不要|并不|无需)/.test(suffix);
+    if (!lastDestinationVerb) return destinationFollowsScene;
+
     const verbIndex = lastDestinationVerb.index ?? 0;
     const beforeVerb = prefix.slice(Math.max(0, verbIndex - 8), verbIndex);
     const between = prefix.slice(verbIndex + lastDestinationVerb[0].length);
     const negated = /(?:暂(?:时|且)?|先|明确)?(?:不|别|勿|不要|并不|无需)(?:再)?$/.test(beforeVerb);
-    return !negated
+    return destinationFollowsScene || (!negated
       && !/[，。；！？\n]/.test(between)
-      && lastDestinationVerb[0] !== '离开';
+      && lastDestinationVerb[0] !== '离开');
   });
 }
 

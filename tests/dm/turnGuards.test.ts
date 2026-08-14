@@ -532,6 +532,31 @@ describe('turnGuards', () => {
     ], state, kb)).toBeNull();
   });
 
+  it('recognizes the written-out street address as the authored pharmacy', () => {
+    const state = makeState({ currentScene: 'S03' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.knownFactIds = ['F08'];
+
+    expect(inferSceneChangeFromActions([
+      { player: '亨利', action: '前往贝尔街十四号一探究竟。' }
+    ], state, kb)).toEqual(expect.objectContaining({
+      arguments: expect.objectContaining({ targetSceneId: 'S04' })
+    }));
+  });
+
+  it('recognizes a destination named before a conditional entry verb', () => {
+    const state = makeState({ currentScene: 'S03' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.knownFactIds = ['F08'];
+
+    expect(inferSceneChangeFromActions([{
+      player: '艾达',
+      action: '核对门牌，若确认是卡森其药店便从后门谨慎进入。'
+    }], state, kb)).toEqual(expect.objectContaining({
+      arguments: expect.objectContaining({ targetSceneId: 'S04' })
+    }));
+  });
+
   it('does not let a negated optional destination override the declared destination', () => {
     const state = makeState({ currentScene: 'S01' });
     state.scenarioProgress = createScenarioProgress();

@@ -3,10 +3,11 @@ import type { NarrativeKeywordHint, NarrativeKeywordKind } from '../types/game';
 const KEYWORD_KINDS = new Set<NarrativeKeywordKind>(['clue', 'danger', 'state']);
 const GENERIC_KEYWORDS = new Set([
   '调查', '继续', '行动', '玩家', '调查员', '发现', '检查', '询问', '这里', '你们',
-  '黏液', '粘液', '雾气', '浓雾'
+  '黏液', '粘液', '雾气', '浓雾', '毫无记录'
 ]);
 const GENERIC_ENVIRONMENT_RE = /(?:木门|房门|大门|门口|墙壁|桌椅|灯光|窗户)$/;
 const EVIDENCE_DETAIL_RE = /刮痕|血迹|脚印|指纹|纤维|暗号|异常|破坏|撞开|撬|门锁|锁孔/;
+const TRANSIENT_ENVIRONMENT_RE = /^(?:(?:前门|后门|侧门|房门|大门|窗户).{0,6}(?:半掩|敞开|关闭|打开)|(?:陈腐|潮湿|刺鼻|腥咸|浓烈|淡淡|微弱).{0,6}(?:气味|药味|霉味|光线|灯光))$/;
 
 export const MAX_NARRATIVE_KEYWORDS = 6;
 export const MAX_NARRATIVE_KEYWORD_LENGTH = 12;
@@ -26,6 +27,7 @@ export function normalizeNarrativeKeywordHints(
     const kind = source.kind;
     if (text.length < 2 || text.length > MAX_NARRATIVE_KEYWORD_LENGTH) continue;
     if (/[<>]/.test(text) || GENERIC_KEYWORDS.has(text)) continue;
+    if (TRANSIENT_ENVIRONMENT_RE.test(text) && !EVIDENCE_DETAIL_RE.test(text)) continue;
     if (GENERIC_ENVIRONMENT_RE.test(text) && !EVIDENCE_DETAIL_RE.test(text)) continue;
     if (!KEYWORD_KINDS.has(kind as NarrativeKeywordKind)) continue;
     if (!narrative.includes(text) || seen.has(text)) continue;

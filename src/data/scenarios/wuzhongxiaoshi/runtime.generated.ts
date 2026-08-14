@@ -11,7 +11,7 @@ import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
 import asset9 from '../../../../assets/avatars/deep_one_envoy.png';
 
-export const scenarioContentHash = "494364d4cfda2ab2";
+export const scenarioContentHash = "81228f7e3d0436a0";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -27,7 +27,7 @@ export const scenarioAssetUrls: Record<string, string> = {
 export const generatedScenarioModule = {
   "manifest": {
     "schemaVersion": 1,
-    "contentVersion": "1.1.13",
+    "contentVersion": "1.1.14",
     "id": "wuzhongxiaoshi",
     "title": "雾中消逝",
     "system": "COC 第七版风格 D100",
@@ -330,7 +330,12 @@ export const generatedScenarioModule = {
         "description": "贝尔街14号一间废弃多年的药店。非人身影撤离时已从内侧撞开后门，调查员进入店内，内部没有营业迹象。",
         "aliases": [
           "药店",
-          "废弃药店"
+          "药房",
+          "废弃药店",
+          "废弃药房",
+          "贝尔街14号",
+          "贝尔街十四号",
+          "十四号"
         ],
         "assetId": "scene.S04",
         "npcIds": [],

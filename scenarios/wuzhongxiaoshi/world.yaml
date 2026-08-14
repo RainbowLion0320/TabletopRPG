@@ -57,7 +57,7 @@ scenes:
     name: 卡森其药店
     chapterTitle: 第二幕：街区调查
     description: 贝尔街14号一间废弃多年的药店。非人身影撤离时已从内侧撞开后门，调查员进入店内，内部没有营业迹象。
-    aliases: [药店, 废弃药店]
+    aliases: [药店, 药房, 废弃药店, 废弃药房, 贝尔街14号, 贝尔街十四号, 十四号]
     assetId: scene.S04
     npcIds: []
     itemIds: [I07, I08]

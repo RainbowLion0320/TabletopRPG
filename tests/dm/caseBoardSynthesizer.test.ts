@@ -58,8 +58,22 @@ describe('caseBoardSynthesizer v7', () => {
   it('creates a connected event fallback from a high-signal narrative', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => response({ nodes: [], edges: [] })));
     const patch = await synthesizeCaseBoardPatch(config, input());
-    expect(patch.nodes).toEqual([expect.objectContaining({ type: 'event', title: '门廊留下了新鲜拖拽刮痕' })]);
+    expect(patch.nodes).toEqual([expect.objectContaining({ type: 'event', title: '门廊的新鲜拖拽刮痕' })]);
     expect(patch.edges).toEqual([expect.objectContaining({ from: 'scene-s01', to: patch.nodes[0].id })]);
+  });
+
+  it('uses a compact evidence title instead of turning a sentence into a button', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => response({ nodes: [], edges: [] })));
+    const narrative = '亨利注意到门缝处有新鲜的脚印痕迹，说明最近有人出入。';
+    const patch = await synthesizeCaseBoardPatch(config, input({
+      narrative,
+      events: [narrativeEvent(narrative)]
+    }));
+
+    expect(patch.nodes[0]).toMatchObject({
+      title: '门缝的新鲜脚印痕迹',
+      detail: '亨利注意到门缝处有新鲜的脚印痕迹，说明最近有人出入'
+    });
   });
 
   it('does not create noise from a generic continuation turn', async () => {
