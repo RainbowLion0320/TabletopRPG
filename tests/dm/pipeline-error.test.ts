@@ -558,6 +558,9 @@ describe('runDmTurn error classification', () => {
 
     expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_S04_MAP');
     expect(output.legacyResponse.playerChoices?.托马斯?.[0]).toBe('前往泰晤士港·扶桑花号继续调查');
+    expect(output.legacyResponse.playerChoices?.托马斯).not.toContain(
+      '在扶桑花号上选择阻止深潜者或尝试交涉。'
+    );
   });
 
   it('uses authored scene actions instead of objective text in semantic fallback choices', async () => {

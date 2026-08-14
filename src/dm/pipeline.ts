@@ -126,6 +126,7 @@ function buildSemanticFallbackChoices(
     .map(destinationFor)
     .filter((choice): choice is string => Boolean(choice));
   const finaleObjectives = campaignBeat?.kind === 'finale'
+    && campaignBeat.sceneIds.includes(sceneId)
     ? getVisibleScenarioObjectives(progress)
       .filter((objective) =>
         objective.beatId === campaignBeat.id
