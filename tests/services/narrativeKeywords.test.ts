@@ -49,4 +49,13 @@ describe('normalizeNarrativeKeywordHints', () => {
       { text: '锁孔旁的新鲜刮痕', kind: 'clue' }
     ]);
   });
+
+  it('drops generic atmosphere and residue words that are not authored entities', () => {
+    const narrative = '浓雾卷过栈桥，警棍上沾着黏液。';
+
+    expect(normalizeNarrativeKeywordHints([
+      { text: '浓雾', kind: 'state' },
+      { text: '黏液', kind: 'clue' }
+    ], narrative)).toEqual([]);
+  });
 });

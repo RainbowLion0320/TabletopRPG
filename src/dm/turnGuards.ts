@@ -4,6 +4,7 @@ import { getDmRequestTurn } from '../services/turns';
 import type { DmToolCall, KnowledgeBase } from './types';
 import { getActiveKnowledgeBase } from './knowledgeBase';
 import { COMBAT_ACTION_RE, hasAffirmativeMatch } from '../services/actionIntent';
+import { buildFinaleSuggestions, isFinaleChoiceCompatible } from '../services/finaleChoices';
 import {
   getScenarioDefinition,
   getAvailableSceneExits,
@@ -87,6 +88,13 @@ function actorHasHandgun(state: GameState, playerName: string): boolean {
 /** Picks at most one check because the current UI can settle one pending check at a time. */
 export function buildRequiredCheck(actions: PlayerAction[], state: GameState): CheckRequest | null {
   if (actions.some((action) => DICE_RESULT_RE.test(action.action))) return null;
+  const progress = getScenarioProgressForState(state);
+  if (state.currentScene === 'S05'
+    && progress.variables.finaleRoute === 'combat'
+    && progress.encounters.ENC01?.state === 'active'
+    && !actions.some((action) => hasAffirmativeMatch(action.action, COMBAT_ACTION_RE))) {
+    return null;
+  }
   const kb = getActiveKnowledgeBase();
   const targetedItems = explicitlyTargetedScenarioItemActions(actions, state, kb);
   if (targetedItems.length) {
@@ -604,40 +612,44 @@ export function sanitizePlayerChoices(
   discoveredIds: ReadonlySet<string>,
   kb: KnowledgeBase,
   sceneId?: SceneId,
-  finaleRoute?: unknown
+  finaleRoute?: unknown,
+  remainingOpponents = 4,
+  players: GameState['players'] = []
 ): Record<string, string[]> {
   const hiddenTerms = Object.entries(kb.items)
     .filter(([id]) => !discoveredIds.has(id))
     .flatMap(([, entry]) => [entry.public.name, ...(entry.public.aliases ?? [])])
     .filter((term) => term.length >= 2);
-  const fallback = sceneId === 'S05' && finaleRoute === 'combat'
-    ? [
-        '攻击一名仍在抵抗的深潜者，为营救埃里克争取时间',
-        '挥动随身武器攻击一名仍在抵抗的深潜者',
-        '配合同伴发动攻击，试图制服一名仍在抵抗的深潜者'
-      ]
-    : sceneId === 'S05' && finaleRoute === 'negotiation'
-      ? [
-          '保持距离，聆听深潜者代表真正的诉求',
-          '尝试理解深潜者的条件，再决定如何回应',
-          '请同伴警戒，自己专注辨认深潜者的非人声调'
-        ]
-      : ['继续观察当前环境', '与在场人物核对已知事实', '整理已经发现的线索'];
+  const finaleFallback = sceneId === 'S05'
+    ? buildFinaleSuggestions(
+        players.length
+          ? players
+          : Object.keys(choices).map((name) => ({ id: name, name, equipment: ['随身武器'] })) as GameState['players'],
+        finaleRoute,
+        remainingOpponents
+      )
+    : {};
+  const fallback = ['继续观察当前环境', '与在场人物核对已知事实', '整理已经发现的线索'];
   const offstageNpcNames = sceneId
     ? Object.keys(kb.npcs).filter((name) => !kb.scenes[sceneId]?.public.npcs.includes(name))
     : [];
   return Object.fromEntries(Object.entries(choices).map(([player, list]) => {
+    const playerState = players.find((candidate) => candidate.name === player);
+    const canAttack = playerState
+      ? (playerState.equipment ?? []).some((item) => /手枪|左轮枪|警棍|棍|刀|武器/.test(item))
+      : null;
     const safe = list.filter((choice) =>
       !hiddenTerms.some((term) => choice.includes(term))
       && !offstageNpcNames.some((name) => choice.includes(name))
       && !(sceneId && unavailableNpcRole(choice, kb, sceneId, true))
       && !(sceneId && explicitlyTravelsToScene(choice, kb, sceneId))
-      && !(sceneId === 'S05' && finaleRoute === 'combat'
-        && !hasAffirmativeMatch(choice, COMBAT_ACTION_RE))
-      && !(sceneId === 'S05' && finaleRoute === 'negotiation'
-        && hasAffirmativeMatch(choice, COMBAT_ACTION_RE))
+      && !(sceneId === 'S05'
+        && !isFinaleChoiceCompatible(choice, finaleRoute, remainingOpponents, canAttack))
     );
-    for (const item of fallback) {
+    const playerFallback = sceneId === 'S05'
+      ? finaleFallback[players.find((candidate) => candidate.name === player)?.id ?? player] ?? fallback
+      : fallback;
+    for (const item of playerFallback) {
       if (safe.length >= 3) break;
       if (!safe.includes(item)) safe.push(item);
     }
@@ -900,7 +912,7 @@ export function validateNarratorSemantics(
     && actions.some((action) => hasAffirmativeMatch(action.action, COMBAT_ACTION_RE))
     && !actions.some((action) => DICE_RESULT_RE.test(action.action))
     && proposedEvents.some((event) => event.id === 'EV_CHOOSE_COMBAT' || event.id === 'EV_COMBAT_ATTACK');
-  const narratesCombatHit = /(?:命中|击中|打中|砸中|攻击奏效)|(?:警棍|拳头|子弹|枪弹)[^。；！？\n]{0,16}(?:击中|打中|砸中)|(?:深潜者|蹼状[^。；！？\n]{0,4}(?:手|手臂|肢体))[^。；！？\n]{0,16}(?:被击中|挨了一击|踉跄后退)/.test(output.narrative);
+  const narratesCombatHit = /(?:命中|击中|打中|砸中|砸在|落在|攻击奏效)|(?:警棍|拳头|子弹|枪弹)[^。；！？\n]{0,24}(?:击中|打中|砸中|砸在|落在)|(?:深潜者|蹼状[^。；！？\n]{0,4}(?:手|手臂|肢体))[^。；！？\n]{0,24}(?:被击中|挨了一击|踉跄后退|鳞片碎裂)/.test(output.narrative);
   if (startsUnresolvedCombat && narratesCombatHit) {
     return '战斗攻击尚未完成结构化检定，正文不得提前叙述命中或攻击奏效';
   }
@@ -933,7 +945,7 @@ export function validateNarratorSemantics(
   if (
     progress.variables.finaleRoute === 'combat'
     && structuredDefeated < 4
-    && /最后一名[^。；！？\n]{0,20}(?:深潜者|守卫)[^。；！？\n]{0,24}(?:倒地|瘫倒|失去战斗能力|无力再战|被制服)|(?:深潜者|守卫)[^。；！？\n]{0,20}最后一名[^。；！？\n]{0,24}(?:倒地|失去战斗能力|被制服)/.test(output.narrative)
+    && /最后(?:一)?(?:名|个)[^。；！？\n]{0,32}(?:深潜者|守卫)[^。；！？\n]{0,72}(?:倒地|倒下|瘫倒|失去战斗能力|无力再战|被制服)|(?:深潜者|守卫)[^。；！？\n]{0,32}最后(?:一)?(?:名|个)[^。；！？\n]{0,72}(?:倒地|倒下|失去战斗能力|被制服)|(?:都|全部|全都)(?:已经)?(?:倒下|倒了|瘫倒|失去战斗能力|被制服)/.test(output.narrative)
   ) {
     return `结构化遭遇尚有${4 - structuredDefeated}名深潜者，正文不得提前宣告最后一名失去战斗能力`;
   }
@@ -954,6 +966,12 @@ export function validateNarratorSemantics(
     if (inventsDeepOneReinforcements) {
       return '结构化遭遇已限定深潜者总数，正文不得虚构船舱援军或额外敌人';
     }
+  }
+  const declaresRevolver = /左轮/.test(output.narrative)
+    || actions.some((action) => /左轮/.test(action.action))
+    || state.players.some((player) => (player.equipment ?? []).some((item) => /左轮/.test(item)));
+  if (declaresRevolver && /退壳口|拉动?套筒|套筒(?:卡住|后座|复进)|弹匣/.test(output.narrative)) {
+    return '左轮手枪没有半自动手枪的套筒、退壳口或弹匣，正文必须使用正确的左轮结构描述';
   }
   for (const action of actions) {
     if (!/(?:灯光|举灯|提灯|手电)/.test(action.action)) continue;
@@ -1055,7 +1073,7 @@ export function validateNarratorSemantics(
     || proposedEvents.some((event) => eventAuthorizesOutcome(event, 'rescue'));
   const endingAuthorized = Boolean(progress.endingId)
     || proposedEvents.some((event) => eventAuthorizesOutcome(event, 'ending'));
-  const claimsRescue = /埃里克[^。；！？\n]{0,12}(?:获救|被救出|被释放|脱困)|(?:获救的|被救出的|被释放的)[^。；！？\n]{0,6}埃里克|(?:救出|释放)[^。；！？\n]{0,8}埃里克|(?:割断|解开|扯开|挣开)[^。；！？\n]{0,10}(?:绳索|绳结|绑缚|束缚)|埃里克[^。；！？\n]{0,48}(?:被搀扶|重新出现在甲板|离开船舱)/.test(output.narrative);
+  const claimsRescue = /埃里克[^。；！？\n]{0,20}(?:获救|被救出|被释放|脱困|离开船舱|离开扶桑花号|踏上码头|到了码头)|(?:获救的|被救出的|被释放的)[^。；！？\n]{0,8}埃里克|(?:救出|释放)[^。；！？\n]{0,12}埃里克|(?:割断|剪断|解开|扯开|挣开)[^。；！？\n]{0,20}(?:绳|绳索|绳结|绑缚|束缚)|(?:扶起|搀扶|架住|护送|带着)[^。；！？\n]{0,20}埃里克[^。；！？\n]{0,28}(?:离开|撤离|下船|甲板|栈桥|码头)/.test(output.narrative);
   const claimsDeparture = /扶桑花号[^。；！？\n]{0,18}(?:已(?:经)?离港|驶离泊位|驶离港口|离开港口|消失在(?:浓雾|雾中|水面))/.test(output.narrative);
   if ((claimsRescue && !rescueAuthorized) || (claimsDeparture && !endingAuthorized)) {
     return '不得在对应剧情事件结算前宣告权威剧情结果';

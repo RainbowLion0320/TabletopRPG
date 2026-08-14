@@ -272,6 +272,37 @@ describe('turnGuards', () => {
     expect(inferStoryEventActor(actions, state, 'EV_COMBAT_ATTACK')).toBe('罗伯特');
   });
 
+  it('treats a declared weapon counterattack as an authored finale attack', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '罗伯特', equipment: ['警用警棍'] }, { '格斗（拳）': 70 })],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.variables.combatRoundStarted = true;
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.clocks.fusangEscape = { value: 2, active: true, visible: true };
+
+    const actions = [{
+      player: '罗伯特',
+      action: '放弃故障的左轮，拔出警用警棍迎击最前方的深潜者，掩护艾达。'
+    }];
+    expect(inferStoryEventFromActions(actions, state)?.arguments.eventId).toBe('EV_COMBAT_ATTACK');
+    expect(inferStoryEventActor(actions, state, 'EV_COMBAT_ATTACK')).toBe('罗伯特');
+  });
+
+  it('does not add a generic search check to a rescue attempt during unresolved combat', () => {
+    const state = makeState({ players: [makeInvestigator({ name: '艾达' })], currentScene: 'S05' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+
+    expect(buildRequiredCheck([{
+      player: '艾达', action: '冲进船舱寻找埃里克，为他检查伤势并带他离船。'
+    }], state)).toBeNull();
+  });
+
   it('treats a natural first strike as the authored combat route and keeps its actor', () => {
     const state = makeState({
       players: [
@@ -995,6 +1026,54 @@ describe('turnGuards', () => {
     }, new Set(), kb, 'S05', 'negotiation');
     expect(negotiation.艾达).toHaveLength(3);
     expect(negotiation.艾达.some((choice) => /攻击|拔枪/.test(choice))).toBe(false);
+  });
+
+  it('uses equipment-aware combat choices and rescue choices only after combat clears', () => {
+    const players = [
+      makeInvestigator({ id: 'ada', name: '艾达', equipment: [] }),
+      makeInvestigator({ id: 'robert', name: '罗伯特', equipment: ['警用警棍', '警用左轮手枪'] })
+    ];
+    const active = sanitizePlayerChoices({
+      艾达: ['攻击一名仍在抵抗的深潜者'],
+      罗伯特: ['继续用手枪攻击深潜者']
+    }, new Set(), kb, 'S05', 'combat', 1, players);
+    expect(active.艾达.every((choice) => !/攻击|开枪|射击|挥动.*武器/.test(choice))).toBe(true);
+    expect(active.罗伯特.some((choice) => /手枪/.test(choice))).toBe(true);
+
+    const cleared = sanitizePlayerChoices({
+      艾达: ['攻击一名仍在抵抗的深潜者'],
+      罗伯特: ['继续攻击深潜者']
+    }, new Set(), kb, 'S05', 'combat', 0, players);
+    expect(Object.values(cleared).flat().every((choice) => !/攻击|仍在抵抗/.test(choice))).toBe(true);
+    expect(cleared.艾达.some((choice) => /寻找埃里克|营救埃里克/.test(choice))).toBe(true);
+  });
+
+  it('rejects revolver mechanics borrowed from a semi-automatic pistol', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '罗伯特', equipment: ['警用左轮手枪'] })],
+      currentScene: 'S05'
+    });
+    expect(validateNarratorSemantics({
+      narrative: '罗伯特的左轮卡壳，弹壳卡死在退壳口，他用力拉动套筒。',
+      nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/左轮手枪没有半自动手枪/);
+  });
+
+  it('rejects rescuing Eric or clearing all enemies before structured combat allows it', () => {
+    const state = makeState({ currentScene: 'S05' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.encounters.ENC01.defeated = 3;
+
+    expect(validateNarratorSemantics({
+      narrative: '最后一个还在抵抗的深潜者瘫倒不动，艾达喊道：“都倒了！”',
+      nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/不得提前宣告最后一名/);
+    expect(validateNarratorSemantics({
+      narrative: '艾达用剪刀割断绑住埃里克的粗绳，三人扶着他踏上码头。',
+      nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/不得在对应剧情事件结算前/);
   });
 
   it('requires an affirmative combat action before advancing the finale battle', () => {

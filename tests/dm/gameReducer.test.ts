@@ -233,7 +233,7 @@ describe('gameReducer applyAiResponse pendingConsequences merge', () => {
   });
 
   it('refreshes stale pre-finale choices after the combat route settles', () => {
-    const player = makeInvestigator({ id: 'p-robert', name: '罗伯特' });
+    const player = makeInvestigator({ id: 'p-robert', name: '罗伯特', equipment: ['警用警棍'] });
     const state = makeState({ players: [player], currentScene: 'S05' });
     state.scenarioProgress = createScenarioProgress();
     state.scenarioProgress.beatStates.B01 = 'completed';
@@ -257,7 +257,8 @@ describe('gameReducer applyAiResponse pendingConsequences merge', () => {
 
     expect(next.scenarioProgress?.variables.finaleRoute).toBe('combat');
     expect(next.suggestionsByPlayerId['p-robert']).toHaveLength(3);
-    expect(next.suggestionsByPlayerId['p-robert'].every(isAffirmativeCombatAction)).toBe(true);
+    expect(next.suggestionsByPlayerId['p-robert'].some(isAffirmativeCombatAction)).toBe(true);
+    expect(next.suggestionsByPlayerId['p-robert'].some((suggestion) => /谈判|交涉|救出埃里克/.test(suggestion))).toBe(false);
   });
 
   it('turns a failed authored listen into an extreme persuasion check without AI continuation', () => {
@@ -727,7 +728,7 @@ describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
     progress.encounters.ENC02.state = 'active';
     progress.visitedSceneIds.push('S04');
     const hydrated = hydrateGameState({
-      players: [makeInvestigator({ id: 'p1', name: '托马斯' })],
+      players: [makeInvestigator({ id: 'p1', name: '托马斯', equipment: ['手杖'] })],
       currentScene: 'S04',
       scenarioProgress: progress,
       clues: ['I07'],
@@ -792,7 +793,7 @@ describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
 
     expect(hydrated.clues.map((clue) => clue.id)).toContain('I07');
     expect(hydrated.messages.map((message) => message.id)).toContain('map');
-    expect(hydrated.suggestions.every((suggestion) => suggestion.includes('深潜者'))).toBe(true);
+    expect(hydrated.suggestions.some((suggestion) => /深潜者|敌人/.test(suggestion))).toBe(true);
     expect(hydrated.suggestions.some((suggestion) => suggestion.includes('后厅油布包'))).toBe(false);
     expect(hydrated.longTermMemorySummary).toBe('调查员已经抵达扶桑花号并选择战斗。');
   });
@@ -806,7 +807,7 @@ describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
     progress.visitedSceneIds.push('S05');
 
     const hydrated = hydrateGameState({
-      players: [makeInvestigator({ id: 'p1', name: '罗伯特' })],
+      players: [makeInvestigator({ id: 'p1', name: '罗伯特', equipment: ['警用警棍'] })],
       currentScene: 'S05',
       scenarioProgress: progress,
       suggestionsByPlayerId: {
@@ -822,9 +823,12 @@ describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
       '配合同伴牵制深潜者，并寻找下一次攻击机会'
     );
     expect(hydrated.suggestionsByPlayerId.p1).toHaveLength(3);
-    expect(hydrated.suggestionsByPlayerId.p1.every((suggestion) =>
+    expect(hydrated.suggestionsByPlayerId.p1.some((suggestion) =>
       /攻击|制服/.test(suggestion)
     )).toBe(true);
+    expect(hydrated.suggestionsByPlayerId.p1.some((suggestion) =>
+      /谈判|交涉|救出埃里克/.test(suggestion)
+    )).toBe(false);
   });
 
   it('repairs an offstage active NPC to match the persisted scene', () => {

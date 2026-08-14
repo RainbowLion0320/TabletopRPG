@@ -1,4 +1,4 @@
-import type { AiResponse, AtomicFact, Attributes, CaseBoardCertainty, CaseBoardInsight, CaseBoardPatch, CaseBoardState, CheckRequest, DiceResult, DynamicCaseBoardEdge, DynamicCaseBoardNode, EpisodicMemoryRecord, EpisodicMemorySource, EpisodicMemoryVisibility, FactPredicate, GameState, Investigator, NarrativeMessage, NpcMindModel, PersistedDMEvent, PersistedPendingConsequence, ProspectiveIntent, SceneId, SkillValue, StoryItem } from '../types/game';
+import type { AiResponse, AtomicFact, Attributes, CaseBoardCertainty, CaseBoardInsight, CaseBoardPatch, CaseBoardState, CheckRequest, DiceResult, DynamicCaseBoardEdge, DynamicCaseBoardNode, EpisodicMemoryRecord, EpisodicMemorySource, EpisodicMemoryVisibility, FactPredicate, GameState, Investigator, NarrativeMessage, NpcMindModel, PersistedDMEvent, PersistedPendingConsequence, ProspectiveIntent, ScenarioProgress, SceneId, SkillValue, StoryItem } from '../types/game';
 import { storyData } from '../data/storyData';
 import {
   createScenarioProgress,
@@ -12,7 +12,10 @@ import {
 import { normalizeNarrativeKeywordHints } from '../services/narrativeKeywords';
 import { prepareCheck } from '../services/dice';
 import { countCompletedGameTurns } from '../services/turns';
-import { isAffirmativeCombatAction } from '../services/actionIntent';
+import {
+  buildFinaleSuggestions,
+  finaleSuggestionsNeedReplacement
+} from '../services/finaleChoices';
 import { allSkills } from '../data/skills';
 import { deriveInvestigatorStats, gameRules, resolveSkillBase } from '../data/gameRules';
 import {
@@ -346,25 +349,9 @@ function pharmacyInvestigationSuggestions(players: Investigator[]): Record<strin
   return Object.fromEntries(players.map((player) => [player.id, [...suggestions]]));
 }
 
-function finaleSuggestions(players: Investigator[], route: unknown): Record<string, string[]> {
-  const suggestions = route === 'combat'
-    ? [
-        '攻击一名仍在抵抗的深潜者，为营救埃里克争取时间',
-        '配合同伴发动攻击，试图制服一名仍在抵抗的深潜者',
-        '观察甲板混战后选择一名仍在抵抗的深潜者发动攻击'
-      ]
-    : route === 'negotiation'
-      ? [
-          '保持距离，聆听深潜者代表真正的诉求',
-          '尝试理解深潜者的条件，再决定如何回应',
-          '请同伴警戒，自己专注辨认深潜者的非人声调'
-        ]
-      : [
-          '选择暂缓攻击，与深潜者代表进行交涉',
-          '选择以武力阻止深潜者带走埃里克',
-          '先确认埃里克的处境，再明确选择战斗或交涉'
-        ];
-  return Object.fromEntries(players.map((player) => [player.id, [...suggestions]]));
+function finaleRemainingOpponents(progress: ScenarioProgress): number {
+  const total = scenarioDefinition.world.encounters.find((item) => item.id === 'ENC01')?.count ?? 0;
+  return Math.max(0, total - (progress.encounters.ENC01?.defeated ?? 0));
 }
 
 function containsPharmacyInvestigationSuggestion(suggestionsByPlayerId: Record<string, string[]>): boolean {
@@ -375,19 +362,16 @@ function containsPharmacyInvestigationSuggestion(suggestionsByPlayerId: Record<s
 
 function containsInvalidFinaleSuggestion(
   suggestionsByPlayerId: Record<string, string[]>,
-  route: unknown
+  route: unknown,
+  players: Investigator[],
+  progress: ScenarioProgress
 ): boolean {
-  if (route === 'combat') {
-    return Object.values(suggestionsByPlayerId).some((suggestions) =>
-      suggestions.some((suggestion) => !isAffirmativeCombatAction(suggestion))
-    );
-  }
-  if (route === 'negotiation') {
-    return Object.values(suggestionsByPlayerId).some((suggestions) =>
-      suggestions.some(isAffirmativeCombatAction)
-    );
-  }
-  return false;
+  return finaleSuggestionsNeedReplacement(
+    players,
+    suggestionsByPlayerId,
+    route,
+    finaleRemainingOpponents(progress)
+  );
 }
 
 function normalizeActionLog(value: unknown, fallback: GameState['actionLog']) {
@@ -1380,12 +1364,21 @@ export function hydrateGameState(value: unknown): GameState {
   const staleFinaleSuggestions = currentScene === 'S05'
     && (
       containsPharmacyInvestigationSuggestion(rawSuggestionsByPlayerId)
-      || containsInvalidFinaleSuggestion(rawSuggestionsByPlayerId, scenarioProgress.variables.finaleRoute)
+      || containsInvalidFinaleSuggestion(
+        rawSuggestionsByPlayerId,
+        scenarioProgress.variables.finaleRoute,
+        players,
+        scenarioProgress
+      )
     );
   const suggestionsByPlayerId = withdrewAutomaticPharmacyMap
     ? pharmacyInvestigationSuggestions(players)
     : staleFinaleSuggestions
-      ? finaleSuggestions(players, scenarioProgress.variables.finaleRoute)
+      ? buildFinaleSuggestions(
+          players,
+          scenarioProgress.variables.finaleRoute,
+          finaleRemainingOpponents(scenarioProgress)
+        )
       : rawSuggestionsByPlayerId;
   const suggestions = withdrewAutomaticPharmacyMap || staleFinaleSuggestions
     ? firstSuggestionListByPlayerOrder(suggestionsByPlayerId, players, base.suggestions)
@@ -1725,9 +1718,19 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         nextState.currentScene === 'S05'
         && (settledFinaleRoute === 'combat' || settledFinaleRoute === 'negotiation')
         && (previousFinaleRoute !== settledFinaleRoute
-          || containsInvalidFinaleSuggestion(nextState.suggestionsByPlayerId, settledFinaleRoute))
+          || containsInvalidFinaleSuggestion(
+            nextState.suggestionsByPlayerId,
+            settledFinaleRoute,
+            nextState.players,
+            getScenarioProgressForState(nextState)
+          ))
       ) {
-        const routeSuggestions = finaleSuggestions(nextState.players, settledFinaleRoute);
+        const settledProgress = getScenarioProgressForState(nextState);
+        const routeSuggestions = buildFinaleSuggestions(
+          nextState.players,
+          settledFinaleRoute,
+          finaleRemainingOpponents(settledProgress)
+        );
         nextState = {
           ...nextState,
           suggestionsByPlayerId: routeSuggestions,

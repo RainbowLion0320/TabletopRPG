@@ -20,6 +20,7 @@ import {
   getAvailableStoryEvents,
   getAvailableSceneExits,
   getActiveScenarioBeat,
+  getScenarioDefinition,
   getScenarioProgressForState,
   getVisibleScenarioObjectives,
   npcIdFromName,
@@ -861,12 +862,20 @@ export async function runDmTurn(
     actorName: input.actions[input.actions.length - 1]?.player
   });
   const finaleRoute = projectedTransition.progress.variables.finaleRoute;
+  const finaleEncounter = projectedTransition.progress.encounters.ENC01;
+  const finaleEncounterDefinition = getScenarioDefinition().world.encounters.find((item) => item.id === 'ENC01');
+  const remainingFinaleOpponents = Math.max(
+    0,
+    (finaleEncounterDefinition?.count ?? 0) - (finaleEncounter?.defeated ?? 0)
+  );
   const safeChoices = sanitizePlayerChoices(
     narrator.playerChoices,
     knownItems,
     kb,
     targetScene,
-    finaleRoute
+    finaleRoute,
+    remainingFinaleOpponents,
+    input.state.players
   );
   resolved.legacyResponse = inferNarrativeConsequences({
     ...resolved.legacyResponse,
