@@ -23,6 +23,7 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
 
   // 拖拽状态
   const tabRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLElement>(null);
   const [tabTop, setTabTop] = useState(43); // 百分比
   const dragState = useRef<{ startY: number; startTop: number } | null>(null);
   const isDragging = useRef(false);
@@ -89,15 +90,26 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
     if (open) setActiveTab('board');
   }, [open]);
 
+  useEffect(() => {
+    if (drawerRef.current) drawerRef.current.inert = !open;
+  }, [open]);
+
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (!e.touches[0]) return;
     dragState.current = { startY: e.touches[0].clientY, startTop: tabTop };
     isDragging.current = false;
   }, [tabTop]);
 
+  const handleClose = useCallback(() => {
+    tabRef.current?.focus({ preventScroll: true });
+    onClose();
+  }, [onClose]);
+
   return (
     <>
       <button
+        aria-controls="game-info-drawer"
+        aria-expanded={open}
         ref={tabRef}
         className={`drawer-tab${isDragging.current ? ' dragging' : ''}`}
         style={{ top: `${tabTop}%` }}
@@ -109,7 +121,13 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
         <BookOpen size={16} />
         <span>资料</span>
       </button>
-      <aside className={`info-drawer-react fullscreen ${open ? 'open' : ''}`}>
+      <aside
+        aria-hidden={!open}
+        aria-label="资料"
+        className={`info-drawer-react fullscreen ${open ? 'open' : ''}`}
+        id="game-info-drawer"
+        ref={drawerRef}
+      >
         <header>
           <div className="info-drawer-title">
             <h2>资料</h2>
@@ -120,7 +138,7 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
             <button className={activeTab === 'board' ? 'active' : ''} onClick={() => setActiveTab('board')}>案件板</button>
             <button className={activeTab === 'log' ? 'active' : ''} onClick={() => setActiveTab('log')}>日志</button>
           </nav>
-          <button aria-label="关闭资料" onClick={onClose} title="关闭"><X size={18} /></button>
+          <button aria-label="关闭资料" onClick={handleClose} title="关闭"><X size={18} /></button>
         </header>
 
         {activeTab === 'progress' ? (

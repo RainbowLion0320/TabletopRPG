@@ -536,6 +536,12 @@ test('reference panel opens a fullscreen case board and keeps the log tab', asyn
 
   await page.getByRole('button', { name: '日志' }).click();
   await expect(page.getByRole('heading', { name: '行动日志' })).toBeVisible();
+
+  await page.getByRole('button', { name: '关闭资料' }).click();
+  await expect(page.locator('.info-drawer-react')).not.toHaveClass(/open/);
+  await expect(page.getByRole('button', { name: '资料', exact: true })).toBeFocused();
+  await expect.poll(() => page.locator('.game-screen').evaluate((element) => element.scrollLeft)).toBe(0);
+  await expect.poll(() => page.locator('.scene-stage').evaluate((element) => element.getBoundingClientRect().left)).toBe(0);
 });
 
 test('progress tab shows authored objectives, clue counts, and world time', async ({ page }) => {

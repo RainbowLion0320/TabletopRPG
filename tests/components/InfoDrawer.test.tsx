@@ -31,6 +31,17 @@ describe('InfoDrawer v7 investigation workspace', () => {
     expect(within(header as HTMLElement).getByRole('button', { name: '日志' })).toBeInTheDocument();
   });
 
+  it('returns focus to the drawer tab before closing', async () => {
+    const onClose = vi.fn();
+    render(<InfoDrawer open onClose={onClose} onOpen={vi.fn()} state={makeState()} />);
+    const drawerTab = screen.getByRole('button', { name: '资料' });
+
+    fireEvent.click(screen.getByRole('button', { name: '关闭资料' }));
+
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(drawerTab);
+  });
+
   it('reveals authored branches and supports type filtering', async () => {
     const state = makeState({ activeNpcName: '伊莎贝拉·摩勒' });
     state.clues = [{ ...storyData.items.I04, found: true }];
