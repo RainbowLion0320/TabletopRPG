@@ -306,7 +306,7 @@ function framesForeignSceneAsCurrent(text: string, terms: string[]): boolean {
     const escaped = escapeRegex(term);
     return new RegExp(
       `(?:仍在|正在|身处|留在|待在|站在|坐在|回到|进入|走进|来到|抵达|到达|赶到)[^。；！？\\n]{0,12}${escaped}`
-      + `|${escaped}(?:里|内|中|外|门口|门廊|大厅|办公室|吧台|柜台|后厅)[^。；！？\\n]{0,24}(?:仍|正|有|坐|站|走|聚|传来|响起|闲聊|说话)`,
+      + `|${escaped}(?:里|内|内部|中|外|门口|门廊|大厅|办公室|吧台|柜台|后厅)[^。；！？\\n]{0,24}(?:仍|正|有|坐|站|走|聚|传来|响起|闲聊|说话|货架|玻璃|碎片|脚印|报纸|弥漫|散落|倾倒|堆着|摆着|漆黑|昏暗)`,
       'i'
     ).test(text);
   });
@@ -452,7 +452,10 @@ export function inferStoryEventFromActions(
   const mappings: Array<[string, RegExp]> = [
     ['EV_ACCEPT_COMMISSION', /接受.{0,8}委托|确认.{0,8}委托/],
     ['EV_FIND_I04', /加热|烘烤|显字|破译|解读.{0,8}(?:小册子|隐写)|(?:小册子|隐写).{0,8}(?:解读|解码)/],
-    ['EV_BARTENDER_RAT', /酒保[\s\S]{0,20}(?:老鼠|贝尔街)|(?:老鼠|贝尔街)[\s\S]{0,20}酒保/],
+    [
+      'EV_BARTENDER_RAT',
+      /酒保[\s\S]{0,20}(?:老鼠|贝尔街)|(?:老鼠|贝尔街)[\s\S]{0,20}酒保|(?:金钱|银币|小费|报酬|贿赂)[^。；！？\n]{0,20}(?:换取|打听|询问|消息|信息|开口)|(?:说明|解释)[^。；！？\n]{0,24}(?:受托|寻找|失踪|埃里克)/
+    ],
     ['EV_S04_CIGAR', /雪茄/],
     ['EV_CHOOSE_NEGOTIATION', /选择.{0,8}交涉|和平交涉|愿意.{0,8}交涉|尝试.{0,8}交涉|暂缓攻击|不(?:发动|使用).{0,6}(?:攻击|武力)/],
     [
@@ -1025,6 +1028,15 @@ export function validateNarratorSemantics(
   }
   if (state.currentScene === 'S01' && /蒙特利尔/.test(allText) && !narrativeAuthority.includes('蒙特利尔')) {
     return '不得在住宅调查取得对应线索前提前点名蒙特利尔';
+  }
+  const bartenderLeadProposed = proposedEvents.some((event) => event.id === 'EV_BARTENDER_RAT');
+  if (
+    state.currentScene === 'S03'
+    && !progress.knownFactIds.includes('F08')
+    && !bartenderLeadProposed
+    && /老鼠[^。；！？\n]{0,40}贝尔街|贝尔街[^。；！？\n]{0,40}老鼠/.test(allText)
+  ) {
+    return '酒保的“老鼠”与贝尔街线索必须通过 EV_BARTENDER_RAT 结算后才能透露';
   }
   const proposedClueIds = new Set(proposedEvents.flatMap((event) => event.effects.flatMap((effect) => {
     if ('discoverClue' in effect) return [effect.discoverClue];

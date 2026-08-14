@@ -210,6 +210,24 @@ describe('turnGuards', () => {
     }));
   });
 
+  it('settles the bartender lead when players pay for information or explain the missing-person search', () => {
+    const state = makeState({ currentScene: 'S03', activeNpcName: '老赫特之家酒保' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B04 = 'active';
+
+    expect(inferStoryEventFromActions([
+      { player: '亨利', action: '用金钱作为报酬换取更多信息。' },
+      { player: '艾达', action: '诚恳说明我们受伊莎贝拉所托寻找失踪的父亲。' }
+    ], state)).toEqual(expect.objectContaining({
+      arguments: expect.objectContaining({ eventId: 'EV_BARTENDER_RAT' })
+    }));
+    expect(inferStoryEventFromActions([{
+      player: '亨利', action: '只点两杯酒，暂时不打听任何消息。'
+    }], state)).toBeNull();
+  });
+
   it('does not turn explicitly negated violence into a combat check', () => {
     const state = makeState({ players: [makeInvestigator({ name: '亨利' }, { '格斗（拳）': 50 })] });
 
@@ -1184,6 +1202,9 @@ describe('turnGuards', () => {
       narrative: '你们很快抵达卡森其药店。', nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/场景切换/);
     expect(validateNarratorSemantics({
+      narrative: '火柴照亮药房内部，货架倾倒，玻璃碎片散落一地。', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/当前环境|锁定地点/);
+    expect(validateNarratorSemantics({
       narrative: '马车已经到达码头区。', nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/场景切换/);
     expect(validateNarratorSemantics({
@@ -1202,6 +1223,25 @@ describe('turnGuards', () => {
     expect(validateNarratorSemantics({
       narrative: '蒙特利尔冷冷地拒绝回答。', activeNpc: '洛夫·蒙特利尔', nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/activeNpc|提前点名蒙特利尔/);
+  });
+
+  it('requires the authored bartender event before revealing the rat lead', () => {
+    const state = makeState({ currentScene: 'S03', activeNpcName: '老赫特之家酒保' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B04 = 'active';
+    const output = {
+      narrative: '酒保收下银币，低声说老鼠在贝尔街14号的废弃药店活动。',
+      activeNpc: '老赫特之家酒保',
+      nextPrompt: '要立刻动身吗？',
+      playerChoices: {}
+    };
+
+    expect(validateNarratorSemantics(output, [], state, kb)).toMatch(/EV_BARTENDER_RAT/);
+    expect(validateNarratorSemantics(output, [{
+      name: 'propose_story_event', arguments: { eventId: 'EV_BARTENDER_RAT' }
+    }], state, kb)).toBeNull();
   });
 
   it('does not strand investigators outside S04 after its authored entry event has settled', () => {
@@ -1493,6 +1533,8 @@ describe('turnGuards', () => {
 
   it('allows an authored NPC to repeat non-authoritative local color and known leads', () => {
     const state = makeState({ currentScene: 'S03', activeNpcName: '老赫特之家酒保' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.knownFactIds = ['F08'];
 
     expect(validateNarratorSemantics({
       narrative: '酒保想了想：“我听说老鼠最近在贝尔街活动。”',
