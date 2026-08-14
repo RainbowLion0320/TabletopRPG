@@ -11,7 +11,7 @@ import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
 import asset9 from '../../../../assets/avatars/deep_one_envoy.png';
 
-export const scenarioContentHash = "5a09ca5048dba14a";
+export const scenarioContentHash = "456078c98be5a163";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -1376,15 +1376,8 @@ export const generatedScenarioModule = {
         "title": "破译小册子",
         "trigger": "manual",
         "when": {
-          "all": [
-            {
-              "sceneIs": "S01"
-            },
-            {
-              "clue": "I04",
-              "status": "discovered"
-            }
-          ]
+          "clue": "I04",
+          "status": "discovered"
         },
         "effects": [
           {

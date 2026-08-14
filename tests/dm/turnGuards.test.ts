@@ -409,6 +409,10 @@ describe('turnGuards', () => {
 
     expect(inferStoryEventFromActions(actions, state)?.arguments.eventId).toBe('EV_FIND_I04');
     expect(buildRequiredCheck(actions, state)).toBeNull();
+
+    state.currentScene = 'S03';
+    expect(inferStoryEventFromActions(actions, state)?.arguments.eventId).toBe('EV_FIND_I04');
+    expect(buildRequiredCheck(actions, state)).toBeNull();
   });
 
   it('requires a real roll before the pharmacy map event and uses its authored fail-forward', () => {
@@ -1636,6 +1640,20 @@ describe('turnGuards', () => {
       narrative: '酒保指出贝尔街14号的废弃药店，又说：“入口在后巷，锁已经坏了。”',
       activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
     }, [...event], state, kb)).toMatch(/未调查地点的活动细节/);
+    expect(validateNarratorSemantics({
+      narrative: '酒保说埃里克偶尔带着油布包，里面像是文书或账本；他最后一次来是在七月初。',
+      activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/包裹或账本证词/);
+
+    const bookletState = makeState({ currentScene: 'S03' });
+    bookletState.scenarioProgress = createScenarioProgress();
+    bookletState.scenarioProgress.clueStates.I04 = 'discovered';
+    bookletState.clues = [{ id: 'I04', name: '小册子', description: '', discoveredAt: 1 }];
+    expect(validateNarratorSemantics({
+      narrative: '小册子夹页显出“C.S.”、“BELL ST”和“Delivery 07/10”，像是定期货物交接安排。',
+      activeNpc: '老赫特之家酒保', nextPrompt: '', playerChoices: {}
+    }, [{ name: 'propose_story_event', arguments: { eventId: 'EV_FIND_I04' } }], bookletState, kb))
+      .toMatch(/未授权编码或交接记录/);
 
     const opening = makeState({ currentScene: 'S01' });
     expect(validateNarratorSemantics({
