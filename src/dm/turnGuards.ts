@@ -170,6 +170,15 @@ export function buildRequiredCheck(actions: PlayerAction[], state: GameState): C
 
 const AUTHORED_ITEM_SEARCH_RE = /搜查|搜索|搜寻|寻找|检查|观察|查看|侦查|翻找|调查|辨认|比对|分析/;
 
+function actionAffirmativelyTargetsTerms(text: string, terms: string[]): boolean {
+  return text.split(/[，。；！？\n]+/).some((clause) =>
+    clause
+    && !onlyRequestsPermissionToInvestigate(clause)
+    && hasAffirmativeMatch(clause, AUTHORED_ITEM_SEARCH_RE)
+    && terms.some((term) => term && clause.includes(term))
+  );
+}
+
 function explicitlyTargetedScenarioItemActions(
   actions: PlayerAction[],
   state: GameState,
@@ -180,15 +189,12 @@ function explicitlyTargetedScenarioItemActions(
   return definition.world.items.flatMap((item) => {
     if (item.sceneId !== state.currentScene || discovered.has(item.id)) return [];
     const action = actions.find((candidate) => {
-      if (DICE_RESULT_RE.test(candidate.action)
-        || onlyRequestsPermissionToInvestigate(candidate.action)
-        || !hasAffirmativeMatch(candidate.action, AUTHORED_ITEM_SEARCH_RE)) return false;
-      const targeted = [
+      if (DICE_RESULT_RE.test(candidate.action)) return false;
+      return actionAffirmativelyTargetsTerms(candidate.action, [
         item.name,
         ...(kb.items[item.id]?.public.aliases ?? []),
         ...item.discovery.searchTerms
-      ].some((term) => term && candidate.action.includes(term));
-      return targeted;
+      ]);
     });
     return action ? [{ action, item }] : [];
   });

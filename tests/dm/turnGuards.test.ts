@@ -745,6 +745,26 @@ describe('turnGuards', () => {
     ]);
   });
 
+  it('does not authorize clue searches from a separate negated clause', () => {
+    const state = makeState({ currentScene: 'S01' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'active';
+    const actions = [
+      {
+        player: '亨利',
+        action: '检查埃里克书桌抽屉和相框背面，寻找并辨认与蒙特利尔有关的合影照片，不同时翻查其他区域。'
+      },
+      {
+        player: '艾达',
+        action: '协助亨利记录并辨认同一张合影照片上的人物，不另行搜索书架或垃圾桶。'
+      }
+    ];
+
+    expect(inferStoryEventsFromActions(actions, state).map((call) => call.arguments.eventId))
+      .toEqual(['EV_FIND_I02']);
+  });
+
   it('settles every explicitly searched clue through its authored failure path', () => {
     const state = makeState({ currentScene: 'S01' });
     state.scenarioProgress = createScenarioProgress();
