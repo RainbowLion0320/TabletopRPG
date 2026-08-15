@@ -183,6 +183,41 @@ describe('runDmTurn error classification', () => {
     }));
   });
 
+  it('uses firearm skill for the authored handgun attack suggestion during combat', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({
+      players: [makeInvestigator({ name: '罗伯特', equipment: ['警用左轮手枪'] }, {
+        '格斗（拳）': 70,
+        '射击（手枪）': 60
+      })],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.variables.combatRoundStarted = true;
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.clocks.fusangEscape = { value: 2, active: true, visible: true };
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [{ player: '罗伯特', action: '使用随身手枪攻击一名仍在抵抗的深潜者' }]
+    });
+    const next = gameReducer(state, {
+      type: 'applyAiResponse', response: output.legacyResponse, raw: output.raw, actorName: output.actorName
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_COMBAT_ATTACK');
+    expect(next.pendingCheck).toEqual(expect.objectContaining({
+      player: '罗伯特', skill: '射击（手枪）', threshold: 60, scenarioCheckId: 'CHECK_COMBAT'
+    }));
+  });
+
   it('does not start authored combat from an unarmed firearm declaration', async () => {
     const invalid = JSON.stringify({
       narrative: '没有可用的枪械，这次行动无法按声明执行。',
@@ -206,6 +241,36 @@ describe('runDmTurn error classification', () => {
     const output = await runDmTurn(config, {
       state,
       actions: [{ player: '艾达', action: '拔出手枪射击深潜者。' }]
+    });
+
+    expect(fetchMock).toHaveBeenCalled();
+    expect(output.legacyResponse.stateUpdate?.storyEventIds).not.toContain('EV_CHOOSE_COMBAT');
+    expect(output.legacyResponse.check).toBeFalsy();
+  });
+
+  it('does not start authored combat from an unarmed authored handgun suggestion', async () => {
+    const invalid = JSON.stringify({
+      narrative: '没有可用的枪械，这次行动无法按声明执行。',
+      activeNpc: '扶桑花号交涉代表',
+      nextPrompt: '选择实际持有的装备。',
+      playerChoices: { 艾达: ['保持距离继续观察'] }
+    });
+    const fetchMock = vi.fn(async () => jsonResponse(invalid));
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({
+      players: [makeInvestigator({ name: '艾达', equipment: [] }, { '格斗（拳）': 30 })],
+      currentScene: 'S05',
+      activeNpcName: '扶桑花号交涉代表'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [{ player: '艾达', action: '使用随身手枪攻击一名仍在抵抗的深潜者' }]
     });
 
     expect(fetchMock).toHaveBeenCalled();

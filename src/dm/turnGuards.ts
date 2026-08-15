@@ -43,6 +43,18 @@ function buildCandidate(action: PlayerAction): CheckCandidate | null {
   const describesAssistingAnother = /(?:在|当)(?:他|她|同伴|队友|[\u4e00-\u9fff·]{2,10})[^，。；！？\n]{0,24}时[^。；！？\n]{0,16}(?:提供照明|警戒|把风|记录|协助|帮助|配合)/.test(text)
     || /(?:协助|帮助|配合)(?:他|她|同伴|队友|[\u4e00-\u9fff·]{2,10})[^，。；！？\n]{0,16}(?:操作|检查|搜查|撬锁|开锁|撬开)/.test(text);
 
+  if (actionUsesHandgun(text)) {
+    return {
+      score: 100 - (describesAssistingAnother ? 50 : 0),
+      check: {
+        player: action.player,
+        skill: '射击（手枪）',
+        difficulty: '困难',
+        reason: '在压力下完成射击'
+      }
+    };
+  }
+
   const specs: Array<{
     pattern: RegExp;
     skill: string;
@@ -250,15 +262,21 @@ export function combatCheckSkillForActor(
 ): string {
   const action = actions.find((candidate) => candidate.player === actorName)?.action ?? '';
   const actor = state.players.find((candidate) => candidate.name === actorName);
-  if (!/(?:开枪|射击|枪击|扣扳机)/.test(action)) return '格斗（拳）';
+  if (!actionUsesHandgun(action)) return '格斗（拳）';
   const hasHandgun = actor?.equipment?.some((item) => /手枪|左轮枪/.test(item)) ?? false;
-  return hasHandgun && actor?.skills['射击（手枪）'] ? '射击（手枪）' : '格斗（拳）';
+  return hasHandgun && Boolean(actor?.skills['射击（手枪）'])
+    ? '射击（手枪）'
+    : '格斗（拳）';
+}
+
+function actionUsesHandgun(text: string): boolean {
+  return /(?:开枪|射击|枪击|扣(?:下)?扳机)|(?:使用|用|举起|拔出|抽出|掏出|握住)[^，。；！？\n]{0,12}(?:手枪|左轮枪)[^，。；！？\n]{0,12}(?:攻击|开火|射击|枪击|击发)/.test(text);
 }
 
 function combatActorScore(action: PlayerAction, actions: PlayerAction[], state: GameState): number {
   const text = action.action;
   if (!hasAffirmativeMatch(text, COMBAT_ACTION_RE)) return 0;
-  if (/(?:开枪|射击|枪击|扣扳机)/.test(text) && !actorHasHandgun(state, action.player)) return 0;
+  if (actionUsesHandgun(text) && !actorHasHandgun(state, action.player)) return 0;
   let score = 10;
   const namesAnotherAttacker = actions.some((other) => {
     if (other.player === action.player || !text.includes(other.player)) return false;
@@ -477,7 +495,7 @@ export function inferStoryEventFromActions(
       ? actions.some((action) =>
           !DICE_RESULT_RE.test(action.action)
           && hasAffirmativeMatch(action.action, pattern)
-          && (!/(?:开枪|射击|枪击|扣扳机)/.test(action.action) || actorHasHandgun(state, action.player))
+          && (!actionUsesHandgun(action.action) || actorHasHandgun(state, action.player))
         )
       : pattern.test(text))
     && (!actionIsFailedCheck(actions) || eventId === 'EV_BARTENDER_RAT')
