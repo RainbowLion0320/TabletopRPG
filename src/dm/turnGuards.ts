@@ -688,14 +688,23 @@ export function sanitizePlayerChoices(
     : Object.entries(choices);
   return Object.fromEntries(entries.map(([player, list]) => {
     const playerState = players.find((candidate) => candidate.name === player);
+    const equipment = playerState?.equipment ?? [];
     const canAttack = playerState
-      ? (playerState.equipment ?? []).some((item) => /手枪|左轮枪|警棍|棍|刀|武器/.test(item))
+      ? equipment.some((item) => /手枪|左轮枪|警棍|棍|刀|武器/.test(item))
       : null;
+    const hasHandgun = equipment.some((item) => /手枪|左轮枪|步枪/.test(item));
+    const hasMeleeWeapon = equipment.some((item) => /警棍|棍|刀|武器/.test(item));
     const safe = list.filter((choice) =>
       !hiddenTerms.some((term) => choice.includes(term))
       && !offstageNpcNames.some((name) => choice.includes(name))
       && !(sceneId && unavailableNpcRole(choice, kb, sceneId, true))
       && !(sceneId && explicitlyTravelsToScene(choice, kb, sceneId))
+      && !(playerState
+        && hasAffirmativeMatch(choice, /开枪|射击|开火|枪击|拔枪|掏枪|抽枪|举枪|握枪|持枪|用枪|手枪|左轮枪|步枪/)
+        && !hasHandgun)
+      && !(playerState
+        && hasAffirmativeMatch(choice, /(?:警棍|棍棒|手杖|刀|近战武器)[^，。；！？\n]{0,16}(?:攻击|击打|挥击|挥砍|猛击|横扫)/)
+        && !hasMeleeWeapon)
       && !(sceneId === 'S05'
         && !isFinaleChoiceCompatible(choice, finaleRoute, remainingOpponents, canAttack))
     );

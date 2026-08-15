@@ -1360,6 +1360,21 @@ describe('turnGuards', () => {
     expect(cleared.艾达.some((choice) => /寻找埃里克|营救埃里克/.test(choice))).toBe(true);
   });
 
+  it('removes unavailable firearm suggestions before the finale route is chosen', () => {
+    const players = [makeInvestigator({ id: 'henry', name: '亨利', equipment: [] })];
+    const result = sanitizePlayerChoices({
+      亨利: [
+        '继续射击压制深潜者，冲向埃里克',
+        '喝令深潜者代表交出埃里克否则继续开火',
+        '寻找更好的掩体观察局势变化'
+      ]
+    }, new Set(), kb, 'S05', 'undecided', 4, players);
+
+    expect(result.亨利.some((choice) => /射击|开火/.test(choice))).toBe(false);
+    expect(result.亨利).toContain('寻找更好的掩体观察局势变化');
+    expect(result.亨利).toHaveLength(3);
+  });
+
   it('removes indirect negotiation suggestions after the combat route is locked', () => {
     const players = [makeInvestigator({ id: 'thomas', name: '托马斯', equipment: [] })];
     const result = sanitizePlayerChoices({
