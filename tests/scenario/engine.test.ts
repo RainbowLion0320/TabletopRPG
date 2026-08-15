@@ -114,10 +114,15 @@ describe('scenario progression engine', () => {
     expect(progress.objectiveStates.O07).toBe('locked');
     expect(progress.objectiveStates.O08).toBe('locked');
 
-    progress = apply(progress, 'S05', 5, { events: ['EV_CHOOSE_NEGOTIATION'] }).progress;
+    const negotiation = apply(progress, 'S05', 5, { events: ['EV_CHOOSE_NEGOTIATION'] });
+    progress = negotiation.progress;
     expect(progress.objectiveStates.O06).toBe('completed');
     expect(progress.objectiveStates.O07).toBe('locked');
     expect(progress.objectiveStates.O08).toBe('active');
+    expect(negotiation.requestedCheck).toEqual(expect.objectContaining({
+      scenarioCheckId: 'CHECK_LISTEN',
+      difficulty: '普通'
+    }));
   });
 
   it('keeps finale routes mutually exclusive after the first choice', () => {
@@ -373,11 +378,11 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: [], flags: {}, turn: 3
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.15');
+    expect(migrated.moduleVersion).toBe('1.1.16');
     expect(migrated.beatStates.B02).toBe('active');
     expect(migrated.objectiveStates.O01).toBe('completed');
     expect(migrated.objectiveStates.O02).toBe('active');
-    expect(migrated.migrationLog.at(-1)).toContain('1.0.0 -> 1.1.15');
+    expect(migrated.migrationLog.at(-1)).toContain('1.0.0 -> 1.1.16');
   });
 
   it('migrates the immediately previous scenario content version', () => {
@@ -391,9 +396,9 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: [], flags: {}, turn: 3
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.15');
+    expect(migrated.moduleVersion).toBe('1.1.16');
     expect(migrated.beatStates.B02).toBe('active');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.12 -> 1.1.15');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.12 -> 1.1.16');
   });
 
   it('migrates the 1.1.13 live-play save without losing its current scene', () => {
@@ -410,10 +415,10 @@ describe('scenario progression engine', () => {
       currentScene: 'S03', clueIds: ['I02', 'I04'], flags: {}, turn: 11
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.15');
+    expect(migrated.moduleVersion).toBe('1.1.16');
     expect(migrated.visitedSceneIds).toEqual(['S01', 'S02', 'S03']);
     expect(migrated.knownFactIds).toContain('F05');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.13 -> 1.1.15');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.13 -> 1.1.16');
   });
 
   it('migrates the 1.1.9 live-play content version without losing progress', () => {
@@ -428,10 +433,10 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: [], flags: {}, turn: 2
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.15');
+    expect(migrated.moduleVersion).toBe('1.1.16');
     expect(migrated.beatStates.B02).toBe('active');
     expect(migrated.firedEventIds).toContain('EV_ACCEPT_COMMISSION');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.9 -> 1.1.15');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.9 -> 1.1.16');
   });
 
   it('migrates the 1.1.10 live-play content version without replaying S04 entry effects', () => {
@@ -450,10 +455,10 @@ describe('scenario progression engine', () => {
       currentScene: 'S04', clueIds: [], flags: {}, turn: 8
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.15');
+    expect(migrated.moduleVersion).toBe('1.1.16');
     expect(migrated.beatStates.B05).toBe('active');
     expect(migrated.firedEventIds.filter((id) => id === 'EV_S04_FOG')).toHaveLength(1);
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.10 -> 1.1.15');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.10 -> 1.1.16');
   });
 
   it('restores the combat round consumed by selecting the route in 1.1.6', () => {
@@ -472,7 +477,7 @@ describe('scenario progression engine', () => {
       currentScene: 'S05', clueIds: ['I04', 'I07'], flags: {}, turn: 12
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.15');
+    expect(migrated.moduleVersion).toBe('1.1.16');
     expect(migrated.clocks.fusangEscape.value).toBe(0);
     expect(migrated.encounters.ENC01.round).toBe(0);
     expect(migrated.variables.combatRoundStarted).toBe(false);
@@ -500,7 +505,7 @@ describe('scenario progression engine', () => {
       currentScene: 'S04', clueIds: ['I07'], flags: {}, turn: 9
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.15');
+    expect(migrated.moduleVersion).toBe('1.1.16');
     expect(migrated.clueStates.I07).toBe('unknown');
     expect(migrated.knownFactIds).not.toContain('F09');
     expect(migrated.firedEventIds).not.toContain('EV_S04_MAP');
@@ -522,8 +527,8 @@ describe('scenario progression engine', () => {
     });
 
     expect(migrated.contentHash).not.toBe(previous.contentHash);
-    expect(migrated.moduleVersion).toBe('1.1.15');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.15');
+    expect(migrated.moduleVersion).toBe('1.1.16');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.16');
   });
 
   it('migrates saves from the latest 1.1.0 runtime', () => {
@@ -535,9 +540,9 @@ describe('scenario progression engine', () => {
       currentScene: 'S05', clueIds: ['I04', 'I07'], flags: {}, turn: 12
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.15');
+    expect(migrated.moduleVersion).toBe('1.1.16');
     expect(migrated.contentHash).not.toBe(previous.contentHash);
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.15');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.0 -> 1.1.16');
   });
 
   it('migrates the saved real-play state from scenario 1.1.1', () => {
@@ -551,9 +556,9 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: [], flags: {}, turn: 2
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.15');
+    expect(migrated.moduleVersion).toBe('1.1.16');
     expect(migrated.beatStates.B02).toBe('active');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.1 -> 1.1.15');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.1 -> 1.1.16');
   });
 
   it('migrates the saved real-play state from scenario 1.1.2', () => {
@@ -568,10 +573,10 @@ describe('scenario progression engine', () => {
       currentScene: 'S01', clueIds: ['I04'], flags: {}, turn: 3
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.15');
+    expect(migrated.moduleVersion).toBe('1.1.16');
     expect(migrated.clueStates.I04).toBe('discovered');
     expect(migrated.knownFactIds).not.toContain('F06');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.2 -> 1.1.15');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.2 -> 1.1.16');
   });
 
   it('migrates the saved real-play state from scenario 1.1.4', () => {
@@ -590,10 +595,10 @@ describe('scenario progression engine', () => {
       currentScene: 'S05', clueIds: ['I04', 'I07'], flags: {}, turn: 24
     });
 
-    expect(migrated.moduleVersion).toBe('1.1.15');
+    expect(migrated.moduleVersion).toBe('1.1.16');
     expect(migrated.beatStates.B06).toBe('active');
     expect(migrated.objectiveStates.O08).toBe('active');
     expect(migrated.variables.finaleRoute).toBe('negotiation');
-    expect(migrated.migrationLog.at(-1)).toContain('1.1.4 -> 1.1.15');
+    expect(migrated.migrationLog.at(-1)).toContain('1.1.4 -> 1.1.16');
   });
 });

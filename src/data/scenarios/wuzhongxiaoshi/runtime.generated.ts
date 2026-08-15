@@ -11,7 +11,7 @@ import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
 import asset9 from '../../../../assets/avatars/deep_one_envoy.png';
 
-export const scenarioContentHash = "1ff75c089908b22a";
+export const scenarioContentHash = "08635eeca02fd6d7";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -27,7 +27,7 @@ export const scenarioAssetUrls: Record<string, string> = {
 export const generatedScenarioModule = {
   "manifest": {
     "schemaVersion": 1,
-    "contentVersion": "1.1.15",
+    "contentVersion": "1.1.16",
     "id": "wuzhongxiaoshi",
     "title": "雾中消逝",
     "system": "COC 第七版风格 D100",
@@ -2010,6 +2010,12 @@ export const generatedScenarioModule = {
           },
           {
             "activateObjective": "O08"
+          },
+          {
+            "requestCheck": "CHECK_LISTEN",
+            "skill": "聆听",
+            "difficulty": "普通",
+            "reason": "从非人声调中辨认其真正诉求"
           }
         ],
         "once": true,

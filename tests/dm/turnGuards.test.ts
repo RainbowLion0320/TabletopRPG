@@ -597,6 +597,35 @@ describe('turnGuards', () => {
     expect(buildRequiredCheck(actions, state)).toBeNull();
   });
 
+  it('treats lowering weapons to listen as a negotiation route choice', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利' }, { 聆听: 65 }),
+        makeInvestigator({ name: '艾达' }, { 聆听: 65 })
+      ],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+
+    const actions = [
+      {
+        player: '亨利',
+        action: '放下武器，与扶桑花号交涉代表保持距离，专心倾听并准确复述它关于埃里克和交易的诉求。'
+      },
+      {
+        player: '艾达',
+        action: '协助亨利维持安静的交涉空间，观察代表语气与停顿，确保不误解它的诉求，不另行发起攻击或说服。'
+      }
+    ];
+
+    expect(inferStoryEventFromActions(actions, state)?.arguments.eventId).toBe('EV_CHOOSE_NEGOTIATION');
+    expect(buildRequiredCheck(actions, state)).toBeNull();
+  });
+
   it('does not infer a spatial move while its story prerequisite is locked', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '亨利' }), makeInvestigator({ name: '艾达' })],

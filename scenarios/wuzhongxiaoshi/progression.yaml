@@ -226,7 +226,7 @@ storyEvents:
     title: 选择交涉路线
     trigger: manual
     when: { all: [{ sceneIs: S05 }, { variable: finaleRoute, op: eq, value: undecided }] }
-    effects: [{ setVariable: finaleRoute, value: negotiation }, { completeObjective: O06 }, { activateObjective: O08 }]
+    effects: [{ setVariable: finaleRoute, value: negotiation }, { completeObjective: O06 }, { activateObjective: O08 }, { requestCheck: CHECK_LISTEN, skill: 聆听, difficulty: 普通, reason: 从非人声调中辨认其真正诉求 }]
     once: true
     playerVisible: true
     narrativeCue: 调查员暂缓攻击，与扶桑花号交涉代表保持距离，尝试听懂深潜者的诉求。
