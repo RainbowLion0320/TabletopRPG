@@ -2475,6 +2475,28 @@ describe('turnGuards', () => {
     }, [], opening, kb)).toMatch(/犯罪、交易/);
   });
 
+  it('does not reveal the hidden Montreal betrayal claim through Eric at the finale', () => {
+    const state = makeState({ currentScene: 'S05', activeNpcName: '扶桑花号交涉代表' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.knownFactIds = ['F05', 'F08', 'F10'];
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+
+    expect(validateNarratorSemantics({
+      narrative: '埃里克焦急地低声说道：“他们要把货和我一起带走……蒙特利尔那个混蛋，他出卖了我！”',
+      activeNpc: '扶桑花号交涉代表', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/背叛或出卖事实/);
+
+    expect(validateNarratorSemantics({
+      narrative: '埃里克焦急地看着调查员；甲板冲突仍在继续。',
+      activeNpc: '扶桑花号交涉代表', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toBeNull();
+  });
+
   it('rejects invented Montreal investigation results beyond the authored meeting event', () => {
     const state = makeState({ currentScene: 'S02', activeNpcName: '洛夫·蒙特利尔' });
     state.scenarioProgress = createScenarioProgress();
