@@ -18,9 +18,9 @@ entries:
     when: { sceneIs: S04 }
     effects: []
   - id: RULE_S04_THUGS
-    trigger: sceneEnter
+    trigger: afterAction
     support: enforced
-    description: 见过蒙特利尔且19:00后进入S04时触发暴徒伏击。
+    description: 见过蒙特利尔后，在S04进入或停留至19:00时触发暴徒伏击。
     when: { all: [{ sceneIs: S04 }, { variable: metMontreal, op: eq, value: true }, { worldTime: true, op: gte, value: 1920-07-13T19:00 }] }
     effects: []
   - id: RULE_HYBRID_SAN

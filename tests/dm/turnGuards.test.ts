@@ -660,6 +660,17 @@ describe('turnGuards', () => {
     ], state, kb)).toBeNull();
   });
 
+  it('does not treat 去向 in a clue search as movement after the destination unlocks', () => {
+    const state = makeState({ currentScene: 'S04' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.knownFactIds = ['F09'];
+
+    expect(inferSceneChangeFromActions([{
+      player: '亨利',
+      action: '搜查后厅被翻动的区域和油布包，只寻找能确认埃里克去向与港口位置的物证。'
+    }], state, kb)).toBeNull();
+  });
+
   it('does not treat an unlocked scene mentioned as a habitual destination as immediate travel', () => {
     const state = makeState({ currentScene: 'S01' });
     state.scenarioProgress = createScenarioProgress();

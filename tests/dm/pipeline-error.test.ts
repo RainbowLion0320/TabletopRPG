@@ -700,6 +700,45 @@ describe('runDmTurn error classification', () => {
     );
   });
 
+  it('keeps a map-check continuation in S04 when 去向 only describes the evidence', async () => {
+    const content = JSON.stringify({
+      narrative: '油布包中的地图标出了泰晤士港扶桑花号的位置，调查员仍在药店整理物证。',
+      activeNpc: null,
+      nextPrompt: '下一步怎么办？',
+      playerChoices: {
+        '亨利·格雷': ['携带地图继续检查药店后门']
+      }
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(content)));
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利·格雷' }, { 侦查: 75 })],
+      currentScene: 'S04'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'active';
+    state.scenarioProgress.objectiveStates.O05 = 'active';
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [
+        {
+          player: '亨利·格雷',
+          action: '搜查后厅被翻动的区域和油布包，只寻找能确认埃里克去向与港口位置的物证。'
+        },
+        {
+          player: '亨利·格雷',
+          action: '【检定结果】亨利·格雷 的 侦查 检定：掷出 29，阈值 75，结果：困难成功（29）。这是规则事实，不得改写或推翻；请根据结果继续叙述。'
+        }
+      ]
+    });
+
+    expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_S04_MAP');
+    expect(output.legacyResponse.stateUpdate?.sceneChange).toBeNull();
+    expect(output.legacyResponse.activeNpc).toBeNull();
+  });
+
   it('uses authored scene actions instead of objective text in semantic fallback choices', async () => {
     const invalid = JSON.stringify({
       narrative: '药店窗外停着一辆近期反复转运货物的马车。',
@@ -727,7 +766,7 @@ describe('runDmTurn error classification', () => {
     expect(output.legacyResponse.playerChoices?.亨利).toEqual([
       '搜查后厅被翻动的区域和遗留包裹',
       '检查柜台附近的烟灰与使用痕迹',
-      '确认后门、窗户和暴徒离去后的退路'
+      '确认后门、窗户和街巷方向，规划安全退路'
     ]);
     expect(output.legacyResponse.playerChoices?.亨利).not.toContain('应对浓雾与追兵，找到扶桑花号的位置。');
   });

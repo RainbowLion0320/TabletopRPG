@@ -11,7 +11,7 @@ import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
 import asset9 from '../../../../assets/avatars/deep_one_envoy.png';
 
-export const scenarioContentHash = "1e59351932f955ab";
+export const scenarioContentHash = "f799ed6b8aa048da";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -27,7 +27,7 @@ export const scenarioAssetUrls: Record<string, string> = {
 export const generatedScenarioModule = {
   "manifest": {
     "schemaVersion": 1,
-    "contentVersion": "1.1.17",
+    "contentVersion": "1.1.18",
     "id": "wuzhongxiaoshi",
     "title": "雾中消逝",
     "system": "COC 第七版风格 D100",
@@ -1830,9 +1830,12 @@ export const generatedScenarioModule = {
         "id": "EV_S04_THUGS",
         "beatId": "B05",
         "title": "暴徒抵达贝尔街",
-        "trigger": "sceneEnter",
+        "trigger": "automatic",
         "when": {
           "all": [
+            {
+              "sceneIs": "S04"
+            },
             {
               "variable": "metMontreal",
               "op": "eq",
@@ -2479,9 +2482,9 @@ export const generatedScenarioModule = {
       },
       {
         "id": "RULE_S04_THUGS",
-        "trigger": "sceneEnter",
+        "trigger": "afterAction",
         "support": "enforced",
-        "description": "见过蒙特利尔且19:00后进入S04时触发暴徒伏击。",
+        "description": "见过蒙特利尔后，在S04进入或停留至19:00时触发暴徒伏击。",
         "when": {
           "all": [
             {
@@ -2586,7 +2589,7 @@ export const generatedScenarioModule = {
         "actions": [
           "搜查后厅被翻动的区域和遗留包裹",
           "检查柜台附近的烟灰与使用痕迹",
-          "确认后门、窗户和暴徒离去后的退路"
+          "确认后门、窗户和街巷方向，规划安全退路"
         ]
       },
       {

@@ -47,7 +47,7 @@ describe('storage save compatibility', () => {
 
     expect(library.incompatible).toEqual([]);
     expect(library.saves).toHaveLength(1);
-    expect(library.saves[0].gameState.scenarioProgress.moduleVersion).toBe('1.1.17');
+    expect(library.saves[0].gameState.scenarioProgress.moduleVersion).toBe('1.1.18');
   });
 
   it('keeps incompatible raw saves visible and preserves them when saving a new game', () => {

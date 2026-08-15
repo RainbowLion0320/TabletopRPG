@@ -203,8 +203,8 @@ storyEvents:
   - id: EV_S04_THUGS
     beatId: B05
     title: 暴徒抵达贝尔街
-    trigger: sceneEnter
-    when: { all: [{ variable: metMontreal, op: eq, value: true }, { worldTime: true, op: gte, value: 1920-07-13T19:00 }] }
+    trigger: automatic
+    when: { all: [{ sceneIs: S04 }, { variable: metMontreal, op: eq, value: true }, { worldTime: true, op: gte, value: 1920-07-13T19:00 }] }
     effects: [{ resolveEncounter: ENC02, state: resolved }]
     once: true
     playerVisible: true

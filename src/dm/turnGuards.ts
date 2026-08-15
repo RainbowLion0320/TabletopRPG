@@ -15,7 +15,7 @@ import {
 
 const DICE_RESULT_RE = /【检定结果】|结果[：:]\s*(?:失败|大失败|成功|困难成功|极难成功|大成功)/;
 const MOVE_VERB_RE = /前往|赶往|去往|转往|改去|改从|出发|动身|返回|回到|离开|进入|走进|登上|开车|驾车|驱车|驶向|跟随|追到|抵达|到达/;
-const MOVE_DESTINATION_RE = /前往|赶往|去往|转往|改去|改从|驶向|追到|抵达|到达|进入|登上|回到|返回|去/;
+const MOVE_DESTINATION_RE = /前往|赶往|去往|转往|改去|改从|驶向|追到|抵达|到达|进入|登上|回到|返回|去(?!向|处|路|年)/;
 const NPC_ROLE_TERMS = ['店主', '老板', '伙计', '服务生', '医生', '护士', '牧师', '管理员', '警员', '警察', '酒保'];
 
 function undeclaredPrecinctMention(text: string, registeredTerms: string[]): string | null {
@@ -380,7 +380,7 @@ function explicitlyRequestsMove(text: string) {
   ) return false;
   if (movementIsOnlyDiscussed(text)) return false;
   if (MOVE_VERB_RE.test(text)) return true;
-  if (!/去/.test(text)) return false;
+  if (!/去(?!向|处|路|年)/.test(text)) return false;
   return !/(?:不|别|不要|暂不|要不要|是否|考虑是否)[^，。；！？\n]{0,4}去/.test(text);
 }
 
