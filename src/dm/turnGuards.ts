@@ -20,7 +20,10 @@ import {
 const DICE_RESULT_RE = /【检定结果】|结果[：:]\s*(?:失败|大失败|成功|困难成功|极难成功|大成功)/;
 const MOVE_VERB_RE = /前往|赶往|去往|转往|转向|走向|改去|改从|出发|动身|返回|回到|离开|进入|走进|登上|开车|驾车|驱车|驶向|跟随|追到|抵达|到达/;
 const MOVE_DESTINATION_RE = /前往|赶往|去往|转往|转向|走向|改去|改从|驶向|追到|抵达|到达|进入|登上|回到|返回|去(?!向|处|路|年)/;
-const NPC_ROLE_TERMS = ['店主', '老板', '伙计', '服务生', '医生', '护士', '牧师', '管理员', '警员', '警察', '酒保', '船长'];
+const NPC_ROLE_TERMS = [
+  '店主', '老板', '伙计', '服务生', '医生', '护士', '牧师', '管理员',
+  '警员', '警察', '酒保', '船长', '暴徒', '打手', '歹徒', '混混'
+];
 
 function undeclaredPrecinctMention(text: string, registeredTerms: string[]): string | null {
   const withoutRegisteredTerms = registeredTerms
@@ -374,18 +377,50 @@ function sceneNpcTerms(kb: KnowledgeBase, sceneId: SceneId): string[] {
   });
 }
 
-function unavailableNpcRole(text: string, kb: KnowledgeBase, sceneId: SceneId, directInteraction = false) {
+function unavailableNpcRole(
+  text: string,
+  kb: KnowledgeBase,
+  sceneId: SceneId,
+  directInteraction = false,
+  eventAuthority = ''
+) {
   const availableTerms = sceneNpcTerms(kb, sceneId);
   return NPC_ROLE_TERMS.find((term) => {
-    if (availableTerms.some((candidate) => candidate.includes(term))) return false;
+    if (availableTerms.some((candidate) => candidate.includes(term)) || eventAuthority.includes(term)) {
+      return false;
+    }
     if (directInteraction) {
-      return new RegExp(`(?:问|询问|追问|向|与|说服|观察|拜访|跟随)(?:眼前的|这位|附近的)?${term}`).test(text);
+      return new RegExp(
+        `(?:问|询问|追问|向|与|说服|安抚|观察|检查|攻击|制服|对付|跟随|盘问)[^。！？\\n]{0,20}${term}`
+        + `|${term}[^。！？\\n]{0,16}(?:交谈|说话|询问|追问|安抚|观察|检查|攻击|制服|盘问)`
+      ).test(text);
     }
     return new RegExp(
       `${term}[^。！？\\n]{0,10}(?:说|回答|问|告诉|表示|回忆|想了想|开口|承认|点头|摇头)[^。！？\\n]{0,3}[：:“\"]`
       + `|${term}[^。！？\\n]{0,8}(?:正|正在|准备|下令|命令|掌舵|操纵|启动|驾驶)`
     ).test(text);
   }) ?? null;
+}
+
+function unidentifiedSceneActor(
+  text: string,
+  kb: KnowledgeBase,
+  sceneId: SceneId,
+  eventAuthority: string
+): string | null {
+  const availableTerms = sceneNpcTerms(kb, sceneId).filter((term) => term.length >= 2);
+  const actorPattern = /(?:[一二三四五六七八九十百两几\d]+(?:名|个|位|道)(?:身份不明的|陌生的)?(?:男人|男子|女人|女子|人影|身影|暴徒|打手|歹徒|混混|人)|(?:为首|领头)(?:的)?(?:一名|一个|一位)?(?:男人|男子|女人|女子|身影|人))/;
+  const agencyPattern = /(?:说|开口|喝道|喊道|命令|下令|挡住|堵住|堵死|封住|拦住|包围|围住|冲出|钻出|持枪|举枪|袭击|逼近)/;
+  const eventRoles = NPC_ROLE_TERMS.filter((term) => eventAuthority.includes(term));
+
+  for (const sentence of text.split(/[。！？\n]/)) {
+    const actor = sentence.match(actorPattern)?.[0];
+    if (!actor || !agencyPattern.test(sentence)) continue;
+    if (availableTerms.some((term) => sentence.includes(term))) continue;
+    if (eventRoles.some((term) => sentence.includes(term))) continue;
+    return actor;
+  }
+  return null;
 }
 
 function explicitlyRequestsMove(text: string) {
@@ -1365,6 +1400,15 @@ export function validateNarratorSemantics(
   ) {
     return `activeNpc 指向不在当前场景的 ${output.activeNpc}`;
   }
+  if (targetId && targetId !== state.currentScene && output.activeNpc) {
+    const npc = kb.npcs[output.activeNpc]?.public;
+    const terms = npc
+      ? [npc.name, npc.role, ...(npc.aliases ?? [])].filter((term) => term.length >= 2)
+      : [output.activeNpc];
+    if (!terms.some((term) => output.narrative.includes(term))) {
+      return `切入新场景时必须在正文中明确识别活动 NPC：${output.activeNpc}`;
+    }
+  }
   const appearanceConflict = activeNpcAppearanceConflict(
     output.narrative,
     output.activeNpc,
@@ -1374,9 +1418,31 @@ export function validateNarratorSemantics(
   if (appearanceConflict) {
     return `不得改写权威人物外貌：${appearanceConflict}`;
   }
-  const inventedSpeaker = unavailableNpcRole(output.narrative, kb, outputSceneId);
+  const proposedEventAuthority = proposedEvents.map((event) => event.narrativeCue).join('\n');
+  const inventedSpeaker = unavailableNpcRole(
+    output.narrative,
+    kb,
+    outputSceneId,
+    false,
+    proposedEventAuthority
+  );
   if (inventedSpeaker) {
     return `当前场景没有已登记的${inventedSpeaker}，不得让未授权 NPC 参与对话`;
+  }
+  const unavailableChoiceRole = Object.values(output.playerChoices).flat()
+    .map((choice) => unavailableNpcRole(choice, kb, outputSceneId, true, proposedEventAuthority))
+    .find((term): term is string => Boolean(term));
+  if (unavailableChoiceRole) {
+    return `当前场景没有已登记的${unavailableChoiceRole}，不得建议玩家与未授权 NPC 互动`;
+  }
+  const unidentifiedActor = unidentifiedSceneActor(
+    output.narrative,
+    kb,
+    outputSceneId,
+    proposedEventAuthority
+  );
+  if (unidentifiedActor) {
+    return `当前场景没有与“${unidentifiedActor}”对应的已登记人物或剧情事件`;
   }
   const plotClaimIssue = unsupportedPlotClaim(
     allText,

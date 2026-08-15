@@ -1882,11 +1882,61 @@ describe('turnGuards', () => {
     }, sceneCall, state, kb)).toMatch(/原子结算/);
 
     expect(validateNarratorSemantics({
-      narrative: '你们抵达泰晤士港的偏僻泊位，扶桑花号在浓雾中准备离港。',
+      narrative: '你们抵达泰晤士港的偏僻泊位，扶桑花号在浓雾中准备离港；扶桑花号交涉代表在栈桥前警惕地观察你们。',
       activeNpc: '扶桑花号交涉代表',
       nextPrompt: '如何应对？',
       playerChoices: {}
     }, sceneCall, state, kb)).toBeNull();
+  });
+
+  it('rejects off-scene thugs substituted for the finale NPC during a real scene transition', () => {
+    const state = makeState({ currentScene: 'S04', activeNpcName: null, clueIds: ['I07'] });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.knownFactIds = ['F09'];
+    const sceneCall = [{
+      name: 'propose_scene_change' as const,
+      arguments: { targetSceneId: 'S05', reason: '玩家明确前往扶桑花号' }
+    }];
+    const liveOutput = {
+      narrative: '你沿泰晤士河拐入一段废弃码头区，远处泊位上隐约可见一艘旧货船。三个身影从雾气中钻出，将退路堵死。为首的一人低声喝道：“别动，朋友。”',
+      activeNpc: '扶桑花号交涉代表',
+      nextPrompt: '如何应对？',
+      playerChoices: {
+        艾达: ['尝试用冷静的语气安抚暴徒，询问他们的来意', '后退寻找掩体，观察暴徒的武器和人数']
+      }
+    };
+
+    expect(validateNarratorSemantics(liveOutput, sceneCall, state, kb))
+      .toMatch(/明确识别活动 NPC|未授权 NPC|已登记人物/);
+  });
+
+  it('rejects an unidentified speaking group in S05 after the transition is complete', () => {
+    const state = makeState({ currentScene: 'S05', activeNpcName: '扶桑花号交涉代表' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B06 = 'active';
+
+    expect(validateNarratorSemantics({
+      narrative: '三个身影从雾气中钻出，将退路堵死。为首的一人低声喝道：“别动。”',
+      activeNpc: '扶桑花号交涉代表',
+      nextPrompt: '如何应对？',
+      playerChoices: {}
+    }, [], state, kb)).toMatch(/已登记人物|剧情事件/);
+  });
+
+  it('keeps conditionally due S04 thugs out of free narration so the automatic event owns them', () => {
+    const state = makeState({ currentScene: 'S04', activeNpcName: null });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B05 = 'active';
+    state.scenarioProgress.variables.metMontreal = true;
+    state.scenarioProgress.worldTime = '1920-07-13T19:05';
+    const output = {
+      narrative: '三名身份不明的暴徒追到贝尔街，短暂封住药店外的退路后消失在浓雾中。',
+      activeNpc: null,
+      nextPrompt: '继续调查药店。',
+      playerChoices: {}
+    };
+
+    expect(validateNarratorSemantics(output, [], state, kb)).toMatch(/未授权 NPC|已登记人物/);
   });
 
   it('rejects unauthorised schedule and route details invented for a known clue', () => {
