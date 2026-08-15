@@ -1688,6 +1688,10 @@ describe('turnGuards', () => {
       playerChoices: { 托马斯: ['先退出去从正门想办法'] }
     }, [...move], state, kb)).toMatch(/S04 入场事件/);
     expect(validateNarratorSemantics({
+      narrative: '你们抵达卡森其药店。木门歪斜，亨利推开门，铰链发出刺耳声响，随后走进店内。',
+      activeNpc: null, nextPrompt: '调查店内。', playerChoices: { 艾达: ['搜查后厅'] }
+    }, [...move], state, kb)).toMatch(/切场正文不得再让调查员开门进入一次/);
+    expect(validateNarratorSemantics({
       narrative: '非人身影从内侧撞开后门撤离，你们随即进入卡森其药店，店内浓雾涌动。',
       activeNpc: null, nextPrompt: '在店内调查。', playerChoices: { 亨利: ['检查后厅的油布包'] }
     }, [...move], state, kb)).toBeNull();
@@ -1715,6 +1719,32 @@ describe('turnGuards', () => {
       narrative: '罗伯特没能分辨街上的脚步声，你们已经站在药店后厅内。',
       activeNpc: null, nextPrompt: '调查后厅。', playerChoices: {}
     }, [], state, kb)).toBeNull();
+  });
+
+  it('rejects an invented internal route after investigators enter S04', () => {
+    const entering = makeState({ currentScene: 'S03', activeNpcName: '老赫特之家酒保' });
+    entering.scenarioProgress = createScenarioProgress();
+    entering.scenarioProgress.knownFactIds = ['F08'];
+    const move = [{ name: 'propose_scene_change', arguments: { targetSceneId: 'S04' } }] as const;
+    const inventedDoor = {
+      narrative: '你们进入卡森其药店。柜台后面的暗门微微敞开，隐约有凉风从深处吹来。',
+      activeNpc: null,
+      nextPrompt: '要进入暗门后的空间吗？',
+      playerChoices: { 艾达: ['检查地上的纸张', '直接走向暗门'] }
+    };
+
+    expect(validateNarratorSemantics(inventedDoor, [...move], entering, kb))
+      .toMatch(/权威场景数据没有暗门/);
+
+    const settled = makeState({ currentScene: 'S04', activeNpcName: null });
+    settled.scenarioProgress = createScenarioProgress();
+    settled.scenarioProgress.firedEventIds = ['EV_S04_FOG'];
+    expect(validateNarratorSemantics({
+      narrative: '你们站在已经进入的药店后厅，倒塌货架与柜台都在眼前。',
+      activeNpc: null,
+      nextPrompt: '继续调查后厅。',
+      playerChoices: { 艾达: ['搜查后厅的油布包', '检查柜台附近的烟灰'] }
+    }, [], settled, kb)).toBeNull();
   });
 
   it('requires an authorized check whenever narration says a check is mandatory', () => {
