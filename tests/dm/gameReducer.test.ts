@@ -265,6 +265,38 @@ describe('gameReducer applyAiResponse pendingConsequences merge', () => {
     expect(next.activeNpcName).toBeNull();
   });
 
+  it('drops pre-settlement narrator text when turn end settles escape ending B', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' }, { '格斗（拳）': 50 })],
+      currentScene: 'S05',
+      activeNpcName: '扶桑花号交涉代表'
+    });
+    state.messages = [];
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.variables.combatRoundStarted = true;
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.encounters.ENC01.opponentHp = 11;
+    state.scenarioProgress.encounters.ENC01.defeated = 3;
+    state.scenarioProgress.clocks.fusangEscape = { value: 6, active: true, visible: true };
+
+    const staleNarrative = '这次攻击未能使深潜者失去战斗能力；甲板冲突仍在继续，扶桑花号正准备离港。';
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: { narrative: staleNarrative },
+      raw: JSON.stringify({ narrative: staleNarrative })
+    });
+
+    expect(next.scenarioProgress?.endingId).toBe('END_B');
+    expect(next.messages.some((message) => message.text.includes('结局B：深潜者逃脱'))).toBe(true);
+    expect(next.messages.some((message) => message.type === 'dm' && message.text === staleNarrative)).toBe(false);
+    expect(next.actionLog[0]?.text).toContain('结局B：深潜者逃脱');
+  });
+
   it('does not restore an active NPC focus from a completed ending save', () => {
     const state = makeState({ currentScene: 'S05', activeNpcName: '扶桑花号交涉代表' });
     state.activeNpcId = 'N06';

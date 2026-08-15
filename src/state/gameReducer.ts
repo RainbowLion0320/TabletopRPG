@@ -1716,6 +1716,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         action.actorName ?? state.players[state.currentActorIndex]?.name,
         response.narrative
       );
+      const settledEnding = !getScenarioProgressForState(state).endingId
+        && nextState.scenarioProgress?.endingId
+        ? scenarioDefinition.progression.endings.find(
+            (ending) => ending.id === nextState.scenarioProgress?.endingId
+          ) ?? null
+        : null;
       const settledFinaleRoute = nextState.scenarioProgress?.variables.finaleRoute;
       const previousFinaleRoute = getScenarioProgressForState(state).variables.finaleRoute;
       if (
@@ -1741,7 +1747,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           suggestions: firstSuggestionListByPlayerOrder(routeSuggestions, nextState.players, nextState.suggestions)
         };
       }
-      if (response.narrative) {
+      if (response.narrative && !settledEnding) {
         nextState = addMessage(nextState, {
           type: 'dm',
           text: response.narrative,
@@ -1749,7 +1755,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           keywords: response.keywords?.length ? response.keywords : undefined
         });
       }
-      return addLog(nextState, response.narrative?.slice(0, 60) || 'AI DM 响应');
+      return addLog(
+        nextState,
+        settledEnding
+          ? `${settledEnding.title}：${settledEnding.summary}`
+          : response.narrative?.slice(0, 60) || 'AI DM 响应'
+      );
     }
     case 'appendEvents': {
       if (!action.events.length) return state;
