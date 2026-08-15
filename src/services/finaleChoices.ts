@@ -8,7 +8,7 @@ export function investigatorCanAttack(player: Investigator): boolean {
   const hasWeapon = (player.equipment ?? [])
     .some((item) => /手枪|左轮枪|步枪|警棍|棍|刀|武器/.test(item));
   const brawl = player.skills?.['格斗（拳）'];
-  return hasWeapon || Boolean(brawl && brawl.base + brawl.added > 0);
+  return hasWeapon || Boolean(brawl && brawl.added > 0);
 }
 
 export function isFinaleChoiceCompatible(

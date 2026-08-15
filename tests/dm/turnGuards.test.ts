@@ -1074,6 +1074,24 @@ describe('turnGuards', () => {
     expect(response.stateUpdate?.hp).toEqual({ 亨利: -1 });
   });
 
+  it('resolves an adjacent-sentence injury pronoun to the named failed-check actor', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利·格雷' }),
+        makeInvestigator({ name: '艾达·华莱士' })
+      ],
+      currentScene: 'S05'
+    });
+    const response = inferNarrativeConsequences({
+      narrative: '亨利挥出的拳头擦过深潜者湿滑的鳞片，失去平衡向前踉跄一步。深潜者趁机反手一击，锋利的蹼爪划过他的前臂，鲜血涌出。与此同时，艾达从掩体后冲出。'
+    }, [
+      { player: '亨利·格雷', action: '【检定结果】亨利·格雷 的 格斗（拳）检定：掷出 90，结果：失败。' },
+      { player: '艾达·华莱士', action: '以徒手格斗攻击一名深潜者' }
+    ], state);
+
+    expect(response.stateUpdate?.hp).toEqual({ '亨利·格雷': -1 });
+  });
+
   it('rejects player-injected defeated enemies until combat records a hit', () => {
     const state = makeState({
       currentScene: 'S05',
@@ -1268,6 +1286,29 @@ describe('turnGuards', () => {
     }], state, kb)).toBeNull();
   });
 
+  it('requires HP settlement for an adjacent-sentence injury pronoun from real play', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利·格雷' }),
+        makeInvestigator({ name: '艾达·华莱士' })
+      ],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    const narrative = '亨利挥出的拳头擦过深潜者湿滑的鳞片，失去平衡向前踉跄一步。深潜者趁机反手一击，锋利的蹼爪划过他的前臂，鲜血涌出。与此同时，艾达从掩体后冲出。';
+
+    expect(validateNarratorSemantics({
+      narrative, nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/亨利·格雷.*负 HP/);
+    expect(validateNarratorSemantics({
+      narrative, nextPrompt: '', playerChoices: {}
+    }, [{
+      name: 'propose_state_update', arguments: { hp: { '亨利·格雷': -1 } }
+    }], state, kb)).toBeNull();
+  });
+
   it('does not replace a declared light with an investigator background item', () => {
     const ada = makeInvestigator({
       name: '艾达',
@@ -1349,8 +1390,7 @@ describe('turnGuards', () => {
       艾达: ['攻击一名仍在抵抗的深潜者'],
       罗伯特: ['继续用手枪攻击深潜者']
     }, new Set(), kb, 'S05', 'combat', 1, players);
-    expect(active.艾达.every((choice) => /攻击|挥拳|擒抱/.test(choice))).toBe(true);
-    expect(active.艾达.every((choice) => !/开枪|射击|手枪|武器/.test(choice))).toBe(true);
+    expect(active.艾达.every((choice) => !/攻击|挥拳|擒抱|开枪|射击|手枪|武器/.test(choice))).toBe(true);
     expect(active.罗伯特.some((choice) => /手枪/.test(choice))).toBe(true);
 
     const cleared = sanitizePlayerChoices({
@@ -1405,7 +1445,7 @@ describe('turnGuards', () => {
     }, new Set(), kb, 'S05', 'combat', 2, players);
 
     expect(result.托马斯).not.toContain('与船上代表保持距离并听清它的诉求');
-    expect(result.托马斯.every((choice) => /攻击|挥拳|擒抱/.test(choice))).toBe(true);
+    expect(result.托马斯).toContain('寻找掩护观察仍在抵抗的深潜者');
     expect(result.托马斯).toHaveLength(3);
   });
 
@@ -1421,7 +1461,7 @@ describe('turnGuards', () => {
 
     expect(result.托马斯).not.toContain('趁最后一名深潜者后退，冲向埃里克试图解救');
     expect(result.托马斯.every((choice) => !/解救|救援|营救/.test(choice))).toBe(true);
-    expect(result.托马斯.every((choice) => /攻击|挥拳|擒抱/.test(choice))).toBe(true);
+    expect(result.托马斯).toContain('继续投掷杂物牵制最后一名深潜者，掩护罗伯特');
     expect(result.托马斯).toHaveLength(3);
   });
 
@@ -1801,6 +1841,9 @@ describe('turnGuards', () => {
     }, [], opening, kb)).toMatch(/剧情结果/);
     expect(validateNarratorSemantics({
       narrative: '亨利终于扯开了粗糙的绳结，获救的埃里克大口喘着气。', nextPrompt: '', playerChoices: {}
+    }, [], opening, kb)).toMatch(/剧情结果/);
+    expect(validateNarratorSemantics({
+      narrative: '扶桑花号的船身已开始缓缓脱离泊位，缆绳崩断的声音在雾中回荡。', nextPrompt: '', playerChoices: {}
     }, [], opening, kb)).toMatch(/剧情结果/);
 
     const failedFinale = makeState({ currentScene: 'S05' });

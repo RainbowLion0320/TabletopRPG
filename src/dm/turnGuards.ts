@@ -587,7 +587,10 @@ function mergeDelta(target: Record<string, number>, player: string, delta: numbe
 }
 
 function narrativeHarmsPlayer(narrative: string, playerName: string): boolean {
-  const player = escapeRegex(playerName);
+  const playerNames = [...new Set([playerName, playerName.split('·')[0]])].filter(Boolean);
+  const player = playerNames.length === 1
+    ? escapeRegex(playerNames[0])
+    : `(?:${playerNames.map(escapeRegex).join('|')})`;
   const text = narrative.replace(new RegExp(
     `${player}[^，。；！？\\n]{0,8}(?:没有|并未|未曾|未)(?:受到|遭受)?[^，。；！？\\n]{0,4}(?:受伤|流血|渗血|出血|骨折|伤口|血痕|剧痛)[^，。；！？\\n]*`,
     'g'
@@ -604,7 +607,13 @@ function narrativeHarmsPlayer(narrative: string, playerName: string): boolean {
   const pronounInjury = new RegExp(
     `${player}[^。；！？\\n]{0,100}(?:他的|其)${bodyPart}[^。；！？\\n]{0,28}${injury}`
   );
-  return direct.test(text) || struckBodyPart.test(text) || pronounInjury.test(text);
+  const adjacentSentencePronounInjury = new RegExp(
+    `${player}[\\s\\S]{0,140}(?:他的|其)${bodyPart}[^。；！？\\n]{0,28}${injury}`
+  );
+  return direct.test(text)
+    || struckBodyPart.test(text)
+    || pronounInjury.test(text)
+    || adjacentSentencePronounInjury.test(text);
 }
 
 function textSimilarity(left: string, right: string): number {
@@ -1174,7 +1183,7 @@ export function validateNarratorSemantics(
   const endingAuthorized = Boolean(progress.endingId)
     || proposedEvents.some((event) => eventAuthorizesOutcome(event, 'ending'));
   const claimsRescue = /埃里克[^。；！？\n]{0,20}(?:获救|被救出|被释放|脱困|离开船舱|离开扶桑花号|踏上码头|到了码头)|(?:获救的|被救出的|被释放的)[^。；！？\n]{0,8}埃里克|(?:救出|释放)[^。；！？\n]{0,12}埃里克|(?:割断|剪断|解开|扯开|挣开)[^。；！？\n]{0,20}(?:绳|绳索|绳结|绑缚|束缚)|(?:扶起|搀扶|架住|护送|带着)[^。；！？\n]{0,20}埃里克[^。；！？\n]{0,28}(?:离开|撤离|下船|甲板|栈桥|码头)/.test(output.narrative);
-  const claimsDeparture = /扶桑花号[^。；！？\n]{0,18}(?:已(?:经)?离港|驶离泊位|驶离港口|离开港口|消失在(?:浓雾|雾中|水面))/.test(output.narrative);
+  const claimsDeparture = /扶桑花号[^。；！？\n]{0,18}(?:已(?:经)?离港|驶离泊位|驶离港口|离开港口|消失在(?:浓雾|雾中|水面))|(?:船身|船体)[^。；！？\n]{0,18}(?:开始|已(?:经)?)?[^。；！？\n]{0,8}脱离泊位|(?:缆绳|系缆)[^。；！？\n]{0,12}(?:崩断|断裂)/.test(output.narrative);
   if ((claimsRescue && !rescueAuthorized) || (claimsDeparture && !endingAuthorized)) {
     return '不得在对应剧情事件结算前宣告权威剧情结果';
   }
