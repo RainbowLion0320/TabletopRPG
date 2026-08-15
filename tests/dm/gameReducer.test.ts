@@ -140,6 +140,38 @@ describe('gameReducer applyAiResponse pendingConsequences merge', () => {
     expect(next.pendingCheck).toBeNull();
   });
 
+  it('applies a combat fumble injury only to the investigator who rolled it', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利', currentHp: 12, hp: 12 }, { '格斗（拳）': 50 }),
+        makeInvestigator({ name: '艾达', currentHp: 10, hp: 10 }, { '格斗（拳）': 40 })
+      ],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.clocks.fusangEscape = { value: 2, active: true, visible: true };
+    state.pendingCheck = {
+      scenarioCheckId: 'CHECK_COMBAT', player: '艾达', skill: '格斗（拳）',
+      difficulty: '普通', skillVal: 40, threshold: 40
+    };
+
+    const next = gameReducer(state, {
+      type: 'applyDiceResult',
+      result: { roll: 100, level: 'fumble', label: '大失败（100）' }
+    });
+
+    expect(next.players.find((player) => player.name === '亨利')?.currentHp).toBe(12);
+    expect(next.players.find((player) => player.name === '艾达')?.currentHp).toBe(9);
+    expect(next.messages.some((message) => message.text.includes('受到1点伤害'))).toBe(true);
+    expect(next.actionLog.some((entry) => entry.text.includes('EV_COMBAT_FUMBLE'))).toBe(true);
+  });
+
   it('advances world time exactly once when a generic clue check settles through its continuation', () => {
     let state = makeState({
       players: [makeInvestigator({ name: '托马斯' }, { 侦查: 65 })],

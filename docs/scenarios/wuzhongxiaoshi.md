@@ -2,8 +2,8 @@
 # 《雾中消逝》KP 模组手册
 
 - 模组 ID：`wuzhongxiaoshi`
-- 内容版本：`1.1.18`
-- 内容哈希：`f799ed6b8aa048da`
+- 内容版本：`1.1.19`
+- 内容哈希：`318462cc1d0fed89`
 - 规则：COC 第七版风格 D100
 - 时间：1920年7月13日，英国伦敦
 - 作者：舒爾茲上尉
@@ -138,6 +138,7 @@ flowchart LR
 - **EV_COMBAT_ROUND 战斗轮推进** [turnEnd/repeatable]：船员继续收缆，扶桑花号距离逃脱又近一轮。
 - **EV_COMBAT_ATTACK 攻击深潜者** [manual/repeatable]：调查员抓住机会攻击一名仍在抵抗的深潜者。
 - **EV_COMBAT_HIT 有效命中深潜者** [checkResolved/repeatable]：攻击奏效，一名深潜者失去战斗能力。
+- **EV_COMBAT_FUMBLE 战斗大失败后果** [checkResolved/repeatable]：攻击严重失误，出手的调查员在甲板混战中受到1点伤害。
 - **EV_COMBAT_WIN 击败深潜者** [automatic/once]：四名深潜者失去战斗能力，调查员及时救出埃里克。
 - **EV_NEGOTIATION_LISTEN 听懂深潜者诉求** [manual/repeatable]：调查员需要先通过聆听检定理解对方的真正诉求。
 - **EV_NEGOTIATION_UNDERSTOOD 理解深潜者诉求** [checkResolved/repeatable]：调查员听懂了深潜者的底线：他们只要求带走走私货物并安全离港；若调查员承诺不追击，他们愿意释放埃里克。现在必须完成说服。

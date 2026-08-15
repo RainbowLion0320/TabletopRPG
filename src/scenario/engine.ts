@@ -98,7 +98,8 @@ const previousContentVersions = new Set([
   '1.1.14#81228f7e3d0436a0',
   '1.1.15#1ff75c089908b22a',
   '1.1.16#08635eeca02fd6d7',
-  '1.1.17#1e59351932f955ab'
+  '1.1.17#1e59351932f955ab',
+  '1.1.18#f799ed6b8aa048da'
 ]);
 const autoMapContentVersions = new Set([
   '1.1.5#4d651496e9200891',

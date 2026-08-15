@@ -108,7 +108,7 @@ beats:
     completion: { any: [{ encounter: ENC01, state: won }, { eventFired: EV_NEGOTIATION_SUCCESS }, { clock: fusangEscape, op: gte, value: 7 }] }
     objectiveIds: [O06, O07, O08]
     dmFactIds: [F01, F03, F12, F13]
-    allowedEventIds: [EV_CHOOSE_COMBAT, EV_CHOOSE_NEGOTIATION, EV_COMBAT_ATTACK, EV_COMBAT_HIT, EV_COMBAT_ROUND, EV_COMBAT_WIN, EV_NEGOTIATION_LISTEN, EV_NEGOTIATION_UNDERSTOOD, EV_NEGOTIATION_LISTEN_FAILED, EV_NEGOTIATION_SUCCESS, EV_NEGOTIATION_FAILED, EV_RESCUE_ERIC]
+    allowedEventIds: [EV_CHOOSE_COMBAT, EV_CHOOSE_NEGOTIATION, EV_COMBAT_ATTACK, EV_COMBAT_HIT, EV_COMBAT_FUMBLE, EV_COMBAT_ROUND, EV_COMBAT_WIN, EV_NEGOTIATION_LISTEN, EV_NEGOTIATION_UNDERSTOOD, EV_NEGOTIATION_LISTEN_FAILED, EV_NEGOTIATION_SUCCESS, EV_NEGOTIATION_FAILED, EV_RESCUE_ERIC]
     softEscalationAfter: 3
     hardRecoveryAfter: 6
     softPrompt: 船笛和收缆声提醒调查员，扶桑花号即将离港，必须立刻选择行动路线。
@@ -257,6 +257,15 @@ storyEvents:
     once: false
     playerVisible: true
     narrativeCue: 攻击奏效，一名深潜者失去战斗能力。
+  - id: EV_COMBAT_FUMBLE
+    beatId: B06
+    title: 战斗大失败后果
+    trigger: checkResolved
+    when: { all: [{ check: CHECK_COMBAT, outcome: fumble }, { encounter: ENC01, state: active }] }
+    effects: [{ applyDelta: hp, target: actor, value: -1 }]
+    once: false
+    playerVisible: true
+    narrativeCue: 攻击严重失误，出手的调查员在甲板混战中受到1点伤害。
   - id: EV_COMBAT_WIN
     beatId: B06
     title: 击败深潜者

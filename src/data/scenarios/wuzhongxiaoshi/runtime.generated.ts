@@ -11,7 +11,7 @@ import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
 import asset9 from '../../../../assets/avatars/deep_one_envoy.png';
 
-export const scenarioContentHash = "f799ed6b8aa048da";
+export const scenarioContentHash = "318462cc1d0fed89";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -27,7 +27,7 @@ export const scenarioAssetUrls: Record<string, string> = {
 export const generatedScenarioModule = {
   "manifest": {
     "schemaVersion": 1,
-    "contentVersion": "1.1.18",
+    "contentVersion": "1.1.19",
     "id": "wuzhongxiaoshi",
     "title": "雾中消逝",
     "system": "COC 第七版风格 D100",
@@ -1146,6 +1146,7 @@ export const generatedScenarioModule = {
           "EV_CHOOSE_NEGOTIATION",
           "EV_COMBAT_ATTACK",
           "EV_COMBAT_HIT",
+          "EV_COMBAT_FUMBLE",
           "EV_COMBAT_ROUND",
           "EV_COMBAT_WIN",
           "EV_NEGOTIATION_LISTEN",
@@ -2134,6 +2135,34 @@ export const generatedScenarioModule = {
         "once": false,
         "playerVisible": true,
         "narrativeCue": "攻击奏效，一名深潜者失去战斗能力。"
+      },
+      {
+        "id": "EV_COMBAT_FUMBLE",
+        "beatId": "B06",
+        "title": "战斗大失败后果",
+        "trigger": "checkResolved",
+        "when": {
+          "all": [
+            {
+              "check": "CHECK_COMBAT",
+              "outcome": "fumble"
+            },
+            {
+              "encounter": "ENC01",
+              "state": "active"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "applyDelta": "hp",
+            "target": "actor",
+            "value": -1
+          }
+        ],
+        "once": false,
+        "playerVisible": true,
+        "narrativeCue": "攻击严重失误，出手的调查员在甲板混战中受到1点伤害。"
       },
       {
         "id": "EV_COMBAT_WIN",
