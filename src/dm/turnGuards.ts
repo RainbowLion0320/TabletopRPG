@@ -81,7 +81,7 @@ function buildCandidate(action: PlayerAction): CheckCandidate | null {
     { pattern: /套话|撒谎|骗|假装|攀谈/, skill: '话术', score: 68, reason: '从交谈中取得进展' },
     { pattern: /查阅|档案|文献|图书馆|翻书/, skill: '图书馆', score: 62, reason: '从资料中定位可靠信息' },
     { pattern: /观察[^，。；！？\n]{0,16}(?:表情|神色|脸色|肢体|反应)|判断[^，。；！？\n]{0,12}(?:真假|说谎|隐瞒)|是否说谎|心理/, skill: '心理学', score: 60, reason: '判断对方的真实反应' },
-    { pattern: /聆听|偷听|听清|门外动静/, skill: '聆听', score: 56, reason: '分辨不易察觉的声音' },
+    { pattern: /聆听|倾听|偷听|听清|门外动静/, skill: '聆听', score: 56, reason: '分辨不易察觉的声音' },
     { pattern: /搜查|搜索|搜寻|检查|观察|查看|侦查/, skill: '侦查', score: 52, reason: '发现不明显的线索' }
   ];
 
@@ -497,22 +497,22 @@ export function inferStoryEventFromActions(
     ['EV_CHOOSE_NEGOTIATION', /选择.{0,8}交涉|和平交涉|愿意.{0,8}交涉|尝试.{0,8}交涉|暂缓攻击|不(?:发动|使用).{0,6}(?:攻击|武力)/],
     [
       'EV_NEGOTIATION_LISTEN',
-      /聆听.{0,12}诉求|理解.{0,12}诉求|(?:提出|确认|完成).{0,12}(?:交换|条件)|说服.{0,12}(?:释放|放走).{0,8}埃里克|不碰.{0,8}货物.{0,16}(?:释放|放走)/
+      /(?:聆听|倾听).{0,16}诉求|理解.{0,12}诉求|(?:提出|确认|完成).{0,12}(?:交换|条件)|说服.{0,12}(?:释放|放走).{0,8}埃里克|不碰.{0,8}货物.{0,16}(?:释放|放走)/
     ],
     ['EV_CHOOSE_COMBAT', COMBAT_ACTION_RE],
     ['EV_COMBAT_ATTACK', COMBAT_ACTION_RE]
   ];
-  const match = mappings.find(([eventId, pattern]) =>
-    available.has(eventId)
-    && (eventId === 'EV_COMBAT_ATTACK' || eventId === 'EV_CHOOSE_COMBAT'
-      ? actions.some((action) =>
-          !DICE_RESULT_RE.test(action.action)
-          && hasAffirmativeMatch(action.action, pattern)
-          && (!actionUsesHandgun(action.action) || actorHasHandgun(state, action.player))
-        )
-      : pattern.test(text))
-    && (!actionIsFailedCheck(actions) || eventId === 'EV_BARTENDER_RAT')
-  );
+  const match = mappings.find(([eventId, pattern]) => {
+    if (!available.has(eventId)) return false;
+    const matchesAction = actions.some((action) =>
+      !DICE_RESULT_RE.test(action.action)
+      && hasAffirmativeMatch(action.action, pattern)
+      && (eventId !== 'EV_COMBAT_ATTACK' && eventId !== 'EV_CHOOSE_COMBAT'
+        || !actionUsesHandgun(action.action)
+        || actorHasHandgun(state, action.player))
+    );
+    return matchesAction && (!actionIsFailedCheck(actions) || eventId === 'EV_BARTENDER_RAT');
+  });
   if (available.has('EV_MEET_MONTREAL') && matchesMontrealMeetingEvent(actions, text)) {
     return {
       name: 'propose_story_event',

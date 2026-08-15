@@ -408,6 +408,37 @@ describe('turnGuards', () => {
     expect(buildRequiredCheck(directExchange, state)).toBeNull();
   });
 
+  it('maps natural finale listening to the authored actor and ignores explicitly negated persuasion', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利' }, { 聆听: 65, 说服: 60 }),
+        makeInvestigator({ name: '艾达' }, { 聆听: 65, 说服: 60 })
+      ],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'negotiation';
+    const actions = [
+      {
+        player: '亨利',
+        action: '放下武器，与扶桑花号交涉代表保持距离，专心倾听并准确复述它关于埃里克和交易的诉求。'
+      },
+      {
+        player: '艾达',
+        action: '协助亨利维持安静的交涉空间，观察代表语气与停顿，确保不误解它的诉求，不另行发起攻击或说服。'
+      }
+    ];
+
+    expect(inferStoryEventFromActions(actions, state)?.arguments.eventId)
+      .toBe('EV_NEGOTIATION_LISTEN');
+    expect(inferStoryEventActor(actions, state, 'EV_NEGOTIATION_LISTEN')).toBe('亨利');
+    expect(buildRequiredCheck(actions, state)).toBeNull();
+  });
+
   it('lets a direct authored clue-analysis event bypass generic investigation checks', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '托马斯' }, { 侦查: 65 })],

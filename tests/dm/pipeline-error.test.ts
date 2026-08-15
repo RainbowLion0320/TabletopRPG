@@ -759,6 +759,55 @@ describe('runDmTurn error classification', () => {
     expect(output.legacyResponse.activeNpc).toBe('扶桑花号交涉代表');
   });
 
+  it('turns natural listening with negated persuasion into the authored listen check', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利' }, { 聆听: 65, 说服: 60 }),
+        makeInvestigator({ name: '艾达' }, { 聆听: 65, 说服: 60 })
+      ],
+      currentScene: 'S05',
+      activeNpcName: '扶桑花号交涉代表'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'negotiation';
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [
+        {
+          player: '亨利',
+          action: '放下武器，与扶桑花号交涉代表保持距离，专心倾听并准确复述它关于埃里克和交易的诉求。'
+        },
+        {
+          player: '艾达',
+          action: '协助亨利维持安静的交涉空间，观察代表语气与停顿，确保不误解它的诉求，不另行发起攻击或说服。'
+        }
+      ]
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(output.actorName).toBe('亨利');
+    expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_NEGOTIATION_LISTEN');
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: output.legacyResponse,
+      raw: output.raw,
+      actorName: output.actorName
+    });
+    expect(next.pendingCheck).toEqual(expect.objectContaining({
+      player: '亨利',
+      skill: '聆听',
+      difficulty: '普通',
+      scenarioCheckId: 'CHECK_LISTEN'
+    }));
+  });
+
   it('projects a settled route into semantic fallback NPC and choices', async () => {
     const invalidOutcome = JSON.stringify({
       narrative: '交涉代表立刻释放了埃里克，并允许你们离开。',
