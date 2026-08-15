@@ -940,6 +940,63 @@ describe('runDmTurn error classification', () => {
     }));
   });
 
+  it('starts the authored negotiation route from the exact visible listening choice', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '艾达' }, { 聆听: 65, 说服: 60 }),
+        makeInvestigator({ name: '托马斯' }, { 聆听: 55, 说服: 65 })
+      ],
+      currentScene: 'S05',
+      activeNpcName: '扶桑花号交涉代表'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [
+        { player: '艾达', action: '与船上代表保持距离并听清它的诉求' },
+        {
+          player: '托马斯',
+          action: '保持克制并协助艾达听完整对方诉求，记录它对埃里克、货物和离港条件的表述。'
+        }
+      ]
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(output.actorName).toBe('艾达');
+    expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_CHOOSE_NEGOTIATION');
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: output.legacyResponse,
+      raw: output.raw,
+      actorName: output.actorName
+    });
+    expect(next.scenarioProgress?.variables.finaleRoute).toBe('negotiation');
+    expect(next.pendingCheck).toEqual(expect.objectContaining({
+      player: '艾达',
+      skill: '聆听',
+      difficulty: '普通',
+      scenarioCheckId: 'CHECK_LISTEN'
+    }));
+    const afterListen = gameReducer(next, {
+      type: 'applyDiceResult',
+      result: { roll: 55, level: 'success', label: '普通成功（55）' }
+    });
+    expect(afterListen.pendingCheck).toEqual(expect.objectContaining({
+      player: '艾达',
+      skill: '说服',
+      difficulty: '困难',
+      scenarioCheckId: 'CHECK_PERSUADE'
+    }));
+    expect(afterListen.scenarioProgress?.knownFactIds).toContain('F13');
+  });
+
   it('projects a settled route into semantic fallback NPC and choices', async () => {
     const invalidOutcome = JSON.stringify({
       narrative: '交涉代表立刻释放了埃里克，并允许你们离开。',
