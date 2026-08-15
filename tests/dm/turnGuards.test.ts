@@ -1152,6 +1152,21 @@ describe('turnGuards', () => {
     expect(result.托马斯).toHaveLength(3);
   });
 
+  it('removes indirect rescue suggestions while a finale opponent remains', () => {
+    const players = [makeInvestigator({ id: 'thomas', name: '托马斯', equipment: [] })];
+    const result = sanitizePlayerChoices({
+      托马斯: [
+        '趁最后一名深潜者后退，冲向埃里克试图解救',
+        '继续投掷杂物牵制最后一名深潜者，掩护罗伯特',
+        '向最后一名深潜者喊话，警告其放弃抵抗'
+      ]
+    }, new Set(), kb, 'S05', 'combat', 1, players);
+
+    expect(result.托马斯).not.toContain('趁最后一名深潜者后退，冲向埃里克试图解救');
+    expect(result.托马斯).toContain('继续投掷杂物牵制最后一名深潜者，掩护罗伯特');
+    expect(result.托马斯).toHaveLength(3);
+  });
+
   it('rejects revolver mechanics borrowed from a semi-automatic pistol', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '罗伯特', equipment: ['警用左轮手枪'] })],
