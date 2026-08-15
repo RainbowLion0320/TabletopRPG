@@ -498,7 +498,7 @@ export function inferStoryEventFromActions(
     ],
     [
       'EV_BARTENDER_RAT',
-      /酒保[\s\S]{0,20}(?:老鼠|贝尔街)|(?:老鼠|贝尔街)[\s\S]{0,20}酒保|(?:金钱|银币|小费|报酬|贿赂)[^。；！？\n]{0,20}(?:换取|打听|询问|消息|信息|开口)|(?:说明|解释)[^。；！？\n]{0,24}(?:受托|寻找|失踪|埃里克)/
+      /酒保[\s\S]{0,20}(?:老鼠|贝尔街)|(?:老鼠|贝尔街)[\s\S]{0,20}酒保|(?:金钱|银币|小费|报酬|贿赂|酒钱|酒水|买[^。；！？\n]{0,8}酒|点[^。；！？\n]{0,8}酒)[^。；！？\n]{0,48}(?:换取|打听|询问|消息|信息|开口|说明|告诉|透露|核对|确认|只说|去向|地点)|(?:向|请)?酒保[^。；！？\n]{0,16}(?:出示|展示|拿出|递上)[^。；！？\n]{0,40}(?:合影|照片)[^。；！？\n]{0,40}(?:核对|辨认|见过|去向|地点)|(?:出示|展示|拿出|递上)[^。；！？\n]{0,40}(?:合影|照片)[^。；！？\n]{0,40}(?:核对|辨认|见过|去向|地点)|(?:说明|解释)[^。；！？\n]{0,24}(?:受托|寻找|失踪|埃里克)/
     ],
     ['EV_S04_CIGAR', /雪茄/],
     [
@@ -517,6 +517,8 @@ export function inferStoryEventFromActions(
     const matchesAction = actions.some((action) =>
       !DICE_RESULT_RE.test(action.action)
       && hasAffirmativeMatch(action.action, pattern)
+      && (eventId !== 'EV_BARTENDER_RAT'
+        || !/(?:暂时|先)?不(?:再)?(?:打听|询问|追问|要求|索要|换取)(?:任何)?(?:消息|信息)?/.test(action.action))
       && (eventId !== 'EV_COMBAT_ATTACK' && eventId !== 'EV_CHOOSE_COMBAT'
         || !actionUsesHandgun(action.action)
         || actorHasHandgun(state, action.player))

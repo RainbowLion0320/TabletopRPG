@@ -448,6 +448,56 @@ describe('runDmTurn error classification', () => {
     expect(next.players.every((player) => player.currentSan === player.san - 1)).toBe(true);
   });
 
+  it('settles the bartender lead from the visible photo and tip actions', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse(JSON.stringify({
+      narrative: '酒保收下小费，指出贝尔街14号的废弃药店。',
+      activeNpc: '老赫特之家酒保',
+      nextPrompt: '已经有了明确地址，下一步怎么办？',
+      playerChoices: {
+        亨利: ['前往贝尔街14号'],
+        罗伯特: ['整理证词后同行']
+      },
+      keywords: []
+    })));
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' }), makeInvestigator({ name: '罗伯特' })],
+      currentScene: 'S03',
+      activeNpcName: '老赫特之家酒保'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B04 = 'active';
+    state.scenarioProgress.objectiveStates.O04 = 'active';
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [
+        {
+          player: '亨利',
+          action: '向酒保出示埃里克与蒙特利尔的合影，只请他核对是否见过埃里克、同行者，以及他们最后前往的地点。'
+        },
+        {
+          player: '罗伯特',
+          action: '买两杯酒并给一笔合理小费，请酒保只说他能亲自确认的时间、人数、衣着与去向，不要求猜测。'
+        }
+      ]
+    });
+
+    expect(countNarratorRequests(fetchMock)).toBe(1);
+    expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_BARTENDER_RAT');
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: output.legacyResponse,
+      raw: output.raw,
+      actorName: output.actorName
+    });
+    expect(next.scenarioProgress?.knownFactIds).toContain('F08');
+    expect(next.scenarioProgress?.beatStates.B04).toBe('completed');
+    expect(next.scenarioProgress?.beatStates.B05).toBe('active');
+  });
+
   it('does not travel to a scene unlocked in the same turn when it is only mentioned in testimony', async () => {
     const response = JSON.stringify({
       narrative: '伊莎贝拉确认委托，允许调查员继续在住宅内检查埃里克留下的个人物品。',

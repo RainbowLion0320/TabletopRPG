@@ -288,6 +288,18 @@ describe('turnGuards', () => {
     expect(inferStoryEventFromActions([{
       player: '亨利', action: '只点两杯酒，暂时不打听任何消息。'
     }], state)).toBeNull();
+    expect(inferStoryEventFromActions([
+      {
+        player: '亨利',
+        action: '向酒保出示埃里克与蒙特利尔的合影，只请他核对是否见过埃里克、同行者，以及他们最后前往的地点。'
+      },
+      {
+        player: '罗伯特',
+        action: '买两杯酒并给一笔合理小费，请酒保只说他能亲自确认的时间、人数、衣着与去向，不要求猜测。'
+      }
+    ], state)).toEqual(expect.objectContaining({
+      arguments: expect.objectContaining({ eventId: 'EV_BARTENDER_RAT' })
+    }));
   });
 
   it('does not turn explicitly negated violence into a combat check', () => {
