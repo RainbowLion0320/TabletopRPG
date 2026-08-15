@@ -18,8 +18,8 @@ import {
 } from '../scenario/engine';
 
 const DICE_RESULT_RE = /【检定结果】|结果[：:]\s*(?:失败|大失败|成功|困难成功|极难成功|大成功)/;
-const MOVE_VERB_RE = /前往|赶往|去往|转往|改去|改从|出发|动身|返回|回到|离开|进入|走进|登上|开车|驾车|驱车|驶向|跟随|追到|抵达|到达/;
-const MOVE_DESTINATION_RE = /前往|赶往|去往|转往|改去|改从|驶向|追到|抵达|到达|进入|登上|回到|返回|去(?!向|处|路|年)/;
+const MOVE_VERB_RE = /前往|赶往|去往|转往|转向|走向|改去|改从|出发|动身|返回|回到|离开|进入|走进|登上|开车|驾车|驱车|驶向|跟随|追到|抵达|到达/;
+const MOVE_DESTINATION_RE = /前往|赶往|去往|转往|转向|走向|改去|改从|驶向|追到|抵达|到达|进入|登上|回到|返回|去(?!向|处|路|年)/;
 const NPC_ROLE_TERMS = ['店主', '老板', '伙计', '服务生', '医生', '护士', '牧师', '管理员', '警员', '警察', '酒保', '船长'];
 
 function undeclaredPrecinctMention(text: string, registeredTerms: string[]): string | null {

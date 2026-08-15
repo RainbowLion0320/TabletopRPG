@@ -138,7 +138,7 @@ const DICTIONARY: DictEntry[] = [
     kind: 'move'
   },
   {
-    keywords: ['前往', '赶往', '出发', '动身', '返回', '离开', '抵达'],
+    keywords: ['前往', '赶往', '转往', '转向', '走向', '出发', '动身', '返回', '离开', '抵达'],
     skills: [],
     kind: 'move'
   },

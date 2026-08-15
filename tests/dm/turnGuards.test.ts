@@ -707,6 +707,20 @@ describe('turnGuards', () => {
     ], state, kb)).toBeNull();
   });
 
+  it('recognizes the real generated 转向 wording when leaving the police station', () => {
+    const state = makeState({ currentScene: 'S02' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.variables.oldHethLead = true;
+
+    expect(inferSceneChangeFromActions([
+      { player: '托马斯·贝尔', action: '先离开警局，转向老赫特酒吧调查' },
+      { player: '罗伯特·肖', action: '先离开警局，转向老赫特酒吧调查' }
+    ], state, kb)).toEqual(expect.objectContaining({
+      name: 'propose_scene_change',
+      arguments: expect.objectContaining({ targetSceneId: 'S03' })
+    }));
+  });
+
   it('does not treat 去向 in a clue search as movement after the destination unlocks', () => {
     const state = makeState({ currentScene: 'S04' });
     state.scenarioProgress = createScenarioProgress();

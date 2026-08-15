@@ -69,6 +69,16 @@ describe('normalizeNarrativeKeywordHints', () => {
     ], narrative)).toEqual([]);
   });
 
+  it('drops conversational claims that are not durable clues or states', () => {
+    const narrative = '警方已经按正常流程处理过了，卷宗归档在总部，这个案子没有必要重新搅动。';
+
+    expect(normalizeNarrativeKeywordHints([
+      { text: '正常流程处理过', kind: 'state' },
+      { text: '卷宗归档在总部', kind: 'clue' },
+      { text: '没有必要重新搅动', kind: 'state' }
+    ], narrative)).toEqual([]);
+  });
+
   it('drops fleeting npc reactions that are prose rather than durable state', () => {
     const narrative = '蒙特利尔翻看合影，指尖微微一顿，目光短暂停顿，随即把照片推回桌上。';
 
