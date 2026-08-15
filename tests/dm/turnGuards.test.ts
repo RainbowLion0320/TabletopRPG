@@ -125,6 +125,53 @@ describe('turnGuards', () => {
     }], state)).toEqual(expect.objectContaining({ player: '艾达', skill: '急救' }));
   });
 
+  it('does not turn a companion\'s conditional first-aid preparation into the current check', () => {
+    const actions = [
+      {
+        player: '亨利·格雷',
+        action: '退到栈桥掩体后拔出手枪，瞄准最前方阻拦的深潜者开枪，阻止扶桑花号离港并营救埃里克。'
+      },
+      {
+        player: '艾达·华莱士',
+        action: '伏低身体寻找掩护，观察埃里克的位置并准备在亨利受伤时实施急救，不另行攻击。'
+      }
+    ];
+    const unarmed = makeState({
+      players: [
+        makeInvestigator({ name: '亨利·格雷', equipment: [] }, { '射击（手枪）': 20 }),
+        makeInvestigator({ name: '艾达·华莱士', equipment: [] }, { 急救: 80 })
+      ],
+      currentScene: 'S05'
+    });
+    unarmed.scenarioProgress = createScenarioProgress();
+    unarmed.scenarioProgress.beatStates.B01 = 'completed';
+    unarmed.scenarioProgress.beatStates.B02 = 'completed';
+    unarmed.scenarioProgress.beatStates.B05 = 'completed';
+    unarmed.scenarioProgress.beatStates.B06 = 'active';
+
+    expect(inferStoryEventFromActions(actions, unarmed)).toBeNull();
+    expect(buildRequiredCheck(actions, unarmed)).toEqual(expect.objectContaining({
+      player: '艾达·华莱士', skill: '侦查'
+    }));
+    expect(buildRequiredCheck([{
+      player: '艾达·华莱士',
+      action: '只准备在亨利受伤时实施急救，本轮不实际救治。'
+    }], unarmed)).toBeNull();
+
+    const armed = {
+      ...unarmed,
+      players: [
+        makeInvestigator({ name: '亨利·格雷', equipment: ['.32左轮手枪'] }, { '射击（手枪）': 20 }),
+        unarmed.players[1]
+      ]
+    };
+    expect(inferStoryEventFromActions(actions, armed)).toEqual(expect.objectContaining({
+      arguments: expect.objectContaining({ eventId: 'EV_CHOOSE_COMBAT' })
+    }));
+    expect(inferStoryEventActor(actions, armed, 'EV_CHOOSE_COMBAT')).toBe('亨利·格雷');
+    expect(buildRequiredCheck(actions, armed)).toBeNull();
+  });
+
   it('does not make legal travel depend on a risky follow-up observation', () => {
     const state = makeState({
       players: [
@@ -1420,6 +1467,9 @@ describe('turnGuards', () => {
     const state = makeState({ currentScene: 'S01' });
     expect(validateNarratorSemantics({
       narrative: '亨利拔出手枪警戒。', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/枪械/);
+    expect(validateNarratorSemantics({
+      narrative: '亨利紧握手枪，艾达握紧急救包的带子。', nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/枪械/);
     const armed = makeState({
       currentScene: 'S01',

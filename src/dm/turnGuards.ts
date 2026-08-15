@@ -1244,7 +1244,7 @@ export function validateNarratorSemantics(
     ...state.players.flatMap((player) => [player.background?.meaningfulItem ?? '']),
     ...state.clues.map((clue) => clue.name)
   ].join('、');
-  const assertsFirearmUse = /(?:拔出|掏出|抽出|举起|握住|使用|用)[^。；！？\n]{0,12}(?:手枪|左轮枪|步枪)|(?:手枪|左轮枪|步枪)[^。；！？\n]{0,12}(?:开火|射击|击发|命中)/.test(allText);
+  const assertsFirearmUse = /(?:拔出|掏出|抽出|举起|握住|紧握|握紧|拿着|持有|持枪|使用|用)[^。；！？\n]{0,12}(?:手枪|左轮枪|步枪)|(?:手枪|左轮枪|步枪)[^。；！？\n]{0,12}(?:开火|射击|击发|命中)/.test(allText);
   if (assertsFirearmUse && !/手枪|左轮枪|步枪/.test(allowedInventory)) {
     return '调查员没有被记录的枪械，不得凭空赋予武器';
   }
@@ -1253,7 +1253,7 @@ export function validateNarratorSemantics(
     return allText.split(/[。；！？\n]/).some((sentence) => {
       const actorIndex = sentence.indexOf(player.name);
       if (actorIndex < 0) return false;
-      return /^(?:.{0,16})(?:拔出|掏出|抽出|举起|握住|使用|用).{0,10}(?:手枪|左轮枪|步枪)/
+      return /^(?:.{0,16})(?:拔出|掏出|抽出|举起|握住|紧握|握紧|拿着|持有|持枪|使用|用).{0,10}(?:手枪|左轮枪|步枪)/
         .test(sentence.slice(actorIndex + player.name.length));
     });
   });

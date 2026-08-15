@@ -183,6 +183,50 @@ describe('runDmTurn error classification', () => {
     }));
   });
 
+  it('keeps a declared finale attack ahead of a companion\'s conditional first-aid preparation', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利·格雷', equipment: ['.32左轮手枪'] }, {
+          '格斗（拳）': 50,
+          '射击（手枪）': 20
+        }),
+        makeInvestigator({ name: '艾达·华莱士', equipment: [] }, { 急救: 80, 侦查: 50 })
+      ],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [
+        {
+          player: '亨利·格雷',
+          action: '退到栈桥掩体后拔出手枪，瞄准最前方阻拦的深潜者开枪，阻止扶桑花号离港并营救埃里克。'
+        },
+        {
+          player: '艾达·华莱士',
+          action: '伏低身体寻找掩护，观察埃里克的位置并准备在亨利受伤时实施急救，不另行攻击。'
+        }
+      ]
+    });
+    const next = gameReducer(state, {
+      type: 'applyAiResponse', response: output.legacyResponse, raw: output.raw, actorName: output.actorName
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(output.actorName).toBe('亨利·格雷');
+    expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_CHOOSE_COMBAT');
+    expect(next.pendingCheck).toEqual(expect.objectContaining({
+      player: '亨利·格雷', skill: '射击（手枪）', scenarioCheckId: 'CHECK_COMBAT'
+    }));
+  });
+
   it('uses firearm skill for the authored handgun attack suggestion during combat', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
