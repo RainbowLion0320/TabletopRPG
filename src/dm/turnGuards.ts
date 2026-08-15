@@ -4,7 +4,11 @@ import { getDmRequestTurn } from '../services/turns';
 import type { DmToolCall, KnowledgeBase } from './types';
 import { getActiveKnowledgeBase } from './knowledgeBase';
 import { COMBAT_ACTION_RE, hasAffirmativeMatch } from '../services/actionIntent';
-import { buildFinaleSuggestions, isFinaleChoiceCompatible } from '../services/finaleChoices';
+import {
+  buildFinaleSuggestions,
+  investigatorCanAttack,
+  isFinaleChoiceCompatible
+} from '../services/finaleChoices';
 import {
   getScenarioDefinition,
   getAvailableSceneExits,
@@ -689,9 +693,7 @@ export function sanitizePlayerChoices(
   return Object.fromEntries(entries.map(([player, list]) => {
     const playerState = players.find((candidate) => candidate.name === player);
     const equipment = playerState?.equipment ?? [];
-    const canAttack = playerState
-      ? equipment.some((item) => /手枪|左轮枪|警棍|棍|刀|武器/.test(item))
-      : null;
+    const canAttack = playerState ? investigatorCanAttack(playerState) : null;
     const hasHandgun = equipment.some((item) => /手枪|左轮枪|步枪/.test(item));
     const hasMeleeWeapon = equipment.some((item) => /警棍|棍|刀|武器/.test(item));
     const safe = list.filter((choice) =>

@@ -4,6 +4,13 @@ import { isAffirmativeCombatAction } from './actionIntent';
 const NEGOTIATION_RE = /谈判|交涉|谈条件|和平离港|交换条件|(?:听清|聆听|倾听|理解|回应)[^，。；！？\n]{0,16}(?:诉求|条件)/;
 const PREMATURE_RESCUE_RE = /救出埃里克|释放埃里克|(?:冲向|奔向|靠近)[^，。；！？\n]{0,12}埃里克[^，。；！？\n]{0,12}(?:解救|营救|救援)|(?:解救|营救|救援)[^，。；！？\n]{0,12}埃里克|(?:解开|割断|剪断|挣脱)[^，。；！？\n]{0,16}(?:绳|束缚|绑缚)|(?:带|护送|扶着|搀扶)[^，。；！？\n]{0,12}埃里克[^，。；！？\n]{0,12}(?:离开|撤离|下船|码头)/;
 
+export function investigatorCanAttack(player: Investigator): boolean {
+  const hasWeapon = (player.equipment ?? [])
+    .some((item) => /手枪|左轮枪|步枪|警棍|棍|刀|武器/.test(item));
+  const brawl = player.skills?.['格斗（拳）'];
+  return hasWeapon || Boolean(brawl && brawl.base + brawl.added > 0);
+}
+
 export function isFinaleChoiceCompatible(
   choice: string,
   route: unknown,
@@ -52,8 +59,15 @@ export function buildFinaleSuggestions(
       if (hasMeleeWeapon) {
         return [player.id, [
           '挥动随身武器攻击一名仍在抵抗的深潜者',
-          '守住掩体侧翼，阻止深潜者包抄同伴',
-          '观察敌人位置并配合同伴发动下一次攻击'
+          '守住掩体侧翼，挥击试图包抄同伴的深潜者',
+          '配合同伴从侧面攻击一名仍在抵抗的深潜者'
+        ]];
+      }
+      if (investigatorCanAttack(player)) {
+        return [player.id, [
+          '以徒手格斗攻击一名仍在抵抗的深潜者',
+          '利用掩体接近，从侧面挥拳攻击深潜者',
+          '抓住机会擒抱一名深潜者，阻止它靠近埃里克'
         ]];
       }
       return [player.id, [
@@ -86,7 +100,7 @@ export function finaleSuggestionsNeedReplacement(
   if (route !== 'combat' && route !== 'negotiation') return false;
   return players.some((player) => {
     const suggestions = suggestionsByPlayerId[player.id] ?? [];
-    const canAttack = (player.equipment ?? []).some((item) => /手枪|左轮枪|警棍|棍|刀|武器/.test(item));
+    const canAttack = investigatorCanAttack(player);
     if (suggestions.length < 3
       || suggestions.some((choice) => !isFinaleChoiceCompatible(
         choice,

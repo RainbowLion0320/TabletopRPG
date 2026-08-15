@@ -1349,7 +1349,8 @@ describe('turnGuards', () => {
       艾达: ['攻击一名仍在抵抗的深潜者'],
       罗伯特: ['继续用手枪攻击深潜者']
     }, new Set(), kb, 'S05', 'combat', 1, players);
-    expect(active.艾达.every((choice) => !/攻击|开枪|射击|挥动.*武器/.test(choice))).toBe(true);
+    expect(active.艾达.every((choice) => /攻击|挥拳|擒抱/.test(choice))).toBe(true);
+    expect(active.艾达.every((choice) => !/开枪|射击|手枪|武器/.test(choice))).toBe(true);
     expect(active.罗伯特.some((choice) => /手枪/.test(choice))).toBe(true);
 
     const cleared = sanitizePlayerChoices({
@@ -1358,6 +1359,24 @@ describe('turnGuards', () => {
     }, new Set(), kb, 'S05', 'combat', 0, players);
     expect(Object.values(cleared).flat().every((choice) => !/攻击|仍在抵抗/.test(choice))).toBe(true);
     expect(cleared.艾达.some((choice) => /寻找埃里克|营救埃里克/.test(choice))).toBe(true);
+  });
+
+  it('replaces retreat-only finale choices with unarmed attacks for the default investigator', () => {
+    const players = [makeInvestigator(
+      { id: 'henry', name: '亨利', equipment: [] },
+      { '格斗（拳）': 50 }
+    )];
+    const result = sanitizePlayerChoices({
+      亨利: [
+        '趁势追击被逼退的深潜者，继续格斗压制',
+        '冲向看守埃里克的那名深潜者，试图突破',
+        '暂时后撤与艾达会合，重新评估局势'
+      ]
+    }, new Set(), kb, 'S05', 'combat', 3, players);
+
+    expect(result.亨利).toHaveLength(3);
+    expect(result.亨利.every((choice) => /攻击|挥拳|擒抱/.test(choice))).toBe(true);
+    expect(result.亨利.every((choice) => !/开枪|射击|手枪|武器|后撤/.test(choice))).toBe(true);
   });
 
   it('removes unavailable firearm suggestions before the finale route is chosen', () => {
@@ -1386,7 +1405,7 @@ describe('turnGuards', () => {
     }, new Set(), kb, 'S05', 'combat', 2, players);
 
     expect(result.托马斯).not.toContain('与船上代表保持距离并听清它的诉求');
-    expect(result.托马斯).toContain('寻找掩护观察仍在抵抗的深潜者');
+    expect(result.托马斯.every((choice) => /攻击|挥拳|擒抱/.test(choice))).toBe(true);
     expect(result.托马斯).toHaveLength(3);
   });
 
@@ -1401,7 +1420,8 @@ describe('turnGuards', () => {
     }, new Set(), kb, 'S05', 'combat', 1, players);
 
     expect(result.托马斯).not.toContain('趁最后一名深潜者后退，冲向埃里克试图解救');
-    expect(result.托马斯).toContain('继续投掷杂物牵制最后一名深潜者，掩护罗伯特');
+    expect(result.托马斯.every((choice) => !/解救|救援|营救/.test(choice))).toBe(true);
+    expect(result.托马斯.every((choice) => /攻击|挥拳|擒抱/.test(choice))).toBe(true);
     expect(result.托马斯).toHaveLength(3);
   });
 
