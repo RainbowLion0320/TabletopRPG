@@ -193,8 +193,56 @@ describe('runDmTurn error classification', () => {
       player: '罗伯特·肖',
       skill: '射击（手枪）',
       threshold: 60,
-      scenarioCheckId: 'CHECK_COMBAT'
+      scenarioCheckId: 'CHECK_COMBAT',
+      continuationActions: [
+        { player: '亨利·格雷', action: '观察埃里克、交涉代表和甲板守卫的当前状态' },
+        { player: '罗伯特·肖', action: '选择以武力阻止深潜者带走埃里克' }
+      ]
     }));
+  });
+
+  it('does not propose a second combat event while narrating a resolved roll', async () => {
+    const content = JSON.stringify({
+      narrative: '罗伯特的攻击使一名深潜者失去战斗能力；亨利守住侧翼，没有擅自追击。',
+      activeNpc: '扶桑花号交涉代表',
+      nextPrompt: '继续应对其余守卫。',
+      playerChoices: {
+        '亨利·格雷': ['以徒手格斗攻击一名仍在抵抗的深潜者'],
+        '罗伯特·肖': ['使用随身手枪攻击一名仍在抵抗的深潜者']
+      }
+    });
+    const fetchMock = vi.fn(async () => jsonResponse(content));
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利·格雷' }, { '格斗（拳）': 50 }),
+        makeInvestigator({ name: '罗伯特·肖', equipment: ['警用左轮手枪'] }, {
+          '射击（手枪）': 60
+        })
+      ],
+      currentScene: 'S05',
+      activeNpcName: '扶桑花号交涉代表'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.variables.combatRoundStarted = true;
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.encounters.ENC01.defeated = 2;
+    const actions = [
+      { player: '亨利·格雷', action: '以徒手格斗攻击一名仍在抵抗的深潜者' },
+      { player: '罗伯特·肖', action: '使用随身手枪攻击一名仍在抵抗的深潜者' },
+      {
+        player: '罗伯特·肖',
+        action: '【检定结果】罗伯特·肖 的 射击（手枪）检定：掷出 42，结果：普通成功。'
+      }
+    ];
+
+    const output = await runDmTurn(config, { state, actions });
+
+    expect(fetchMock).toHaveBeenCalled();
+    expect(output.legacyResponse.check).toBeFalsy();
+    expect(output.legacyResponse.stateUpdate?.storyEventIds ?? []).not.toContain('EV_COMBAT_ATTACK');
   });
 
   it('uses the declared firearm skill for an equipped combat actor', async () => {

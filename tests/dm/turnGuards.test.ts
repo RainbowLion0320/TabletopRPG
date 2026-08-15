@@ -1310,8 +1310,35 @@ describe('turnGuards', () => {
     }, [], state, kb, actions)).toMatch(/不得否定/);
     expect(validateNarratorSemantics({
       ...base,
+      narrative: '罗伯特的子弹击中那名深潜者的肩膀，它发出低沉嘶吼，但仍未倒下。'
+    }, [], state, kb, actions)).toMatch(/不得否定/);
+    expect(validateNarratorSemantics({
+      ...base,
       narrative: '罗伯特命中那名深潜者。它并未倒下，却已无力再战。'
     }, [], state, kb, actions)).toBeNull();
+  });
+
+  it('does not resolve a second investigator attack without another roll', () => {
+    const state = makeState({ currentScene: 'S05' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.encounters.ENC01.defeated = 2;
+    const actions = [
+      { player: '亨利·格雷', action: '以徒手格斗攻击一名仍在抵抗的深潜者' },
+      { player: '罗伯特·肖', action: '使用随身手枪攻击一名仍在抵抗的深潜者' },
+      {
+        player: '罗伯特·肖',
+        action: '【检定结果】罗伯特·肖 的 射击（手枪）检定：掷出 42，结果：普通成功。'
+      }
+    ];
+
+    expect(validateNarratorSemantics({
+      narrative: '罗伯特的攻击使一名深潜者失去战斗能力。亨利趁机冲上前，挥拳猛击另一名深潜者的头部。',
+      activeNpc: '扶桑花号交涉代表',
+      nextPrompt: '继续战斗。',
+      playerChoices: {}
+    }, [], state, kb, actions)).toMatch(/其他调查员判定攻击结果/);
   });
 
   it('rejects combat narration that exceeds the structured defeated count', () => {

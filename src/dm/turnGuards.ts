@@ -238,13 +238,20 @@ export function inferStoryEventsFromActions(
   state: GameState,
   kb: KnowledgeBase = getActiveKnowledgeBase()
 ): DmToolCall[] {
-  const available = new Set(
-    getAvailableStoryEvents(getScenarioProgressForState(state), state.currentScene).map((event) => event.id)
+  const availableEvents = getAvailableStoryEvents(
+    getScenarioProgressForState(state),
+    state.currentScene
   );
+  const available = new Set(availableEvents.map((event) => event.id));
   const legacy = inferStoryEventFromActions(actions, state);
   const legacyEventId = String(legacy?.arguments.eventId ?? '');
-  if (legacy && (legacyEventId === 'EV_CHOOSE_COMBAT' || legacyEventId === 'EV_CHOOSE_NEGOTIATION')) {
-    return [legacy];
+  const resolvesAuthoredCheck = actions.some((action) => DICE_RESULT_RE.test(action.action))
+    && availableEvents.some((event) => event.id === legacyEventId
+      && event.effects.some((effect) => 'requestCheck' in effect));
+  const effectiveLegacy = resolvesAuthoredCheck ? null : legacy;
+  if (effectiveLegacy
+    && (legacyEventId === 'EV_CHOOSE_COMBAT' || legacyEventId === 'EV_CHOOSE_NEGOTIATION')) {
+    return [effectiveLegacy];
   }
   const failed = actionIsFailedCheck(actions);
   const clueCalls = explicitlyTargetedScenarioItems(actions, state, kb).flatMap((item) => {
@@ -260,7 +267,7 @@ export function inferStoryEventsFromActions(
     }] : [];
   });
   if (clueCalls.length) return clueCalls;
-  return legacy ? [legacy] : [];
+  return effectiveLegacy ? [effectiveLegacy] : [];
 }
 
 /** Returns the player whose own action proposed a structured story event. */
@@ -1117,10 +1124,28 @@ export function validateNarratorSemantics(
   if (state.currentScene === 'S05' && attemptsCombatThisTurn && narratesCombatHit && !settledCombatHit) {
     return '本轮没有成功的结构化战斗检定，正文不得把其他检定结果写成攻击命中';
   }
-  const deniesCombatIncapacitation = /(?:并未|没有|未能)(?:立刻|完全)?倒下|仍(?:然)?(?:能够?|可以|在)(?:继续)?(?:战斗|抵抗)/.test(output.narrative);
+  const deniesCombatIncapacitation = /(?:并未|没有|未能|仍(?:然)?未(?:能)?)(?:立刻|完全)?倒下|仍(?:然)?(?:能够?|可以|在)(?:继续)?(?:战斗|抵抗)/.test(output.narrative);
   const confirmsCombatIncapacitation = /失去战斗能力|无力再战|退出战斗|无法继续战斗|不再抵抗|被制服/.test(output.narrative);
   if (settledCombatHit && deniesCombatIncapacitation && !confirmsCombatIncapacitation) {
     return '结构化战斗命中已使一名深潜者失去战斗能力，正文不得否定该结算';
+  }
+  const settledCombatActor = actions.find((action) =>
+    /【检定结果】[^。；！？\n]{0,100}(?:格斗（拳）|射击（手枪）|CHECK_COMBAT)[^。；！？\n]{0,80}结果[：:]\s*(?:普通成功|成功|困难成功|极难成功|大成功)/.test(action.action)
+  )?.player;
+  const narratesUnsettledCombatOutcome = settledCombatActor && actions.some((action) => {
+    if (action.player === settledCombatActor
+      || DICE_RESULT_RE.test(action.action)
+      || !hasAffirmativeMatch(action.action, COMBAT_ACTION_RE)) return false;
+    const actorTerms = [action.player, action.player.split(/[·\s]/)[0]]
+      .filter((term, index, all) => term.length >= 2 && all.indexOf(term) === index)
+      .map(escapeRegex)
+      .join('|');
+    return new RegExp(
+      `(?:${actorTerms})[^。；！？\\n]{0,80}(?:命中|击中|打中|砸中|攻击奏效|猛击|重击|痛击|落空|扑空|未能命中|没有命中)`
+    ).test(output.narrative);
+  });
+  if (narratesUnsettledCombatOutcome) {
+    return '本轮只有检定结果点名角色的战斗行动已经结算，正文不得替其他调查员判定攻击结果';
   }
   const confirmsDefeatedDeepOne = /(?:倒地|瘫倒|失去战斗能力|无力再战|被制服)[^。；！？\n]{0,16}深潜者|深潜者[^。；！？\n]{0,16}(?:倒地|瘫倒|失去战斗能力|无力再战|被制服)/.test(output.narrative);
   const structuredDefeated = progress.encounters.ENC01?.defeated ?? 0;

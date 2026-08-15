@@ -596,7 +596,8 @@ export async function runDmTurn(
   const availableEvents = new Map(
     getAvailableStoryEvents(progressBefore, input.state.currentScene).map((event) => [event.id, event])
   );
-  const checkEvent = inferredStoryCalls.flatMap((call) => {
+  const resolvesExistingCheck = input.actions.some((action) => /【检定结果】/.test(action.action));
+  const checkEvent = (resolvesExistingCheck ? [] : inferredStoryCalls).flatMap((call) => {
     const event = availableEvents.get(String(call.arguments.eventId ?? ''));
     return event?.effects.some((effect) => 'requestCheck' in effect) ? [event] : [];
   })[0];
@@ -639,7 +640,8 @@ export async function runDmTurn(
         skill: checkSkill ?? checkEffect.skill,
         difficulty: checkEffect.difficulty,
         player: checkEffect.player ?? eventActorName,
-        reason: checkEffect.reason
+        reason: checkEffect.reason,
+        continuationActions: input.actions.map((action) => ({ ...action }))
       };
     }
     timings.totalForeground = elapsedMs(foregroundStart);
