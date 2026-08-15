@@ -1845,6 +1845,9 @@ describe('turnGuards', () => {
     expect(validateNarratorSemantics({
       narrative: '扶桑花号的船身已开始缓缓脱离泊位，缆绳崩断的声音在雾中回荡。', nextPrompt: '', playerChoices: {}
     }, [], opening, kb)).toMatch(/剧情结果/);
+    expect(validateNarratorSemantics({
+      narrative: '扶桑花号已完全脱离泊位，船身在雾中缓缓移动，水面传来沉闷的引擎声。', nextPrompt: '', playerChoices: {}
+    }, [], opening, kb)).toMatch(/剧情结果/);
 
     const failedFinale = makeState({ currentScene: 'S05' });
     failedFinale.scenarioProgress = createScenarioProgress();
