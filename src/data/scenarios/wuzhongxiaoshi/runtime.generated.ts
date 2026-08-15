@@ -11,7 +11,7 @@ import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
 import asset9 from '../../../../assets/avatars/deep_one_envoy.png';
 
-export const scenarioContentHash = "08635eeca02fd6d7";
+export const scenarioContentHash = "1e59351932f955ab";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -27,7 +27,7 @@ export const scenarioAssetUrls: Record<string, string> = {
 export const generatedScenarioModule = {
   "manifest": {
     "schemaVersion": 1,
-    "contentVersion": "1.1.16",
+    "contentVersion": "1.1.17",
     "id": "wuzhongxiaoshi",
     "title": "雾中消逝",
     "system": "COC 第七版风格 D100",
@@ -681,8 +681,8 @@ export const generatedScenarioModule = {
           "skill": "医学",
           "difficulty": "普通",
           "searchTerms": [
-            "车库暗格",
-            "暗格"
+            "车库",
+            "车库暗格"
           ],
           "failForward": "失败只能确认其可疑并推进10分钟，之后可由药店记录或蒙特利尔反应补证。",
           "successEventId": "EV_FIND_I05",

@@ -825,6 +825,31 @@ describe('turnGuards', () => {
       .toEqual(['EV_FIND_I02']);
   });
 
+  it('does not treat a desk compartment as the garage powder compartment', () => {
+    const state = makeState({ currentScene: 'S01' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'active';
+    const actions = [
+      {
+        player: '托马斯·贝尔',
+        action: '系统搜查书架夹页、书本缝隙和书桌暗格，寻找小册子、夹页或藏匿文件。'
+      },
+      {
+        player: '罗伯特·肖',
+        action: '为托马斯照明并警戒，记录他在同一处书架找到的物品，本轮不另行搜查。'
+      }
+    ];
+
+    expect(inferStoryEventsFromActions(actions, state).map((call) => call.arguments.eventId))
+      .toEqual(['EV_DISCOVER_I04']);
+
+    expect(inferStoryEventsFromActions([{
+      player: '艾达·华莱士',
+      action: '去车库检查里面的暗格，辨认其中样品。'
+    }], state).map((call) => call.arguments.eventId)).toEqual(['EV_FIND_I05']);
+  });
+
   it('settles every explicitly searched clue through its authored failure path', () => {
     const state = makeState({ currentScene: 'S01' });
     state.scenarioProgress = createScenarioProgress();
