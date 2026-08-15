@@ -1119,6 +1119,43 @@ describe('turnGuards', () => {
     }, calls, state, kb, actions)).toBeNull();
   });
 
+  it('does not let a non-combat check settle a deferred finale attack', () => {
+    const state = makeState({
+      currentScene: 'S05',
+      activeNpcName: '扶桑花号交涉代表',
+      players: [
+        makeInvestigator({ name: '亨利·格雷', equipment: ['.32左轮手枪'] }),
+        makeInvestigator({ name: '艾达·华莱士', equipment: [] }, { 急救: 80 })
+      ]
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B06 = 'active';
+    const actions = [
+      { player: '亨利·格雷', action: '退到栈桥掩体后拔出手枪，瞄准深潜者开枪。' },
+      { player: '艾达·华莱士', action: '准备在亨利受伤时实施急救。' },
+      {
+        player: '艾达·华莱士',
+        action: '【检定结果】艾达·华莱士 的 急救 检定：掷出 43，阈值 80，结果：普通成功（43）。'
+      }
+    ];
+
+    expect(validateNarratorSemantics({
+      narrative: '亨利举枪射击，子弹击中深潜者代表的肩膀，灰绿色鳞片迸裂。',
+      activeNpc: '扶桑花号交涉代表', nextPrompt: '', playerChoices: {}
+    }, [], state, kb, actions)).toMatch(/没有成功的结构化战斗检定/);
+  });
+
+  it('rejects finale reinforcements before a route is chosen', () => {
+    const state = makeState({ currentScene: 'S05', activeNpcName: '扶桑花号交涉代表' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B06 = 'active';
+
+    expect(validateNarratorSemantics({
+      narrative: '更多的灰绿色身影从船舱涌出，堵住栈桥。',
+      activeNpc: '扶桑花号交涉代表', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/不得虚构船舱援军/);
+  });
+
   it('does not mistake an investigator named as the attacker for the victim', () => {
     const state = makeState({ players: [makeInvestigator({ name: '罗伯特' })] });
     const response = inferNarrativeConsequences({
@@ -1471,6 +1508,9 @@ describe('turnGuards', () => {
     expect(validateNarratorSemantics({
       narrative: '亨利紧握手枪，艾达握紧急救包的带子。', nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/枪械/);
+    expect(validateNarratorSemantics({
+      narrative: '亨利举枪警戒。', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/枪械/);
     const armed = makeState({
       currentScene: 'S01',
       players: [makeInvestigator({ name: '亨利', equipment: ['.32左轮手枪'] })]
@@ -1503,6 +1543,11 @@ describe('turnGuards', () => {
     expect(validateNarratorSemantics({
       narrative: '酒保让你们沿泰晤士街过铁桥寻找药店。', nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/未声明的街道/);
+    const finale = makeState({ currentScene: 'S05', activeNpcName: '扶桑花号交涉代表' });
+    expect(validateNarratorSemantics({
+      narrative: '扶桑花号的引擎开始轰鸣，船长正准备强行离港。',
+      activeNpc: '扶桑花号交涉代表', nextPrompt: '', playerChoices: {}
+    }, [], finale, kb)).toMatch(/没有已登记的船长/);
     expect(validateNarratorSemantics({
       narrative: '你们抵达卡森其药店。', activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}
     }, [{ name: 'propose_scene_change', arguments: { targetSceneId: 'S04' } }], state, kb))

@@ -16,7 +16,7 @@ import {
 const DICE_RESULT_RE = /【检定结果】|结果[：:]\s*(?:失败|大失败|成功|困难成功|极难成功|大成功)/;
 const MOVE_VERB_RE = /前往|赶往|去往|转往|改去|改从|出发|动身|返回|回到|离开|进入|走进|登上|开车|驾车|驱车|驶向|跟随|追到|抵达|到达/;
 const MOVE_DESTINATION_RE = /前往|赶往|去往|转往|改去|改从|驶向|追到|抵达|到达|进入|登上|回到|返回|去(?!向|处|路|年)/;
-const NPC_ROLE_TERMS = ['店主', '老板', '伙计', '服务生', '医生', '护士', '牧师', '管理员', '警员', '警察', '酒保'];
+const NPC_ROLE_TERMS = ['店主', '老板', '伙计', '服务生', '医生', '护士', '牧师', '管理员', '警员', '警察', '酒保', '船长'];
 
 function undeclaredPrecinctMention(text: string, registeredTerms: string[]): string | null {
   const withoutRegisteredTerms = registeredTerms
@@ -369,7 +369,10 @@ function unavailableNpcRole(text: string, kb: KnowledgeBase, sceneId: SceneId, d
     if (directInteraction) {
       return new RegExp(`(?:问|询问|追问|向|与|说服|观察|拜访|跟随)(?:眼前的|这位|附近的)?${term}`).test(text);
     }
-    return new RegExp(`${term}[^。！？\\n]{0,10}(?:说|回答|问|告诉|表示|回忆|想了想|开口|承认|点头|摇头)[^。！？\\n]{0,3}[：:“\"]`).test(text);
+    return new RegExp(
+      `${term}[^。！？\\n]{0,10}(?:说|回答|问|告诉|表示|回忆|想了想|开口|承认|点头|摇头)[^。！？\\n]{0,3}[：:“\"]`
+      + `|${term}[^。！？\\n]{0,8}(?:正|正在|准备|下令|命令|掌舵|操纵|启动|驾驶)`
+    ).test(text);
   }) ?? null;
 }
 
@@ -990,6 +993,13 @@ export function validateNarratorSemantics(
     && actions.some((action) =>
     /【检定结果】[^。；！？\n]{0,100}(?:格斗（拳）|射击（手枪）|CHECK_COMBAT)[^。；！？\n]{0,80}结果[：:]\s*(?:普通成功|成功|困难成功|极难成功|大成功)/.test(action.action)
     );
+  const attemptsCombatThisTurn = actions.some((action) =>
+    !DICE_RESULT_RE.test(action.action)
+    && hasAffirmativeMatch(action.action, COMBAT_ACTION_RE)
+  );
+  if (state.currentScene === 'S05' && attemptsCombatThisTurn && narratesCombatHit && !settledCombatHit) {
+    return '本轮没有成功的结构化战斗检定，正文不得把其他检定结果写成攻击命中';
+  }
   const deniesCombatIncapacitation = /(?:并未|没有|未能)(?:立刻|完全)?倒下|仍(?:然)?(?:能够?|可以|在)(?:继续)?(?:战斗|抵抗)/.test(output.narrative);
   const confirmsCombatIncapacitation = /失去战斗能力|无力再战|退出战斗|无法继续战斗|不再抵抗|被制服/.test(output.narrative);
   if (settledCombatHit && deniesCombatIncapacitation && !confirmsCombatIncapacitation) {
@@ -1025,15 +1035,15 @@ export function validateNarratorSemantics(
   ) {
     return '没有结构化战斗命中时，正文不得把玩家自述的倒地深潜者当作既成战果';
   }
+  const inventsDeepOneReinforcements = /(?:船舱|舱口)[^。；！？\n]{0,32}(?:(?:还有|藏着|聚集着)[^。；！？\n]{0,12}(?:族人|深潜者|灰绿色[^。；！？\n]{0,4}身影)|(?:更多|大批|成群)[^。；！？\n]{0,8}(?:族人|深潜者|灰绿色[^。；！？\n]{0,4}身影)[^。；！？\n]{0,8}(?:涌出|冲出|出现))|(?:更多|大批|成群)[^。；！？\n]{0,20}(?:族人|深潜者|身影)[^。；！？\n]{0,12}(?:船舱|舱口)[^。；！？\n]{0,8}(?:涌出|冲出|出现)/.test(output.narrative);
+  if (state.currentScene === 'S05' && inventsDeepOneReinforcements) {
+    return '结构化遭遇已限定深潜者总数，正文不得虚构船舱援军或额外敌人';
+  }
   if (progress.variables.finaleRoute === 'combat') {
     const pivotsToNegotiation = /(?:可以|不妨|愿意|还是|试着|尝试|转而|改为|开始)[^。；！？\n]{0,16}(?:谈谈|谈判|进行交涉|谈条件)|(?:与|和)[^。；！？\n]{0,12}(?:谈判|交涉|谈条件)|各取所需|不必再流血/.test(allText);
     const offersCombatRouteTrade = /(?:解开|解掉|割断|松开)[^。；！？\n]{0,10}(?:船缆|缆绳)[^。；！？\n]{0,24}(?:让我们走|放我们走|你们带走|人给你们)|(?:让我们走|放我们走)[^。；！？\n]{0,28}(?:你们带走|带他离开|人给你们|否则|他死)|(?:我们|深潜者)[^。；！？\n]{0,12}带货走[^。；！？\n]{0,12}(?:人给你们|你们带人)|(?:人给你们|货归我们)|最后机会[^。；！？\n]{0,20}(?:让我们走|放我们走)/.test(allText);
     if (pivotsToNegotiation || offersCombatRouteTrade) {
       return '战斗路线已经结构化锁定，正文和建议不得擅自转入交涉路线';
-    }
-    const inventsDeepOneReinforcements = /(?:船舱|舱口)[^。；！？\n]{0,32}(?:(?:还有|藏着|聚集着)[^。；！？\n]{0,12}(?:族人|深潜者|灰绿色[^。；！？\n]{0,4}身影)|(?:更多|大批|成群)[^。；！？\n]{0,8}(?:族人|深潜者|灰绿色[^。；！？\n]{0,4}身影)[^。；！？\n]{0,8}(?:涌出|冲出|出现))/.test(output.narrative);
-    if (inventsDeepOneReinforcements) {
-      return '结构化遭遇已限定深潜者总数，正文不得虚构船舱援军或额外敌人';
     }
   }
   const declaresRevolver = /左轮/.test(output.narrative)
@@ -1244,7 +1254,7 @@ export function validateNarratorSemantics(
     ...state.players.flatMap((player) => [player.background?.meaningfulItem ?? '']),
     ...state.clues.map((clue) => clue.name)
   ].join('、');
-  const assertsFirearmUse = /(?:拔出|掏出|抽出|举起|握住|紧握|握紧|拿着|持有|持枪|使用|用)[^。；！？\n]{0,12}(?:手枪|左轮枪|步枪)|(?:手枪|左轮枪|步枪)[^。；！？\n]{0,12}(?:开火|射击|击发|命中)/.test(allText);
+  const assertsFirearmUse = /(?:拔出|掏出|抽出|举起|握住|紧握|握紧|拿着|持有|持枪|使用|用)[^。；！？\n]{0,12}(?:手枪|左轮枪|步枪)|(?:拔枪|掏枪|抽枪|举枪|握枪|持枪|用枪|开枪|枪击)|(?:手枪|左轮枪|步枪)[^。；！？\n]{0,12}(?:开火|射击|击发|命中)/.test(allText);
   if (assertsFirearmUse && !/手枪|左轮枪|步枪/.test(allowedInventory)) {
     return '调查员没有被记录的枪械，不得凭空赋予武器';
   }
@@ -1253,7 +1263,7 @@ export function validateNarratorSemantics(
     return allText.split(/[。；！？\n]/).some((sentence) => {
       const actorIndex = sentence.indexOf(player.name);
       if (actorIndex < 0) return false;
-      return /^(?:.{0,16})(?:拔出|掏出|抽出|举起|握住|紧握|握紧|拿着|持有|持枪|使用|用).{0,10}(?:手枪|左轮枪|步枪)/
+      return /^(?:.{0,16})(?:(?:拔出|掏出|抽出|举起|握住|紧握|握紧|拿着|持有|持枪|使用|用).{0,10}(?:手枪|左轮枪|步枪)|(?:拔枪|掏枪|抽枪|举枪|握枪|持枪|用枪|开枪|枪击))/
         .test(sentence.slice(actorIndex + player.name.length));
     });
   });
