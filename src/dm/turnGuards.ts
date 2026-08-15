@@ -37,9 +37,15 @@ interface CheckCandidate {
   check: CheckRequest;
 }
 
+function onlyRequestsPermissionToInvestigate(text: string): boolean {
+  return /(?:可否|能否|是否可以|可不可以|请求(?:对方)?允许|征得(?:同意|许可))[^，。；！？\n]{0,18}(?:查看|检查|搜查|进入)/.test(text)
+    && !/(?:获准|得到允许|经同意|随后|然后|立即)[^，。；！？\n]{0,12}(?:查看|检查|搜查|进入)/.test(text);
+}
+
 function buildCandidate(action: PlayerAction): CheckCandidate | null {
   const text = action.action.trim();
   if (!text || DICE_RESULT_RE.test(text)) return null;
+  if (onlyRequestsPermissionToInvestigate(text)) return null;
   const describesAssistingAnother = /(?:在|当)(?:他|她|同伴|队友|[\u4e00-\u9fff·]{2,10})[^，。；！？\n]{0,24}时[^。；！？\n]{0,16}(?:提供照明|警戒|把风|记录|协助|帮助|配合)/.test(text)
     || /(?:协助|帮助|配合)(?:他|她|同伴|队友|[\u4e00-\u9fff·]{2,10})[^，。；！？\n]{0,16}(?:操作|检查|搜查|撬锁|开锁|撬开)/.test(text);
 
@@ -175,6 +181,7 @@ function explicitlyTargetedScenarioItemActions(
     if (item.sceneId !== state.currentScene || discovered.has(item.id)) return [];
     const action = actions.find((candidate) => {
       if (DICE_RESULT_RE.test(candidate.action)
+        || onlyRequestsPermissionToInvestigate(candidate.action)
         || !hasAffirmativeMatch(candidate.action, AUTHORED_ITEM_SEARCH_RE)) return false;
       const targeted = [
         item.name,

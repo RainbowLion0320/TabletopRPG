@@ -74,6 +74,21 @@ describe('turnGuards', () => {
     ], state)).toBeNull();
   });
 
+  it('does not treat a request for permission to inspect as an inspection attempt', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '艾达' }, { 侦查: 50 })]
+    });
+
+    expect(buildRequiredCheck([{
+      player: '艾达',
+      action: '询问埃里克近期是否与蒙特利尔有关，可否查看他的书房、照片和私人物品。'
+    }], state)).toBeNull();
+    expect(buildRequiredCheck([{
+      player: '艾达',
+      action: '得到允许后立即查看书房桌面并搜查抽屉。'
+    }], state)).toEqual(expect.objectContaining({ player: '艾达', skill: '侦查' }));
+  });
+
   it('does not treat questions about past violence as a combat action', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '亨利' }, { '格斗（拳）': 50 })],
