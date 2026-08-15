@@ -954,6 +954,10 @@ const PLOT_CLAIM_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
     pattern: /(?:伊莎贝拉|埃里克|父亲|父女|我们)[^。；！？\n]{0,56}(?:大吵|争吵|吵架|因为.{0,12}(?:花钱|欠债|债务)|(?:存在|有|背负|隐瞒|欠下).{0,8}(?:欠债|债务)|财务困难|手头紧|经济纠纷|金钱纠纷|债务纠纷)/
   },
   {
+    label: '家务人员、通信或访客习惯',
+    pattern: /(?:没有(?:专门的)?管家|没有登记访客|不登记访客|(?:信件|报纸)[^。；！？\n]{0,20}(?:亲自从信箱取回|没有缺失|没有异常)|亲自从信箱取回[^。；！？\n]{0,12}(?:信件|报纸)|近期[^。；！？\n]{0,16}(?:没有|并无)[^。；！？\n]{0,8}(?:陌生人|访客)[^。；！？\n]{0,8}(?:上门|来访))/
+  },
+  {
     label: '未解锁的人物关系',
     pattern: /(?:蒙特利尔[^。；！？\n]{0,48}(?:认识|熟悉|朋友|旧识|关照|与埃里克[^。；！？\n]{0,12}(?:关系|同框))|(?:埃里克|父亲)[^。；！？\n]{0,40}蒙特利尔[^。；！？\n]{0,16}(?:认识|熟悉|朋友|旧识|关照))/
   },
@@ -1119,6 +1123,10 @@ export function validateNarratorSemantics(
     const inventsPersonalHistory = /(?:埃里克|摩勒先生|父亲|他)[^。；！？\n]{0,72}(?:长期|每晚|近(?:几个月|几周|几天|来)|最近)[^。；！？\n]{0,32}(?:服用|用药|失眠|睡不好|饮酒|酗酒|生病|就医)|(?:鸦片酊|安眠药|镇静剂|处方药|药瓶)[^。；！？\n]{0,80}(?:埃里克|摩勒先生|父亲|长期服用|每晚服用|睡不好)/.test(output.narrative);
     if (inventsPersonalHistory) {
       return '本轮没有作者剧情事件，正文不得创造人物病史、用药史或生活习惯';
+    }
+    const unregisteredMedicalDetail = allText.match(/鸦片酊|安眠药|镇静剂|处方药|未登记药瓶/)?.[0];
+    if (unregisteredMedicalDetail && !narrativeAuthority.includes(unregisteredMedicalDetail)) {
+      return `本轮没有作者剧情事件，不得沿用或创造未登记的药物细节：${unregisteredMedicalDetail}`;
     }
   }
   const startsUnresolvedCombat = state.currentScene === 'S05'

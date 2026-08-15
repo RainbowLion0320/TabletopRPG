@@ -42,6 +42,7 @@ const CASE_BOARD_SYNTHESIZER_PROMPT = `你是跑团案件板合成助手，专�
 - 新 node 的 type 只能是 event 或 theory；不得重复创建输入中已有的人物、地点、物证。
 - semanticKey 必须描述稳定含义，不得包含回合号；importance 为 1-5。
 - 每个 node 和 edge 至少引用一个输入中真实存在的 fact/event/clue id。
+- 只有“本轮新增 facts”“本轮新发现线索”或本轮 story_event / secret_reveal / consequence 才能作为新增关系来源；普通 narrative、检定、移动和旧资料不能单独支撑新节点。
 - edge 的 from/to 只能使用“可连接节点”里的 id 或本次新 node id；relationKey 必须稳定，不随 label 措辞变化。
 - event 必须至少连接 1 个可见锚点；theory 必须至少连接 2 个可见锚点。
 - 明确事实 certainty=confirmed；推测 certainty=hypothesis。推测边使用 suspicion，路线使用 route，证据使用 evidence，直接危险使用 danger。
@@ -218,13 +219,28 @@ export function parseCaseBoardPatchJson(raw: string): CaseBoardPatch {
   }
 }
 
+const CASE_BOARD_EVENT_KINDS = new Set(['story_event', 'secret_reveal', 'consequence']);
+
+function evidenceSourceIds(input: CaseBoardSynthesizerInput) {
+  return {
+    factIds: new Set((input.newFacts ?? []).map((fact) => fact.id)),
+    eventIds: new Set(input.events
+      .filter((event) => event.turn === input.turn && CASE_BOARD_EVENT_KINDS.has(event.kind))
+      .map((event) => event.id)),
+    clueIds: new Set(input.newClueIds ?? [])
+  };
+}
+
+function hasEvidenceIncrement(input: CaseBoardSynthesizerInput): boolean {
+  const sources = evidenceSourceIds(input);
+  return sources.factIds.size > 0 || sources.eventIds.size > 0 || sources.clueIds.size > 0;
+}
+
 function hasValidAnchor(
   item: Pick<DynamicCaseBoardNode, 'sourceFactIds' | 'sourceEventIds' | 'sourceClueIds'>,
   input: CaseBoardSynthesizerInput
 ): boolean {
-  const factIds = new Set(input.facts.map((fact) => fact.id));
-  const eventIds = new Set(input.events.map((event) => event.id));
-  const clueIds = new Set(input.clues.map((clue) => clue.id));
+  const { factIds, eventIds, clueIds } = evidenceSourceIds(input);
   return item.sourceFactIds.some((id) => factIds.has(id))
     || item.sourceEventIds.some((id) => eventIds.has(id))
     || item.sourceClueIds.some((id) => clueIds.has(id));
@@ -275,10 +291,10 @@ function fallbackFromNarrative(input: CaseBoardSynthesizerInput): CaseBoardPatch
   )) {
     return { nodes: [], edges: [], insights: [] };
   }
-  const narrativeEvent = [...input.events].reverse().find((event) =>
-    event.turn === input.turn && event.kind === 'narrative'
-  );
-  if (!narrativeEvent || !input.currentSceneNodeId) return { nodes: [], edges: [], insights: [] };
+  const sources = evidenceSourceIds(input);
+  if (!hasEvidenceIncrement(input) || !input.currentSceneNodeId) {
+    return { nodes: [], edges: [], insights: [] };
+  }
   const candidate = input.narrative.split(/[。！？!?；;\n]+/)
     .map((text) => text.trim())
     .filter((text) => text.length >= 6)
@@ -305,9 +321,9 @@ function fallbackFromNarrative(input: CaseBoardSynthesizerInput): CaseBoardPatch
     importance: uncertain ? 4 : 3,
     source: 'ai',
     certainty: uncertain ? 'hypothesis' : 'confirmed',
-    sourceFactIds: [],
-    sourceEventIds: [narrativeEvent.id],
-    sourceClueIds: [],
+    sourceFactIds: [...sources.factIds].slice(0, 2),
+    sourceEventIds: [...sources.eventIds].slice(0, 2),
+    sourceClueIds: [...sources.clueIds].slice(0, 2),
     createdTurn: input.turn,
     updatedTurn: input.turn,
     status: 'active'
@@ -324,9 +340,9 @@ function fallbackFromNarrative(input: CaseBoardSynthesizerInput): CaseBoardPatch
     tone: uncertain ? 'suspicion' : 'evidence',
     source: 'ai',
     certainty: uncertain ? 'hypothesis' : 'confirmed',
-    sourceFactIds: [],
-    sourceEventIds: [narrativeEvent.id],
-    sourceClueIds: [],
+    sourceFactIds: [...sources.factIds].slice(0, 2),
+    sourceEventIds: [...sources.eventIds].slice(0, 2),
+    sourceClueIds: [...sources.clueIds].slice(0, 2),
     createdTurn: input.turn,
     updatedTurn: input.turn,
     status: 'active'
@@ -349,6 +365,9 @@ export async function synthesizeCaseBoardPatch(
   if (input.playerActions.some((action) =>
     /【检定结果】[\s\S]*结果[：:]\s*(?:失败|大失败)/.test(action.action)
   )) {
+    return { nodes: [], edges: [], insights: [] };
+  }
+  if (!hasEvidenceIncrement(input)) {
     return { nodes: [], edges: [], insights: [] };
   }
   let proposed: CaseBoardPatch = { nodes: [], edges: [], insights: [] };

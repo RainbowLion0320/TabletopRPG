@@ -2524,6 +2524,16 @@ describe('turnGuards', () => {
     }, [], state, kb, actions)).toMatch(/病史、用药史或生活习惯/);
 
     expect(validateNarratorSemantics({
+      narrative: '伊莎贝拉说明住宅没有专门的管家，信件和报纸都由她亲自从信箱取回，也没有登记访客的习惯。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}
+    }, [], state, kb, actions)).toMatch(/家务人员、通信或访客习惯/);
+
+    expect(validateNarratorSemantics({
+      narrative: '托马斯把已有信息重新分栏，仍把鸦片酊用量标成可疑但未核实。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}
+    }, [], state, kb, actions)).toMatch(/未登记的药物细节/);
+
+    expect(validateNarratorSemantics({
       narrative: '厨房与门厅没有提供更多可核实的信息，伊莎贝拉也无法确认新的细节。',
       activeNpc: '伊莎贝拉·摩勒', nextPrompt: '你们可以转向已有线索。', playerChoices: {}
     }, [], state, kb, actions)).toBeNull();
