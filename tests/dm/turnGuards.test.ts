@@ -440,6 +440,55 @@ describe('turnGuards', () => {
     expect(inferStoryEventActor(actions, state, 'EV_COMBAT_ATTACK')).toBe('罗伯特');
   });
 
+  it('keeps a melee check on the attacker when a full-name companion only provides gun cover', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利·格雷' }, { '格斗（拳）': 50 }),
+        makeInvestigator({ name: '罗伯特·肖', equipment: ['警用左轮手枪'] }, {
+          '格斗（拳）': 70,
+          '射击（手枪）': 60
+        })
+      ],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.variables.combatRoundStarted = true;
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.clocks.fusangEscape = { value: 2, active: true, visible: true };
+
+    const actions = [
+      { player: '亨利·格雷', action: '继续攻击眼前的深潜者。' },
+      {
+        player: '罗伯特·肖',
+        action: '保持在木箱后警戒，用枪口牵制其他深潜者，但这一轮不开火，只为亨利的徒手攻击提供掩护。'
+      }
+    ];
+
+    expect(inferStoryEventFromActions(actions, state)?.arguments.eventId).toBe('EV_COMBAT_ATTACK');
+    expect(inferStoryEventActor(actions, state, 'EV_COMBAT_ATTACK')).toBe('亨利·格雷');
+  });
+
+  it('does not create a combat event from a support-only reference to another attacker', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利·格雷' }, { '格斗（拳）': 50 }),
+        makeInvestigator({ name: '罗伯特·肖', equipment: ['警用左轮手枪'] }, { '格斗（拳）': 70 })
+      ],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+
+    expect(inferStoryEventFromActions([{
+      player: '罗伯特·肖',
+      action: '保持在木箱后警戒，用枪口牵制其他深潜者，但这一轮不开火，只为亨利的徒手攻击提供掩护。'
+    }], state)).toBeNull();
+  });
+
   it('lets an authored story event own its structured check', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '亨利' }, { 聆听: 65 })],

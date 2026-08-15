@@ -262,7 +262,7 @@ export function inferStoryEventActor(
       .map((action, index) => ({
         action,
         index,
-        score: combatActorScore(action, actions, state)
+        score: combatActorScore(action, state)
       }))
       .filter(({ score }) => score > 0)
       .sort((left, right) => right.score - left.score || left.index - right.index);
@@ -290,17 +290,25 @@ function actionUsesHandgun(text: string): boolean {
   return /(?:开枪|射击|枪击|扣(?:下)?扳机)|(?:使用|用|举起|拔出|抽出|掏出|握住)[^，。；！？\n]{0,12}(?:手枪|左轮枪)[^，。；！？\n]{0,12}(?:攻击|开火|射击|枪击|击发)/.test(text);
 }
 
-function combatActorScore(action: PlayerAction, actions: PlayerAction[], state: GameState): number {
+function combatActorScore(action: PlayerAction, state: GameState): number {
   const text = action.action;
   if (!hasAffirmativeMatch(text, COMBAT_ACTION_RE)) return 0;
   if (actionUsesHandgun(text) && !actorHasHandgun(state, action.player)) return 0;
   let score = 10;
-  const namesAnotherAttacker = actions.some((other) => {
-    if (other.player === action.player || !text.includes(other.player)) return false;
-    return new RegExp(`${escapeRegex(other.player)}[^，。；！？\\n]{0,18}(?:${COMBAT_ACTION_RE.source})`).test(text);
+  const namesAnotherAttacker = state.players.some((other) => {
+    if (other.name === action.player) return false;
+    const aliases = [other.name, other.name.split(/[·\s]/)[0]]
+      .filter((alias, index, all) => alias.length >= 2 && all.indexOf(alias) === index);
+    return aliases.some((alias) => new RegExp(
+      `${escapeRegex(alias)}(?:的|正在|继续|准备|将要)?[^，。；！？\\n]{0,18}(?:${COMBAT_ACTION_RE.source})`
+    ).test(text));
   });
+  const explicitlySupportsAnotherAttacker = namesAnotherAttacker
+    && /(?:掩护|协助|配合|牵制|警戒|照明|提供掩护)/.test(text);
+  const explicitlyDeclinesOwnAttack = /(?:本轮|这一轮|该轮)[^，。；！？\n]{0,10}(?:不|未)(?:再)?(?:开火|攻击|出手|射击)|(?:不|未)(?:再)?(?:开火|攻击|出手|射击)[^，。；！？\n]{0,16}(?:只|仅)?(?:为|负责)?[^，。；！？\n]{0,12}(?:掩护|协助|配合|牵制)/.test(text);
+  if (namesAnotherAttacker && (explicitlySupportsAnotherAttacker || explicitlyDeclinesOwnAttack)) return 0;
   if (namesAnotherAttacker) score -= 20;
-  if (/(?:用|挥动|挥起|挥出|抽出|拔出|举起|抡起)[^，。；！？\n]{0,16}(?:警棍|拳|枪|武器|刀)|(?:向|对)[^，。；！？\n]{0,18}(?:深潜者|敌人|守卫)[^，。；！？\n]{0,12}(?:攻击|打倒|击打|挥击|横扫|猛击|射击)/.test(text)) {
+  if (/(?:用|挥动|挥起|挥出|抽出|拔出|举起|抡起)[^，。；！？\n]{0,16}(?:警棍|拳|手枪|左轮枪|枪|武器|刀)[^，。；！？\n]{0,16}(?:攻击|打倒|击打|挥击|横扫|猛击|射击|开火|枪击|砸向|刺向|砍向)|(?:向|对)[^，。；！？\n]{0,18}(?:深潜者|敌人|守卫)[^，。；！？\n]{0,12}(?:攻击|打倒|击打|挥击|横扫|猛击|射击)/.test(text)) {
     score += 30;
   }
   if (/(?:掩护|协助|配合|牵制|警戒|观察|照明)[^，。；！？\n]{0,18}(?:同伴|队友|他|她|[\u4e00-\u9fff·]{2,10})[^，。；！？\n]{0,12}(?:攻击|击打|挥击|横扫)/.test(text)) {
@@ -514,15 +522,16 @@ export function inferStoryEventFromActions(
   ];
   const match = mappings.find(([eventId, pattern]) => {
     if (!available.has(eventId)) return false;
-    const matchesAction = actions.some((action) =>
-      !DICE_RESULT_RE.test(action.action)
-      && hasAffirmativeMatch(action.action, pattern)
-      && (eventId !== 'EV_BARTENDER_RAT'
-        || !/(?:暂时|先)?不(?:再)?(?:打听|询问|追问|要求|索要|换取)(?:任何)?(?:消息|信息)?/.test(action.action))
-      && (eventId !== 'EV_COMBAT_ATTACK' && eventId !== 'EV_CHOOSE_COMBAT'
-        || !actionUsesHandgun(action.action)
-        || actorHasHandgun(state, action.player))
-    );
+    const isCombatEvent = eventId === 'EV_COMBAT_ATTACK' || eventId === 'EV_CHOOSE_COMBAT';
+    const matchesAction = isCombatEvent
+      ? actions.some((action) => !DICE_RESULT_RE.test(action.action)
+        && combatActorScore(action, state) > 0)
+      : actions.some((action) =>
+        !DICE_RESULT_RE.test(action.action)
+        && hasAffirmativeMatch(action.action, pattern)
+        && (eventId !== 'EV_BARTENDER_RAT'
+          || !/(?:暂时|先)?不(?:再)?(?:打听|询问|追问|要求|索要|换取)(?:任何)?(?:消息|信息)?/.test(action.action))
+      );
     return matchesAction && (!actionIsFailedCheck(actions) || eventId === 'EV_BARTENDER_RAT');
   });
   if (available.has('EV_MEET_MONTREAL') && matchesMontrealMeetingEvent(actions, text)) {

@@ -183,6 +183,50 @@ describe('runDmTurn error classification', () => {
     }));
   });
 
+  it('requests the check from the actual attacker when a companion explicitly only covers them', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利·格雷' }, { '格斗（拳）': 50 }),
+        makeInvestigator({ name: '罗伯特·肖', equipment: ['警用左轮手枪'] }, {
+          '格斗（拳）': 70,
+          '射击（手枪）': 60
+        })
+      ],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.variables.combatRoundStarted = true;
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.clocks.fusangEscape = { value: 2, active: true, visible: true };
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [
+        { player: '亨利·格雷', action: '继续攻击眼前的深潜者。' },
+        {
+          player: '罗伯特·肖',
+          action: '保持在木箱后警戒，用枪口牵制其他深潜者，但这一轮不开火，只为亨利的徒手攻击提供掩护。'
+        }
+      ]
+    });
+    const next = gameReducer(state, {
+      type: 'applyAiResponse', response: output.legacyResponse, raw: output.raw, actorName: output.actorName
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(output.actorName).toBe('亨利·格雷');
+    expect(next.pendingCheck).toEqual(expect.objectContaining({
+      player: '亨利·格雷', skill: '格斗（拳）', threshold: 50, scenarioCheckId: 'CHECK_COMBAT'
+    }));
+  });
+
   it('keeps a declared finale attack ahead of a companion\'s conditional first-aid preparation', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
