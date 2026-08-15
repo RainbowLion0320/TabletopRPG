@@ -1807,6 +1807,26 @@ describe('turnGuards', () => {
     }, [], state, kb)).toBeNull();
   });
 
+  it('rejects an identifiable companion invented during a bartender follow-up', () => {
+    const state = makeState({ currentScene: 'S03', activeNpcName: '老赫特之家酒保' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.knownFactIds = ['F08'];
+
+    expect(validateNarratorSemantics({
+      narrative: '酒保压低嗓音：“最后一次见摩勒先生，大概三天前，也就是十号傍晚。他和一个穿旧大衣的男人一起走的，那人戴顶软呢帽，往贝尔街方向去了。”',
+      activeNpc: '老赫特之家酒保',
+      nextPrompt: '还要追问吗？',
+      playerChoices: { 亨利: ['请酒保描述那个穿旧大衣男人的更多细节'] }
+    }, [], state, kb)).toMatch(/目击时间|同行者|新人物/);
+
+    expect(validateNarratorSemantics({
+      narrative: '酒保摇头：“我只知道老鼠的消息指向贝尔街，没见过埃里克当晚和谁同行。”',
+      activeNpc: '老赫特之家酒保',
+      nextPrompt: '是否前往已知地点？',
+      playerChoices: { 亨利: ['前往卡森其药店'] }
+    }, [], state, kb)).toBeNull();
+  });
+
   it('rejects a police-scene leak of Bell Street before an authored lead reveals it', () => {
     const state = makeState({ currentScene: 'S02', activeNpcName: '洛夫·蒙特利尔' });
     state.scenarioProgress = createScenarioProgress();
