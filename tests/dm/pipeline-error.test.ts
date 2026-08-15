@@ -605,6 +605,37 @@ describe('runDmTurn error classification', () => {
     expect(output.legacyResponse.stateUpdate?.storyEventIds).not.toContain('EV_S04_CIGAR');
   });
 
+  it('rebuilds current-scene choices when a check continuation returns no suggestions', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(JSON.stringify({
+      narrative: '入口周围暂时没有更多可确认的痕迹。',
+      activeNpc: null,
+      nextPrompt: '继续调查药店。',
+      playerChoices: {}
+    }))));
+    const state = makeState({
+      players: [makeInvestigator({ id: 'henry', name: '亨利' })],
+      currentScene: 'S04'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'active';
+    state.scenarioProgress.firedEventIds = ['EV_S04_FOG'];
+    state.suggestions = ['前往卡森其药店继续调查'];
+    state.suggestionsByPlayerId = { henry: [...state.suggestions] };
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [{
+        player: '亨利',
+        action: '【检定结果】亨利 的 侦查检定：掷出 49，阈值 50，结果：普通成功。'
+      }]
+    });
+
+    expect(output.legacyResponse.playerChoices?.亨利).toContain('搜查后厅被翻动的区域和遗留包裹');
+    expect(output.legacyResponse.playerChoices?.亨利).not.toContain('前往卡森其药店继续调查');
+  });
+
   it('prioritizes the destination of the active mandatory beat in semantic fallback choices', async () => {
     const invalidDiscovery = JSON.stringify({
       narrative: '亨利在桌面上又发现了一张便签。',

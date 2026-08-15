@@ -883,8 +883,17 @@ export async function runDmTurn(
     0,
     (finaleEncounterDefinition?.count ?? 0) - (finaleEncounter?.defeated ?? 0)
   );
+  const choiceSource = Object.keys(narrator.playerChoices).length
+    ? narrator.playerChoices
+    : buildSemanticFallbackChoices(
+        input.state,
+        kb,
+        targetScene,
+        narrator.activeNpc,
+        projectedTransition.progress
+      );
   const safeChoices = sanitizePlayerChoices(
-    narrator.playerChoices,
+    choiceSource,
     knownItems,
     kb,
     targetScene,

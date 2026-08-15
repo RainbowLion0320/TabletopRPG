@@ -677,7 +677,10 @@ export function sanitizePlayerChoices(
   const offstageNpcNames = sceneId
     ? Object.keys(kb.npcs).filter((name) => !kb.scenes[sceneId]?.public.npcs.includes(name))
     : [];
-  return Object.fromEntries(Object.entries(choices).map(([player, list]) => {
+  const entries: Array<[string, string[]]> = players.length
+    ? players.map((player) => [player.name, choices[player.name] ?? choices[player.id] ?? []])
+    : Object.entries(choices);
+  return Object.fromEntries(entries.map(([player, list]) => {
     const playerState = players.find((candidate) => candidate.name === player);
     const canAttack = playerState
       ? (playerState.equipment ?? []).some((item) => /手枪|左轮枪|警棍|棍|刀|武器/.test(item))
@@ -1265,6 +1268,12 @@ export function validateNarratorSemantics(
     && /(?:推开|撞开|打开|撬开)[^。；！？\n]{0,18}(?:后门|店门)|(?:后门|店门)[^。；！？\n]{0,12}(?:推开|撞开|打开|撬开)|(?:再次|重新)[^。；！？\n]{0,12}(?:进入|走进)[^。；！？\n]{0,8}(?:药店|店内)/.test(allText);
   if (repeatsPharmacyEntry) {
     return 'S04 入场事件已经结算，调查员已在药店内，不得重复开门或重新进入药店';
+  }
+  const deniesSettledPharmacyEntry = state.currentScene === 'S04'
+    && progress.firedEventIds.includes('EV_S04_FOG')
+    && /(?:这是|仍是)?首次进入[^。；！？\n]{0,24}(?:需要|必须|应当|尚未)[^。；！？\n]{0,16}触发(?:进入|入场)事件|(?:进入|入场)事件[^。；！？\n]{0,20}(?:尚未|还没|仍未)(?:触发|结算)/.test(allText);
+  if (deniesSettledPharmacyEntry) {
+    return 'S04 入场事件已经结算，不得声称首次进入仍待触发';
   }
   if (/(?:没有|没能|未能|完全没有)[^。；！？\n]{0,24}(?:发现|注意|察觉|看见)[^。；！？\n]{0,40}(?:人影|身影|跟踪者|尾随者)/.test(output.narrative)) {
     return '不得通过全知叙事向玩家泄露调查员检定失败后未察觉的人物或跟踪者';

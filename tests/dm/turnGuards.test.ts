@@ -1132,6 +1132,14 @@ describe('turnGuards', () => {
     expect(result.亨利).toContain('仔细观察甲板上的动静');
   });
 
+  it('creates safe current-scene suggestions when the narrator returns an empty choice map', () => {
+    const players = [makeInvestigator({ id: 'henry', name: '亨利' })];
+    const result = sanitizePlayerChoices({}, new Set(), kb, 'S04', null, 4, players);
+
+    expect(result.亨利).toHaveLength(3);
+    expect(result.亨利).not.toContain('前往卡森其药店继续调查');
+  });
+
   it('keeps finale suggestions within the selected authored route', () => {
     const combat = sanitizePlayerChoices({
       罗伯特: [
@@ -1408,6 +1416,11 @@ describe('turnGuards', () => {
       narrative: '在托马斯的协助下，你们推开了卡森其药店腐朽的后门。',
       activeNpc: null, nextPrompt: '进入店内。', playerChoices: {}
     }, [], state, kb)).toMatch(/已经结算.*重复开门/);
+    expect(validateNarratorSemantics({
+      narrative: '这是卡森其药店首次进入，需要先触发进入事件。',
+      activeNpc: null, nextPrompt: '先触发入场事件。',
+      playerChoices: { 亨利: ['前往卡森其药店继续调查'] }
+    }, [], state, kb)).toMatch(/已经结算.*首次进入仍待触发/);
     expect(validateNarratorSemantics({
       narrative: '罗伯特完全没有发现远处屋檐下那道一闪而过的人影。',
       activeNpc: null, nextPrompt: '继续调查。', playerChoices: {}
