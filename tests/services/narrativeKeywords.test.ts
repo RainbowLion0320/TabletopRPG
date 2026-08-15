@@ -106,4 +106,13 @@ describe('normalizeNarrativeKeywordHints', () => {
       { text: '目光短暂停顿', kind: 'clue' }
     ], narrative)).toEqual([]);
   });
+
+  it('drops creature appearance fragments observed as false entity links during real play', () => {
+    const narrative = '他身旁站着一个灰绿色皮肤的身影，湿润的鳞片在雾气中泛着幽光。';
+
+    expect(normalizeNarrativeKeywordHints([
+      { text: '灰绿色皮肤', kind: 'clue' },
+      { text: '湿润的鳞片', kind: 'danger' }
+    ], narrative)).toEqual([]);
+  });
 });

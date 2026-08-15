@@ -77,6 +77,17 @@ describe('narrative markup', () => {
     expect(segments.find((segment) => segment.text === '亨利')?.mark?.kind).toBe('person');
   });
 
+  it('does not turn creature appearance prose into an entity detail button', () => {
+    const state = makeState({ currentScene: 'S05', activeNpcName: '扶桑花号交涉代表' });
+    const text = '他身旁站着一个灰绿色皮肤的身影，湿润的鳞片在雾气中泛着幽光。';
+    const segments = markNarrativeText(text, state, [
+      { text: '灰绿色皮肤', kind: 'clue' },
+      { text: '湿润的鳞片', kind: 'danger' }
+    ]);
+
+    expect(segments.filter((segment) => segment.mark)).toEqual([]);
+  });
+
   it('does not expose unlocked secrets or unknown counts for an NPC not formally met', () => {
     const state = makeState({ clueIds: ['I05'], activeNpcName: null });
     const target: NarrativeMarkTarget = {
