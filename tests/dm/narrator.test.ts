@@ -198,6 +198,29 @@ describe('callNarrator retry repair', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('removes repeated escape residue and mixed quote wrappers from player-visible text', async () => {
+    const repeatedEscape = ['\\', '\\', '"'].join('');
+    const content = JSON.stringify({
+      narrative: `酒保压低声音，说街坊管那里叫'"老鼠洞"'。夜里没人愿意靠近。${repeatedEscape} 罗伯特收起硬币。`,
+      activeNpc: '老赫特之家酒保',
+      nextPrompt: '继续追问。',
+      playerChoices: { 亨利: [`询问${repeatedEscape}老鼠洞${repeatedEscape}的来历`] },
+      keywords: []
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(content)));
+
+    const output = await callNarrator(config, {
+      ctx,
+      actions: [{ player: '亨利', action: '给酒保小费。' }],
+      mode: 'together',
+      history: []
+    });
+
+    expect(output.narrative).toBe('酒保压低声音，说街坊管那里叫"老鼠洞"。夜里没人愿意靠近。" 罗伯特收起硬币。');
+    expect(output.playerChoices.亨利).toEqual(['询问"老鼠洞"的来历']);
+    expect(output.narrative).not.toContain('\\');
+  });
+
   it('sends a response that local repair cannot validate back on the Responses retry', async () => {
     const malformed = 'not a narrator json object';
     const repaired = JSON.stringify({

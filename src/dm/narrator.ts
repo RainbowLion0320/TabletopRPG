@@ -502,7 +502,9 @@ function coerceStringArray(v: unknown): string[] {
 function normalizeModelText(value: string): string {
   return value
     .trim()
-    .replace(/\\"/g, '"')
+    .replace(/\\+(["'])/g, '$1')
+    .replace(/'"([^'"\n]{1,40})"'/g, '"$1"')
+    .replace(/"'([^'"\n]{1,40})'"/g, '"$1"')
     .replace(/\\n/g, '\n')
     .replace(/\[([^\]\n]+)\]\([^\n)]+\)/g, '$1')
     .replace(/\*\*([^*\n]+)\*\*/g, '$1')
