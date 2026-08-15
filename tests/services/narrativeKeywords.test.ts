@@ -79,6 +79,15 @@ describe('normalizeNarrativeKeywordHints', () => {
     ], narrative)).toEqual([]);
   });
 
+  it('drops npc disclaimers observed as false entity links during real play', () => {
+    const narrative = '他只说那段关系不值得写入卷宗，至于最后一次见面则记不清具体日期。';
+
+    expect(normalizeNarrativeKeywordHints([
+      { text: '不值得写入卷宗', kind: 'clue' },
+      { text: '记不清具体日期', kind: 'clue' }
+    ], narrative)).toEqual([]);
+  });
+
   it('drops fleeting npc reactions that are prose rather than durable state', () => {
     const narrative = '蒙特利尔翻看合影，指尖微微一顿，目光短暂停顿，随即把照片推回桌上。';
 
