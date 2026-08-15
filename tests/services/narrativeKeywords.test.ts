@@ -88,6 +88,16 @@ describe('normalizeNarrativeKeywordHints', () => {
     ], narrative)).toEqual([]);
   });
 
+  it('drops standalone dates and times observed as false entity links during real play', () => {
+    const narrative = '他说自己在7月10日早上离开，三天前的深夜才有人发现异常。';
+
+    expect(normalizeNarrativeKeywordHints([
+      { text: '7月10日早上', kind: 'clue' },
+      { text: '三天前', kind: 'state' },
+      { text: '深夜', kind: 'state' }
+    ], narrative)).toEqual([]);
+  });
+
   it('drops fleeting npc reactions that are prose rather than durable state', () => {
     const narrative = '蒙特利尔翻看合影，指尖微微一顿，目光短暂停顿，随即把照片推回桌上。';
 
