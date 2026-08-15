@@ -1104,6 +1104,23 @@ export function validateNarratorSemantics(
     const event = availableEvents.get(String(call.arguments.eventId ?? ''));
     return event ? [event] : [];
   });
+  const narrativeAuthority = authoredNarrativeCorpus(state, proposedEvents);
+  if (!proposedEvents.length) {
+    const physicalEvidenceClaim = /(?:发现|找到|注意到|看见|观察到|翻出|辨认出|检查出|留有|带有|沾着)[^。；！？\n]{0,64}(?:药瓶|药物|药片|药剂|粉末|泥渍|血迹|脚印|指纹|纤维|残留物?|烟蒂|票据|收据|账本|信件|纸条|便签|钥匙|地图|名片|标签|徽章|照片|衣物|雨衣|旅行箱|行李|餐盘|食材|茶具)/.exec(output.narrative)?.[0] ?? null;
+    const referencesDeclaredItem = physicalEvidenceClaim !== null
+      && Object.values(kb.items).some(({ public: item }) =>
+        [item.name, ...(item.aliases ?? [])].some((term) =>
+          term.length >= 2 && physicalEvidenceClaim.includes(term)
+        )
+      );
+    if (physicalEvidenceClaim && !referencesDeclaredItem) {
+      return '本轮没有作者剧情事件，正文不得把环境陈设扩写成新物证或物理痕迹';
+    }
+    const inventsPersonalHistory = /(?:埃里克|摩勒先生|父亲|他)[^。；！？\n]{0,72}(?:长期|每晚|近(?:几个月|几周|几天|来)|最近)[^。；！？\n]{0,32}(?:服用|用药|失眠|睡不好|饮酒|酗酒|生病|就医)|(?:鸦片酊|安眠药|镇静剂|处方药|药瓶)[^。；！？\n]{0,80}(?:埃里克|摩勒先生|父亲|长期服用|每晚服用|睡不好)/.test(output.narrative);
+    if (inventsPersonalHistory) {
+      return '本轮没有作者剧情事件，正文不得创造人物病史、用药史或生活习惯';
+    }
+  }
   const startsUnresolvedCombat = state.currentScene === 'S05'
     && actions.some((action) => hasAffirmativeMatch(action.action, COMBAT_ACTION_RE))
     && !actions.some((action) => DICE_RESULT_RE.test(action.action))
@@ -1255,7 +1272,6 @@ export function validateNarratorSemantics(
   if (uncommittedHarm) {
     return `正文写明${uncommittedHarm.name}受到实际伤害时，必须同步调用 propose_state_update 写入负 HP`;
   }
-  const narrativeAuthority = authoredNarrativeCorpus(state, proposedEvents);
   const failedMechanicalCheck = actions.some((action) =>
     /【检定结果】[^。；！？\n]{0,80}的\s*机械维修\s*检定[^。；！？\n]{0,80}结果[：:]\s*(?:失败|大失败)/.test(action.action)
   );

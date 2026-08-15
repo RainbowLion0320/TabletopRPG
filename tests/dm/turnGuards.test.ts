@@ -2502,6 +2502,33 @@ describe('turnGuards', () => {
       .toBeNull();
   });
 
+  it('rejects unauthorised evidence and personal history from free investigation', () => {
+    const state = makeState({ currentScene: 'S01', activeNpcName: '伊莎贝拉·摩勒' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'active';
+    const actions = [
+      { player: '艾达', action: '检查厨房里的餐盘和食材，但不搜查书桌或书架。' },
+      { player: '托马斯', action: '检查门厅衣帽架和旅行箱。' },
+      { player: '艾达', action: '【检定结果】艾达 的 侦查 检定：掷出 19，阈值 50，结果：困难成功（19）。' }
+    ];
+
+    expect(validateNarratorSemantics({
+      narrative: '艾达注意到冰箱角落有一包未拆封的鸦片酊药瓶。托马斯发现雨衣带有新鲜泥渍，说明埃里克失踪当天可能冒雨外出。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}
+    }, [], state, kb, actions)).toMatch(/新物证或物理痕迹/);
+
+    expect(validateNarratorSemantics({
+      narrative: '伊莎贝拉确认父亲近几个月睡不好，每晚都长期服用鸦片酊。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}
+    }, [], state, kb, actions)).toMatch(/病史、用药史或生活习惯/);
+
+    expect(validateNarratorSemantics({
+      narrative: '厨房与门厅没有提供更多可核实的信息，伊莎贝拉也无法确认新的细节。',
+      activeNpc: '伊莎贝拉·摩勒', nextPrompt: '你们可以转向已有线索。', playerChoices: {}
+    }, [], state, kb, actions)).toBeNull();
+  });
+
   it('does not mistake movement around the current precinct for a new police location', () => {
     const state = makeState({ currentScene: 'S02', activeNpcName: '洛夫·蒙特利尔' });
     const narratives = [
