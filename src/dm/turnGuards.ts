@@ -16,6 +16,7 @@ import {
   getScenarioProgressForState,
   processScenarioTurn
 } from '../scenario/engine';
+import { resolveActiveNpcForScene } from '../state/sceneFocus';
 
 const DICE_RESULT_RE = /【检定结果】|结果[：:]\s*(?:失败|大失败|成功|困难成功|极难成功|大成功)/;
 const MOVE_VERB_RE = /前往|赶往|去往|转往|转向|走向|改去|改从|出发|动身|返回|回到|离开|进入|走进|登上|开车|驾车|驱车|驶向|跟随|追到|抵达|到达/;
@@ -398,6 +399,7 @@ function unavailableNpcRole(
     return new RegExp(
       `${term}[^。！？\\n]{0,10}(?:说|回答|问|告诉|表示|回忆|想了想|开口|承认|点头|摇头)[^。！？\\n]{0,3}[：:“\"]`
       + `|${term}[^。！？\\n]{0,8}(?:正|正在|准备|下令|命令|掌舵|操纵|启动|驾驶)`
+      + `|${term}[^。！？\\n]{0,12}(?:带领|引导|引至|领到|领着|接待)`
     ).test(text);
   }) ?? null;
 }
@@ -846,8 +848,8 @@ function lockedSceneReference(
 }
 
 const NPC_APPEARANCE_CONFLICTS: Array<{ authored: RegExp; contradictedBy: RegExp }> = [
-  { authored: /壮实|魁梧|健壮|结实|矮胖|肥胖|发福|臃肿/, contradictedBy: /清瘦|精瘦|瘦削|消瘦|干瘦|单薄/ },
-  { authored: /清瘦|精瘦|瘦削|消瘦|干瘦|单薄/, contradictedBy: /壮实|魁梧|健壮|结实|矮胖|肥胖|发福|臃肿/ },
+  { authored: /壮实|粗壮|魁梧|健壮|结实|矮胖|肥胖|发福|臃肿/, contradictedBy: /清瘦|精瘦|瘦削|消瘦|干瘦|单薄/ },
+  { authored: /清瘦|精瘦|瘦削|消瘦|干瘦|单薄/, contradictedBy: /壮实|粗壮|魁梧|健壮|结实|矮胖|肥胖|发福|臃肿/ },
   {
     authored: /刮得干净|没有胡须|无胡须/,
     contradictedBy: /络腮胡|大胡子|浓密胡须|胡子拉碴|乱糟糟(?:的)?胡子|留着[^。；，]{0,8}胡须|摸了摸[^。；，]{0,6}(?:胡须|胡子)/
@@ -873,6 +875,34 @@ function activeNpcAppearanceConflict(
     authored.test(npc.appearance) && contradictedBy.test(narrative)
   );
   return conflict ? npc.name : null;
+}
+
+function effectiveActiveNpcForNarrative(
+  output: { narrative: string; activeNpc?: string | null },
+  state: GameState,
+  outputSceneId: SceneId,
+  kb: KnowledgeBase
+): string | null {
+  const activeNpcProvided = Object.prototype.hasOwnProperty.call(output, 'activeNpc');
+  const previousNpc = state.activeNpcName ? kb.npcs[state.activeNpcName]?.public : null;
+  const stillMentionsPreviousNpc = previousNpc
+    ? [previousNpc.name, ...(previousNpc.aliases ?? [])].some((term) =>
+        term.length >= 2 && output.narrative.includes(term)
+      )
+    : false;
+
+  return resolveActiveNpcForScene({
+    previousScene: state.currentScene,
+    nextScene: outputSceneId,
+    previousActiveNpc: state.activeNpcName,
+    requestedActiveNpc: activeNpcProvided
+      && output.activeNpc === null
+      && outputSceneId === state.currentScene
+      && stillMentionsPreviousNpc
+      ? state.activeNpcName
+      : output.activeNpc,
+    requestedActiveNpcProvided: activeNpcProvided
+  });
 }
 
 function eventAuthorizesOutcome(
@@ -1340,6 +1370,7 @@ export function validateNarratorSemantics(
   const acceptedScene = toolCalls.find((call) => call.name === 'propose_scene_change');
   const targetId = acceptedScene ? String(acceptedScene.arguments.targetSceneId ?? '') : '';
   const outputSceneId = (targetId || state.currentScene) as SceneId;
+  const effectiveActiveNpc = effectiveActiveNpcForNarrative(output, state, outputSceneId, kb);
   const pharmacyEntrySettled = targetId === 'S04'
     || (state.currentScene === 'S04' && progress.firedEventIds.includes('EV_S04_FOG'));
   const framesPharmacyAsInaccessible = /(?:正门|木门|店门|门板)[^。；！？\n]{0,24}(?:紧闭|上锁|锁住|锁着|无法打开)|(?:锁头|门锁|锁扣)[^。；！？\n]{0,20}(?:落着灰尘|仍在|完好|锁着)|(?:停在|站在|留在)[^。；！？\n]{0,16}(?:药店)?(?:门外|店外)|(?:退出|退回|回到)[^。；！？\n]{0,12}(?:门外|店外)|正门[^。；！？\n]{0,12}(?:想办法|撬|开门|进入)/.test(allText);
@@ -1400,18 +1431,18 @@ export function validateNarratorSemantics(
   ) {
     return `activeNpc 指向不在当前场景的 ${output.activeNpc}`;
   }
-  if (targetId && targetId !== state.currentScene && output.activeNpc) {
-    const npc = kb.npcs[output.activeNpc]?.public;
+  if (targetId && targetId !== state.currentScene && effectiveActiveNpc) {
+    const npc = kb.npcs[effectiveActiveNpc]?.public;
     const terms = npc
       ? [npc.name, npc.role, ...(npc.aliases ?? [])].filter((term) => term.length >= 2)
-      : [output.activeNpc];
+      : [effectiveActiveNpc];
     if (!terms.some((term) => output.narrative.includes(term))) {
-      return `切入新场景时必须在正文中明确识别活动 NPC：${output.activeNpc}`;
+      return `切入新场景时必须在正文中明确识别活动 NPC：${effectiveActiveNpc}`;
     }
   }
   const appearanceConflict = activeNpcAppearanceConflict(
     output.narrative,
-    output.activeNpc,
+    effectiveActiveNpc,
     outputSceneId,
     kb
   );

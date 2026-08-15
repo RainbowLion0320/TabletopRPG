@@ -1650,6 +1650,38 @@ describe('turnGuards', () => {
     }, [], state, kb)).toMatch(/人物外貌.*老赫特之家酒保/);
   });
 
+  it('audits the resident NPC that the UI will focus when a transition returns null', () => {
+    const state = makeState({ currentScene: 'S02', activeNpcName: '洛夫·蒙特利尔' });
+    const sceneCall = [{
+      name: 'propose_scene_change' as const,
+      arguments: { targetSceneId: 'S03', reason: '玩家前往酒吧' }
+    }];
+
+    expect(validateNarratorSemantics({
+      narrative: '你们抵达老赫特酒吧，吧台后站着一个身材粗壮的酒保，正用脏毛巾擦拭玻璃杯。',
+      activeNpc: null,
+      nextPrompt: '如何询问？',
+      playerChoices: {}
+    }, sceneCall, state, kb)).toMatch(/人物外貌.*老赫特之家酒保/);
+    expect(validateNarratorSemantics({
+      narrative: '你们抵达老赫特酒吧，清瘦的中年酒保在吧台后擦拭酒杯，下巴刮得干净。',
+      activeNpc: null,
+      nextPrompt: '如何询问？',
+      playerChoices: {}
+    }, sceneCall, state, kb)).toBeNull();
+  });
+
+  it('audits a same-scene NPC retained because null output still narrates them', () => {
+    const state = makeState({ currentScene: 'S03', activeNpcName: '老赫特之家酒保' });
+
+    expect(validateNarratorSemantics({
+      narrative: '老赫特酒保粗壮的手臂撑在吧台上，浓密胡须沾着酒沫。',
+      activeNpc: null,
+      nextPrompt: '继续交谈。',
+      playerChoices: {}
+    }, [], state, kb)).toMatch(/人物外貌.*老赫特之家酒保/);
+  });
+
   it('rejects invented weapons, unsafe medical advice and arrival without state change', () => {
     const state = makeState({ currentScene: 'S01' });
     expect(validateNarratorSemantics({
@@ -1711,6 +1743,23 @@ describe('turnGuards', () => {
     expect(validateNarratorSemantics({
       narrative: '蒙特利尔冷冷地拒绝回答。', activeNpc: '洛夫·蒙特利尔', nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/activeNpc|提前点名蒙特利尔/);
+  });
+
+  it('rejects an unregistered staff member who actively guides a scene transition', () => {
+    const state = makeState({ currentScene: 'S01', activeNpcName: '伊莎贝拉·摩勒' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.knownFactIds = ['F05'];
+    const sceneCall = [{
+      name: 'propose_scene_change' as const,
+      arguments: { targetSceneId: 'S02', reason: '玩家前往警局' }
+    }];
+
+    expect(validateNarratorSemantics({
+      narrative: '你们抵达上城区第二分局，前台值班警员将你们引至二楼局长办公室，蒙特利尔局长冷淡地抬起头。',
+      activeNpc: null,
+      nextPrompt: '如何质询？',
+      playerChoices: {}
+    }, sceneCall, state, kb)).toMatch(/当前场景没有已登记的警员/);
   });
 
   it('requires the authored bartender event before revealing the rat lead', () => {

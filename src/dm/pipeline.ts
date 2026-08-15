@@ -107,6 +107,7 @@ function buildSemanticFallbackChoices(
   progress = getScenarioProgressForState(state)
 ): Record<string, string[]> {
   const campaignBeat = getActiveScenarioBeat(progress);
+  const localBeat = getActiveScenarioBeat(progress, sceneId);
   const exits = getAvailableSceneExits(progress, sceneId)
     .sort((left, right) => {
       const leftIsCurrentTarget = Number(campaignBeat?.sceneIds.includes(left.sceneId) ?? false);
@@ -140,6 +141,13 @@ function buildSemanticFallbackChoices(
     ? `请${activeNpcName}只核对已经确认的事实`
     : '继续观察当前环境';
   return Object.fromEntries(state.players.map((player, index) => {
+    if (!localBeat && exits.length) {
+      return [player.name, [
+        ...priorityDestinations,
+        ...otherDestinations,
+        '整理已经发现的线索，决定下一步行动'
+      ].filter((choice, choiceIndex, all) => all.indexOf(choice) === choiceIndex).slice(0, 3)];
+    }
     const orderedActions = authoredActions.length
       ? [...authoredActions.slice(index), ...authoredActions.slice(0, index)]
       : [localAction];
@@ -883,7 +891,10 @@ export async function runDmTurn(
     0,
     (finaleEncounterDefinition?.count ?? 0) - (finaleEncounter?.defeated ?? 0)
   );
-  const choiceSource = Object.keys(narrator.playerChoices).length
+  const hasActiveLocalBeat = Boolean(getActiveScenarioBeat(projectedTransition.progress, targetScene));
+  const shouldLeaveCompletedScene = !hasActiveLocalBeat
+    && getAvailableSceneExits(projectedTransition.progress, targetScene).length > 0;
+  const choiceSource = !shouldLeaveCompletedScene && Object.keys(narrator.playerChoices).length
     ? narrator.playerChoices
     : buildSemanticFallbackChoices(
         input.state,

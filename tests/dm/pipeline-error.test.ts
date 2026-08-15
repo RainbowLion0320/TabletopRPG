@@ -774,6 +774,48 @@ describe('runDmTurn error classification', () => {
     expect(output.legacyResponse.playerChoices?.亨利).not.toContain('前往卡森其药店继续调查');
   });
 
+  it('replaces stale NPC choices after a check continuation completes the local beat', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(JSON.stringify({
+      narrative: '蒙特利尔回避关键问题，并冷淡地结束了会面。',
+      activeNpc: '洛夫·蒙特利尔',
+      nextPrompt: '还要追问什么？',
+      playerChoices: {
+        亨利: [
+          '出示合影并请蒙特利尔解释已知关系',
+          '观察蒙特利尔回答时的神态与停顿',
+          '继续追问警方调查记录'
+        ]
+      }
+    }))));
+    const state = makeState({
+      players: [makeInvestigator({ id: 'henry', name: '亨利' })],
+      currentScene: 'S02',
+      activeNpcName: '洛夫·蒙特利尔'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B03 = 'active';
+    state.scenarioProgress.beatStates.B04 = 'active';
+    state.scenarioProgress.beatStates.B05 = 'active';
+    state.scenarioProgress.objectiveStates.O03 = 'active';
+    state.scenarioProgress.knownFactIds = ['F05', 'F06'];
+    state.scenarioProgress.variables.oldHethLead = true;
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [
+        { player: '亨利', action: '出示合影，请蒙特利尔解释他与埃里克的关系。' },
+        { player: '亨利', action: '观察蒙特利尔看到合影时的神态和停顿。' },
+        { player: '亨利', action: '【检定结果】亨利 的 心理学检定：掷出 96，阈值 32，结果：大失败。' }
+      ]
+    });
+
+    expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_MEET_MONTREAL');
+    expect(output.legacyResponse.playerChoices?.亨利).toContain('前往卡森其药店继续调查');
+    expect(output.legacyResponse.playerChoices?.亨利?.some((choice) => /蒙特利尔|继续追问/.test(choice))).toBe(false);
+  });
+
   it('prioritizes the destination of the active mandatory beat in semantic fallback choices', async () => {
     const invalidDiscovery = JSON.stringify({
       narrative: '亨利在桌面上又发现了一张便签。',
