@@ -216,9 +216,31 @@ describe('callNarrator retry repair', () => {
       history: []
     });
 
-    expect(output.narrative).toBe('酒保压低声音，说街坊管那里叫"老鼠洞"。夜里没人愿意靠近。" 罗伯特收起硬币。');
+    expect(output.narrative).toBe('酒保压低声音，说街坊管那里叫"老鼠洞"。夜里没人愿意靠近。 罗伯特收起硬币。');
     expect(output.playerChoices.亨利).toEqual(['询问"老鼠洞"的来历']);
     expect(output.narrative).not.toContain('\\');
+  });
+
+  it('removes an unmatched quote left before a linked narrative keyword', async () => {
+    const content = JSON.stringify({
+      narrative: '油布包里的地图标注了港口泊位，旁边写着"扶桑花号"。这张"地图很可能是撤离者遗留的。',
+      activeNpc: null,
+      nextPrompt: '继续调查。',
+      playerChoices: { 亨利: ['收好地图'] },
+      keywords: []
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(content)));
+
+    const output = await callNarrator(config, {
+      ctx,
+      actions: [{ player: '亨利', action: '检查油布包。' }],
+      mode: 'together',
+      history: []
+    });
+
+    expect(output.narrative).toBe(
+      '油布包里的地图标注了港口泊位，旁边写着"扶桑花号"。这张地图很可能是撤离者遗留的。'
+    );
   });
 
   it('sends a response that local repair cannot validate back on the Responses retry', async () => {

@@ -501,8 +501,15 @@ function coerceStringArray(v: unknown): string[] {
   return v.flatMap((x) => typeof x === 'string' && x.trim() ? [normalizeModelText(x)] : []).slice(0, 3);
 }
 
+function removeLastUnpairedDoubleQuote(value: string): string {
+  const quoteIndexes = [...value.matchAll(/"/g)].map((match) => match.index ?? -1);
+  if (quoteIndexes.length % 2 === 0) return value;
+  const lastQuote = quoteIndexes[quoteIndexes.length - 1] ?? -1;
+  return lastQuote < 0 ? value : `${value.slice(0, lastQuote)}${value.slice(lastQuote + 1)}`;
+}
+
 function normalizeModelText(value: string): string {
-  return value
+  const normalized = value
     .trim()
     .replace(/\\+(["'])/g, '$1')
     .replace(/'"([^'"\n]{1,40})"'/g, '"$1"')
@@ -512,6 +519,7 @@ function normalizeModelText(value: string): string {
     .replace(/\*\*([^*\n]+)\*\*/g, '$1')
     .replace(/__([^_\n]+)__/g, '$1')
     .replace(/`([^`\n]+)`/g, '$1');
+  return removeLastUnpairedDoubleQuote(normalized);
 }
 
 function coercePlayerChoices(v: unknown, playerNames: string[]): Record<string, string[]> {

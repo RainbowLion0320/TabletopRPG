@@ -172,6 +172,36 @@ describe('turnGuards', () => {
     expect(buildRequiredCheck(actions, armed)).toBeNull();
   });
 
+  it('keeps an explicit finale route choice ahead of a companion observation', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利·格雷' }, { 侦查: 75 }),
+        makeInvestigator({ name: '罗伯特·肖', equipment: ['警用左轮手枪'] }, {
+          侦查: 50,
+          '射击（手枪）': 60
+        })
+      ],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    const actions = [
+      { player: '亨利·格雷', action: '观察埃里克、交涉代表和甲板守卫的当前状态' },
+      { player: '罗伯特·肖', action: '选择以武力阻止深潜者带走埃里克' }
+    ];
+
+    expect(inferStoryEventsFromActions(actions, state)).toEqual([
+      expect.objectContaining({
+        arguments: expect.objectContaining({ eventId: 'EV_CHOOSE_COMBAT' })
+      })
+    ]);
+    expect(inferStoryEventActor(actions, state, 'EV_CHOOSE_COMBAT')).toBe('罗伯特·肖');
+    expect(buildRequiredCheck(actions, state)).toBeNull();
+  });
+
   it('does not make legal travel depend on a risky follow-up observation', () => {
     const state = makeState({
       players: [

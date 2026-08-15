@@ -19,6 +19,7 @@ import {
 import { resolveActiveNpcForScene } from '../state/sceneFocus';
 
 const DICE_RESULT_RE = /【检定结果】|结果[：:]\s*(?:失败|大失败|成功|困难成功|极难成功|大成功)/;
+const COMBAT_ROUTE_SELECTION_RE = /(?:选择|决定|明确)(?:以|使用|采取)?[^，。；！？\n]{0,8}武力[^，。；！？\n]{0,16}(?:阻止|拦截|对抗)[^，。；！？\n]{0,16}(?:深潜者|扶桑花号)|(?:以|使用|采取)武力[^，。；！？\n]{0,16}(?:阻止|拦截|对抗)[^，。；！？\n]{0,16}(?:深潜者|扶桑花号)/;
 const MOVE_VERB_RE = /前往|赶往|去往|转往|转向|走向|改去|改从|出发|动身|返回|回到|离开|进入|走进|登上|开车|驾车|驱车|驶向|跟随|追到|抵达|到达/;
 const MOVE_DESTINATION_RE = /前往|赶往|去往|转往|转向|走向|改去|改从|驶向|追到|抵达|到达|进入|登上|回到|返回|去(?!向|处|路|年)/;
 const NPC_ROLE_TERMS = [
@@ -122,6 +123,11 @@ export function buildRequiredCheck(actions: PlayerAction[], state: GameState): C
     return null;
   }
   const kb = getActiveKnowledgeBase();
+  const storyCall = inferStoryEventFromActions(actions, state);
+  const storyEventId = String(storyCall?.arguments.eventId ?? '');
+  if (storyEventId === 'EV_CHOOSE_COMBAT' || storyEventId === 'EV_CHOOSE_NEGOTIATION') {
+    return null;
+  }
   const targetedItems = explicitlyTargetedScenarioItemActions(actions, state, kb);
   if (targetedItems.length) {
     const authoredCheck = targetedItems.find(({ item }) => item.discovery.difficulty !== '自动');
@@ -133,7 +139,6 @@ export function buildRequiredCheck(actions: PlayerAction[], state: GameState): C
       reason: `调查作者线索 ${authoredCheck.item.name}`
     };
   }
-  const storyCall = inferStoryEventFromActions(actions, state);
   let authoredEvent: ReturnType<typeof getAvailableStoryEvents>[number] | undefined;
   if (storyCall) {
     const eventId = String(storyCall.arguments.eventId ?? '');
@@ -236,6 +241,11 @@ export function inferStoryEventsFromActions(
   const available = new Set(
     getAvailableStoryEvents(getScenarioProgressForState(state), state.currentScene).map((event) => event.id)
   );
+  const legacy = inferStoryEventFromActions(actions, state);
+  const legacyEventId = String(legacy?.arguments.eventId ?? '');
+  if (legacy && (legacyEventId === 'EV_CHOOSE_COMBAT' || legacyEventId === 'EV_CHOOSE_NEGOTIATION')) {
+    return [legacy];
+  }
   const failed = actionIsFailedCheck(actions);
   const clueCalls = explicitlyTargetedScenarioItems(actions, state, kb).flatMap((item) => {
     const eventId = failed ? item.discovery.failureEventId : item.discovery.successEventId;
@@ -250,7 +260,6 @@ export function inferStoryEventsFromActions(
     }] : [];
   });
   if (clueCalls.length) return clueCalls;
-  const legacy = inferStoryEventFromActions(actions, state);
   return legacy ? [legacy] : [];
 }
 
@@ -271,6 +280,12 @@ export function inferStoryEventActor(
       .filter(({ score }) => score > 0)
       .sort((left, right) => right.score - left.score || left.index - right.index);
     if (combatActors.length) return combatActors[0].action.player;
+    if (eventId === 'EV_CHOOSE_COMBAT') {
+      const routeActor = actions.find((action) =>
+        hasAffirmativeMatch(action.action, COMBAT_ROUTE_SELECTION_RE)
+      );
+      if (routeActor) return routeActor.player;
+    }
   }
   return actions.find((action) => inferStoryEventsFromActions([action], state, kb)
     .some((call) => call.arguments.eventId === eventId))?.player ?? null;
@@ -283,6 +298,10 @@ export function combatCheckSkillForActor(
 ): string {
   const action = actions.find((candidate) => candidate.player === actorName)?.action ?? '';
   const actor = state.players.find((candidate) => candidate.name === actorName);
+  if (hasAffirmativeMatch(action, COMBAT_ROUTE_SELECTION_RE)) {
+    const hasHandgun = actor?.equipment?.some((item) => /手枪|左轮枪/.test(item)) ?? false;
+    if (hasHandgun && actor?.skills['射击（手枪）']) return '射击（手枪）';
+  }
   if (!actionUsesHandgun(action)) return '格斗（拳）';
   const hasHandgun = actor?.equipment?.some((item) => /手枪|左轮枪/.test(item)) ?? false;
   return hasHandgun && Boolean(actor?.skills['射击（手枪）'])
@@ -562,7 +581,9 @@ export function inferStoryEventFromActions(
     const isCombatEvent = eventId === 'EV_COMBAT_ATTACK' || eventId === 'EV_CHOOSE_COMBAT';
     const matchesAction = isCombatEvent
       ? actions.some((action) => !DICE_RESULT_RE.test(action.action)
-        && combatActorScore(action, state) > 0)
+        && (combatActorScore(action, state) > 0
+          || (eventId === 'EV_CHOOSE_COMBAT'
+            && hasAffirmativeMatch(action.action, COMBAT_ROUTE_SELECTION_RE))))
       : actions.some((action) =>
         !DICE_RESULT_RE.test(action.action)
         && hasAffirmativeMatch(action.action, pattern)

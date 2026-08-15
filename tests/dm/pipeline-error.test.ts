@@ -153,6 +153,50 @@ describe('runDmTurn error classification', () => {
     }));
   });
 
+  it('does not lose a finale combat choice when a companion observes the deck', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利·格雷' }, { 侦查: 75 }),
+        makeInvestigator({ name: '罗伯特·肖', equipment: ['警用左轮手枪'] }, {
+          侦查: 50,
+          '射击（手枪）': 60
+        })
+      ],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [
+        { player: '亨利·格雷', action: '观察埃里克、交涉代表和甲板守卫的当前状态' },
+        { player: '罗伯特·肖', action: '选择以武力阻止深潜者带走埃里克' }
+      ]
+    });
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: output.legacyResponse,
+      raw: output.raw,
+      actorName: output.actorName
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(output.actorName).toBe('罗伯特·肖');
+    expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_CHOOSE_COMBAT');
+    expect(next.pendingCheck).toEqual(expect.objectContaining({
+      player: '罗伯特·肖',
+      skill: '射击（手枪）',
+      threshold: 60,
+      scenarioCheckId: 'CHECK_COMBAT'
+    }));
+  });
+
   it('uses the declared firearm skill for an equipped combat actor', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
