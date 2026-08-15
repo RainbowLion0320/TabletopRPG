@@ -275,6 +275,49 @@ describe('runDmTurn error classification', () => {
     }));
   });
 
+  it('keeps initial combat on the investigator who opens fire when a companion only declares and covers the route', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利·格雷' }, { '格斗（拳）': 50 }),
+        makeInvestigator({ name: '罗伯特·肖', equipment: ['警用左轮手枪'] }, {
+          '格斗（拳）': 70,
+          '射击（手枪）': 60
+        })
+      ],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [
+        {
+          player: '亨利·格雷',
+          action: '明确选择武力路线阻止深潜者离港；亨利留在掩体后观察埃里克，不在本轮攻击，只为罗伯特提供掩护。'
+        },
+        {
+          player: '罗伯特·肖',
+          action: '拔出警用左轮手枪，明确以武力阻止扶桑花号离港，瞄准一名深潜者开火，避免误伤埃里克。'
+        }
+      ]
+    });
+    const next = gameReducer(state, {
+      type: 'applyAiResponse', response: output.legacyResponse, raw: output.raw, actorName: output.actorName
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(output.actorName).toBe('罗伯特·肖');
+    expect(next.pendingCheck).toEqual(expect.objectContaining({
+      player: '罗伯特·肖', skill: '射击（手枪）', threshold: 60, scenarioCheckId: 'CHECK_COMBAT'
+    }));
+  });
+
   it('requests the check from the actual attacker when a companion explicitly only covers them', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);

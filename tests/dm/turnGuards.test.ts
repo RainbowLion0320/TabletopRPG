@@ -500,6 +500,38 @@ describe('turnGuards', () => {
     expect(inferStoryEventActor(actions, state, 'EV_COMBAT_ATTACK')).toBe('亨利·格雷');
   });
 
+  it('assigns initial combat to the investigator who opens fire instead of the route caller', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利·格雷' }, { '格斗（拳）': 50 }),
+        makeInvestigator({ name: '罗伯特·肖', equipment: ['警用左轮手枪'] }, {
+          '格斗（拳）': 70,
+          '射击（手枪）': 60
+        })
+      ],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+
+    const actions = [
+      {
+        player: '亨利·格雷',
+        action: '明确选择武力路线阻止深潜者离港；亨利留在掩体后观察埃里克，不在本轮攻击，只为罗伯特提供掩护。'
+      },
+      {
+        player: '罗伯特·肖',
+        action: '拔出警用左轮手枪，明确以武力阻止扶桑花号离港，瞄准一名深潜者开火，避免误伤埃里克。'
+      }
+    ];
+
+    expect(inferStoryEventFromActions(actions, state)?.arguments.eventId).toBe('EV_CHOOSE_COMBAT');
+    expect(inferStoryEventActor(actions, state, 'EV_CHOOSE_COMBAT')).toBe('罗伯特·肖');
+  });
+
   it('does not create a combat event from a support-only reference to another attacker', () => {
     const state = makeState({
       players: [
