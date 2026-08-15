@@ -1497,6 +1497,32 @@ describe('turnGuards', () => {
     }], state, kb)).toBeNull();
   });
 
+  it('rejects rib injuries and HP loss after an ordinary finale combat failure', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利·格雷' }),
+        makeInvestigator({ name: '罗伯特·肖' })
+      ],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    const output = {
+      narrative: '亨利冲向一名深潜者挥拳，但对方鳞片湿滑，拳头滑开，反击的蹼爪划过他的肋部，留下一道血痕。',
+      nextPrompt: '', playerChoices: {}
+    };
+    const actions = [{
+      player: '亨利·格雷',
+      action: '【检定结果】亨利·格雷 的 格斗（拳）检定：掷出 91，结果：失败。'
+    }];
+
+    expect(validateNarratorSemantics(output, [], state, kb, actions)).toMatch(/普通战斗检定失败只推进逃脱时钟/);
+    expect(validateNarratorSemantics(output, [{
+      name: 'propose_state_update', arguments: { hp: { '亨利·格雷': -1 } }
+    }], state, kb, actions)).toMatch(/只有大失败/);
+  });
+
   it('does not replace a declared light with an investigator background item', () => {
     const ada = makeInvestigator({
       name: '艾达',

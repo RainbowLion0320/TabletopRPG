@@ -671,7 +671,7 @@ function narrativeHarmsPlayer(narrative: string, playerName: string): boolean {
     `${player}[^，。；！？\\n]{0,8}(?:没有|并未|未曾|未)(?:受到|遭受)?[^，。；！？\\n]{0,4}(?:受伤|流血|渗血|出血|骨折|伤口|血痕|剧痛)[^，。；！？\\n]*`,
     'g'
   ), '');
-  const bodyPart = '(?:头|脸|颈|肩|胸|背|腰|腹|手|手臂|前臂|小臂|手掌|手指|指尖|虎口|腿|膝|脚|皮肤)';
+  const bodyPart = '(?:头|脸|颈|肩|胸|背|腰|腹|肋|肋部|肋骨|手|手臂|前臂|小臂|手掌|手指|指尖|虎口|腿|膝|脚|皮肤)';
   const injury = '(?:击中|打中|砸中|撞上|划伤|抓伤|刺伤|咬伤|撕伤|撕裂|砍伤|中弹|受伤|流血|渗血|出血|鲜血|骨折|伤口|旧伤|血口|血痕|血丝|剧痛|划出.{0,6}(?:伤口|血口|血痕|细痕))';
   const direct = new RegExp(
     `${player}(?:的?${bodyPart})?(?:被|受到|遭到|挨(?:了)?|中(?:了)?)[^，。；！？\\n]{0,18}${injury}`
@@ -1276,6 +1276,17 @@ export function validateNarratorSemantics(
     }
     return deltas;
   }, {});
+  const ordinaryFailedFinaleCombatCheck = state.currentScene === 'S05'
+    && progress.variables.finaleRoute === 'combat'
+    && actions.some((action) =>
+      /【检定结果】[\s\S]*结果[：:]\s*失败/.test(action.action)
+    );
+  if (
+    ordinaryFailedFinaleCombatCheck
+    && (harmedPlayers.length > 0 || Object.values(hpDeltas).some((delta) => delta < 0))
+  ) {
+    return '终幕普通战斗检定失败只推进逃脱时钟，不得叙述或提交调查员伤害；只有大失败才由结构化事件扣除 HP';
+  }
   const uncommittedHarm = harmedPlayers.find((player) => !(hpDeltas[player.name] < 0));
   if (uncommittedHarm) {
     return `正文写明${uncommittedHarm.name}受到实际伤害时，必须同步调用 propose_state_update 写入负 HP`;
