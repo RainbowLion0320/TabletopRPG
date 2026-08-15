@@ -3,6 +3,7 @@ import { isAffirmativeCombatAction } from './actionIntent';
 
 const NEGOTIATION_RE = /谈判|交涉|谈条件|和平离港|交换条件|(?:听清|聆听|倾听|理解|回应)[^，。；！？\n]{0,16}(?:诉求|条件)/;
 const PREMATURE_RESCUE_RE = /救出埃里克|释放埃里克|(?:冲向|奔向|靠近)[^，。；！？\n]{0,12}埃里克[^，。；！？\n]{0,12}(?:解救|营救|救援)|(?:解救|营救|救援)[^，。；！？\n]{0,12}埃里克|(?:解开|割断|剪断|挣脱)[^，。；！？\n]{0,16}(?:绳|束缚|绑缚)|(?:带|护送|扶着|搀扶)[^，。；！？\n]{0,12}埃里克[^，。；！？\n]{0,12}(?:离开|撤离|下船|码头)/;
+const ROUTE_META_INSTRUCTION_RE = /(?:选择|决定|明确)[^，。；！？\n]{0,24}(?:战斗|武力|阻止深潜者)[^，。；！？\n]{0,16}(?:或|还是)[^，。；！？\n]{0,16}(?:交涉|谈判)|(?:选择|决定|明确)[^，。；！？\n]{0,24}(?:交涉|谈判)[^，。；！？\n]{0,16}(?:或|还是)[^，。；！？\n]{0,16}(?:战斗|武力)/;
 
 export function investigatorCanAttack(player: Investigator): boolean {
   const hasWeapon = (player.equipment ?? [])
@@ -17,6 +18,9 @@ export function isFinaleChoiceCompatible(
   remainingOpponents: number,
   canAttack: boolean | null = null
 ): boolean {
+  if (route !== 'combat' && route !== 'negotiation' && ROUTE_META_INSTRUCTION_RE.test(choice)) {
+    return false;
+  }
   if (route === 'combat') {
     if (NEGOTIATION_RE.test(choice)) return false;
     if (remainingOpponents > 0) {
@@ -86,7 +90,7 @@ export function buildFinaleSuggestions(
     return [player.id, [
       '选择暂缓攻击，与深潜者代表进行交涉',
       '选择以武力阻止深潜者带走埃里克',
-      '先确认埃里克的处境，再明确选择战斗或交涉'
+      '观察埃里克、交涉代表和甲板守卫的当前状态'
     ]];
   }));
 }

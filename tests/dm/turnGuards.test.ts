@@ -1509,6 +1509,22 @@ describe('turnGuards', () => {
     expect(result.亨利).toHaveLength(3);
   });
 
+  it('removes finale objective text that describes two routes instead of taking an action', () => {
+    const players = [makeInvestigator({ id: 'henry', name: '亨利' })];
+    const result = sanitizePlayerChoices({
+      亨利: [
+        '在扶桑花号上选择阻止深潜者或尝试交涉。',
+        '决定以战斗还是交涉解决当前局面',
+        '观察埃里克、交涉代表和甲板守卫的当前状态'
+      ]
+    }, new Set(), kb, 'S05', 'undecided', 4, players);
+
+    expect(result.亨利).not.toContain('在扶桑花号上选择阻止深潜者或尝试交涉。');
+    expect(result.亨利).not.toContain('决定以战斗还是交涉解决当前局面');
+    expect(result.亨利).toContain('选择暂缓攻击，与深潜者代表进行交涉');
+    expect(result.亨利).toHaveLength(3);
+  });
+
   it('removes indirect negotiation suggestions after the combat route is locked', () => {
     const players = [makeInvestigator({ id: 'thomas', name: '托马斯', equipment: [] })];
     const result = sanitizePlayerChoices({

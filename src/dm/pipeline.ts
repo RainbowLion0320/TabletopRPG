@@ -22,7 +22,6 @@ import {
   getActiveScenarioBeat,
   getScenarioDefinition,
   getScenarioProgressForState,
-  getVisibleScenarioObjectives,
   npcIdFromName,
   processScenarioTurn
 } from '../scenario/engine';
@@ -65,6 +64,7 @@ import {
 } from './turnGuards';
 import { DEFAULT_MEMORY_OPTIONS } from './types';
 import { defaultActiveNpcForScene, resolveActiveNpcForScene } from '../state/sceneFocus';
+import { buildFinaleSuggestions } from '../services/finaleChoices';
 import type {
   DmBackgroundUpdate,
   DmMemoryUpdate,
@@ -126,15 +126,24 @@ function buildSemanticFallbackChoices(
     .filter((exit) => !campaignBeat?.sceneIds.includes(exit.sceneId))
     .map(destinationFor)
     .filter((choice): choice is string => Boolean(choice));
-  const finaleObjectives = campaignBeat?.kind === 'finale'
-    && campaignBeat.sceneIds.includes(sceneId)
-    ? getVisibleScenarioObjectives(progress)
-      .filter((objective) =>
-        objective.beatId === campaignBeat.id
-        && progress.objectiveStates[objective.id] === 'active'
-      )
-      .map((objective) => objective.playerText)
-    : [];
+  if (campaignBeat?.kind === 'finale' && campaignBeat.sceneIds.includes(sceneId)) {
+    const encounter = progress.encounters.ENC01;
+    const encounterDefinition = getScenarioDefinition().world.encounters
+      .find((item) => item.id === 'ENC01');
+    const remainingOpponents = Math.max(
+      0,
+      (encounterDefinition?.count ?? 0) - (encounter?.defeated ?? 0)
+    );
+    const finaleChoices = buildFinaleSuggestions(
+      state.players,
+      progress.variables.finaleRoute,
+      remainingOpponents
+    );
+    return Object.fromEntries(state.players.map((player) => [
+      player.name,
+      finaleChoices[player.id] ?? []
+    ]));
+  }
   const authoredActions = getScenarioDefinition().presentation.sceneSuggestions
     .find((entry) => entry.sceneId === sceneId)?.actions ?? [];
   const localAction = activeNpcName
@@ -152,7 +161,6 @@ function buildSemanticFallbackChoices(
       ? [...authoredActions.slice(index), ...authoredActions.slice(0, index)]
       : [localAction];
     return [player.name, [
-      ...finaleObjectives,
       ...priorityDestinations,
       ...orderedActions,
       ...otherDestinations,

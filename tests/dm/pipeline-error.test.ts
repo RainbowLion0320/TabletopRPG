@@ -951,6 +951,40 @@ describe('runDmTurn error classification', () => {
     expect(output.legacyResponse.playerChoices?.亨利).not.toContain('应对浓雾与追兵，找到扶桑花号的位置。');
   });
 
+  it('uses executable route choices instead of finale objective text in semantic fallback', async () => {
+    const invalid = JSON.stringify({
+      narrative: '更多深潜者从船舱涌上甲板，已经把调查员团团包围。',
+      activeNpc: '扶桑花号交涉代表',
+      nextPrompt: '决定终幕路线。',
+      playerChoices: { 亨利: ['在扶桑花号上选择阻止深潜者或尝试交涉。'] }
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(invalid)));
+    const state = makeState({
+      players: [makeInvestigator({ id: 'henry', name: '亨利' })],
+      currentScene: 'S05',
+      activeNpcName: '扶桑花号交涉代表'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [{ player: '亨利', action: '原地整理已经确认的线索记录。' }]
+    });
+
+    expect(output.legacyResponse.playerChoices?.亨利).toEqual([
+      '选择暂缓攻击，与深潜者代表进行交涉',
+      '选择以武力阻止深潜者带走埃里克',
+      '观察埃里克、交涉代表和甲板守卫的当前状态'
+    ]);
+    expect(output.legacyResponse.playerChoices?.亨利).not.toContain(
+      '在扶桑花号上选择阻止深潜者或尝试交涉。'
+    );
+  });
+
   it('uses authored pre-roll narration without calling the model for a scenario check', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
