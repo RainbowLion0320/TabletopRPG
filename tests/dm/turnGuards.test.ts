@@ -1360,6 +1360,30 @@ describe('turnGuards', () => {
     }, [], state, kb)).toMatch(/仅结算3名|不得提前宣告最后一名/);
   });
 
+  it('rejects combat narration that understates the structured remaining count', () => {
+    const state = makeState({ currentScene: 'S05' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.encounters.ENC01.defeated = 2;
+
+    expect(validateNarratorSemantics({
+      narrative: '两名深潜者已经倒地，挟持埃里克的最后一名深潜者仍在抵抗。',
+      activeNpc: '扶桑花号交涉代表', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/宣称仅剩1名.*尚有2名/);
+
+    expect(validateNarratorSemantics({
+      narrative: '甲板上只剩一名深潜者，它正挟持着埃里克。',
+      activeNpc: '扶桑花号交涉代表', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/宣称仅剩1名.*尚有2名/);
+
+    state.scenarioProgress.encounters.ENC01.defeated = 3;
+    expect(validateNarratorSemantics({
+      narrative: '挟持埃里克的最后一名深潜者仍在抵抗。',
+      activeNpc: '扶桑花号交涉代表', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toBeNull();
+  });
+
   it('keeps a locked combat finale from inventing negotiation or reinforcements', () => {
     const state = makeState({ currentScene: 'S05', activeNpcName: '扶桑花号交涉代表' });
     state.scenarioProgress = createScenarioProgress();
