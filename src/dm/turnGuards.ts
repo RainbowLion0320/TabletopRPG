@@ -1193,6 +1193,16 @@ export function validateNarratorSemantics(
   ) {
     return '没有结构化战斗命中时，正文不得把玩家自述的倒地深潜者当作既成战果';
   }
+  const clearsUnresolvedCombat = /(?:敌人|深潜者们?|鱼人们?)(?:的)?[^。；！？\n]{0,16}(?:抵抗|威胁)[^。；！？\n]{0,12}(?:已经|已|彻底|终于)?(?:瓦解|结束|解除|消失|停止)|(?:抵抗|战斗|冲突)[^。；！？\n]{0,16}(?:已经|已|彻底|终于)(?:瓦解|结束|平息)|甲板上[^。；！？\n]{0,24}(?:再无|没有)[^。；！？\n]{0,12}(?:抵抗|敌人|深潜者)/.test(output.narrative);
+  const removesAllRemainingOpponents = /(?:剩余|余下|还在抵抗)[^。；！？\n]{0,24}(?:深潜者|守卫|看守|鱼人)[^。；！？\n]{0,160}(?:纷纷|全部|全都|尽数)[^。；！？\n]{0,48}(?:跳入|逃入|躲入|退入|撤入|逃走|逃离|撤退|散去)|(?:剩余|余下)[^。；！？\n]{0,20}(?:深潜者|守卫|看守|鱼人)[^。；！？\n]{0,160}(?:有的[^。；！？\n]{0,32}){2}/.test(output.narrative);
+  if (
+    progress.variables.finaleRoute === 'combat'
+    && progress.encounters.ENC01?.state === 'active'
+    && structuredRemaining > 0
+    && (clearsUnresolvedCombat || removesAllRemainingOpponents)
+  ) {
+    return `结构化遭遇尚有${structuredRemaining}名深潜者，正文不得提前让剩余敌人全员撤退或宣告抵抗瓦解`;
+  }
   const inventsDeepOneReinforcements = /(?:船舱|舱口)[^。；！？\n]{0,32}(?:(?:还有|藏着|聚集着)[^。；！？\n]{0,12}(?:族人|深潜者|灰绿色[^。；！？\n]{0,4}身影)|(?:更多|大批|成群)[^。；！？\n]{0,8}(?:族人|深潜者|灰绿色[^。；！？\n]{0,4}身影)[^。；！？\n]{0,8}(?:涌出|冲出|出现))|(?:更多|大批|成群)[^。；！？\n]{0,20}(?:族人|深潜者|身影)[^。；！？\n]{0,12}(?:船舱|舱口)[^。；！？\n]{0,8}(?:涌出|冲出|出现)/.test(output.narrative);
   if (state.currentScene === 'S05' && inventsDeepOneReinforcements) {
     return '结构化遭遇已限定深潜者总数，正文不得虚构船舱援军或额外敌人';
@@ -1320,7 +1330,7 @@ export function validateNarratorSemantics(
     || proposedEvents.some((event) => eventAuthorizesOutcome(event, 'rescue'));
   const endingAuthorized = Boolean(progress.endingId)
     || proposedEvents.some((event) => eventAuthorizesOutcome(event, 'ending'));
-  const claimsRescue = /埃里克[^。；！？\n]{0,20}(?:获救|被救出|被释放|脱困|离开船舱|离开扶桑花号|踏上码头|到了码头)|(?:获救的|被救出的|被释放的)[^。；！？\n]{0,8}埃里克|(?:救出|释放)[^。；！？\n]{0,12}埃里克|(?:割断|剪断|解开|扯开|挣开)[^。；！？\n]{0,20}(?:绳|绳索|绳结|绑缚|束缚)|(?:扶起|搀扶|架住|护送|带着)[^。；！？\n]{0,20}埃里克[^。；！？\n]{0,28}(?:离开|撤离|下船|甲板|栈桥|码头)/.test(output.narrative);
+  const claimsRescue = /埃里克[^。；！？\n]{0,20}(?:获救|被救出|被释放|脱困|挣脱|摆脱控制|脱离挟持|离开船舱|离开扶桑花号|踏上码头|到了码头|扑向(?:亨利|艾达|托马斯|罗伯特|调查员))|(?:获救的|被救出的|被释放的)[^。；！？\n]{0,8}埃里克|(?:救出|释放|放开|松开)[^。；！？\n]{0,12}埃里克|(?:割断|剪断|解开|扯开|挣开)[^。；！？\n]{0,20}(?:绳|绳索|绳结|绑缚|束缚)|(?:扶起|搀扶|架住|护送|带着)[^。；！？\n]{0,20}埃里克[^。；！？\n]{0,28}(?:离开|撤离|下船|甲板|栈桥|码头)/.test(output.narrative);
   const claimsDeparture = /扶桑花号[^。；！？\n]{0,24}(?:已(?:经|完全)?(?:离港|脱离泊位)|开始[^。；！？\n]{0,8}脱离泊位|驶离泊位|驶离港口|离开港口|消失在(?:浓雾|雾中|水面))|(?:船身|船体)[^。；！？\n]{0,18}(?:开始|已(?:经|完全)?)?[^。；！？\n]{0,8}脱离泊位|(?:缆绳|系缆)[^。；！？\n]{0,12}(?:崩断|断裂)/.test(output.narrative);
   if ((claimsRescue && !rescueAuthorized) || (claimsDeparture && !endingAuthorized)) {
     return '不得在对应剧情事件结算前宣告权威剧情结果';

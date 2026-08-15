@@ -1687,6 +1687,14 @@ describe('turnGuards', () => {
       narrative: '艾达用剪刀割断绑住埃里克的粗绳，三人扶着他踏上码头。',
       nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/不得在对应剧情事件结算前/);
+    expect(validateNarratorSemantics({
+      narrative: '埃里克趁机挣脱，连滚带爬地扑向亨利。',
+      nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/不得在对应剧情事件结算前/);
+    expect(validateNarratorSemantics({
+      narrative: '包括交涉代表在内，剩余的深潜者纷纷跳入河中或躲进船舱，敌人的抵抗已经瓦解。',
+      nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/尚有1名.*不得提前让剩余敌人全员撤退/);
   });
 
   it('requires an affirmative combat action before advancing the finale battle', () => {
