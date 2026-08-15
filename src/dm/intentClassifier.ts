@@ -224,7 +224,7 @@ export function classifyIntent(actions: PlayerAction[]): ClassifiedIntent {
     if (!text) continue;
     const affirmativeCombat = isAffirmativeCombatAction(text);
     if (affirmativeCombat) {
-      skillSet.add(/(?:开枪|射击|枪击|扣扳机)/.test(text) ? '射击（手枪）' : '格斗（拳）');
+      skillSet.add(/(?:开枪|射击|枪击|扣扳机|开火)/.test(text) ? '射击（手枪）' : '格斗（拳）');
       hasConflict = true;
       intentKind = 'combat';
     }

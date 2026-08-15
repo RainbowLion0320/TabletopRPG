@@ -317,7 +317,8 @@ export function combatCheckSkillForActor(
 }
 
 function actionUsesHandgun(text: string): boolean {
-  return /(?:开枪|射击|枪击|扣(?:下)?扳机)|(?:使用|用|举起|拔出|抽出|掏出|握住)[^，。；！？\n]{0,12}(?:手枪|左轮枪)[^，。；！？\n]{0,12}(?:攻击|开火|射击|枪击|击发)/.test(text);
+  return hasAffirmativeMatch(text, /(?:开枪|射击|枪击|扣(?:下)?扳机|开火)/)
+    || /(?:使用|用|举起|拔出|抽出|掏出|握住)[^，。；！？\n]{0,12}(?:手枪|左轮枪)[^，。；！？\n]{0,12}(?:攻击|射击|枪击|击发)/.test(text);
 }
 
 function combatActorScore(action: PlayerAction, state: GameState): number {

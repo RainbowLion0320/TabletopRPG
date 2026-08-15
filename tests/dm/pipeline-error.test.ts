@@ -441,6 +441,53 @@ describe('runDmTurn error classification', () => {
     }));
   });
 
+  it('keeps a comma-separated open-fire action on the handgun skill in later combat rounds', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利·格雷' }, { '格斗（拳）': 50 }),
+        makeInvestigator({ name: '罗伯特·肖', equipment: ['警用左轮手枪'] }, {
+          '格斗（拳）': 70,
+          '射击（手枪）': 60
+        })
+      ],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.variables.combatRoundStarted = true;
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.clocks.fusangEscape = { value: 2, active: true, visible: true };
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [
+        {
+          player: '亨利·格雷',
+          action: '退回货箱后保护埃里克，不在本轮攻击，只观察甲板并为罗伯特提供掩护。'
+        },
+        {
+          player: '罗伯特·肖',
+          action: '拔出警用左轮手枪，瞄准一名仍在抵抗的深潜者开火，避免误伤埃里克。'
+        }
+      ]
+    });
+    const next = gameReducer(state, {
+      type: 'applyAiResponse', response: output.legacyResponse, raw: output.raw, actorName: output.actorName
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(output.actorName).toBe('罗伯特·肖');
+    expect(next.pendingCheck).toEqual(expect.objectContaining({
+      player: '罗伯特·肖', skill: '射击（手枪）', threshold: 60, scenarioCheckId: 'CHECK_COMBAT'
+    }));
+  });
+
   it('does not start authored combat from an unarmed firearm declaration', async () => {
     const invalid = JSON.stringify({
       narrative: '没有可用的枪械，这次行动无法按声明执行。',
