@@ -68,4 +68,13 @@ describe('normalizeNarrativeKeywordHints', () => {
       { text: '陈腐药味', kind: 'clue' }
     ], narrative)).toEqual([]);
   });
+
+  it('drops fleeting npc reactions that are prose rather than durable state', () => {
+    const narrative = '蒙特利尔翻看合影，指尖微微一顿，目光短暂停顿，随即把照片推回桌上。';
+
+    expect(normalizeNarrativeKeywordHints([
+      { text: '指尖微微一顿', kind: 'state' },
+      { text: '目光短暂停顿', kind: 'clue' }
+    ], narrative)).toEqual([]);
+  });
 });
