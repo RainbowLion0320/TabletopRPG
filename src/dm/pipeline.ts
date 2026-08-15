@@ -805,7 +805,9 @@ export async function runDmTurn(
           : '';
       const followedVisibleSuggestions = actionsUseVisibleSuggestions(input.state, input.actions);
       const narrative = eventNarrative || finaleNarrative || (changedScene
-        ? `你们已经抵达${sceneName}。声明中的其他新信息无法由现有证据确认，只能依据已经确认的线索继续调查。`
+        ? activeNpcName
+          ? `你们已经抵达${sceneName}。${activeNpcName}就在这里，你们可以围绕已经确认的线索继续调查。`
+          : `你们已经抵达${sceneName}。场景已经切换，可以围绕已经确认的线索继续调查。`
         : activeNpcName
           ? `${activeNpcName}没有提供更多可核实的信息。你们仍在${sceneName}，只能依据已经确认的线索继续调查。`
           : followedVisibleSuggestions

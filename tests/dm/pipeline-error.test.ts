@@ -572,6 +572,7 @@ describe('runDmTurn error classification', () => {
     expect(output.legacyResponse.stateUpdate?.sceneChange).toBe('S04');
     expect(output.legacyResponse.activeNpc).toBeNull();
     expect(output.legacyResponse.narrative).toContain('已经抵达卡森其药店');
+    expect(output.legacyResponse.narrative).not.toContain('声明中的其他新信息');
     expect(output.legacyResponse.narrative).not.toContain('仍在老赫特酒吧');
     expect(output.legacyResponse.narrative).not.toContain('老赫特之家酒保');
     expect(output.legacyResponse.playerChoices?.亨利).not.toContain('请老赫特之家酒保只核对已经确认的事实');
