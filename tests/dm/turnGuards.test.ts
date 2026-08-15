@@ -1682,6 +1682,12 @@ describe('turnGuards', () => {
       activeNpc: null, nextPrompt: '想办法开门。', playerChoices: { 亨利: ['撬开药店门锁'] }
     }, [...move], state, kb)).toMatch(/S04 入场事件/);
     expect(validateNarratorSemantics({
+      narrative: '你们来到贝尔街14号。罗伯特上前推了推正门，锁着。他绕到侧面，托马斯推开后门，走进漆黑的店铺。',
+      activeNpc: null,
+      nextPrompt: '接下来怎么办？',
+      playerChoices: { 托马斯: ['先退出去从正门想办法'] }
+    }, [...move], state, kb)).toMatch(/S04 入场事件/);
+    expect(validateNarratorSemantics({
       narrative: '非人身影从内侧撞开后门撤离，你们随即进入卡森其药店，店内浓雾涌动。',
       activeNpc: null, nextPrompt: '在店内调查。', playerChoices: { 亨利: ['检查后厅的油布包'] }
     }, [...move], state, kb)).toBeNull();
