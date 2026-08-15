@@ -1709,6 +1709,31 @@ describe('turnGuards', () => {
     }, [], state, kb)).toBeNull();
   });
 
+  it('rejects a police-scene leak of Bell Street before an authored lead reveals it', () => {
+    const state = makeState({ currentScene: 'S02', activeNpcName: '洛夫·蒙特利尔' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.knownFactIds = ['F05'];
+    state.scenarioProgress.visitedSceneIds = ['S01', 'S02'];
+    state.scenarioProgress.firedEventIds = ['EV_ACCEPT_COMMISSION', 'EV_FIND_I02', 'EV_MEET_MONTREAL'];
+    state.scenarioProgress.variables.oldHethLead = true;
+    state.scenarioProgress.variables.metMontreal = true;
+
+    expect(validateNarratorSemantics({
+      narrative: '蒙特利尔停顿片刻，最后说：“想知道埃里克的事，去贝尔街问问那些酒鬼。”',
+      activeNpc: '洛夫·蒙特利尔',
+      nextPrompt: '是否离开分局？',
+      playerChoices: { 亨利: ['前往老赫特酒吧，追问贝尔街线索'] }
+    }, [], state, kb)).toMatch(/提前透露贝尔街/);
+
+    state.scenarioProgress.knownFactIds.push('F06');
+    expect(validateNarratorSemantics({
+      narrative: '蒙特利尔拒绝继续回答。',
+      activeNpc: '洛夫·蒙特利尔',
+      nextPrompt: '是否离开分局？',
+      playerChoices: { 亨利: ['依照已知地址前往贝尔街14号'] }
+    }, [], state, kb)).toBeNull();
+  });
+
   it('rejects unsupported identity, criminal relationship, injury, and threat claims', () => {
     const state = makeState({ currentScene: 'S03', activeNpcName: '老赫特之家酒保' });
     state.scenarioProgress = createScenarioProgress();

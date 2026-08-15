@@ -1079,9 +1079,6 @@ export function validateNarratorSemantics(
   ) {
     return '机械维修检定失败后不得让另一角色无检定接手并直接打开门锁';
   }
-  if (state.currentScene === 'S01' && /贝尔街/.test(allText) && !narrativeAuthority.includes('贝尔街')) {
-    return '不得在住宅调查取得对应线索前提前透露贝尔街';
-  }
   if (state.currentScene === 'S01' && /蒙特利尔/.test(allText) && !narrativeAuthority.includes('蒙特利尔')) {
     return '不得在住宅调查取得对应线索前提前点名蒙特利尔';
   }
@@ -1309,6 +1306,12 @@ export function validateNarratorSemantics(
     narrativeAuthority
   );
   if (plotClaimIssue) return plotClaimIssue;
+  const bellStreetAuthorized = narrativeAuthority.includes('贝尔街')
+    || state.currentScene === 'S04'
+    || progress.visitedSceneIds.includes('S04');
+  if (/贝尔街/.test(allText) && !bellStreetAuthorized) {
+    return '不得在取得对应线索或进入药店前提前透露贝尔街';
+  }
   const bookletWillBeAnalyzed = proposedEvents.some((event) =>
     event.effects.some((effect) => 'analyzeClue' in effect && effect.analyzeClue === 'I04')
   );
