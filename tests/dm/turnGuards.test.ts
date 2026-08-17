@@ -767,6 +767,62 @@ describe('turnGuards', () => {
     expect(buildRequiredCheck(actions, state)).toBeNull();
   });
 
+  it('does not spend a negotiation objective check before the finale route is chosen', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利' }, { 聆听: 65, 说服: 60 }),
+        makeInvestigator({ name: '艾达' }, { 聆听: 65, 说服: 60 })
+      ],
+      currentScene: 'S04'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.knownFactIds = ['F09'];
+
+    const arrival = [
+      {
+        player: '亨利',
+        action: '依据地图与艾达赶往泰晤士港扶桑花号；抵达后不选择交涉或武力路线，只先听清交涉代表提出的条件。'
+      },
+      {
+        player: '艾达',
+        action: '与亨利同行赶到扶桑花号，保持克制并确认埃里克安全；本轮不选择路线，只等待交涉代表完整说明条件。'
+      }
+    ];
+
+    expect(inferSceneChangeFromActions(arrival, state, kb)).toEqual(expect.objectContaining({
+      arguments: expect.objectContaining({ targetSceneId: 'S05' })
+    }));
+    expect(inferStoryEventFromActions(arrival, state)).toBeNull();
+    expect(buildRequiredCheck(arrival, state)).toBeNull();
+
+    state.currentScene = 'S05';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'undecided';
+    const deferred = [{
+      player: '亨利',
+      action: '本轮不选择交涉或武力路线，只先听清交涉代表提出的条件。'
+    }];
+
+    expect(inferStoryEventFromActions(deferred, state)).toBeNull();
+    expect(buildRequiredCheck(deferred, state)).toBeNull();
+
+    const surfaceObservation = [
+      {
+        player: '亨利',
+        action: '本轮继续暂缓路线选择，只观察交涉代表的姿态与甲板环境，不复述或推断任何尚未听懂的条件，也不进行检定。'
+      },
+      {
+        player: '艾达',
+        action: '与亨利一同保持克制，仅观察甲板上的公开动静；本轮继续不选择路线、不猜测交涉条件，也不进行检定。'
+      }
+    ];
+    expect(inferStoryEventFromActions(surfaceObservation, state)).toBeNull();
+    expect(buildRequiredCheck(surfaceObservation, state)).toBeNull();
+  });
+
   it('treats lowering weapons to listen as a negotiation route choice', () => {
     const state = makeState({
       players: [
@@ -2133,6 +2189,36 @@ describe('turnGuards', () => {
       nextPrompt: '如何应对？',
       playerChoices: {}
     }, [], state, kb)).toMatch(/已登记人物|剧情事件/);
+  });
+
+  it('keeps finale negotiation conditions secret until the authored listening result reveals them', () => {
+    const state = makeState({ currentScene: 'S05', activeNpcName: '扶桑花号交涉代表' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'undecided';
+
+    expect(validateNarratorSemantics({
+      narrative: '扶桑花号交涉代表说：“那个人类已被我们的仪式所用，不可归还。若你们不再追踪扶桑花号，我可保你们安全离开。”',
+      activeNpc: '扶桑花号交涉代表',
+      nextPrompt: '如何回应？',
+      playerChoices: {}
+    }, [], state, kb)).toMatch(/交涉条件/);
+
+    expect(validateNarratorSemantics({
+      narrative: '你们原地整理刚才听到的话：放弃追踪扶桑花号，换取安全离开。',
+      activeNpc: '扶桑花号交涉代表',
+      nextPrompt: '选择交涉还是武力？',
+      playerChoices: {}
+    }, [], state, kb)).toMatch(/交涉条件/);
+
+    state.scenarioProgress.variables.finaleRoute = 'negotiation';
+    state.scenarioProgress.knownFactIds = ['F13'];
+    expect(validateNarratorSemantics({
+      narrative: '扶桑花号交涉代表只要求带走走私货物并安全离港；若你们承诺不追击，这就是他们的全部底线。',
+      activeNpc: '扶桑花号交涉代表',
+      nextPrompt: '准备如何说服对方？',
+      playerChoices: {}
+    }, [], state, kb)).toBeNull();
   });
 
   it('keeps conditionally due S04 thugs out of free narration so the automatic event owns them', () => {

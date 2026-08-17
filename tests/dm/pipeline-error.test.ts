@@ -1292,6 +1292,62 @@ describe('runDmTurn error classification', () => {
     }));
   });
 
+  it('enters the finale without consuming listening before an explicit route choice', async () => {
+    const content = JSON.stringify({
+      narrative: '调查员抵达泰晤士港扶桑花号。扶桑花号交涉代表说：“那个人类已被我们的仪式所用，不可归还。若你们不再追踪扶桑花号，我可保你们安全离开。”',
+      activeNpc: '扶桑花号交涉代表',
+      nextPrompt: '选择交涉还是武力？',
+      playerChoices: {
+        亨利: ['选择暂缓攻击，与深潜者代表进行交涉'],
+        艾达: ['选择以武力阻止深潜者带走埃里克']
+      }
+    });
+    const fetchMock = vi.fn(async () => jsonResponse(content));
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利' }, { 聆听: 65, 说服: 60 }),
+        makeInvestigator({ name: '艾达' }, { 聆听: 65, 说服: 60 })
+      ],
+      currentScene: 'S04'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.knownFactIds = ['F09'];
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [
+        {
+          player: '亨利',
+          action: '依据地图与艾达赶往泰晤士港扶桑花号；抵达后不选择交涉或武力路线，只先听清交涉代表提出的条件。'
+        },
+        {
+          player: '艾达',
+          action: '与亨利同行赶到扶桑花号，保持克制并确认埃里克安全；本轮不选择路线，只等待交涉代表完整说明条件。'
+        }
+      ]
+    });
+
+    expect(fetchMock).toHaveBeenCalled();
+    expect(output.legacyResponse.stateUpdate?.sceneChange).toBe('S05');
+    expect(output.legacyResponse.stateUpdate?.storyEventIds ?? []).not.toEqual(expect.arrayContaining([
+      'EV_CHOOSE_NEGOTIATION',
+      'EV_CHOOSE_COMBAT',
+      'EV_NEGOTIATION_LISTEN'
+    ]));
+    expect(output.legacyResponse.check).toBeNull();
+    expect(output.legacyResponse.narrative).not.toMatch(/仪式所用|不可归还|不再追踪|安全离开/);
+    const next = gameReducer(state, {
+      type: 'applyAiResponse', response: output.legacyResponse, raw: output.raw, actorName: output.actorName
+    });
+    expect(next.currentScene).toBe('S05');
+    expect(next.scenarioProgress?.variables.finaleRoute).toBe('undecided');
+    expect(next.pendingCheck).toBeNull();
+  });
+
   it('starts the authored negotiation route from the exact visible listening choice', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);

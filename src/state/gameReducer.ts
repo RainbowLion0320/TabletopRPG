@@ -1724,16 +1724,18 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         : null;
       const settledFinaleRoute = nextState.scenarioProgress?.variables.finaleRoute;
       const previousFinaleRoute = getScenarioProgressForState(state).variables.finaleRoute;
+      const invalidFinaleSuggestions = nextState.currentScene === 'S05'
+        && containsInvalidFinaleSuggestion(
+          nextState.suggestionsByPlayerId,
+          settledFinaleRoute,
+          nextState.players,
+          getScenarioProgressForState(nextState)
+        );
       if (
         nextState.currentScene === 'S05'
-        && (settledFinaleRoute === 'combat' || settledFinaleRoute === 'negotiation')
-        && (previousFinaleRoute !== settledFinaleRoute
-          || containsInvalidFinaleSuggestion(
-            nextState.suggestionsByPlayerId,
-            settledFinaleRoute,
-            nextState.players,
-            getScenarioProgressForState(nextState)
-          ))
+        && (((settledFinaleRoute === 'combat' || settledFinaleRoute === 'negotiation')
+          && previousFinaleRoute !== settledFinaleRoute)
+          || invalidFinaleSuggestions)
       ) {
         const settledProgress = getScenarioProgressForState(nextState);
         const routeSuggestions = buildFinaleSuggestions(

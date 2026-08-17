@@ -2,6 +2,7 @@ import type { Investigator } from '../types/game';
 import { isAffirmativeCombatAction } from './actionIntent';
 
 const NEGOTIATION_RE = /谈判|交涉|谈条件|和平离港|交换条件|(?:听清|聆听|倾听|理解|回应)[^，。；！？\n]{0,16}(?:诉求|条件)/;
+const COMBAT_ROUTE_RE = /(?:选择|决定|明确)[^，。；！？\n]{0,12}(?:武力|战斗)|(?:以|使用|采取)[^，。；！？\n]{0,6}武力[^，。；！？\n]{0,16}(?:阻止|拦截|对抗)/;
 const PREMATURE_RESCUE_RE = /救出埃里克|释放埃里克|(?:冲向|奔向|靠近)[^，。；！？\n]{0,12}埃里克[^，。；！？\n]{0,12}(?:解救|营救|救援)|(?:解救|营救|救援)[^，。；！？\n]{0,12}埃里克|(?:解开|割断|剪断|挣脱)[^，。；！？\n]{0,16}(?:绳|束缚|绑缚)|(?:带|护送|扶着|搀扶)[^，。；！？\n]{0,12}埃里克[^，。；！？\n]{0,12}(?:离开|撤离|下船|码头)/;
 const ROUTE_META_INSTRUCTION_RE = /(?:选择|决定|明确)[^，。；！？\n]{0,24}(?:战斗|武力|阻止深潜者)[^，。；！？\n]{0,16}(?:或|还是)[^，。；！？\n]{0,16}(?:交涉|谈判)|(?:选择|决定|明确)[^，。；！？\n]{0,24}(?:交涉|谈判)[^，。；！？\n]{0,16}(?:或|还是)[^，。；！？\n]{0,16}(?:战斗|武力)/;
 
@@ -101,7 +102,17 @@ export function finaleSuggestionsNeedReplacement(
   route: unknown,
   remainingOpponents: number
 ): boolean {
-  if (route !== 'combat' && route !== 'negotiation') return false;
+  if (route !== 'combat' && route !== 'negotiation') {
+    return players.some((player) => {
+      const suggestions = suggestionsByPlayerId[player.id] ?? [];
+      if (suggestions.length < 3) return true;
+      const hasNegotiationRoute = suggestions.some((choice) => NEGOTIATION_RE.test(choice));
+      const hasCombatRoute = suggestions.some((choice) =>
+        COMBAT_ROUTE_RE.test(choice) || isAffirmativeCombatAction(choice)
+      );
+      return !hasNegotiationRoute || !hasCombatRoute;
+    });
+  }
   return players.some((player) => {
     const suggestions = suggestionsByPlayerId[player.id] ?? [];
     const canAttack = investigatorCanAttack(player);

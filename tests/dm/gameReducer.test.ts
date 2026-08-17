@@ -371,6 +371,40 @@ describe('gameReducer applyAiResponse pendingConsequences merge', () => {
     expect(next.suggestionsByPlayerId['p-robert'].some((suggestion) => /谈判|交涉|救出埃里克/.test(suggestion))).toBe(false);
   });
 
+  it('keeps both finale routes visible while the route is still undecided', () => {
+    const player = makeInvestigator({ id: 'p-henry', name: '亨利' });
+    const state = makeState({ players: [player], currentScene: 'S05' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'undecided';
+
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: {
+        narrative: '交涉代表说明条件后等待回答。',
+        playerChoices: {
+          亨利: [
+            '要求先见埃里克一面确认他还活着',
+            '质疑仪式所用的具体含义',
+            '选择暂缓攻击，与深潜者代表进行交涉'
+          ]
+        }
+      },
+      raw: '{}'
+    });
+
+    expect(next.scenarioProgress?.variables.finaleRoute).toBe('undecided');
+    expect(next.suggestionsByPlayerId['p-henry']).toContain(
+      '选择暂缓攻击，与深潜者代表进行交涉'
+    );
+    expect(next.suggestionsByPlayerId['p-henry']).toContain(
+      '选择以武力阻止深潜者带走埃里克'
+    );
+  });
+
   it('turns a failed authored listen into an extreme persuasion check without AI continuation', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '艾达' }, { 聆听: 65, 说服: 60 })],

@@ -20,6 +20,7 @@ import { resolveActiveNpcForScene } from '../state/sceneFocus';
 
 const DICE_RESULT_RE = /【检定结果】|结果[：:]\s*(?:失败|大失败|成功|困难成功|极难成功|大成功)/;
 const COMBAT_ROUTE_SELECTION_RE = /(?:选择|决定|明确)(?:以|使用|采取)?[^，。；！？\n]{0,8}武力[^，。；！？\n]{0,16}(?:阻止|拦截|对抗)[^，。；！？\n]{0,16}(?:深潜者|扶桑花号)|(?:以|使用|采取)武力[^，。；！？\n]{0,16}(?:阻止|拦截|对抗)[^，。；！？\n]{0,16}(?:深潜者|扶桑花号)/;
+const FINALE_ROUTE_DEFERRAL_RE = /(?:本轮|这一轮|当前|现在|暂时|暂且|先)?(?:不|暂不|尚不|还不)(?:先)?(?:选择|决定|确定|锁定|明确)[^，。；！？\n]{0,16}(?:交涉|谈判|武力|战斗|路线|方案)/;
 const MOVE_VERB_RE = /前往|赶往|去往|转往|转向|走向|改去|改从|出发|动身|返回|回到|离开|进入|走进|登上|开车|驾车|驱车|驶向|跟随|追到|抵达|到达/;
 const MOVE_DESTINATION_RE = /前往|赶往|去往|转往|转向|走向|改去|改从|驶向|追到|抵达|到达|进入|登上|回到|返回|去(?!向|处|路|年)/;
 const NPC_ROLE_TERMS = [
@@ -46,15 +47,33 @@ interface CheckCandidate {
   check: CheckRequest;
 }
 
+function finaleRouteIsUndecided(route: unknown): boolean {
+  return route !== 'combat' && route !== 'negotiation';
+}
+
+function explicitlyDefersFinaleRouteChoice(actions: PlayerAction[]): boolean {
+  return actions.some((action) => FINALE_ROUTE_DEFERRAL_RE.test(action.action));
+}
+
 function onlyRequestsPermissionToInvestigate(text: string): boolean {
   return /(?:可否|能否|是否可以|可不可以|请求(?:对方)?允许|征得(?:同意|许可))[^，。；！？\n]{0,18}(?:查看|检查|搜查|进入)/.test(text)
     && !/(?:获准|得到允许|经同意|随后|然后|立即)[^，。；！？\n]{0,12}(?:查看|检查|搜查|进入)/.test(text);
+}
+
+function onlyObservesPubliclyVisibleState(text: string): boolean {
+  const limitsObservation = /(?:只|仅|只是|单纯)[^，。；！？\n]{0,6}(?:观察|查看)[^，。；！？\n]{0,32}(?:公开|可见|眼前|表面|姿态|站位|当前状态|环境|动静)/.test(text);
+  const activelySearches = hasAffirmativeMatch(
+    text,
+    /(?:仔细|近距离|深入)[^，。；！？\n]{0,8}(?:观察|查看)|搜查|搜索|搜寻|寻找|检查|侦查|辨认/
+  );
+  return limitsObservation && !activelySearches;
 }
 
 function buildCandidate(action: PlayerAction): CheckCandidate | null {
   const text = action.action.trim();
   if (!text || DICE_RESULT_RE.test(text)) return null;
   if (onlyRequestsPermissionToInvestigate(text)) return null;
+  if (onlyObservesPubliclyVisibleState(text)) return null;
   const describesAssistingAnother = /(?:在|当)(?:他|她|同伴|队友|[\u4e00-\u9fff·]{2,10})[^，。；！？\n]{0,24}时[^。；！？\n]{0,16}(?:提供照明|警戒|把风|记录|协助|帮助|配合)/.test(text)
     || /(?:协助|帮助|配合)(?:他|她|同伴|队友|[\u4e00-\u9fff·]{2,10})[^，。；！？\n]{0,16}(?:操作|检查|搜查|撬锁|开锁|撬开)/.test(text);
 
@@ -168,6 +187,12 @@ export function buildRequiredCheck(actions: PlayerAction[], state: GameState): C
     && !(authoredEvent.id === 'EV_MEET_MONTREAL'
       && candidates.some((candidate) => candidate.check.skill === '心理学'))) return null;
   for (const candidate of candidates) {
+    // Listening and persuasion are authored negotiation-route objectives in S05.
+    // Never consume either as a generic arrival/pre-route roll before the route
+    // has actually been chosen.
+    if (targetScene === 'S05'
+      && finaleRouteIsUndecided(progress.variables.finaleRoute)
+      && (candidate.check.skill === '聆听' || candidate.check.skill === '说服')) continue;
     const player = state.players.find((item) => item.name === candidate.check.player);
     if (!player) continue;
     if (candidate.check.skill === '射击（手枪）' && !actorHasHandgun(state, player.name)) continue;
@@ -559,8 +584,12 @@ export function inferStoryEventFromActions(
   state: GameState
 ): DmToolCall | null {
   const text = actions.map((action) => action.action).join('\n');
+  const progress = getScenarioProgressForState(state);
+  const defersFinaleRoute = state.currentScene === 'S05'
+    && finaleRouteIsUndecided(progress.variables.finaleRoute)
+    && explicitlyDefersFinaleRouteChoice(actions);
   const available = new Set(
-    getAvailableStoryEvents(getScenarioProgressForState(state), state.currentScene).map((event) => event.id)
+    getAvailableStoryEvents(progress, state.currentScene).map((event) => event.id)
   );
   const mappings: Array<[string, RegExp]> = [
     ['EV_ACCEPT_COMMISSION', /接受.{0,8}委托|确认.{0,8}委托/],
@@ -586,6 +615,8 @@ export function inferStoryEventFromActions(
   ];
   const match = mappings.find(([eventId, pattern]) => {
     if (!available.has(eventId)) return false;
+    if (defersFinaleRoute
+      && (eventId === 'EV_CHOOSE_NEGOTIATION' || eventId === 'EV_CHOOSE_COMBAT')) return false;
     const isCombatEvent = eventId === 'EV_COMBAT_ATTACK' || eventId === 'EV_CHOOSE_COMBAT';
     const matchesAction = isCombatEvent
       ? actions.some((action) => !DICE_RESULT_RE.test(action.action)
@@ -1024,7 +1055,7 @@ const PLOT_CLAIM_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
   },
   {
     label: '交涉条件',
-    pattern: /(?:深潜者|混种|交涉代表)[^。；！？\n]{0,72}(?:带走.{0,8}货物|不(?:要|得)?追击|安全离港|释放埃里克|放走埃里克)/
+    pattern: /(?:(?:深潜者|混种|交涉代表|灰绿色[^。；！？\n]{0,16}身影)[^。；！？\n]{0,128}(?:带走.{0,8}货物|(?:不再|不要|不得|停止|放弃)?(?:追踪|追击)|安全(?:离港|离开)|释放埃里克|放走埃里克|埃里克[^。；！？\n]{0,12}(?:释放|放走)|不可归还|仪式所用)|(?:不再|不要|不得|停止|放弃)[^。；！？\n]{0,16}(?:追踪|追击)[^。；！？\n]{0,24}(?:扶桑花号|货船|他们|深潜者)|(?:承诺|换取|保证|保你们|允许)[^。；！？\n]{0,24}安全(?:离港|离开)|(?:埃里克|那个人类|人质)[^。；！？\n]{0,32}(?:不可归还|不能归还|仪式所用))/
   }
 ];
 
