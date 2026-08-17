@@ -814,7 +814,8 @@ export function sanitizePlayerChoices(
     const hasHandgun = equipment.some((item) => /手枪|左轮枪|步枪/.test(item));
     const hasMeleeWeapon = equipment.some((item) => /警棍|棍|刀|武器/.test(item));
     const safe = list.filter((choice) =>
-      !hiddenTerms.some((term) => choice.includes(term))
+      choice.replace(/[\p{P}\p{S}\s]/gu, '').length >= 2
+      && !hiddenTerms.some((term) => choice.includes(term))
       && !offstageNpcNames.some((name) => choice.includes(name))
       && !(sceneId && unavailableNpcRole(choice, kb, sceneId, true))
       && !(sceneId && explicitlyTravelsToScene(choice, kb, sceneId))

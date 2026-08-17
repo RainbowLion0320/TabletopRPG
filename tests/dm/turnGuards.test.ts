@@ -1605,6 +1605,17 @@ describe('turnGuards', () => {
     expect(result.亨利).toHaveLength(3);
   });
 
+  it('replaces single-character and punctuation-only suggestions', () => {
+    const result = sanitizePlayerChoices({
+      艾达: ['带', '……', '继续观察当前环境']
+    }, new Set(), kb, 'S01');
+
+    expect(result.艾达).not.toContain('带');
+    expect(result.艾达).not.toContain('……');
+    expect(result.艾达).toContain('继续观察当前环境');
+    expect(result.艾达).toHaveLength(3);
+  });
+
   it('removes suggestions that interact with an NPC role absent from the scene', () => {
     const result = sanitizePlayerChoices({
       亨利: ['问店主埃里克来过没有', '询问伊莎贝拉是否认识蒙特利尔']
