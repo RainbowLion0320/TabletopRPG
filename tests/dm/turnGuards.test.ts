@@ -1441,6 +1441,11 @@ describe('turnGuards', () => {
       activeNpc: '扶桑花号交涉代表', nextPrompt: '', playerChoices: {}
     }, [], state, kb)).toMatch(/仅结算2名/);
 
+    expect(validateNarratorSemantics({
+      narrative: '亨利击倒一名守卫，已失去战斗能力的深潜者增至三名，甲板上仅剩最后一人。',
+      activeNpc: '扶桑花号交涉代表', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/仅结算2名|尚有2名/);
+
     state.scenarioProgress.encounters.ENC01.defeated = 3;
     expect(validateNarratorSemantics({
       narrative: '亨利这次攻击落空，但最后一名深潜者也失去战斗能力，甲板上四名深潜者全部倒地。',
@@ -1463,6 +1468,12 @@ describe('turnGuards', () => {
     expect(validateNarratorSemantics({
       narrative: '甲板上只剩一名深潜者，它正挟持着埃里克。',
       activeNpc: '扶桑花号交涉代表', nextPrompt: '', playerChoices: {}
+    }, [], state, kb)).toMatch(/宣称仅剩1名.*尚有2名/);
+
+    expect(validateNarratorSemantics({
+      narrative: '两名深潜者仍在抵抗。',
+      activeNpc: '扶桑花号交涉代表', nextPrompt: '',
+      playerChoices: { 亨利: ['继续攻击最后一名近身处的深潜者'] }
     }, [], state, kb)).toMatch(/宣称仅剩1名.*尚有2名/);
 
     state.scenarioProgress.encounters.ENC01.defeated = 3;

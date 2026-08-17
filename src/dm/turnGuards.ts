@@ -1215,9 +1215,12 @@ export function validateNarratorSemantics(
     .find((encounter) => encounter.id === 'ENC01')?.count ?? 4;
   const structuredRemaining = Math.max(0, finaleEncounterTotal - structuredDefeated);
   const claimedDefeatedMatch = /(?:已有|已经|共|总共|甲板上)?\s*([一二三四]|[1-4])\s*名(?:仍在抵抗的)?深潜者[^。；！？\n]{0,28}(?:倒地|瘫倒|失去战斗能力|无力再战|被制服|退出战斗)/.exec(output.narrative);
+  const accumulatedDefeatedMatch = /(?:已|已经)?(?:失去战斗能力|无力再战|被制服|退出战斗)的?(?:深潜者|守卫)[^。；！？\n]{0,16}(?:增至|达到|共有|共计|为)\s*([一二三四]|[1-4])\s*名/.exec(output.narrative);
   const defeatedNumbers: Record<string, number> = { 一: 1, 二: 2, 三: 3, 四: 4 };
   const claimedDefeated = claimedDefeatedMatch
     ? defeatedNumbers[claimedDefeatedMatch[1]] ?? Number(claimedDefeatedMatch[1])
+    : accumulatedDefeatedMatch
+      ? defeatedNumbers[accumulatedDefeatedMatch[1]] ?? Number(accumulatedDefeatedMatch[1])
     : /(?:四名|所有|全部)[^。；！？\n]{0,12}深潜者[^。；！？\n]{0,24}(?:倒地|瘫倒|失去战斗能力|无力再战|被制服)|深潜者[^。；！？\n]{0,16}(?:全部|全都)[^。；！？\n]{0,16}(?:倒地|失去战斗能力|被制服)/.test(output.narrative)
       ? 4
       : null;
@@ -1235,10 +1238,10 @@ export function validateNarratorSemantics(
   ) {
     return `结构化遭遇尚有${structuredRemaining}名深潜者，正文不得提前宣告最后一名失去战斗能力`;
   }
-  const claimedRemainingMatch = /(?:只|仅)?(?:还)?(?:剩下|剩余|剩)\s*([一二三四]|[1-4])\s*名[^。；！？\n]{0,12}(?:深潜者|守卫|看守|鱼人)/.exec(output.narrative);
+  const claimedRemainingMatch = /(?:只|仅)?(?:还)?(?:剩下|剩余|剩)\s*([一二三四]|[1-4])\s*名[^。；！？\n]{0,12}(?:深潜者|守卫|看守|鱼人)/.exec(allText);
   const claimedRemaining = claimedRemainingMatch
     ? defeatedNumbers[claimedRemainingMatch[1]] ?? Number(claimedRemainingMatch[1])
-    : /(?:最后|仅剩|只剩)(?:的)?(?:一)?(?:名|个)[^。；！？\n]{0,28}(?:深潜者|守卫|看守|鱼人)|(?:深潜者|守卫|看守|鱼人)[^。；！？\n]{0,20}(?:只|仅)?剩(?:下)?(?:最后)?(?:一)?(?:名|个)/.test(output.narrative)
+    : /(?:最后|仅剩|只剩)(?:的)?(?:一)?(?:名|个)[^。；！？\n]{0,28}(?:深潜者|守卫|看守|鱼人)|(?:深潜者|守卫|看守|鱼人)[^。；！？\n]{0,20}(?:只|仅)?剩(?:下)?(?:最后)?(?:一)?(?:名|个)|(?:仅|只)(?:还)?剩(?:下|余)?最后一(?:名|个|人)(?=[，。；！？\s]|$)/.test(allText)
       ? 1
       : null;
   if (
