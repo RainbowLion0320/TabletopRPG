@@ -371,6 +371,42 @@ describe('gameReducer applyAiResponse pendingConsequences merge', () => {
     expect(next.suggestionsByPlayerId['p-robert'].some((suggestion) => /谈判|交涉|救出埃里克/.test(suggestion))).toBe(false);
   });
 
+  it('removes a pronoun-based rescue suggestion while finale opponents still resist', () => {
+    const player = makeInvestigator({
+      id: 'p-robert',
+      name: '罗伯特',
+      equipment: ['警用左轮手枪']
+    });
+    const state = makeState({ players: [player], currentScene: 'S05' });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+
+    const leakedChoice = '起身向埃里克方向移动，尝试接近并解救他';
+    const next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: {
+        narrative: '甲板战斗仍在继续。',
+        playerChoices: {
+          罗伯特: [
+            leakedChoice,
+            '使用随身手枪攻击一名仍在抵抗的深潜者',
+            '从掩体后瞄准一名仍在抵抗的深潜者开枪'
+          ]
+        }
+      },
+      raw: '{}'
+    });
+
+    expect(next.scenarioProgress?.encounters.ENC01.defeated).toBe(0);
+    expect(next.suggestionsByPlayerId['p-robert']).not.toContain(leakedChoice);
+    expect(next.suggestionsByPlayerId['p-robert'].every(isAffirmativeCombatAction)).toBe(true);
+  });
+
   it('keeps both finale routes visible while the route is still undecided', () => {
     const player = makeInvestigator({ id: 'p-henry', name: '亨利' });
     const state = makeState({ players: [player], currentScene: 'S05' });
