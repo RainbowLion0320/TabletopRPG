@@ -2281,6 +2281,12 @@ describe('turnGuards', () => {
       playerChoices: {}
     }, [], state, kb)).toMatch(/路线或设施/);
     expect(validateNarratorSemantics({
+      narrative: '亨利摊开潮湿的地图笔记，辨认出扶桑花号停泊在泰晤士港7号泊位。',
+      activeNpc: null,
+      nextPrompt: '下一步怎么办？',
+      playerChoices: {}
+    }, [], state, kb)).toMatch(/路线或设施/);
+    expect(validateNarratorSemantics({
       narrative: '潮湿的地图笔记标出扶桑花号泊位，仓库排列清晰可辨。',
       activeNpc: null,
       nextPrompt: '下一步怎么办？',
