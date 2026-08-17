@@ -1762,13 +1762,17 @@ describe('turnGuards', () => {
     const result = sanitizePlayerChoices({
       托马斯: [
         '趁最后一名深潜者后退，冲向埃里克试图解救',
+        '趁守卫注意力被罗伯特吸引，匍匐冲向埃里克',
+        '趁罗伯特吸引注意力，匍匐冲向埃里克解绳',
         '继续投掷杂物牵制最后一名深潜者，掩护罗伯特',
         '向最后一名深潜者喊话，警告其放弃抵抗'
       ]
     }, new Set(), kb, 'S05', 'combat', 1, players);
 
     expect(result.托马斯).not.toContain('趁最后一名深潜者后退，冲向埃里克试图解救');
-    expect(result.托马斯.every((choice) => !/解救|救援|营救/.test(choice))).toBe(true);
+    expect(result.托马斯).not.toContain('趁守卫注意力被罗伯特吸引，匍匐冲向埃里克');
+    expect(result.托马斯).not.toContain('趁罗伯特吸引注意力，匍匐冲向埃里克解绳');
+    expect(result.托马斯.every((choice) => !/解救|救援|营救|解绳|冲向埃里克/.test(choice))).toBe(true);
     expect(result.托马斯).toContain('继续投掷杂物牵制最后一名深潜者，掩护罗伯特');
     expect(result.托马斯).toHaveLength(3);
   });
@@ -2351,6 +2355,27 @@ describe('turnGuards', () => {
       narrative: '说服奏效，深潜者释放埃里克并同意和平离港。', nextPrompt: '', playerChoices: {}
     }, [], finale, kb))
       .toBeNull();
+  });
+
+  it('rejects investigator movement toward the finale hostage before combat clears', () => {
+    const state = makeState({
+      players: [makeInvestigator({ id: 'thomas', name: '托马斯·贝尔', equipment: [] })],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.encounters.ENC01.defeated = 1;
+
+    expect(validateNarratorSemantics({
+      narrative: '托马斯趁乱冲向被绑在桅杆旁的埃里克。',
+      nextPrompt: '接下来怎么办？',
+      playerChoices: {}
+    }, [], state, kb)).toMatch(/尚有3名深潜者.*提前冲向埃里克/);
   });
 
   it('accepts an authored address when event narration uses different surrounding words', () => {

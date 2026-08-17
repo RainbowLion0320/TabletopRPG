@@ -1214,6 +1214,22 @@ export function validateNarratorSemantics(
   const finaleEncounterTotal = getScenarioDefinition().world.encounters
     .find((encounter) => encounter.id === 'ENC01')?.count ?? 4;
   const structuredRemaining = Math.max(0, finaleEncounterTotal - structuredDefeated);
+  const investigatorTerms = state.players.flatMap((player) => [
+    player.name,
+    player.name.split(/[·\s]/)[0]
+  ]).filter((term, index, all) => term.length >= 2 && all.indexOf(term) === index);
+  const narratesPrematureHostageApproach = investigatorTerms.some((term) => new RegExp(
+    `${escapeRegex(term)}(?:(?!深潜者|守卫|看守|混种|交涉代表)[^。；！？\\n]){0,36}`
+      + '(?:匍匐[^，。；！？\\n]{0,6})?(?:冲向|奔向|跑向|扑向|爬向|走向|赶到|移动到|移动至)'
+      + '[^，。；！？\\n]{0,20}埃里克'
+  ).test(output.narrative));
+  if (
+    progress.variables.finaleRoute === 'combat'
+    && structuredRemaining > 0
+    && narratesPrematureHostageApproach
+  ) {
+    return `结构化遭遇尚有${structuredRemaining}名深潜者，正文不得让调查员提前冲向埃里克`;
+  }
   const claimedDefeatedMatch = /(?:已有|已经|共|总共|甲板上)?\s*([一二三四]|[1-4])\s*名(?:仍在抵抗的)?深潜者[^。；！？\n]{0,28}(?:倒地|瘫倒|失去战斗能力|无力再战|被制服|退出战斗)/.exec(output.narrative);
   const accumulatedDefeatedMatch = /(?:已|已经)?(?:失去战斗能力|无力再战|被制服|退出战斗)的?(?:深潜者|守卫)[^。；！？\n]{0,16}(?:增至|达到|共有|共计|为)\s*([一二三四]|[1-4])\s*名/.exec(output.narrative);
   const defeatedNumbers: Record<string, number> = { 一: 1, 二: 2, 三: 3, 四: 4 };
