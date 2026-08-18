@@ -1328,7 +1328,24 @@ export function validateNarratorSemantics(
     return '本轮只有检定结果点名角色的战斗行动已经结算，正文不得替其他调查员判定攻击结果';
   }
   const confirmsDefeatedDeepOne = /(?:倒地|瘫倒|失去战斗能力|无力再战|被制服)[^。；！？\n]{0,16}深潜者|深潜者[^。；！？\n]{0,16}(?:倒地|瘫倒|失去战斗能力|无力再战|被制服)/.test(output.narrative);
-  const structuredDefeated = progress.encounters.ENC01?.defeated ?? 0;
+  const projectedCombatEventIds = [
+    ...proposedEvents.map((event) => event.id),
+    ...toolCalls.flatMap((call) => {
+      if (call.name !== 'propose_story_event') return [];
+      const eventId = String(call.arguments.eventId ?? '');
+      return /^EV_COMBAT_(?:HIT|FUMBLE|WIN)$/.test(eventId) ? [eventId] : [];
+    })
+  ].filter((eventId, index, all) => all.indexOf(eventId) === index);
+  const projectedCombatProgress = projectedCombatEventIds.length
+    ? processScenarioTurn(progress, {
+        currentScene: state.currentScene,
+        storyEventIds: projectedCombatEventIds,
+        turn: getDmRequestTurn(state.conversationHistory),
+        completeTurn: false,
+        actorName: actions[actions.length - 1]?.player
+      }).progress
+    : progress;
+  const structuredDefeated = projectedCombatProgress.encounters.ENC01?.defeated ?? 0;
   const finaleEncounterTotal = getScenarioDefinition().world.encounters
     .find((encounter) => encounter.id === 'ENC01')?.count ?? 4;
   const structuredRemaining = Math.max(0, finaleEncounterTotal - structuredDefeated);
@@ -1810,4 +1827,181 @@ export function validateNarratorSemantics(
     return `不得在作者事件或可达性解锁前提及锁定地点：${lockedScene}`;
   }
   return null;
+}
+
+export type NarratorSemanticSeverity = 'blocking' | 'advisory' | 'warning';
+
+export interface NarratorSemanticReview {
+  message: string;
+  severity: NarratorSemanticSeverity;
+}
+
+/**
+ * 只检查会篡改前端权威状态或向玩家泄露未解锁主线的明确冲突。
+ * 这里故意保持短小；完整的历史规则集仍由 validateNarratorSemantics
+ * 作为质量诊断运行，但不再把每一种措辞偏差都升级为拦截。
+ */
+export function validateAuthoritativeNarratorSemantics(
+  output: { narrative: string; activeNpc?: string | null; nextPrompt: string; playerChoices: Record<string, string[]> },
+  toolCalls: DmToolCall[],
+  state: GameState,
+  kb: KnowledgeBase,
+  actions: PlayerAction[] = []
+): string | null {
+  const allText = [
+    output.narrative,
+    output.nextPrompt,
+    ...Object.values(output.playerChoices).flat()
+  ].join('\n');
+  const progress = getScenarioProgressForState(state);
+  const scenarioEvents = new Map(
+    getScenarioDefinition().progression.storyEvents.map((event) => [event.id, event])
+  );
+  const proposedEvents = toolCalls.flatMap((call) => {
+    if (call.name !== 'propose_story_event') return [];
+    // 生产调用只传入 Director 已接受的事件，包括 checkResolved 派生事件。
+    const event = scenarioEvents.get(String(call.arguments.eventId ?? ''));
+    return event ? [event] : [];
+  });
+  const authority = authoredNarrativeCorpus(state, proposedEvents);
+
+  const failedCheck = actions.some((action) =>
+    /【检定结果】[\s\S]*结果[：:]\s*(?:失败|大失败)/.test(action.action)
+  );
+  const successfulCheck = actions.some((action) =>
+    /【检定结果】[\s\S]*结果[：:]\s*(?:成功|普通成功|困难成功|极难成功|大成功)/.test(action.action)
+  );
+  if (
+    failedCheck
+    && /(?:检定|掷骰)[^。；！？\n]{0,20}(?:成功|通过)|成功通过[^。；！？\n]{0,12}(?:检定|掷骰)/.test(output.narrative)
+  ) {
+    return '正文不得把前端已经结算的失败检定改写为成功';
+  }
+  if (
+    successfulCheck
+    && /(?:检定|掷骰)[^。；！？\n]{0,20}(?:失败|未通过)|未能通过[^。；！？\n]{0,12}(?:检定|掷骰)/.test(output.narrative)
+  ) {
+    return '正文不得把前端已经结算的成功检定改写为失败';
+  }
+
+  const acceptedScene = toolCalls.find((call) => call.name === 'propose_scene_change');
+  const targetId = acceptedScene ? String(acceptedScene.arguments.targetSceneId ?? '') as SceneId : null;
+  const outputSceneId = targetId ?? state.currentScene;
+  if (targetId && targetId !== state.currentScene) {
+    if (framesForeignSceneAsCurrent(allText, sceneTerms(kb, state.currentScene))) {
+      return '场景切换已结算，正文不得继续把原场景写成当前环境';
+    }
+    if (deniesArrivalAtScene(allText, sceneTerms(kb, targetId))) {
+      return '场景切换已结算，正文不得声称尚未抵达目标场景';
+    }
+  } else {
+    for (const sceneId of Object.keys(kb.scenes) as SceneId[]) {
+      if (sceneId === state.currentScene) continue;
+      const terms = sceneTerms(kb, sceneId);
+      if (explicitlyTravelsToScene(output.narrative, kb, sceneId)
+        || framesForeignSceneAsCurrent(output.narrative, terms)) {
+        return `正文声称进入${kb.scenes[sceneId].public.name}，但没有获准的场景切换`;
+      }
+    }
+  }
+
+  const proposedClueIds = new Set(proposedEvents.flatMap((event) => event.effects.flatMap((effect) => {
+    if ('discoverClue' in effect) return [effect.discoverClue];
+    if ('analyzeClue' in effect) return [effect.analyzeClue];
+    return [];
+  })));
+  const uncommittedClue = inferDiscoveredItems(
+    output.narrative,
+    [],
+    state,
+    kb,
+    outputSceneId
+  ).find((clueId) => !proposedClueIds.has(clueId));
+  if (uncommittedClue) {
+    return `正文不得在剧情事件结算前正式发现线索：${kb.items[uncommittedClue]?.public.name ?? uncommittedClue}`;
+  }
+
+  const hpDeltas = toolCalls.reduce<Record<string, number>>((deltas, call) => {
+    if (call.name !== 'propose_state_update' || !call.arguments.hp
+      || typeof call.arguments.hp !== 'object' || Array.isArray(call.arguments.hp)) return deltas;
+    for (const [player, value] of Object.entries(call.arguments.hp as Record<string, unknown>)) {
+      if (typeof value === 'number') mergeDelta(deltas, player, value);
+    }
+    return deltas;
+  }, {});
+  const uncommittedHarm = state.players.find((player) =>
+    narrativeHarmsPlayer(output.narrative, player.name) && !(hpDeltas[player.name] < 0)
+  );
+  if (uncommittedHarm) {
+    return `正文写明${uncommittedHarm.name}受到实际伤害时，必须同步提议 HP 变化`;
+  }
+
+  const rescueAuthorized = progress.variables.ericRescued === true
+    || progress.endingId === 'END_A'
+    || progress.endingId === 'END_C'
+    || proposedEvents.some((event) => eventAuthorizesOutcome(event, 'rescue'));
+  const endingAuthorized = Boolean(progress.endingId)
+    || proposedEvents.some((event) => eventAuthorizesOutcome(event, 'ending'));
+  const claimsRescue = /埃里克[^。；！？\n]{0,20}(?:获救|被救出|被释放|脱困|离开扶桑花号|踏上码头)|(?:救出|释放|放开)[^。；！？\n]{0,12}埃里克/.test(output.narrative);
+  const claimsDeparture = /扶桑花号[^。；！？\n]{0,24}(?:离港|驶离|消失在雾中)|(?:船身|船体)[^。；！？\n]{0,18}脱离泊位/.test(output.narrative);
+  if ((claimsRescue && !rescueAuthorized) || (claimsDeparture && !endingAuthorized)) {
+    return '正文不得在剧情事件结算前宣告人物获救、船只离港或结局发生';
+  }
+
+  const encounter = progress.encounters.ENC01;
+  const encounterCount = getScenarioDefinition().world.encounters.find((item) => item.id === 'ENC01')?.count ?? 0;
+  const remainingOpponents = Math.max(0, encounterCount - (encounter?.defeated ?? 0));
+  if (
+    remainingOpponents > 0
+    && /(?:所有|全部|剩余)[^。；！？\n]{0,12}(?:深潜者|敌人)[^。；！？\n]{0,16}(?:倒下|被击败|失去战斗能力|逃走|撤退)|威胁[^。；！？\n]{0,8}(?:解除|消失)/.test(output.narrative)
+  ) {
+    return '正文不得越过结构化遭遇的剩余敌人数量';
+  }
+
+  const lockedScene = lockedSceneReference(allText, authority, state, kb, proposedEvents);
+  if (lockedScene) return `正文不得提前泄露未解锁地点：${lockedScene}`;
+
+  if (/注射[^。；\n]{0,12}活性炭|浓盐水[^。；\n]{0,12}催吐|试喝|尝一口/.test(allText)) {
+    return '正文不得给出危险的现实医疗操作或建议品尝未知物质';
+  }
+  return null;
+}
+
+function classifyNarratorDiagnostic(message: string): NarratorSemanticSeverity {
+  if (/成功.*局面收益|高度重复/.test(message)) return 'advisory';
+  if (
+    /request_check|propose_state_update|负 HP|实际伤害|检定失败|检定结果|剧情事件|剧情结果|正式发现线索|结构化遭遇|战斗路线|交涉条件|人物获救|结局|合法场景切换|场景切换已|未解锁地点|提前透露|危险的现实医疗|时代错误|没有被记录的枪械|装备转移/.test(message)
+  ) {
+    return 'blocking';
+  }
+  if (/必须在正文中说明|必须使用作者地址|activeNpc|活动 NPC|权威人物外貌/.test(message)) {
+    return 'advisory';
+  }
+  return 'warning';
+}
+
+/**
+ * 生产管线使用的分级复核。硬边界会重试并最终报错；叙事质量问题只要求
+ * AI 重写一次；其余历史规则只作为可观测警告，不再接管 AI DM 的回答。
+ */
+export function reviewNarratorSemantics(
+  output: { narrative: string; activeNpc?: string | null; nextPrompt: string; playerChoices: Record<string, string[]> },
+  toolCalls: DmToolCall[],
+  state: GameState,
+  kb: KnowledgeBase,
+  actions: PlayerAction[] = []
+): NarratorSemanticReview | null {
+  const authorityIssue = validateAuthoritativeNarratorSemantics(
+    output,
+    toolCalls,
+    state,
+    kb,
+    actions
+  );
+  if (authorityIssue) return { message: authorityIssue, severity: 'blocking' };
+
+  const diagnostic = validateNarratorSemantics(output, toolCalls, state, kb, actions);
+  return diagnostic
+    ? { message: diagnostic, severity: classifyNarratorDiagnostic(diagnostic) }
+    : null;
 }

@@ -11,7 +11,9 @@ import {
   inferStoryEventActor,
   inferStoryEventFromActions,
   inferStoryEventsFromActions,
+  reviewNarratorSemantics,
   sanitizePlayerChoices,
+  validateAuthoritativeNarratorSemantics,
   validateNarratorSemantics
 } from '../../src/dm/turnGuards';
 import { makeInvestigator, makeState } from './fixtures';
@@ -19,6 +21,57 @@ import { makeInvestigator, makeState } from './fixtures';
 const kb = getActiveKnowledgeBase();
 
 describe('turnGuards', () => {
+  it('classifies invented local color as a warning instead of a blocking rule', () => {
+    const state = makeState({ currentScene: 'S04', activeNpcName: null });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'active';
+    const output = {
+      narrative: '药店窗外停着一辆近期反复转运货物的马车。',
+      activeNpc: null,
+      nextPrompt: '你们如何利用这个临时观察？',
+      playerChoices: { 亨利: ['留意车轮与车夫的即时反应'] }
+    };
+
+    expect(validateAuthoritativeNarratorSemantics(output, [], state, kb)).toBeNull();
+    expect(reviewNarratorSemantics(output, [], state, kb)).toEqual(expect.objectContaining({
+      severity: 'warning'
+    }));
+  });
+
+  it('classifies a stagnant successful check as advisory rather than blocking', () => {
+    const state = makeState({ currentScene: 'S01' });
+    const output = {
+      narrative: '伊莎贝拉没有提供更多可核实的信息，只能依据已经确认的线索继续调查。',
+      activeNpc: '伊莎贝拉·摩勒',
+      nextPrompt: '下一步？',
+      playerChoices: { 亨利: ['继续观察'] }
+    };
+    const actions = [{
+      player: '亨利',
+      action: '【检定结果】亨利 的 侦查 检定：掷出 20，阈值 70，结果：困难成功（20）。'
+    }];
+
+    expect(reviewNarratorSemantics(output, [], state, kb, actions)).toEqual(expect.objectContaining({
+      severity: 'advisory'
+    }));
+  });
+
+  it('keeps an unauthorized scene arrival as a blocking authority conflict', () => {
+    const state = makeState({ currentScene: 'S01' });
+    const output = {
+      narrative: '你们已经抵达卡森其药店，推门进入后厅。',
+      activeNpc: null,
+      nextPrompt: '搜哪里？',
+      playerChoices: { 亨利: ['检查柜台'] }
+    };
+
+    expect(reviewNarratorSemantics(output, [], state, kb)).toEqual(expect.objectContaining({
+      severity: 'blocking'
+    }));
+  });
+
   it('keeps independent checks for multiple investigators in the same round', () => {
     const state = makeState({
       players: [

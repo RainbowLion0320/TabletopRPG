@@ -34,7 +34,7 @@ import {
   getNpcSnapshot,
   getSceneSnapshot
 } from './knowledgeBase';
-import { callNarrator, NarratorError, NarratorSemanticError } from './narrator';
+import { callNarrator, NarratorError } from './narrator';
 import { allowedTools, validateToolCalls } from './director';
 import { resolveDmTurn } from './stateResolver';
 import { maybeConsolidateMemory, SUMMARIZE_TRIGGER_PAIRS } from './summarizer';
@@ -60,7 +60,7 @@ import {
   combatCheckSkillForActor,
   inferStoryEventActor,
   sanitizePlayerChoices,
-  validateNarratorSemantics
+  reviewNarratorSemantics
 } from './turnGuards';
 import { DEFAULT_MEMORY_OPTIONS } from './types';
 import { defaultActiveNpcForScene, resolveActiveNpcForScene } from '../state/sceneFocus';
@@ -170,57 +170,6 @@ function buildSemanticFallbackChoices(
   }));
 }
 
-function buildBoundedFallbackNarrative(
-  actions: PlayerAction[],
-  sceneName: string,
-  activeNpcName: string | null,
-  followedVisibleSuggestions: boolean,
-  onlyFreeformResults = false
-): string {
-  const results = actions.flatMap((action) => {
-    if (onlyFreeformResults && /【结算契约】按作者事件/.test(action.action)) return [];
-    const match = action.action.match(
-      /【检定结果】([^\n。]+?)\s+的\s+([^\n。]+?)\s+检定：[\s\S]*?结果[：:]\s*([^。\n]+)/
-    );
-    if (!match) return [];
-    const label = match[3];
-    const outcome = label.includes('大失败')
-      ? 'fumble'
-      : /失败/.test(label)
-        ? 'fail'
-        : 'success';
-    return [{ player: match[1].trim(), skill: match[2].trim(), outcome }];
-  });
-  if (results.length) {
-    return results.map(({ player, skill, outcome }) => {
-      if (outcome === 'success') {
-        if (/侦查|聆听|图书馆|医学|心理学/.test(skill)) {
-          return `${player}的${skill}检定奏效：相关目标被有效排查，搜索或判断范围已经缩小；这项排除结论会保留，后续无需原样重复本次行动。`;
-        }
-        if (/说服|话术|恐吓/.test(skill)) {
-          return `${player}的${skill}检定奏效：在场人物对这次交涉作出了更明确的即时反应，${player}取得了继续追问或调整条件的主动权。`;
-        }
-        return `${player}的${skill}检定奏效：行动取得了明确的局部优势，并为下一步提供了新的可执行办法。`;
-      }
-      if (outcome === 'fumble') {
-        return `${player}的${skill}检定出现大失败：目标没有达成，失误还使现场压力明显上升；必须换方法、由同伴补救或承担风险后再继续。`;
-      }
-      return `${player}的${skill}检定未能达到目标，但行动暴露了当前方法的局限；可以换工具、由同伴协助或改变切入点继续推进。`;
-    }).join(' ');
-  }
-  if (onlyFreeformResults) return '';
-
-  const actingPlayers = actions
-    .filter((action) => !/【检定结果】/.test(action.action))
-    .map((action) => action.player)
-    .filter((player, index, all) => all.indexOf(player) === index);
-  const actorText = actingPlayers.length ? actingPlayers.join('与') : '调查员';
-  const npcReaction = activeNpcName
-    ? `${activeNpcName}也会记住你们本轮展现出的调查重点和态度。`
-    : '现场对你们的做法留下了可延续的局部变化。';
-  return `${actorText}的行动已经实际发生，你们仍在${sceneName}。${npcReaction}${followedVisibleSuggestions ? ' 你们按刚才选定的方式继续行动过了，这项建议不会原样重复；下一步会提供不同方向。' : ' 下一步可以延续成果、换一种方法，或转向另一处尚未穷尽的目标。'}`;
-}
-
 function prioritizeNewlyAvailableDestinations(
   choices: Record<string, string[]>,
   state: GameState,
@@ -254,20 +203,6 @@ function prioritizeNewlyAvailableDestinations(
       .slice(0, 3);
     return [player.name, merged];
   }));
-}
-
-function actionsUseVisibleSuggestions(state: GameState, actions: PlayerAction[]): boolean {
-  const normalize = (value: string) => value.replace(/\s+/g, '').replace(/[。！？]+$/g, '');
-  const declarations = actions.filter((action) => !/【检定结果】/.test(action.action));
-  if (!declarations.length) return false;
-  return declarations.every((action) => {
-    const player = state.players.find((candidate) => candidate.name === action.player);
-    const visible = player
-      ? state.suggestionsByPlayerId[player.id] ?? state.suggestions
-      : state.suggestions;
-    const selected = normalize(action.action);
-    return visible.some((suggestion) => normalize(suggestion) === selected);
-  });
 }
 
 function getCompletedTurnCount(state: GameState): number {
@@ -645,7 +580,6 @@ export async function runDmTurn(
     ...baseDirectorCtx,
     scenarioProgressForSceneValidation: storyPreview?.progress
   };
-  const hasAuthoritativeTransition = Boolean(inferredSceneCall || inferredStoryCalls.length);
   if (checksForRound.length) {
     const targetSceneId = inferredSceneCall
       ? String(inferredSceneCall.arguments.targetSceneId) as SceneId
@@ -824,115 +758,24 @@ export async function runDmTurn(
       history,
       allowedToolNames: allowed,
       lookupResolver,
-      validateOutput: (output, toolCalls) => validateNarratorSemantics(
+      validateOutput: (output, toolCalls) => reviewNarratorSemantics(
         output,
         reviewCandidateCalls(toolCalls).accepted,
         input.state,
         kb,
         input.actions
       ),
-      recoveryMode: hasAuthoritativeTransition ? 'authoritative-fallback' : 'standard',
       signal: input.signal
     });
   } catch (err) {
-    if (
-      err instanceof NarratorSemanticError
-      || (hasAuthoritativeTransition && err instanceof NarratorError)
-    ) {
-      const projectedScene = inferredSceneCall
-        ? String(inferredSceneCall.arguments.targetSceneId) as SceneId
-        : input.state.currentScene;
-      const sceneName = kb.scenes[projectedScene]?.public.name ?? projectedScene;
-      const changedScene = projectedScene !== input.state.currentScene;
-      const projectedStoryEventIds = inferredStoryCalls.map((call) => String(call.arguments.eventId ?? ''));
-      const projectedTransition = processScenarioTurn(progressBefore, {
-        currentScene: projectedScene,
-        previousScene: changedScene ? input.state.currentScene : undefined,
-        storyEventIds: projectedStoryEventIds,
-        turn: currentTurn,
-        completeTurn: false,
-        actorName: input.actions[input.actions.length - 1]?.player
-      });
-      const activeNpcName = inferredStoryCalls.length
-        ? defaultActiveNpcForScene(projectedScene)
-        : resolveActiveNpcForScene({
-            previousScene: input.state.currentScene,
-            nextScene: projectedScene,
-            previousActiveNpc: input.state.activeNpcName,
-            requestedActiveNpc: changedScene ? null : input.state.activeNpcName,
-            requestedActiveNpcProvided: true
-          });
-      const eventNarrative = projectedStoryEventIds.flatMap((id) =>
-        availableEvents.get(id)?.narrativeCue ?? []
-      ).join(' ');
-      const projectedRoute = projectedTransition.progress.variables.finaleRoute;
-      const diceResultText = input.actions.map((action) => action.action).join('\n');
-      const checkSucceeded = /【检定结果】[\s\S]*结果[：:]\s*(?:成功|普通成功|困难成功|极难成功|大成功)/.test(diceResultText);
-      const checkFailed = /【检定结果】[\s\S]*结果[：:]\s*(?:失败|大失败)/.test(diceResultText);
-      const finaleNarrative = projectedScene === 'S05' && projectedRoute === 'combat'
-        ? checkSucceeded
-          ? '攻击已经结算并奏效，一名深潜者失去战斗能力；其余深潜者仍在阻止你们接近埃里克。'
-          : checkFailed
-            ? '这次攻击未能使深潜者失去战斗能力；甲板冲突仍在继续，扶桑花号正准备离港。'
-            : '甲板冲突仍在继续，调查员必须尽快攻击仍在抵抗的深潜者并救出埃里克。'
-        : projectedScene === 'S05' && projectedRoute === 'negotiation'
-          ? checkSucceeded
-            ? '这次交涉检定已经成功结算；调查员继续依据已经听懂的诉求完成交涉。'
-            : checkFailed
-              ? '这次交涉检定未能奏效；调查员仍须依据当前有效目标继续处理交涉。'
-              : '交涉仍在继续，调查员需要先听懂对方诉求，再说服其释放埃里克。'
-          : '';
-      const followedVisibleSuggestions = actionsUseVisibleSuggestions(input.state, input.actions);
-      const companionOutcome = eventNarrative
-        ? buildBoundedFallbackNarrative(
-            input.actions,
-            sceneName,
-            activeNpcName,
-            followedVisibleSuggestions,
-            true
-          )
-        : '';
-      const narrative = eventNarrative
-        ? `${eventNarrative}${companionOutcome ? ` ${companionOutcome}` : ''}`
-        : finaleNarrative || (changedScene
-        ? activeNpcName
-          ? `你们已经抵达${sceneName}。${activeNpcName}就在这里，你们可以围绕已经确认的线索继续调查。`
-          : `你们已经抵达${sceneName}。场景已经切换，可以围绕已经确认的线索继续调查。`
-        : buildBoundedFallbackNarrative(
-            input.actions,
-            sceneName,
-            activeNpcName,
-            followedVisibleSuggestions
-          ));
-      const playerChoices = buildSemanticFallbackChoices(
-        input.state,
-        kb,
-        projectedScene,
-        activeNpcName,
-        projectedTransition.progress
-      );
-      const nextPrompt = finaleNarrative
-        ? projectedRoute === 'combat'
-          ? '下一轮如何攻击仍在抵抗的深潜者？'
-          : '下一步如何继续交涉？'
-        : '下一步准备如何利用本轮结果，或换一个尚未穷尽的目标？';
-      narrator = {
-        raw: JSON.stringify({ narrative, activeNpc: activeNpcName, nextPrompt, playerChoices }),
-        narrative,
-        activeNpc: activeNpcName,
-        nextPrompt,
-        playerChoices,
-        keywords: [],
-        toolCalls: [],
-        usedFunctionCalling: false
-      };
-    } else if (err instanceof NarratorError) {
-      throw new AiResponseFormatError(err.message);
-    } else {
-      throw err;
-    }
+    if (err instanceof NarratorError) throw new AiResponseFormatError(err.message);
+    throw err;
   }
   timings.narrator = elapsedMs(narratorStart);
+
+  if (narrator.semanticWarnings?.length) {
+    devWarn('[pipeline] narrator response accepted with advisory warning:', narrator.semanticWarnings.join('；'));
+  }
 
   // 4) 出口护栏：逐个语义校验工具调用，同时检查是否越出 allowed 集
   const directorResult = reviewCandidateCalls(narrator.toolCalls);
@@ -943,6 +786,30 @@ export async function runDmTurn(
       '[pipeline] director rejected function calls:',
       directorResult.rejected.map((r) => `${r.call.name}: ${r.reason}`)
     );
+  }
+
+  const acceptedSceneChange = directorResult.accepted.find((call) => call.name === 'propose_scene_change');
+  const narratorScene = acceptedSceneChange
+    ? String(acceptedSceneChange.arguments.targetSceneId ?? input.state.currentScene) as SceneId
+    : input.state.currentScene;
+  const sceneNpcNames = kb.scenes[narratorScene]?.public.npcs ?? [];
+  const requestedSceneNpc = narrator.activeNpc && sceneNpcNames.includes(narrator.activeNpc)
+    ? narrator.activeNpc
+    : null;
+  const normalizedActiveNpc = resolveActiveNpcForScene({
+    previousScene: input.state.currentScene,
+    nextScene: narratorScene,
+    previousActiveNpc: input.state.activeNpcName,
+    requestedActiveNpc: requestedSceneNpc,
+    requestedActiveNpcProvided: true
+  });
+  if (narrator.activeNpc !== normalizedActiveNpc) {
+    devWarn('[pipeline] normalized narrator activeNpc to authoritative scene:', {
+      requested: narrator.activeNpc,
+      accepted: normalizedActiveNpc,
+      scene: narratorScene
+    });
+    narrator.activeNpc = normalizedActiveNpc;
   }
 
   // 5) 翻译为 reducer 可消费的 AiResponse + 事件序列

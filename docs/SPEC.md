@@ -256,7 +256,7 @@ The five YAML files under `scenarios/wuzhongxiaoshi/` are the only authored scen
 
 The AI may propose only an authored `eventId` through `propose_story_event`. Director verifies the event belongs to an active beat and its Condition is true; effects are loaded exclusively from YAML. Direct writes to declared story variables or authoritative clues are rejected.
 
-An explicit player declaration may also create a deterministic `propose_story_event` candidate for the same Director review, preventing a tool-omitting model from discarding clear intent. If Narrator violates semantic scene rules twice, the pipeline emits a local no-progress narrative in the authoritative current scene; required-beat idle escalation then remains responsible for recovery. Unparseable JSON still surfaces as a format error.
+An explicit player declaration may also create a deterministic `propose_story_event` candidate for the same Director review, preventing a tool-omitting model from discarding clear intent. Narrator semantics are reviewed at three levels: authoritative state or safety conflicts are blocking, clear quality regressions are advisory, and ordinary style/detail findings are warnings. Advisory output is rewritten once and then accepted; warnings are accepted immediately. Repeated blocking conflicts and unparseable JSON surface as format errors for the controller to retry. The pipeline never replaces a semantic failure with locally authored player-visible narration.
 
 ### Dynamic Case Board
 

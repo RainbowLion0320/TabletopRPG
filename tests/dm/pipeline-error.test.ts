@@ -100,7 +100,7 @@ describe('runDmTurn error classification', () => {
     expect(output.legacyResponse.check?.resolution?.kind).toBe('freeform');
   });
 
-  it('replaces a no-progress successful freeform result with a bounded benefit', async () => {
+  it('asks the AI to improve a no-progress success once without replacing its final narration', async () => {
     const content = JSON.stringify({
       narrative: '伊莎贝拉没有提供更多可核实的信息。你们仍在摩勒住宅，只能依据已经确认的线索继续调查。',
       activeNpc: '伊莎贝拉·摩勒',
@@ -125,8 +125,10 @@ describe('runDmTurn error classification', () => {
     });
 
     expect(countNarratorRequests(fetchMock)).toBe(2);
-    expect(output.legacyResponse.narrative).not.toMatch(/没有提供更多可核实的信息|只能依据已经确认的线索/);
-    expect(output.legacyResponse.narrative).toMatch(/有效排查|范围已经缩小|无需原样重复/);
+    expect(output.legacyResponse.narrative).toBe(
+      '伊莎贝拉没有提供更多可核实的信息。你们仍在摩勒住宅，只能依据已经确认的线索继续调查。'
+    );
+    expect(output.legacyResponse.narrative).not.toMatch(/有效排查|范围已经缩小|无需原样重复/);
   });
 
   it('queues attacks from multiple investigators against the same authored encounter', async () => {
@@ -881,15 +883,22 @@ describe('runDmTurn error classification', () => {
     expect(next.scenarioProgress?.beatStates.B02).toBe('active');
   });
 
-  it('falls back immediately when clue narration disagrees with an authored failure event', async () => {
-    const narrative = JSON.stringify({
+  it('asks the AI to rewrite narration that disagrees with an authored failure event', async () => {
+    const invalidNarrative = JSON.stringify({
       narrative: '尽管亨利没能判断便签上笔触是否异常，他仍看清了桌面上那张写有“别来找我”的字条。',
       activeNpc: '伊莎贝拉·摩勒',
       nextPrompt: '下一步怎么做？',
       playerChoices: { 亨利: ['记录便签'] }
     });
+    const correctedNarrative = JSON.stringify({
+      narrative: '亨利没能判断笔触异常，但仍看清便签上的“别来找我”；翻找声惊动了伊莎贝拉，她也认出合影中的蒙特利尔。',
+      activeNpc: '伊莎贝拉·摩勒',
+      nextPrompt: '如何利用便签与合影继续调查？',
+      playerChoices: { 亨利: ['记录两件证物并询问蒙特利尔'] }
+    });
     const fetchMock = vi.fn()
-      .mockResolvedValueOnce(jsonResponseWithStoryEvent(narrative, 'EV_FIND_I01'));
+      .mockResolvedValueOnce(jsonResponseWithStoryEvent(invalidNarrative, 'EV_FIND_I01'))
+      .mockResolvedValueOnce(jsonResponse(correctedNarrative));
     vi.stubGlobal('fetch', fetchMock);
     const state = makeState({
       players: [makeInvestigator({ name: '亨利' })],
@@ -908,7 +917,7 @@ describe('runDmTurn error classification', () => {
       ]
     });
 
-    expect(countNarratorRequests(fetchMock)).toBe(1);
+    expect(countNarratorRequests(fetchMock)).toBe(2);
     expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_FAIL_I01');
     expect(output.legacyResponse.stateUpdate?.storyEventIds).not.toContain('EV_FIND_I01');
     expect(output.legacyResponse.narrative).toContain('别来找我');
@@ -966,7 +975,7 @@ describe('runDmTurn error classification', () => {
     ).rejects.toBeInstanceOf(AiResponseFormatError);
   });
 
-  it('falls back safely after repeated semantic scene violations', async () => {
+  it('reports repeated authoritative scene violations instead of replacing them with a template', async () => {
     const invalidArrival = JSON.stringify({
       narrative: '你们已经抵达卡森其药店。',
       activeNpc: null,
@@ -976,16 +985,13 @@ describe('runDmTurn error classification', () => {
     vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(invalidArrival)));
     const state = makeState({ players: [makeInvestigator({ name: '亨利' })], currentScene: 'S01' });
 
-    const output = await runDmTurn(config, {
+    await expect(runDmTurn(config, {
       state,
       actions: [{ player: '亨利', action: '在没有地址线索时前往卡森其药店。' }]
-    });
-
-    expect(output.legacyResponse?.narrative).toContain('仍在摩勒住宅');
-    expect(output.legacyResponse?.stateUpdate?.sceneChange).toBeNull();
+    })).rejects.toBeInstanceOf(AiResponseFormatError);
   });
 
-  it('keeps fallback narration and NPC synchronized with an accepted scene change', async () => {
+  it('normalizes active NPC metadata while preserving AI narration after a scene change', async () => {
     const unsupportedClaim = JSON.stringify({
       narrative: '你们抵达卡森其药店，发现埃里克脸上有伤，手一直在发抖。',
       activeNpc: '老赫特之家酒保',
@@ -1008,21 +1014,30 @@ describe('runDmTurn error classification', () => {
 
     expect(output.legacyResponse.stateUpdate?.sceneChange).toBe('S04');
     expect(output.legacyResponse.activeNpc).toBeNull();
-    expect(output.legacyResponse.narrative).toContain('已经抵达卡森其药店');
-    expect(output.legacyResponse.narrative).not.toContain('声明中的其他新信息');
+    expect(output.legacyResponse.narrative).toContain('抵达卡森其药店');
+    expect(output.legacyResponse.narrative).toContain('埃里克脸上有伤');
     expect(output.legacyResponse.narrative).not.toContain('仍在老赫特酒吧');
     expect(output.legacyResponse.narrative).not.toContain('老赫特之家酒保');
     expect(output.legacyResponse.playerChoices?.亨利).not.toContain('请老赫特之家酒保只核对已经确认的事实');
   });
 
-  it('does not blame players when a visible suggestion is followed but model narration violates clue authority', async () => {
+  it('rewrites an uncommitted clue discovery without blaming the player', async () => {
     const invalidDiscovery = JSON.stringify({
       narrative: '两人从窄窗进入药店，立刻在柜台附近发现了雪茄头。',
       activeNpc: null,
       nextPrompt: '检查雪茄头。',
       playerChoices: { 亨利: ['检查雪茄头'] }
     });
-    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(invalidDiscovery)));
+    const corrected = JSON.stringify({
+      narrative: '亨利侧身穿过窄窗落到药店内，先稳住脚步观察柜台与后厅。',
+      activeNpc: null,
+      nextPrompt: '准备从哪里开始调查？',
+      playerChoices: { 亨利: ['检查柜台', '搜查后厅'] }
+    });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(invalidDiscovery))
+      .mockResolvedValueOnce(jsonResponse(corrected));
+    vi.stubGlobal('fetch', fetchMock);
     const player = makeInvestigator({ name: '亨利' });
     const state = makeState({ players: [player], currentScene: 'S04' });
     state.scenarioProgress = createScenarioProgress();
@@ -1037,8 +1052,9 @@ describe('runDmTurn error classification', () => {
       actions: [{ player: '亨利', action: '侧身从窄窗翻入药店内部' }]
     });
 
-    expect(output.legacyResponse.narrative).toContain('按刚才选定的方式继续行动');
-    expect(output.legacyResponse.narrative).not.toContain('声明中的新信息无法');
+    expect(countNarratorRequests(fetchMock)).toBe(2);
+    expect(output.legacyResponse.narrative).toContain('侧身穿过窄窗');
+    expect(output.legacyResponse.narrative).not.toContain('雪茄头');
     expect(output.legacyResponse.stateUpdate?.storyEventIds).not.toContain('EV_S04_CIGAR');
   });
 
@@ -1115,14 +1131,22 @@ describe('runDmTurn error classification', () => {
     expect(output.legacyResponse.playerChoices?.亨利?.some((choice) => /蒙特利尔|继续追问/.test(choice))).toBe(false);
   });
 
-  it('prioritizes the destination of the active mandatory beat in semantic fallback choices', async () => {
+  it('prioritizes the destination of the active mandatory beat after an AI rewrite', async () => {
     const invalidDiscovery = JSON.stringify({
       narrative: '亨利在桌面上又发现了一张便签。',
       activeNpc: '伊莎贝拉·摩勒',
       nextPrompt: '查看便签。',
       playerChoices: { 亨利: ['查看便签'] }
     });
-    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(invalidDiscovery)));
+    const corrected = JSON.stringify({
+      narrative: '亨利把已经确认的记录按时间顺序整理妥当。',
+      activeNpc: '伊莎贝拉·摩勒',
+      nextPrompt: '下一步去哪里？',
+      playerChoices: { 亨利: ['继续留在住宅整理'] }
+    });
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(jsonResponse(invalidDiscovery))
+      .mockResolvedValueOnce(jsonResponse(corrected)));
     const state = makeState({ players: [makeInvestigator({ name: '亨利' })], currentScene: 'S01' });
     state.scenarioProgress = createScenarioProgress();
     state.scenarioProgress.beatStates.B01 = 'completed';
@@ -1218,7 +1242,7 @@ describe('runDmTurn error classification', () => {
     expect(output.legacyResponse.activeNpc).toBeNull();
   });
 
-  it('uses authored scene actions instead of objective text in semantic fallback choices', async () => {
+  it('keeps AI-authored choices when a soft world-detail warning is raised', async () => {
     const invalid = JSON.stringify({
       narrative: '药店窗外停着一辆近期反复转运货物的马车。',
       activeNpc: null,
@@ -1242,11 +1266,7 @@ describe('runDmTurn error classification', () => {
       actions: [{ player: '亨利', action: '原地整理已经确认的记录。' }]
     });
 
-    expect(output.legacyResponse.playerChoices?.亨利).toEqual([
-      '搜查后厅被翻动的区域和遗留包裹',
-      '检查柜台附近的烟灰与使用痕迹',
-      '确认后门、窗户和街巷方向，规划安全退路'
-    ]);
+    expect(output.legacyResponse.playerChoices?.亨利).toContain('追查马车');
     expect(output.legacyResponse.playerChoices?.亨利).not.toContain('应对浓雾与追兵，找到扶桑花号的位置。');
   });
 
@@ -1410,7 +1430,7 @@ describe('runDmTurn error classification', () => {
   });
 
   it('enters the finale without consuming listening before an explicit route choice', async () => {
-    const content = JSON.stringify({
+    const invalidContent = JSON.stringify({
       narrative: '调查员抵达泰晤士港扶桑花号。扶桑花号交涉代表说：“那个人类已被我们的仪式所用，不可归还。若你们不再追踪扶桑花号，我可保你们安全离开。”',
       activeNpc: '扶桑花号交涉代表',
       nextPrompt: '选择交涉还是武力？',
@@ -1419,7 +1439,18 @@ describe('runDmTurn error classification', () => {
         艾达: ['选择以武力阻止深潜者带走埃里克']
       }
     });
-    const fetchMock = vi.fn(async () => jsonResponse(content));
+    const correctedContent = JSON.stringify({
+      narrative: '调查员抵达泰晤士港扶桑花号。交涉代表隔着雾气注视你们，等待你们表明是愿意谈，还是准备动武。',
+      activeNpc: '扶桑花号交涉代表',
+      nextPrompt: '选择交涉还是武力？',
+      playerChoices: {
+        亨利: ['选择暂缓攻击，与深潜者代表进行交涉'],
+        艾达: ['选择以武力阻止深潜者带走埃里克']
+      }
+    });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(invalidContent))
+      .mockResolvedValueOnce(jsonResponse(correctedContent));
     vi.stubGlobal('fetch', fetchMock);
     const state = makeState({
       players: [
@@ -1558,14 +1589,22 @@ describe('runDmTurn error classification', () => {
     }));
   });
 
-  it('uses a combat-aware semantic fallback after a resolved successful attack', async () => {
+  it('asks the AI to rewrite an unauthorized rescue after a resolved successful attack', async () => {
     const invalidOutcome = JSON.stringify({
       narrative: '交涉代表立刻释放了埃里克，并允许调查员停止战斗离开码头。',
       activeNpc: '扶桑花号交涉代表',
       nextPrompt: '带埃里克离开。',
       playerChoices: { 罗伯特: ['停止攻击并谈判'] }
     });
-    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(invalidOutcome)));
+    const correctedOutcome = JSON.stringify({
+      narrative: '罗伯特的攻击已经结算并奏效，一名深潜者失去战斗能力；其余敌人仍挡在埃里克前方。',
+      activeNpc: '扶桑花号交涉代表',
+      nextPrompt: '下一轮如何突破阻拦？',
+      playerChoices: { 罗伯特: ['继续攻击仍在抵抗的深潜者'] }
+    });
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(jsonResponse(invalidOutcome))
+      .mockResolvedValueOnce(jsonResponse(correctedOutcome)));
     const state = makeState({
       players: [makeInvestigator({ name: '罗伯特' }, { '格斗（拳）': 70 })],
       currentScene: 'S05',
@@ -1579,6 +1618,7 @@ describe('runDmTurn error classification', () => {
     state.scenarioProgress.variables.finaleRoute = 'combat';
     state.scenarioProgress.variables.combatRoundStarted = true;
     state.scenarioProgress.encounters.ENC01.state = 'active';
+    state.scenarioProgress.encounters.ENC01.defeated = 1;
     state.scenarioProgress.clocks.fusangEscape = { value: 2, active: true, visible: true };
 
     const output = await runDmTurn(config, {

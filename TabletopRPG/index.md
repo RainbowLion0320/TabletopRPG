@@ -22,7 +22,7 @@ updated: 2026-08-18
 | 页面 | 简介 | 状态 |
 |------|------|------|
 | [团队成员](entities/team.md) | 团队成员分工与资源交付职责 | ✅ |
-| [AI DM 系统](entities/ai_dm.md) | AI DM Provider adapter、前后台回合、记忆、响应、受控自由叙事与多检定队列 | ✅ 已实现 |
+| [AI DM 系统](entities/ai_dm.md) | AI DM Provider adapter、前后台回合、三级语义复核、受控自由叙事与多检定队列 | ✅ 已实现 |
 | [角色系统](entities/character_system.md) | 当前预设调查员选择、立绘、完整属性、职业/技能数据结构、派生数值规则 | ✅ 已实现（预设选择） |
 | [存档系统](entities/save_system.md) | `trpg-saves-v2`、API 配置 | ✅ 已实现（最近存档、列表、删除） |
 
@@ -31,7 +31,7 @@ updated: 2026-08-18
 | 页面 | 简介 | 状态 |
 |------|------|------|
 | [核心玩法循环](concepts/core_loop.md) | title/setup/game 状态机，多玩家行动 -> 多检定队列 -> 汇总结算循环 | ✅ 已实现 |
-| [提示词工程](concepts/prompt_engineering.md) | 当前内嵌提示词结构与外部化计划 | ✅ |
+| [提示词工程](concepts/prompt_engineering.md) | 三层事实边界、分级语义复核、当前内嵌提示词结构与外部化计划 | ✅ |
 | [技术选型](concepts/tech_stack.md) | React/Vite/TypeScript、多 Provider、localStorage、数值规则配置 | ✅ |
 | [动态案件板与调查台](concepts/case_board.md) | v7 核心关系、实体档案、审核规则、自动布局与 v6 迁移 | ✅ 已实现 |
 | [模组规范与剧情推进引擎](concepts/scenario_engine.md) | YAML 唯一事实源、Condition/Effect、节点推进、v8 迁移 | ✅ 已实现 |

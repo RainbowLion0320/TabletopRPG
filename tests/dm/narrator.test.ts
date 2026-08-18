@@ -365,6 +365,71 @@ describe('callNarrator retry repair', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('accepts a warning-level semantic diagnostic without retrying', async () => {
+    const content = JSON.stringify({
+      narrative: '雾气在窗缝边凝成细小水珠。',
+      activeNpc: null,
+      nextPrompt: '你要继续观察吗？',
+      playerChoices: { 亨利: ['检查窗缝'] }
+    });
+    const fetchMock = vi.fn(async () => jsonResponse(content));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const output = await callNarrator(config, {
+      ctx,
+      actions: [{ player: '亨利', action: '观察窗边。' }],
+      mode: 'together',
+      history: [],
+      validateOutput: () => ({ severity: 'warning', message: '非权威氛围细节' })
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(output.narrative).toContain('水珠');
+    expect(output.semanticWarnings).toEqual(['非权威氛围细节']);
+  });
+
+  it('revises an advisory issue once and still preserves the AI final response', async () => {
+    const first = JSON.stringify({
+      narrative: '第一次回答。', activeNpc: null, nextPrompt: '继续？', playerChoices: { 亨利: ['继续'] }
+    });
+    const second = JSON.stringify({
+      narrative: '第二次回答仍由 AI 作出。', activeNpc: null, nextPrompt: '继续？', playerChoices: { 亨利: ['继续'] }
+    });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(first))
+      .mockResolvedValueOnce(jsonResponse(second));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const output = await callNarrator(config, {
+      ctx,
+      actions: [{ player: '亨利', action: '继续观察。' }],
+      mode: 'together',
+      history: [],
+      validateOutput: () => ({ severity: 'advisory', message: '可以给出更具体的局面变化' })
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(output.narrative).toBe('第二次回答仍由 AI 作出。');
+    expect(output.semanticWarnings).toEqual(['可以给出更具体的局面变化']);
+  });
+
+  it('rejects a repeated blocking authority conflict instead of generating a local template', async () => {
+    const content = JSON.stringify({
+      narrative: '错误改写权威状态。', activeNpc: null, nextPrompt: '继续？', playerChoices: { 亨利: ['继续'] }
+    });
+    const fetchMock = vi.fn(async () => jsonResponse(content));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(callNarrator(config, {
+      ctx,
+      actions: [{ player: '亨利', action: '继续观察。' }],
+      mode: 'together',
+      history: [],
+      validateOutput: () => ({ severity: 'blocking', message: '不得改写权威状态' })
+    })).rejects.toThrow('不得改写权威状态');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('reports a diagnostic configuration error when chat-compatible protocol has no endpoint', async () => {
     const badConfig: ApiConfig = {
       provider: 'custom',
