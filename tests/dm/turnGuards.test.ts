@@ -3,6 +3,7 @@ import { getActiveKnowledgeBase } from '../../src/dm/knowledgeBase';
 import { createScenarioProgress } from '../../src/scenario/engine';
 import {
   buildRequiredCheck,
+  buildRequiredChecks,
   buildPostMoveContinuationActions,
   inferDiscoveredItems,
   inferNarrativeConsequences,
@@ -18,6 +19,43 @@ import { makeInvestigator, makeState } from './fixtures';
 const kb = getActiveKnowledgeBase();
 
 describe('turnGuards', () => {
+  it('keeps independent checks for multiple investigators in the same round', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利' }, { 侦查: 70 }),
+        makeInvestigator({ name: '艾达' }, { 心理学: 65 })
+      ]
+    });
+    const checks = buildRequiredChecks([
+      { player: '亨利', action: '仔细检查窗帘后与壁炉阴影里是否有人藏身。' },
+      { player: '艾达', action: '观察伊莎贝拉的表情与手部动作，判断她是否说谎。' }
+    ], state);
+
+    expect(checks).toHaveLength(2);
+    expect(checks).toEqual([
+      expect.objectContaining({ player: '亨利', skill: '侦查' }),
+      expect.objectContaining({ player: '艾达', skill: '心理学' })
+    ]);
+    expect(checks.every((check) => check.resolution)).toBe(true);
+  });
+
+  it('removes exhausted and just-used investigation suggestions', () => {
+    const players = [makeInvestigator({ name: '亨利' })];
+    const choices = sanitizePlayerChoices({
+      亨利: [
+        '检查书桌抽屉与相框是否藏有文件',
+        '查看书架夹页和书本缝隙',
+        '请伊莎贝拉只补充她亲眼确认的失踪经过'
+      ]
+    }, new Set(['I02']), kb, 'S01', null, 4, players, [{
+      player: '亨利', action: '查看书架夹页和书本缝隙'
+    }]);
+
+    expect(choices.亨利).not.toContain('检查书桌抽屉与相框是否藏有文件');
+    expect(choices.亨利).not.toContain('查看书架夹页和书本缝隙');
+    expect(choices.亨利).toContain('请伊莎贝拉只补充她亲眼确认的失踪经过');
+  });
+
   it('requires a real roll for risky investigation and does not recurse on dice results', () => {
     const state = makeState({ players: [makeInvestigator({ name: '亨利' }, { 侦查: 70 })] });
     expect(buildRequiredCheck([{ player: '亨利', action: '仔细搜查书房' }], state)).toEqual(
@@ -423,6 +461,38 @@ describe('turnGuards', () => {
     expect(buildRequiredCheck([{
       player: '艾达', action: '冲进船舱寻找埃里克，为他检查伤势并带他离船。'
     }], state)).toBeNull();
+  });
+
+  it('still allows a genuine first-aid check during unresolved combat', () => {
+    const state = makeState({
+      players: [makeInvestigator({ name: '艾达' }, { 急救: 70 })],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.variables.finaleRoute = 'combat';
+    state.scenarioProgress.encounters.ENC01.state = 'active';
+
+    expect(buildRequiredCheck([{
+      player: '艾达', action: '躲在木箱后为受伤的同伴止血包扎。'
+    }], state)).toEqual(expect.objectContaining({
+      player: '艾达', skill: '急救', resolution: expect.objectContaining({ kind: 'freeform' })
+    }));
+  });
+
+  it('absorbs a passive companion observation instead of inflating the check queue', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利' }, { 侦查: 70 }),
+        makeInvestigator({ name: '艾达' }, { 侦查: 50 })
+      ]
+    });
+
+    expect(buildRequiredChecks([
+      { player: '亨利', action: '检查门锁。' },
+      { player: '艾达', action: '在旁观察。' }
+    ], state)).toEqual([
+      expect.objectContaining({ player: '亨利', skill: '侦查' })
+    ]);
   });
 
   it('treats a natural first strike as the authored combat route and keeps its actor', () => {
@@ -1110,7 +1180,8 @@ describe('turnGuards', () => {
     const calls = inferStoryEventsFromActions([
       { player: '亨利', action: '检查桌上便签、抽屉里的旧合影和书架夹缝的小册子。' },
       { player: '艾达', action: '检查名片和垃圾桶里的报纸残片。' },
-      { player: '亨利', action: '【检定结果】亨利 的侦查检定：掷出 82，结果：失败。' }
+      { player: '亨利', action: '【检定结果】亨利 的侦查检定：掷出 82，结果：失败。' },
+      { player: '艾达', action: '【检定结果】艾达 的侦查检定：掷出 76，结果：失败。' }
     ], state);
 
     expect(calls.map((call) => call.arguments.eventId)).toEqual([
@@ -2755,7 +2826,7 @@ describe('turnGuards', () => {
     expect(validateNarratorSemantics({
       narrative: '厨房与门厅没有提供更多可核实的信息，伊莎贝拉也无法确认新的细节。',
       activeNpc: '伊莎贝拉·摩勒', nextPrompt: '你们可以转向已有线索。', playerChoices: {}
-    }, [], state, kb, actions)).toBeNull();
+    }, [], state, kb, actions)).toMatch(/自由检定已经成功|明确的局面收益/);
   });
 
   it('does not mistake movement around the current precinct for a new police location', () => {

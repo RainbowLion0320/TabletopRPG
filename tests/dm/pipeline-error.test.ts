@@ -71,6 +71,123 @@ afterEach(() => {
 });
 
 describe('runDmTurn error classification', () => {
+  it('queues every independent investigator check in one round', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利' }, { 侦查: 70 }),
+        makeInvestigator({ name: '艾达' }, { 心理学: 65 })
+      ],
+      currentScene: 'S01'
+    });
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [
+        { player: '亨利', action: '仔细检查窗帘后与壁炉阴影里是否有人藏身。' },
+        { player: '艾达', action: '观察伊莎贝拉的表情与手部动作，判断她是否说谎。' }
+      ]
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(output.legacyResponse.check).toEqual(expect.objectContaining({
+      player: '亨利', skill: '侦查', batchIndex: 1, batchTotal: 2
+    }));
+    expect(output.legacyResponse.check?.queuedChecks).toEqual([
+      expect.objectContaining({ player: '艾达', skill: '心理学', batchIndex: 2, batchTotal: 2 })
+    ]);
+    expect(output.legacyResponse.check?.resolution?.kind).toBe('freeform');
+  });
+
+  it('replaces a no-progress successful freeform result with a bounded benefit', async () => {
+    const content = JSON.stringify({
+      narrative: '伊莎贝拉没有提供更多可核实的信息。你们仍在摩勒住宅，只能依据已经确认的线索继续调查。',
+      activeNpc: '伊莎贝拉·摩勒',
+      nextPrompt: '下一步？',
+      playerChoices: { 亨利: ['继续观察当前环境'] },
+      keywords: []
+    });
+    const fetchMock = vi.fn(async () => jsonResponse(content));
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({
+      players: [makeInvestigator({ name: '亨利' }, { 侦查: 70 })],
+      currentScene: 'S01',
+      activeNpcName: '伊莎贝拉·摩勒'
+    });
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [
+        { player: '亨利', action: '仔细检查窗帘后与壁炉阴影里是否有人藏身。' },
+        { player: '亨利', action: '【检定结果】亨利 的 侦查 检定：掷出 20，阈值 70，结果：困难成功（20）。' }
+      ]
+    });
+
+    expect(countNarratorRequests(fetchMock)).toBe(2);
+    expect(output.legacyResponse.narrative).not.toMatch(/没有提供更多可核实的信息|只能依据已经确认的线索/);
+    expect(output.legacyResponse.narrative).toMatch(/有效排查|范围已经缩小|无需原样重复/);
+  });
+
+  it('queues attacks from multiple investigators against the same authored encounter', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利' }, { '格斗（拳）': 55 }),
+        makeInvestigator({ name: '罗伯特', equipment: ['警用左轮手枪'] }, { '射击（手枪）': 65 })
+      ],
+      currentScene: 'S05'
+    });
+    state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed';
+    state.scenarioProgress.beatStates.B02 = 'completed';
+    state.scenarioProgress.beatStates.B05 = 'completed';
+    state.scenarioProgress.beatStates.B06 = 'active';
+
+    const output = await runDmTurn(config, {
+      state,
+      actions: [
+        { player: '亨利', action: '扑向左侧深潜者，用拳头攻击它。' },
+        { player: '罗伯特', action: '拔出左轮手枪，向右侧深潜者开火。' }
+      ]
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_CHOOSE_COMBAT');
+    const checks = [
+      output.legacyResponse.check,
+      ...(output.legacyResponse.check?.queuedChecks ?? [])
+    ].filter(Boolean);
+    expect(checks).toHaveLength(2);
+    expect(new Set(checks.map((check) => check?.player))).toEqual(new Set(['亨利', '罗伯特']));
+    expect(checks.every((check) => check?.scenarioCheckId === 'CHECK_COMBAT')).toBe(true);
+
+    let next = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: output.legacyResponse,
+      raw: output.raw,
+      actorName: output.actorName
+    });
+    const firstCheck = next.pendingCheck!;
+    next = gameReducer(next, {
+      type: 'applyDiceResult',
+      result: { roll: 20, level: 'hard', label: '困难成功（20）' },
+      resultAction: { player: firstCheck.player, action: `【检定结果】${firstCheck.player}的${firstCheck.skill}检定：困难成功。` }
+    });
+    expect(next.scenarioProgress.encounters.ENC01.defeated).toBe(1);
+    expect(next.pendingCheck).not.toBeNull();
+
+    const secondCheck = next.pendingCheck!;
+    next = gameReducer(next, {
+      type: 'applyDiceResult',
+      result: { roll: 30, level: 'success', label: '普通成功（30）' },
+      resultAction: { player: secondCheck.player, action: `【检定结果】${secondCheck.player}的${secondCheck.skill}检定：普通成功。` }
+    });
+    expect(next.scenarioProgress.encounters.ENC01.defeated).toBe(2);
+    expect(next.pendingCheck).toBeNull();
+  });
+
   it('turns the attack that selects combat into the first authored combat check', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);

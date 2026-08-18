@@ -64,6 +64,56 @@ describe('gameReducer applyAiResponse pendingConsequences merge', () => {
     expect(next.pendingCheck?.continuationActions).toEqual(continuationActions);
   });
 
+  it('advances a multi-check queue and carries earlier results into the final continuation', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利' }, { 侦查: 70 }),
+        makeInvestigator({ name: '艾达' }, { 心理学: 65 })
+      ]
+    });
+    const withChecks = gameReducer(state, {
+      type: 'applyAiResponse',
+      response: {
+        narrative: '两项行动需要分别检定。',
+        check: {
+          player: '亨利',
+          skill: '侦查',
+          difficulty: '普通',
+          batchIndex: 1,
+          batchTotal: 2,
+          continuationActions: [{ player: '亨利', action: '搜查窗边' }],
+          queuedChecks: [{
+            player: '艾达',
+            skill: '心理学',
+            difficulty: '普通',
+            batchIndex: 2,
+            batchTotal: 2
+          }]
+        }
+      },
+      raw: '{}'
+    });
+
+    const firstResult = { player: '亨利', action: '【检定结果】亨利的侦查检定：成功。' };
+    const afterFirst = gameReducer(withChecks, {
+      type: 'applyDiceResult',
+      result: { roll: 20, level: 'hard', label: '困难成功（20）' },
+      resultAction: firstResult
+    });
+    expect(afterFirst.pendingCheck).toEqual(expect.objectContaining({
+      player: '艾达', skill: '心理学', batchIndex: 2, batchTotal: 2
+    }));
+    expect(afterFirst.pendingCheck?.resolvedActions).toEqual([firstResult]);
+    expect(afterFirst.pendingCheck?.continuationActions).toEqual([{ player: '亨利', action: '搜查窗边' }]);
+
+    const afterSecond = gameReducer(afterFirst, {
+      type: 'applyDiceResult',
+      result: { roll: 60, level: 'success', label: '普通成功（60）' },
+      resultAction: { player: '艾达', action: '【检定结果】艾达的心理学检定：成功。' }
+    });
+    expect(afterSecond.pendingCheck).toBeNull();
+  });
+
   it('prepares authored scenario checks with the investigator skill threshold', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '亨利' }, { 聆听: 65 })],
@@ -809,6 +859,54 @@ describe('gameReducer scene focus synchronization', () => {
 });
 
 describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
+  it('restores a pending multi-check queue with prepared thresholds and continuation context', () => {
+    const state = makeState({
+      players: [
+        makeInvestigator({ name: '亨利' }, { 侦查: 70 }),
+        makeInvestigator({ name: '艾达' }, { 心理学: 65 })
+      ],
+      currentScene: 'S02'
+    });
+    state.pendingCheck = {
+      player: '亨利',
+      skill: '侦查',
+      difficulty: '普通',
+      batchIndex: 1,
+      batchTotal: 2,
+      continuationActions: [{ player: '亨利', action: '检查后门' }],
+      resolution: {
+        kind: 'freeform',
+        success: '缩小排查范围。',
+        failure: '暴露当前办法的局限。'
+      },
+      queuedChecks: [{
+        player: '艾达',
+        skill: '心理学',
+        difficulty: '普通',
+        batchIndex: 2,
+        batchTotal: 2,
+        resolution: {
+          kind: 'freeform',
+          success: '获得交涉主动权。',
+          failure: '对方提高警惕。'
+        }
+      }]
+    };
+
+    const hydrated = hydrateGameState(state);
+
+    expect(hydrated.pendingCheck).toEqual(expect.objectContaining({
+      player: '亨利', skill: '侦查', threshold: 70, batchIndex: 1, batchTotal: 2
+    }));
+    expect(hydrated.pendingCheck?.queuedChecks).toEqual([
+      expect.objectContaining({
+        player: '艾达', skill: '心理学', threshold: 65, batchIndex: 2, batchTotal: 2
+      })
+    ]);
+    expect(hydrated.pendingCheck?.continuationActions).toEqual([{ player: '亨利', action: '检查后门' }]);
+    expect(hydrated.pendingCheck?.queuedChecks?.[0].resolution?.success).toBe('获得交涉主动权。');
+  });
+
   it('clears an old generic check that intercepted authored booklet analysis', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '托马斯' }, { 侦查: 65 })],

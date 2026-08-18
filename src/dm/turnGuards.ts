@@ -62,11 +62,30 @@ function onlyRequestsPermissionToInvestigate(text: string): boolean {
 
 function onlyObservesPubliclyVisibleState(text: string): boolean {
   const limitsObservation = /(?:只|仅|只是|单纯)[^，。；！？\n]{0,6}(?:观察|查看)[^，。；！？\n]{0,32}(?:公开|可见|眼前|表面|姿态|站位|当前状态|环境|动静)/.test(text);
+  const passiveCompanionObservation = /^(?:在|站在)?(?:旁|一旁|旁边|边上)(?:观察|看着|记录|等待)(?:情况|动静)?[。.!！]?$/.test(text.trim());
   const activelySearches = hasAffirmativeMatch(
     text,
     /(?:仔细|近距离|深入)[^，。；！？\n]{0,8}(?:观察|查看)|搜查|搜索|搜寻|寻找|检查|侦查|辨认/
   );
-  return limitsObservation && !activelySearches;
+  return (limitsObservation || passiveCompanionObservation) && !activelySearches;
+}
+
+function actionOnlySupportsAnother(text: string): boolean {
+  const describesAssistingAnother = /(?:在|当)(?:他|她|同伴|队友|[\u4e00-\u9fff·]{2,10})[^，。；！？\n]{0,24}时[^。；！？\n]{0,16}(?:提供照明|警戒|把风|记录|协助|帮助|配合)/.test(text)
+    || /(?:协助|帮助|配合|掩护)(?:他|她|同伴|队友|[\u4e00-\u9fff·]{2,10})[^，。；！？\n]{0,24}(?:操作|检查|搜查|撬锁|开锁|撬开|攻击|交涉|观察)/.test(text)
+    || /准备[^。；！？\n]{0,24}(?:在|若|如果)[^。；！？\n]{0,20}(?:受伤|失败|需要)[^。；！？\n]{0,20}(?:急救|协助|帮助)/.test(text);
+  return describesAssistingAnother
+    && /不另行|不出手|仅|只|准备|协助|帮助|配合|掩护/.test(text);
+}
+
+function bypassesUnresolvedFinaleCombat(text: string, state: GameState): boolean {
+  const progress = getScenarioProgressForState(state);
+  return state.currentScene === 'S05'
+    && progress.variables.finaleRoute === 'combat'
+    && progress.encounters.ENC01?.state === 'active'
+    && /埃里克/.test(text)
+    && /(?:寻找|找到|接近|冲向|救出|营救|带走|带[^。；！？\n]{0,12}离开|检查伤势)/.test(text)
+    && !hasAffirmativeMatch(text, COMBAT_ACTION_RE);
 }
 
 function buildCandidate(action: PlayerAction): CheckCandidate | null {
@@ -74,8 +93,7 @@ function buildCandidate(action: PlayerAction): CheckCandidate | null {
   if (!text || DICE_RESULT_RE.test(text)) return null;
   if (onlyRequestsPermissionToInvestigate(text)) return null;
   if (onlyObservesPubliclyVisibleState(text)) return null;
-  const describesAssistingAnother = /(?:在|当)(?:他|她|同伴|队友|[\u4e00-\u9fff·]{2,10})[^，。；！？\n]{0,24}时[^。；！？\n]{0,16}(?:提供照明|警戒|把风|记录|协助|帮助|配合)/.test(text)
-    || /(?:协助|帮助|配合)(?:他|她|同伴|队友|[\u4e00-\u9fff·]{2,10})[^，。；！？\n]{0,16}(?:操作|检查|搜查|撬锁|开锁|撬开)/.test(text);
+  const describesAssistingAnother = actionOnlySupportsAnother(text);
 
   if (actionUsesHandgun(text)) {
     return {
@@ -131,32 +149,51 @@ function actorHasHandgun(state: GameState, playerName: string): boolean {
     ?.some((item) => /手枪|左轮枪/.test(item)) ?? false;
 }
 
-/** Picks at most one check because the current UI can settle one pending check at a time. */
-export function buildRequiredCheck(actions: PlayerAction[], state: GameState): CheckRequest | null {
-  if (actions.some((action) => DICE_RESULT_RE.test(action.action))) return null;
+/**
+ * Builds every materially independent check in the round. One declaration may
+ * cover several authored items with the same skill, while different players
+ * and different skills keep their own rolls.
+ */
+export function buildRequiredChecks(actions: PlayerAction[], state: GameState): CheckRequest[] {
+  if (actions.some((action) => DICE_RESULT_RE.test(action.action))) return [];
   const progress = getScenarioProgressForState(state);
-  if (state.currentScene === 'S05'
-    && progress.variables.finaleRoute === 'combat'
-    && progress.encounters.ENC01?.state === 'active'
-    && !actions.some((action) => hasAffirmativeMatch(action.action, COMBAT_ACTION_RE))) {
-    return null;
-  }
   const kb = getActiveKnowledgeBase();
   const storyCall = inferStoryEventFromActions(actions, state);
-  const storyEventId = String(storyCall?.arguments.eventId ?? '');
-  if (storyEventId === 'EV_CHOOSE_COMBAT' || storyEventId === 'EV_CHOOSE_NEGOTIATION') {
-    return null;
-  }
   const targetedItems = explicitlyTargetedScenarioItemActions(actions, state, kb);
+  const requiredChecks: CheckRequest[] = [];
+  const playersWithAuthoredTargets = new Set(
+    targetedItems.map(({ action }) => action.player)
+  );
   if (targetedItems.length) {
-    const authoredCheck = targetedItems.find(({ item }) => item.discovery.difficulty !== '自动');
-    if (!authoredCheck) return null;
-    return {
-      player: authoredCheck.action.player,
-      skill: authoredCheck.item.discovery.skill,
-      difficulty: authoredCheck.item.discovery.difficulty as CheckRequest['difficulty'],
-      reason: `调查作者线索 ${authoredCheck.item.name}`
-    };
+    const groups = new Map<string, typeof targetedItems>();
+    for (const targeted of targetedItems) {
+      if (targeted.item.discovery.difficulty === '自动') continue;
+      const key = [
+        targeted.action.player,
+        targeted.item.discovery.skill,
+        targeted.item.discovery.difficulty
+      ].join('\u0000');
+      const group = groups.get(key) ?? [];
+      group.push(targeted);
+      groups.set(key, group);
+    }
+    requiredChecks.push(...[...groups.values()].map((group) => {
+      const first = group[0];
+      const itemNames = group.map(({ item }) => item.name);
+      return {
+        player: first.action.player,
+        skill: first.item.discovery.skill,
+        difficulty: first.item.discovery.difficulty as CheckRequest['difficulty'],
+        reason: `调查作者线索 ${itemNames.join('、')}`,
+        resolution: {
+          kind: 'authored' as const,
+          targetItemIds: group.map(({ item }) => item.id),
+          success: `按作者事件结算${itemNames.join('、')}的成功结果。`,
+          failure: `按作者失败推进事件结算${itemNames.join('、')}，保留最低信息并落实代价。`,
+          fumble: `按作者失败推进事件结算${itemNames.join('、')}，并突出大失败造成的明显代价。`
+        }
+      };
+    }));
   }
   let authoredEvent: ReturnType<typeof getAvailableStoryEvents>[number] | undefined;
   if (storyCall) {
@@ -171,22 +208,41 @@ export function buildRequiredCheck(actions: PlayerAction[], state: GameState): C
     ? String(sceneChange.arguments.targetSceneId) as SceneId
     : state.currentScene;
   const candidates = actions
-    .map((action) => {
+    .map((action, actionIndex) => {
       if (!actionExplicitlyMovesToReachableScene(action, state)) return buildCandidate(action);
       if (!sceneChange) return null;
       const followUp = actionAfterSceneDestination(action, targetScene, kb);
-      return followUp ? buildCandidate({ ...action, action: followUp }) : null;
+      const candidate = followUp ? buildCandidate({ ...action, action: followUp }) : null;
+      return candidate ? { ...candidate, actionIndex } : null;
     })
-    .filter((item): item is CheckCandidate => Boolean(item))
-    .sort((a, b) => b.score - a.score);
+    .map((candidate, actionIndex) => candidate ? { ...candidate, actionIndex } : null)
+    .filter((item): item is CheckCandidate & { actionIndex: number } => Boolean(item))
+    .sort((a, b) => a.actionIndex - b.actionIndex || b.score - a.score);
   // Most authored events own their complete resolution and must not acquire a
   // second generic gate. Montreal is intentionally different: a companion's
   // explicit behavioral read is a hard Psychology check before the meeting
   // event settles, while ordinary questioning still resolves without a roll.
-  if (authoredEvent
-    && !(authoredEvent.id === 'EV_MEET_MONTREAL'
-      && candidates.some((candidate) => candidate.check.skill === '心理学'))) return null;
+  const authoredActor = authoredEvent
+    ? inferStoryEventActor(actions, state, authoredEvent.id, kb)
+    : null;
+  const checks: CheckRequest[] = [];
   for (const candidate of candidates) {
+    const sourceAction = actions[candidate.actionIndex];
+    // Reaching Eric is gated by the authored encounter, not by a generic
+    // search roll. The declaration still reaches narration and can fail
+    // forward against the visible combat obstacle.
+    if (sourceAction && bypassesUnresolvedFinaleCombat(sourceAction.action, state)) continue;
+    if (sourceAction && playersWithAuthoredTargets.has(sourceAction.player)) continue;
+    if (authoredEvent && sourceAction && actionOnlySupportsAnother(sourceAction.action)) continue;
+    const preservesMontrealRead = authoredEvent?.id === 'EV_MEET_MONTREAL'
+      && candidate.check.skill === '心理学';
+    const eventOwnsCandidate = authoredEvent
+      && !preservesMontrealRead
+      && (
+        sourceAction?.player === authoredActor
+        || ['侦查', '心理学', '聆听', '说服', '话术'].includes(candidate.check.skill)
+      );
+    if (eventOwnsCandidate) continue;
     // Listening and persuasion are authored negotiation-route objectives in S05.
     // Never consume either as a generic arrival/pre-route roll before the route
     // has actually been chosen.
@@ -196,14 +252,35 @@ export function buildRequiredCheck(actions: PlayerAction[], state: GameState): C
     const player = state.players.find((item) => item.name === candidate.check.player);
     if (!player) continue;
     if (candidate.check.skill === '射击（手枪）' && !actorHasHandgun(state, player.name)) continue;
+    let check = candidate.check;
     if (!player.skills[candidate.check.skill]) {
       const fallback = candidate.check.skill === '机械维修' ? '侦查' : null;
       if (!fallback || !player.skills[fallback]) continue;
-      return { ...candidate.check, skill: fallback };
+      check = { ...candidate.check, skill: fallback };
     }
-    return applyAuthoredCheckDifficulty(candidate.check, targetScene);
+    if (checks.some((existing) =>
+      existing.player === check.player && existing.skill === check.skill
+    )) continue;
+    const actionSummary = sourceAction?.action.trim().slice(0, 80) || check.reason || '本轮行动';
+    checks.push({
+      ...applyAuthoredCheckDifficulty(check, targetScene),
+      resolution: {
+        kind: 'freeform',
+        success: `“${actionSummary}”成功：必须给予明确但非主线权威的收益，例如排除结论、位置优势、关系变化、风险降低或新的可执行办法；不得只回答没有新信息。`,
+        failure: `“${actionSummary}”失败：行动目标未达成，但必须给出代价、风险、NPC反应或带代价的继续机会；不得让本轮无事发生。`,
+        fumble: `“${actionSummary}”大失败：必须出现明显的局部负面后果，但不得越过HP/SAN、主线事实、场景和结局的权威边界。`
+      }
+    });
   }
-  return null;
+  return [...requiredChecks, ...checks].sort((left, right) =>
+    state.players.findIndex((player) => player.name === left.player)
+    - state.players.findIndex((player) => player.name === right.player)
+  );
+}
+
+/** Backward-compatible single-check projection for callers and focused tests. */
+export function buildRequiredCheck(actions: PlayerAction[], state: GameState): CheckRequest | null {
+  return buildRequiredChecks(actions, state)[0] ?? null;
 }
 
 const AUTHORED_ITEM_SEARCH_RE = /搜查|搜索|搜寻|寻找|检查|观察|查看|侦查|翻找|调查|辨认|比对|分析/;
@@ -238,21 +315,6 @@ function explicitlyTargetedScenarioItemActions(
   });
 }
 
-function explicitlyTargetedScenarioItems(
-  actions: PlayerAction[],
-  state: GameState,
-  kb: KnowledgeBase
-) {
-  const seen = new Set<string>();
-  return explicitlyTargetedScenarioItemActions(actions, state, kb)
-    .map(({ item }) => item)
-    .filter((item) => {
-      if (seen.has(item.id)) return false;
-      seen.add(item.id);
-      return true;
-    });
-}
-
 /**
  * Converts explicit authored clue searches into one or more Director-reviewed
  * events. On a failed roll the event id comes from the item's YAML-defined
@@ -278,8 +340,9 @@ export function inferStoryEventsFromActions(
     && (legacyEventId === 'EV_CHOOSE_COMBAT' || legacyEventId === 'EV_CHOOSE_NEGOTIATION')) {
     return [effectiveLegacy];
   }
-  const failed = actionIsFailedCheck(actions);
-  const clueCalls = explicitlyTargetedScenarioItems(actions, state, kb).flatMap((item) => {
+  const clueCalls = explicitlyTargetedScenarioItemActions(actions, state, kb).flatMap(({ item, action }) => {
+    const outcome = checkOutcomeFor(actions, action.player, item.discovery.skill);
+    const failed = outcome === 'fail' || outcome === 'fumble';
     const eventId = failed ? item.discovery.failureEventId : item.discovery.successEventId;
     return available.has(eventId) ? [{
       name: 'propose_story_event' as const,
@@ -293,6 +356,24 @@ export function inferStoryEventsFromActions(
   });
   if (clueCalls.length) return clueCalls;
   return effectiveLegacy ? [effectiveLegacy] : [];
+}
+
+function checkOutcomeFor(
+  actions: PlayerAction[],
+  playerName: string,
+  skill: string
+): 'success' | 'fail' | 'fumble' | null {
+  const playerResults = actions.filter((action) =>
+    action.player === playerName
+    && DICE_RESULT_RE.test(action.action)
+  );
+  const result = playerResults.find((action) =>
+    action.action.replace(/\s/g, '').includes(`的${skill}检定`)
+  )?.action ?? playerResults[0]?.action;
+  if (!result) return null;
+  if (/结果[：:]\s*大失败/.test(result)) return 'fumble';
+  if (/结果[：:]\s*失败/.test(result)) return 'fail';
+  return 'success';
 }
 
 /** Returns the player whose own action proposed a structured story event. */
@@ -785,8 +866,21 @@ export function sanitizePlayerChoices(
   sceneId?: SceneId,
   finaleRoute?: unknown,
   remainingOpponents = 4,
-  players: GameState['players'] = []
+  players: GameState['players'] = [],
+  recentActions: PlayerAction[] = []
 ): Record<string, string[]> {
+  const normalizedRecentActions = recentActions
+    .filter((action) => !DICE_RESULT_RE.test(action.action))
+    .map((action) => action.action.replace(/[\p{P}\p{S}\s]/gu, ''))
+    .filter(Boolean);
+  const exhaustedSearchTerms = getScenarioDefinition().world.items
+    .filter((item) => discoveredIds.has(item.id) && (!sceneId || item.sceneId === sceneId))
+    .flatMap((item) => [
+      ...item.discovery.searchTerms,
+      item.name,
+      ...(kb.items[item.id]?.public.aliases ?? [])
+    ])
+    .filter((term, index, all) => term.length >= 2 && all.indexOf(term) === index);
   const hiddenTerms = Object.entries(kb.items)
     .filter(([id]) => !discoveredIds.has(id))
     .flatMap(([, entry]) => [entry.public.name, ...(entry.public.aliases ?? [])])
@@ -800,7 +894,11 @@ export function sanitizePlayerChoices(
         remainingOpponents
       )
     : {};
-  const fallback = ['继续观察当前环境', '与在场人物核对已知事实', '整理已经发现的线索'];
+  const fallback = [
+    '从职业专长出发换一种调查方法',
+    '围绕已有线索的矛盾观察在场人物反应',
+    '整理现有结论并选择一个尚未穷尽的目标'
+  ];
   const offstageNpcNames = sceneId
     ? Object.keys(kb.npcs).filter((name) => !kb.scenes[sceneId]?.public.npcs.includes(name))
     : [];
@@ -815,7 +913,15 @@ export function sanitizePlayerChoices(
     const hasMeleeWeapon = equipment.some((item) => /警棍|棍|刀|武器/.test(item));
     const safe = list.filter((choice) =>
       choice.replace(/[\p{P}\p{S}\s]/gu, '').length >= 2
+      && !normalizedRecentActions.some((action) => {
+        const normalizedChoice = choice.replace(/[\p{P}\p{S}\s]/gu, '');
+        return normalizedChoice === action || action.includes(normalizedChoice);
+      })
       && !hiddenTerms.some((term) => choice.includes(term))
+      && !(
+        hasAffirmativeMatch(choice, /搜查|搜索|搜寻|寻找|翻找|是否藏有|发现/)
+        && exhaustedSearchTerms.some((term) => choice.includes(term))
+      )
       && !offstageNpcNames.some((name) => choice.includes(name))
       && !(sceneId && unavailableNpcRole(choice, kb, sceneId, true))
       && !(sceneId && explicitlyTravelsToScene(choice, kb, sceneId))
@@ -833,7 +939,11 @@ export function sanitizePlayerChoices(
       : fallback;
     for (const item of playerFallback) {
       if (safe.length >= 3) break;
-      if (!safe.includes(item)) safe.push(item);
+      const normalizedItem = item.replace(/[\p{P}\p{S}\s]/gu, '');
+      if (!safe.includes(item)
+        && !normalizedRecentActions.some((action) => action === normalizedItem || action.includes(normalizedItem))) {
+        safe.push(item);
+      }
     }
     return [player, safe.slice(0, 3)];
   }));
@@ -1146,6 +1256,14 @@ export function validateNarratorSemantics(
     return event ? [event] : [];
   });
   const narrativeAuthority = authoredNarrativeCorpus(state, proposedEvents);
+  const successfulCheckWithoutStoryEvent = proposedEvents.length === 0 && actions.some((action) =>
+    /【检定结果】[\s\S]*结果[：:]\s*(?:成功|普通成功|困难成功|极难成功|大成功)/.test(action.action)
+  );
+  const noProgressNarration = /没有提供更多可核实的信息|没有(?:发现|带来|得到|获得)[^。；！？\n]{0,16}(?:新线索|新信息|可核实)|只能依据已经确认的线索|暂时没有[^。；！？\n]{0,12}(?:进展|收获)/.test(output.narrative);
+  const hasBoundedBenefit = /排除|缩小[^。；！？\n]{0,12}范围|行动优势|有利位置|态度(?:变化|缓和|恶化)|即时反应|风险(?:降低|上升)|避免[^。；！？\n]{0,12}(?:风险|代价)|新的?办法|继续机会|确认[^。；！？\n]{0,20}(?:没有遗漏|回答边界|搜索范围)/.test(output.narrative);
+  if (successfulCheckWithoutStoryEvent && noProgressNarration && !hasBoundedBenefit) {
+    return '自由检定已经成功，正文必须给予明确的局面收益，不能只宣告没有更多信息或没有进展';
+  }
   if (!proposedEvents.length) {
     const physicalEvidenceClaim = /(?:发现|找到|注意到|看见|观察到|翻出|辨认出|检查出|留有|带有|沾着)[^。；！？\n]{0,64}(?:药瓶|药物|药片|药剂|粉末|泥渍|血迹|脚印|指纹|纤维|残留物?|烟蒂|票据|收据|账本|信件|纸条|便签|钥匙|地图|名片|标签|徽章|照片|衣物|雨衣|旅行箱|行李|餐盘|食材|茶具)/.exec(output.narrative)?.[0] ?? null;
     const referencesDeclaredItem = physicalEvidenceClaim !== null

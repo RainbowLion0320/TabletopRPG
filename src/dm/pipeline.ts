@@ -52,7 +52,7 @@ import {
 } from './memory/episodicMemory';
 import { pushTrace, updateTrace } from './debugTrace';
 import {
-  buildRequiredCheck,
+  buildRequiredChecks,
   buildPostMoveContinuationActions,
   inferStoryEventsFromActions,
   inferNarrativeConsequences,
@@ -65,6 +65,7 @@ import {
 import { DEFAULT_MEMORY_OPTIONS } from './types';
 import { defaultActiveNpcForScene, resolveActiveNpcForScene } from '../state/sceneFocus';
 import { buildFinaleSuggestions } from '../services/finaleChoices';
+import { chainChecks } from '../services/dice';
 import type {
   DmBackgroundUpdate,
   DmMemoryUpdate,
@@ -147,8 +148,8 @@ function buildSemanticFallbackChoices(
   const authoredActions = getScenarioDefinition().presentation.sceneSuggestions
     .find((entry) => entry.sceneId === sceneId)?.actions ?? [];
   const localAction = activeNpcName
-    ? `请${activeNpcName}只核对已经确认的事实`
-    : '继续观察当前环境';
+    ? `围绕已知事实与${activeNpcName}交谈，并观察其即时反应`
+    : '从职业专长出发，换一种方式观察当前环境';
   return Object.fromEntries(state.players.map((player, index) => {
     if (!localBeat && exits.length) {
       return [player.name, [
@@ -167,6 +168,57 @@ function buildSemanticFallbackChoices(
       '整理已经发现的线索，决定下一步行动'
     ].filter((choice, choiceIndex, all) => all.indexOf(choice) === choiceIndex).slice(0, 3)];
   }));
+}
+
+function buildBoundedFallbackNarrative(
+  actions: PlayerAction[],
+  sceneName: string,
+  activeNpcName: string | null,
+  followedVisibleSuggestions: boolean,
+  onlyFreeformResults = false
+): string {
+  const results = actions.flatMap((action) => {
+    if (onlyFreeformResults && /【结算契约】按作者事件/.test(action.action)) return [];
+    const match = action.action.match(
+      /【检定结果】([^\n。]+?)\s+的\s+([^\n。]+?)\s+检定：[\s\S]*?结果[：:]\s*([^。\n]+)/
+    );
+    if (!match) return [];
+    const label = match[3];
+    const outcome = label.includes('大失败')
+      ? 'fumble'
+      : /失败/.test(label)
+        ? 'fail'
+        : 'success';
+    return [{ player: match[1].trim(), skill: match[2].trim(), outcome }];
+  });
+  if (results.length) {
+    return results.map(({ player, skill, outcome }) => {
+      if (outcome === 'success') {
+        if (/侦查|聆听|图书馆|医学|心理学/.test(skill)) {
+          return `${player}的${skill}检定奏效：相关目标被有效排查，搜索或判断范围已经缩小；这项排除结论会保留，后续无需原样重复本次行动。`;
+        }
+        if (/说服|话术|恐吓/.test(skill)) {
+          return `${player}的${skill}检定奏效：在场人物对这次交涉作出了更明确的即时反应，${player}取得了继续追问或调整条件的主动权。`;
+        }
+        return `${player}的${skill}检定奏效：行动取得了明确的局部优势，并为下一步提供了新的可执行办法。`;
+      }
+      if (outcome === 'fumble') {
+        return `${player}的${skill}检定出现大失败：目标没有达成，失误还使现场压力明显上升；必须换方法、由同伴补救或承担风险后再继续。`;
+      }
+      return `${player}的${skill}检定未能达到目标，但行动暴露了当前方法的局限；可以换工具、由同伴协助或改变切入点继续推进。`;
+    }).join(' ');
+  }
+  if (onlyFreeformResults) return '';
+
+  const actingPlayers = actions
+    .filter((action) => !/【检定结果】/.test(action.action))
+    .map((action) => action.player)
+    .filter((player, index, all) => all.indexOf(player) === index);
+  const actorText = actingPlayers.length ? actingPlayers.join('与') : '调查员';
+  const npcReaction = activeNpcName
+    ? `${activeNpcName}也会记住你们本轮展现出的调查重点和态度。`
+    : '现场对你们的做法留下了可延续的局部变化。';
+  return `${actorText}的行动已经实际发生，你们仍在${sceneName}。${npcReaction}${followedVisibleSuggestions ? ' 你们按刚才选定的方式继续行动过了，这项建议不会原样重复；下一步会提供不同方向。' : ' 下一步可以延续成果、换一种方法，或转向另一处尚未穷尽的目标。'}`;
 }
 
 function prioritizeNewlyAvailableDestinations(
@@ -517,9 +569,59 @@ export async function runDmTurn(
   const baseDirectorCtx = { state: input.state, kb, actions: input.actions };
   const allowed = allowedTools(baseDirectorCtx, { intent, mode: input.state.exploreMode });
   const inferredStoryCalls = inferStoryEventsFromActions(input.actions, input.state, kb);
-  const requiredCheck = buildRequiredCheck(input.actions, input.state);
+  const requiredChecks = buildRequiredChecks(input.actions, input.state);
   const progressBefore = getScenarioProgressForState(input.state);
-  const storyPreview = !requiredCheck && inferredStoryCalls.length
+  const availableEvents = new Map(
+    getAvailableStoryEvents(progressBefore, input.state.currentScene).map((event) => [event.id, event])
+  );
+  const resolvesExistingCheck = input.actions.some((action) => /【检定结果】/.test(action.action));
+  const checkEvent = (resolvesExistingCheck ? [] : inferredStoryCalls).flatMap((call) => {
+    const event = availableEvents.get(String(call.arguments.eventId ?? ''));
+    return event?.effects.some((effect) => 'requestCheck' in effect) ? [event] : [];
+  })[0];
+  const checkEventActorName = checkEvent
+    ? inferStoryEventActor(input.actions, input.state, checkEvent.id, kb)
+      ?? input.actions[input.actions.length - 1]?.player
+    : null;
+  const checkEffect = checkEvent?.effects.find((effect) => 'requestCheck' in effect);
+  const authoredCheck = checkEvent && checkEffect && 'requestCheck' in checkEffect && checkEventActorName
+    ? {
+        scenarioCheckId: checkEffect.requestCheck,
+        skill: checkEvent.id === 'EV_CHOOSE_COMBAT' || checkEvent.id === 'EV_COMBAT_ATTACK'
+          ? combatCheckSkillForActor(input.actions, input.state, checkEventActorName)
+          : checkEffect.skill,
+        difficulty: checkEffect.difficulty,
+        player: checkEffect.player ?? checkEventActorName,
+        reason: checkEffect.reason,
+        resolution: {
+          kind: 'authored' as const,
+          success: `按作者事件结算 ${checkEffect.requestCheck} 的成功结果。`,
+          failure: `按作者事件结算 ${checkEffect.requestCheck} 的失败推进与代价。`,
+          fumble: `按作者事件结算 ${checkEffect.requestCheck} 的大失败后果。`
+        }
+      }
+    : null;
+  const checksForRound = [
+    ...(authoredCheck ? [authoredCheck] : []),
+    ...requiredChecks.map((check) => {
+      const joinsAuthoredCombat = authoredCheck
+        && (checkEvent?.id === 'EV_CHOOSE_COMBAT' || checkEvent?.id === 'EV_COMBAT_ATTACK')
+        && (check.skill === '格斗（拳）' || check.skill === '射击（手枪）');
+      return joinsAuthoredCombat
+        ? {
+            ...check,
+            scenarioCheckId: authoredCheck.scenarioCheckId,
+            resolution: {
+              ...authoredCheck.resolution,
+              success: `按作者战斗事件结算${check.player}本次攻击的成功结果。`,
+              failure: `按作者战斗事件结算${check.player}本次攻击失败。`,
+              fumble: `按作者战斗事件结算${check.player}本次攻击的大失败后果。`
+            }
+          }
+        : check;
+    })
+  ];
+  const storyPreview = !requiredChecks.length && inferredStoryCalls.length
     ? processScenarioTurn(progressBefore, {
         currentScene: input.state.currentScene,
         storyEventIds: inferredStoryCalls.map((call) => String(call.arguments.eventId ?? '')),
@@ -544,15 +646,25 @@ export async function runDmTurn(
     scenarioProgressForSceneValidation: storyPreview?.progress
   };
   const hasAuthoritativeTransition = Boolean(inferredSceneCall || inferredStoryCalls.length);
-  if (requiredCheck) {
+  if (checksForRound.length) {
     const targetSceneId = inferredSceneCall
       ? String(inferredSceneCall.arguments.targetSceneId) as SceneId
       : null;
     const movementPrefix = targetSceneId
       ? `你们已抵达${kb.scenes[targetSceneId].public.name}。`
       : '';
-    const narrative = `${movementPrefix}${requiredCheck.player}接下来的行动存在明确失败风险，需要先进行${requiredCheck.skill}检定。`;
-    const activeNpc = targetSceneId ? null : input.state.activeNpcName;
+    const checkSummary = checksForRound
+      .map((check) => `${check.player}进行${check.skill}`)
+      .join('，');
+    const checkLead = checkEvent?.narrativeCue ? `${checkEvent.narrativeCue} ` : '';
+    const narrative = checkEvent && checksForRound.length === 1 && !movementPrefix
+      ? checkEvent.narrativeCue
+      : `${movementPrefix}${checkLead}本轮有${checksForRound.length}项独立行动需要检定：${checkSummary}。检定将依次结算，所有结果都会共同影响本轮叙事。`;
+    const activeNpc = targetSceneId
+      ? null
+      : checkEvent
+        ? defaultActiveNpcForScene(input.state.currentScene)
+        : input.state.activeNpcName;
     const narrator = {
       raw: JSON.stringify({
         narrative,
@@ -573,83 +685,32 @@ export async function runDmTurn(
       narrator,
       acceptedCalls: [
         ...(inferredSceneCall ? [inferredSceneCall] : []),
-        { name: 'request_check', arguments: { ...requiredCheck } }
+        ...(checkEvent ? inferredStoryCalls : []),
+        ...checksForRound.map((check) => ({
+          name: 'request_check' as const,
+          arguments: {
+            skill: check.skill,
+            difficulty: check.difficulty,
+            player: check.player,
+            reason: check.reason
+          }
+        }))
       ],
       turn: currentTurn,
       pendingBefore: input.state.pendingConsequences ?? []
     });
-    resolved.legacyResponse.check = {
-      ...requiredCheck,
-      continuationActions: targetSceneId
+    resolved.legacyResponse.check = chainChecks(
+      checksForRound,
+      targetSceneId
         ? buildPostMoveContinuationActions(input.actions, input.state, targetSceneId, kb)
         : input.actions.map((action) => ({ ...action }))
-    };
+    );
     timings.totalForeground = elapsedMs(foregroundStart);
     return {
       raw: narrator.raw,
       legacyResponse: resolved.legacyResponse,
       events: resolved.events,
-      decayIntents: true,
-      timings
-    };
-  }
-  const availableEvents = new Map(
-    getAvailableStoryEvents(progressBefore, input.state.currentScene).map((event) => [event.id, event])
-  );
-  const resolvesExistingCheck = input.actions.some((action) => /【检定结果】/.test(action.action));
-  const checkEvent = (resolvesExistingCheck ? [] : inferredStoryCalls).flatMap((call) => {
-    const event = availableEvents.get(String(call.arguments.eventId ?? ''));
-    return event?.effects.some((effect) => 'requestCheck' in effect) ? [event] : [];
-  })[0];
-  if (checkEvent) {
-    const eventActorName = inferStoryEventActor(
-      input.actions,
-      input.state,
-      checkEvent.id,
-      kb
-    ) ?? input.actions[input.actions.length - 1]?.player;
-    const activeNpc = defaultActiveNpcForScene(input.state.currentScene);
-    const checkEffect = checkEvent.effects.find((effect) => 'requestCheck' in effect);
-    const checkSkill = checkEvent.id === 'EV_CHOOSE_COMBAT' || checkEvent.id === 'EV_COMBAT_ATTACK'
-      ? combatCheckSkillForActor(input.actions, input.state, eventActorName)
-      : null;
-    const narrator = {
-      raw: JSON.stringify({
-        narrative: checkEvent.narrativeCue,
-        activeNpc,
-        nextPrompt: '请掷骰结算检定。',
-        playerChoices: {}
-      }),
-      narrative: checkEvent.narrativeCue,
-      activeNpc,
-      nextPrompt: '请掷骰结算检定。',
-      playerChoices: {},
-      keywords: [],
-      toolCalls: [],
-      usedFunctionCalling: false
-    };
-    const resolved = resolveDmTurn({
-      narrator,
-      acceptedCalls: inferredStoryCalls,
-      turn: currentTurn,
-      pendingBefore: input.state.pendingConsequences ?? []
-    });
-    if (checkEffect && 'requestCheck' in checkEffect) {
-      resolved.legacyResponse.check = {
-        scenarioCheckId: checkEffect.requestCheck,
-        skill: checkSkill ?? checkEffect.skill,
-        difficulty: checkEffect.difficulty,
-        player: checkEffect.player ?? eventActorName,
-        reason: checkEffect.reason,
-        continuationActions: input.actions.map((action) => ({ ...action }))
-      };
-    }
-    timings.totalForeground = elapsedMs(foregroundStart);
-    return {
-      raw: narrator.raw,
-      legacyResponse: resolved.legacyResponse,
-      events: resolved.events,
-      actorName: eventActorName,
+      actorName: checkEventActorName ?? undefined,
       decayIntents: true,
       timings
     };
@@ -822,15 +883,27 @@ export async function runDmTurn(
               : '交涉仍在继续，调查员需要先听懂对方诉求，再说服其释放埃里克。'
           : '';
       const followedVisibleSuggestions = actionsUseVisibleSuggestions(input.state, input.actions);
-      const narrative = eventNarrative || finaleNarrative || (changedScene
+      const companionOutcome = eventNarrative
+        ? buildBoundedFallbackNarrative(
+            input.actions,
+            sceneName,
+            activeNpcName,
+            followedVisibleSuggestions,
+            true
+          )
+        : '';
+      const narrative = eventNarrative
+        ? `${eventNarrative}${companionOutcome ? ` ${companionOutcome}` : ''}`
+        : finaleNarrative || (changedScene
         ? activeNpcName
           ? `你们已经抵达${sceneName}。${activeNpcName}就在这里，你们可以围绕已经确认的线索继续调查。`
           : `你们已经抵达${sceneName}。场景已经切换，可以围绕已经确认的线索继续调查。`
-        : activeNpcName
-          ? `${activeNpcName}没有提供更多可核实的信息。你们仍在${sceneName}，只能依据已经确认的线索继续调查。`
-          : followedVisibleSuggestions
-            ? `你们按刚才选定的方式继续行动，暂时没有发现可核实的新线索。你们仍在${sceneName}，可以继续调查。`
-            : `这次行动暂时没有带来可核实的新线索。你们仍在${sceneName}，可以换一种调查方式。`);
+        : buildBoundedFallbackNarrative(
+            input.actions,
+            sceneName,
+            activeNpcName,
+            followedVisibleSuggestions
+          ));
       const playerChoices = buildSemanticFallbackChoices(
         input.state,
         kb,
@@ -842,7 +915,7 @@ export async function runDmTurn(
         ? projectedRoute === 'combat'
           ? '下一轮如何攻击仍在抵抗的深潜者？'
           : '下一步如何继续交涉？'
-        : '下一步要从哪条已确认线索着手？';
+        : '下一步准备如何利用本轮结果，或换一个尚未穷尽的目标？';
       narrator = {
         raw: JSON.stringify({ narrative, activeNpc: activeNpcName, nextPrompt, playerChoices }),
         narrative,
@@ -879,6 +952,23 @@ export async function runDmTurn(
     turn: ctx.dynamic.workingMemory.turnCount + 1,
     pendingBefore: input.state.pendingConsequences ?? []
   });
+  if (resolved.legacyResponse.check) {
+    const requestedChecks = [
+      resolved.legacyResponse.check,
+      ...(resolved.legacyResponse.check.queuedChecks ?? [])
+    ].map((check) => ({ ...check, queuedChecks: undefined }));
+    resolved.legacyResponse.check = chainChecks(
+      requestedChecks,
+      inferredSceneCall
+        ? buildPostMoveContinuationActions(
+            input.actions,
+            input.state,
+            String(inferredSceneCall.arguments.targetSceneId) as SceneId,
+            kb
+          )
+        : input.actions.map((action) => ({ ...action }))
+    );
+  }
   const targetScene = resolved.legacyResponse.stateUpdate?.sceneChange ?? input.state.currentScene;
   const knownItems = new Set([
     ...input.state.clues.map((clue) => clue.id),
@@ -894,6 +984,9 @@ export async function runDmTurn(
     completeTurn: false,
     actorName: input.actions[input.actions.length - 1]?.player
   });
+  for (const [itemId, status] of Object.entries(projectedTransition.progress.clueStates)) {
+    if (status !== 'unknown' && status !== 'destroyed') knownItems.add(itemId);
+  }
   const finaleRoute = projectedTransition.progress.variables.finaleRoute;
   const finaleEncounter = projectedTransition.progress.encounters.ENC01;
   const finaleEncounterDefinition = getScenarioDefinition().world.encounters.find((item) => item.id === 'ENC01');
@@ -920,7 +1013,8 @@ export async function runDmTurn(
     targetScene,
     finaleRoute,
     remainingFinaleOpponents,
-    input.state.players
+    input.state.players,
+    input.actions
   );
   resolved.legacyResponse = inferNarrativeConsequences({
     ...resolved.legacyResponse,

@@ -481,11 +481,13 @@ test('AI DM handles first player action through a chat-compatible provider', asy
 
   await expect.poll(() => narratorAttempts).toBe(1);
   await expect(page.locator('.story-message.dm p', { hasText: 'The chat-compatible narrator response is shown.' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Inspect the dock' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Inspect the dock' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Check the footprints' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Watch the fog' })).toHaveCount(0);
   await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Prepare the next move.');
   await page.getByRole('button', { name: '下一位' }).click();
-  await expect(page.getByRole('button', { name: 'Watch the fog' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Listen at the door' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Watch the fog' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Inspect the dock' })).toHaveCount(0);
   await expect(page.getByText(/AI DM 返回格式无效/)).toHaveCount(0);
 });

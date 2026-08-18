@@ -120,7 +120,7 @@ export function useGameController() {
   }
 
   function submitAction() {
-    if (!state.players.length) return;
+    if (!state.players.length || state.pendingCheck || diceRollInFlightRef.current) return;
 
     if (state.exploreMode === 'together') {
       // Sequential turn-taking: each player acts one at a time. The DM is only
@@ -338,7 +338,8 @@ export function useGameController() {
     if (!diceRoll || diceRoll.phase !== 'revealed' || !diceRollInFlightRef.current) return;
     const { check, result } = diceRoll;
     const checkMessage = buildDiceResultMessage(check, result);
-    const rolledState = gameReducer(state, { type: 'applyDiceResult', result });
+    const resultAction = buildDiceResultAction(state, check, checkMessage);
+    const rolledState = gameReducer(state, { type: 'applyDiceResult', result, resultAction });
     const continuationState = gameReducer(rolledState, {
       type: 'appendHistory',
       role: 'user',
@@ -346,12 +347,13 @@ export function useGameController() {
     });
     diceRollInFlightRef.current = false;
     setDiceRoll(null);
-    dispatch({ type: 'applyDiceResult', result });
+    dispatch({ type: 'applyDiceResult', result, resultAction });
     dispatch({ type: 'appendHistory', role: 'user', content: checkMessage });
     if (rolledState.pendingCheck || rolledState.scenarioProgress?.endingId) return;
     runAi([
       ...(check.continuationActions ?? []),
-      buildDiceResultAction(state, check, checkMessage)
+      ...(check.resolvedActions ?? []),
+      resultAction
     ], continuationState);
   }
 

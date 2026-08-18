@@ -1,4 +1,4 @@
-import type { AiResponse, AtomicFact, Attributes, CaseBoardCertainty, CaseBoardInsight, CaseBoardPatch, CaseBoardState, CheckRequest, DiceResult, DynamicCaseBoardEdge, DynamicCaseBoardNode, EpisodicMemoryRecord, EpisodicMemorySource, EpisodicMemoryVisibility, FactPredicate, GameState, Investigator, NarrativeMessage, NpcMindModel, PersistedDMEvent, PersistedPendingConsequence, ProspectiveIntent, ScenarioProgress, SceneId, SkillValue, StoryItem } from '../types/game';
+import type { AiResponse, AtomicFact, Attributes, CaseBoardCertainty, CaseBoardInsight, CaseBoardPatch, CaseBoardState, CheckContinuationAction, CheckRequest, DiceResult, DynamicCaseBoardEdge, DynamicCaseBoardNode, EpisodicMemoryRecord, EpisodicMemorySource, EpisodicMemoryVisibility, FactPredicate, GameState, Investigator, NarrativeMessage, NpcMindModel, PersistedDMEvent, PersistedPendingConsequence, ProspectiveIntent, ScenarioProgress, SceneId, SkillValue, StoryItem } from '../types/game';
 import { storyData } from '../data/storyData';
 import {
   createScenarioProgress,
@@ -10,7 +10,7 @@ import {
   processScenarioTurn
 } from '../scenario/engine';
 import { normalizeNarrativeKeywordHints } from '../services/narrativeKeywords';
-import { prepareCheck } from '../services/dice';
+import { advanceCheckQueue, enqueueCheck, prepareCheck } from '../services/dice';
 import { countCompletedGameTurns } from '../services/turns';
 import {
   buildFinaleSuggestions,
@@ -42,7 +42,7 @@ export type GameAction =
   | { type: 'appendHistory'; role: 'user' | 'assistant'; content: string }
   | { type: 'applyAiResponse'; response: AiResponse; raw: string; actorName?: string }
   | { type: 'setPendingCheck'; check: CheckRequest | null }
-  | { type: 'applyDiceResult'; result: DiceResult }
+  | { type: 'applyDiceResult'; result: DiceResult; resultAction?: CheckContinuationAction }
   | { type: 'setSuggestions'; suggestions: string[] }
   | { type: 'addLog'; text: string }
   | { type: 'appendEvents'; events: PersistedDMEvent[] }
@@ -198,23 +198,38 @@ function normalizeDifficulty(value: unknown): CheckRequest['difficulty'] {
   return '普通';
 }
 
-function normalizeCheck(value: unknown, players: Investigator[]): CheckRequest | null {
+function normalizeCheckActions(value: unknown): CheckContinuationAction[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const actions = value.flatMap((item) => {
+    if (!isRecord(item)) return [];
+    const actionPlayer = stringValue(item.player);
+    const actionText = stringValue(item.action);
+    if (!actionPlayer || !actionText) return [];
+    return [{
+      player: actionPlayer,
+      action: actionText,
+      scene: typeof item.scene === 'string' ? item.scene : undefined
+    }];
+  });
+  return actions.length ? actions : undefined;
+}
+
+function normalizeCheckBase(value: unknown, players: Investigator[]): CheckRequest | null {
   if (!isRecord(value)) return null;
   const firstPlayer = players[0]?.name ?? '调查员';
   const requestedPlayer = stringValue(value.player, firstPlayer);
   const player = players.find((item) => item.name === requestedPlayer)?.name ?? firstPlayer;
-  const continuationActions = Array.isArray(value.continuationActions)
-    ? value.continuationActions.flatMap((item) => {
-        if (!isRecord(item)) return [];
-        const actionPlayer = stringValue(item.player);
-        const actionText = stringValue(item.action);
-        if (!actionPlayer || !actionText) return [];
-        return [{
-          player: actionPlayer,
-          action: actionText,
-          scene: typeof item.scene === 'string' ? item.scene : undefined
-        }];
-      })
+  const resolution: CheckRequest['resolution'] = isRecord(value.resolution)
+    && (value.resolution.kind === 'authored' || value.resolution.kind === 'freeform')
+    ? {
+        kind: value.resolution.kind as 'authored' | 'freeform',
+        targetItemIds: Array.isArray(value.resolution.targetItemIds)
+          ? value.resolution.targetItemIds.filter((item): item is string => typeof item === 'string')
+          : undefined,
+        success: stringValue(value.resolution.success, '行动成功并取得明确效果。'),
+        failure: stringValue(value.resolution.failure, '行动未达预期，但必须给出代价或新的可行动信息。'),
+        fumble: typeof value.resolution.fumble === 'string' ? value.resolution.fumble : undefined
+      }
     : undefined;
 
   return {
@@ -225,7 +240,27 @@ function normalizeCheck(value: unknown, players: Investigator[]): CheckRequest |
     scenarioCheckId: typeof value.scenarioCheckId === 'string' ? value.scenarioCheckId : undefined,
     threshold: typeof value.threshold === 'number' ? value.threshold : undefined,
     skillVal: typeof value.skillVal === 'number' ? value.skillVal : undefined,
-    continuationActions: continuationActions?.length ? continuationActions : undefined
+    continuationActions: normalizeCheckActions(value.continuationActions),
+    resolvedActions: normalizeCheckActions(value.resolvedActions),
+    batchIndex: typeof value.batchIndex === 'number' ? Math.max(1, Math.floor(value.batchIndex)) : undefined,
+    batchTotal: typeof value.batchTotal === 'number' ? Math.max(1, Math.floor(value.batchTotal)) : undefined,
+    resolution
+  };
+}
+
+function normalizeCheck(value: unknown, players: Investigator[]): CheckRequest | null {
+  const base = normalizeCheckBase(value, players);
+  if (!base || !isRecord(value)) return base;
+  const queuedChecks = Array.isArray(value.queuedChecks)
+    ? value.queuedChecks
+        .flatMap((item) => {
+          const queued = normalizeCheckBase(item, players);
+          return queued ? [queued] : [];
+        })
+    : [];
+  return {
+    ...base,
+    queuedChecks: queuedChecks.length ? queuedChecks : undefined
   };
 }
 
@@ -1247,8 +1282,8 @@ function normalizeAiResponse(value: AiResponse, state: GameState): AiResponse {
       newItems: normalizeNewItems(stateUpdate.newItems),
       sceneChange,
       scheduledConsequences: normalizeScheduledConsequences(stateUpdate.scheduledConsequences),
-      triggeredConsequenceIds: normalizeTriggeredIds(stateUpdate.triggeredConsequenceIds)
-      ,storyEventIds: normalizeTriggeredIds(stateUpdate.storyEventIds)
+      triggeredConsequenceIds: normalizeTriggeredIds(stateUpdate.triggeredConsequenceIds),
+      storyEventIds: normalizeTriggeredIds(stateUpdate.storyEventIds)
     },
     nextPrompt: typeof response.nextPrompt === 'string' ? response.nextPrompt : undefined,
     playerChoices,
@@ -1517,7 +1552,9 @@ function applyScenarioTransition(
       ) {
         return prepareCheck(state.pendingCheck, state.players);
       }
-      return transitioned ?? state.pendingCheck;
+      return transitioned
+        ? enqueueCheck(state.pendingCheck, transitioned, state.players)
+        : state.pendingCheck;
     })()
   };
   const normalizedNarratorText = narratorText.replace(/\s/g, '');
@@ -1631,7 +1668,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case 'addLog':
       return addLog(state, action.text);
     case 'applyDiceResult': {
-      let next = addMessage(addLog({ ...state, pendingCheck: null }, `检定结果：${action.result.roll} · ${action.result.label}`), {
+      const pendingCheck = state.pendingCheck
+        ? advanceCheckQueue(state.pendingCheck, action.resultAction, state.players)
+        : null;
+      let next = addMessage(addLog({ ...state, pendingCheck }, `检定结果：${action.result.roll} · ${action.result.label}`), {
         type: 'system',
         text: `检定结果：${action.result.label}`
       });

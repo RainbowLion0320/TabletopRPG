@@ -1,9 +1,41 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { rollD100 } from '../../src/services/dice';
+import { enqueueCheck, rollD100 } from '../../src/services/dice';
 import type { CheckRequest } from '../../src/types/game';
+import { makeInvestigator } from '../dm/fixtures';
 
 afterEach(() => {
   vi.restoreAllMocks();
+});
+
+describe('D100 authored check queues', () => {
+  it('keeps the same authored check id when different investigators own separate rolls', () => {
+    const players = [
+      makeInvestigator({ name: '亨利' }, { '格斗（拳）': 55 }),
+      makeInvestigator({ name: '罗伯特' }, { '射击（手枪）': 65 })
+    ];
+    const current = enqueueCheck(null, {
+      scenarioCheckId: 'CHECK_COMBAT',
+      player: '亨利',
+      skill: '格斗（拳）',
+      difficulty: '普通'
+    }, players);
+
+    const queued = enqueueCheck(current, {
+      scenarioCheckId: 'CHECK_COMBAT',
+      player: '罗伯特',
+      skill: '射击（手枪）',
+      difficulty: '普通'
+    }, players);
+
+    expect(queued.queuedChecks).toEqual([
+      expect.objectContaining({
+        scenarioCheckId: 'CHECK_COMBAT',
+        player: '罗伯特',
+        skill: '射击（手枪）',
+        threshold: 65
+      })
+    ]);
+  });
 });
 
 describe('D100 difficulty resolution', () => {

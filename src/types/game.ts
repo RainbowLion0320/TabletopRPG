@@ -264,6 +264,22 @@ export interface NarrativeKeywordHint {
   kind: NarrativeKeywordKind;
 }
 
+export interface CheckContinuationAction {
+  player: string;
+  action: string;
+  scene?: string;
+}
+
+export interface CheckResolutionContract {
+  /** Authored checks settle through scenario events; freeform checks settle in bounded narration. */
+  kind: 'authored' | 'freeform';
+  /** Scenario item ids covered by one roll. Multiple items may share one investigator's search roll. */
+  targetItemIds?: string[];
+  success: string;
+  failure: string;
+  fumble?: string;
+}
+
 export interface CheckRequest {
   skill: string;
   difficulty: '普通' | '困难' | '极难';
@@ -274,7 +290,16 @@ export interface CheckRequest {
   /** Stable scenario check id when the request came from a structured effect. */
   scenarioCheckId?: string;
   /** 骰点后需要恢复的原始共同调查行动；仅由本地规则层写入。 */
-  continuationActions?: Array<{ player: string; action: string; scene?: string }>;
+  continuationActions?: CheckContinuationAction[];
+  /** 本轮此前已经结算的检定结果，最后一个检定完成后与原始行动一起交给 DM。 */
+  resolvedActions?: CheckContinuationAction[];
+  /** 同一轮尚待依次结算的其他检定。 */
+  queuedChecks?: CheckRequest[];
+  /** 多检定批次中的可见位置。 */
+  batchIndex?: number;
+  batchTotal?: number;
+  /** 掷骰前锁定的结果边界，防止出现“掷了骰却没有可结算结果”。 */
+  resolution?: CheckResolutionContract;
 }
 
 export interface DiceResult {

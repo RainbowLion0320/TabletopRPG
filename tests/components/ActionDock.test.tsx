@@ -58,6 +58,51 @@ describe('ActionDock player-specific suggestions', () => {
     expect(screen.getByRole('button', { name: '掷骰中' })).toBeDisabled();
   });
 
+  it('shows multi-check progress and locks new declarations until the queue settles', () => {
+    const henry = makeInvestigator({ id: 'p-henry', name: '亨利' });
+    const ada = makeInvestigator({ id: 'p-ada', name: '艾达' });
+    const state = makeState({ players: [henry, ada] });
+    state.declarations = { 'p-henry': '继续搜查', 'p-ada': '观察表情' };
+    state.pendingCheck = {
+      player: '亨利',
+      skill: '侦查',
+      difficulty: '普通',
+      threshold: 70,
+      skillVal: 70,
+      batchIndex: 1,
+      batchTotal: 2,
+      queuedChecks: [{
+        player: '艾达',
+        skill: '心理学',
+        difficulty: '普通',
+        threshold: 65,
+        skillVal: 65,
+        batchIndex: 2,
+        batchTotal: 2
+      }]
+    };
+
+    render(
+      <ActionDock
+        isDiceRolling={false}
+        state={state}
+        onActorChange={vi.fn()}
+        onDeclarationChange={vi.fn()}
+        onSubmit={vi.fn()}
+        onRoll={vi.fn()}
+        onSuggestion={vi.fn()}
+        onSplitPlayerChange={vi.fn()}
+        onSplitSceneChange={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText(/本轮第 1\/2 个/)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('亨利 想要做什么...')).toBeDisabled();
+    expect(screen.getByRole('button', { name: /亨利 HP/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '下一位' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '掷骰' })).toBeEnabled();
+  });
+
   it('hides stale suggestions and freezes the action controls while the DM is thinking', () => {
     const henry = makeInvestigator({ id: 'p-henry', name: '亨利' });
     const state = makeState({ players: [henry] });

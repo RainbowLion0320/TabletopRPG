@@ -28,7 +28,7 @@ describe('stateResolver basics', () => {
     expect(legacyResponse.stateUpdate?.triggeredConsequenceIds).toEqual([]);
   });
 
-  it('extracts request_check (only first kept; multiple events)', () => {
+  it('queues every independent request_check instead of dropping later checks', () => {
     const calls: DmToolCall[] = [
       { name: 'request_check', arguments: { skill: '侦查', difficulty: '普通', player: '亨利' } },
       { name: 'request_check', arguments: { skill: '聆听', difficulty: '困难', player: '亨利' } }
@@ -39,6 +39,10 @@ describe('stateResolver basics', () => {
       turn: 2
     });
     expect(legacyResponse.check?.skill).toBe('侦查');
+    expect(legacyResponse.check?.queuedChecks).toEqual([
+      expect.objectContaining({ player: '亨利', skill: '聆听', difficulty: '困难' })
+    ]);
+    expect(legacyResponse.check).toEqual(expect.objectContaining({ batchIndex: 1, batchTotal: 2 }));
     expect(events.filter((e) => e.kind === 'check')).toHaveLength(2);
   });
 

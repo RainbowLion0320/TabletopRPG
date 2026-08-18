@@ -10,6 +10,7 @@
  */
 
 import type { AiResponse, CheckRequest, NpcMindModel, PersistedPendingConsequence, SceneId } from '../types/game';
+import { chainChecks } from '../services/dice';
 import type { NarratorOutput } from './narrator';
 import type { DMEvent, DmToolCall } from './types';
 
@@ -68,7 +69,7 @@ export function resolveDmTurn(input: ResolveInput): ResolveOutput {
   const { narrator, acceptedCalls, turn, pendingBefore } = input;
   const stateUpdate = emptyStateUpdate();
   const events: DMEvent[] = [];
-  let check: CheckRequest | null = null;
+  const checks: CheckRequest[] = [];
   const scheduledConsequences: PersistedPendingConsequence[] = [];
   const triggeredConsequenceIds: string[] = [];
   const mindUpdates: Array<{ npcId: string; partial: Partial<NpcMindModel> }> = [];
@@ -89,14 +90,24 @@ export function resolveDmTurn(input: ResolveInput): ResolveOutput {
       }
       case 'request_check': {
         const args = call.arguments as Record<string, unknown>;
-        // 多个 request_check 时取第一个；其余忽略并记录事件
-        if (!check) {
-          check = {
+        const candidate: CheckRequest = {
             skill: String(args.skill),
             difficulty: args.difficulty as CheckRequest['difficulty'],
             player: String(args.player),
-            reason: typeof args.reason === 'string' ? args.reason : undefined
+            reason: typeof args.reason === 'string' ? args.reason : undefined,
+            resolution: {
+              kind: 'freeform',
+              success: '行动成功；必须给予明确的局面收益、排除结论、关系变化或下一步优势，不能只说没有新信息。',
+              failure: '行动未达预期；必须呈现代价、风险、NPC反应或带代价的继续机会，不能让本轮无事发生。',
+              fumble: '行动大失败；必须呈现明显但不越过权威状态边界的负面后果，并保留继续游戏的路径。'
+            }
           };
+        if (!checks.some((check) =>
+          check.player === candidate.player
+          && check.skill === candidate.skill
+          && check.reason === candidate.reason
+        )) {
+          checks.push(candidate);
         }
         events.push({
           id: genEventId(turn, 'check'),
@@ -276,7 +287,7 @@ export function resolveDmTurn(input: ResolveInput): ResolveOutput {
   const legacyResponse: AiResponse = {
     narrative: narrator.narrative,
     activeNpc: narrator.activeNpc,
-    check,
+    check: chainChecks(checks),
     stateUpdate: {
       ...stateUpdate,
       scheduledConsequences,

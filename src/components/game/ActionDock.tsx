@@ -67,7 +67,12 @@ export function ActionDock({
         <div className="check-card">
           <div>
             <strong>{state.pendingCheck.player} · {state.pendingCheck.skill}</strong>
-            <span>难度：{state.pendingCheck.difficulty}，阈值 {state.pendingCheck.threshold ?? '-'}</span>
+            <span>
+              {state.pendingCheck.batchTotal && state.pendingCheck.batchTotal > 1
+                ? `本轮第 ${state.pendingCheck.batchIndex ?? 1}/${state.pendingCheck.batchTotal} 个 · `
+                : ''}
+              难度：{state.pendingCheck.difficulty}，阈值 {state.pendingCheck.threshold ?? '-'}
+            </span>
           </div>
           <button className="secondary-action" disabled={isDiceRolling || state.isThinking} onClick={onRoll}>
             <Dice5 size={16} />
@@ -90,7 +95,7 @@ export function ActionDock({
             {state.players.map((player, index) => (
               <button
                 className={index === state.currentSplitPlayer ? 'active' : ''}
-                disabled={state.isThinking}
+                disabled={state.isThinking || Boolean(state.pendingCheck)}
                 key={player.id}
                 onClick={() => onSplitPlayerChange(index)}
               >
@@ -102,7 +107,7 @@ export function ActionDock({
             {sceneList.filter((scene) => splitSceneIds.has(scene.id)).map((scene) => (
               <button
                 className={state.playerLocations[splitActor.id] === scene.id ? 'active' : ''}
-                disabled={state.isThinking}
+                disabled={state.isThinking || Boolean(state.pendingCheck)}
                 key={scene.id}
                 onClick={() => onSplitSceneChange(state.currentSplitPlayer, scene.id)}
               >
@@ -126,12 +131,12 @@ export function ActionDock({
             <input
               className="dock-input"
               autoFocus
-              disabled={isDiceRolling || state.isThinking}
+              disabled={isDiceRolling || state.isThinking || Boolean(state.pendingCheck)}
               value={state.declarations[currentActor.id] ?? ''}
               placeholder={`${currentActor.name} 想要做什么...`}
               onChange={(event) => onDeclarationChange(currentActor.id, event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === 'Enter' && allFilled && !state.isThinking) {
+                if (event.key === 'Enter' && allFilled && !state.isThinking && !state.pendingCheck) {
                   event.preventDefault();
                   onSubmit();
                 }
@@ -139,7 +144,7 @@ export function ActionDock({
             />
           </>
         ) : null}
-        <button className="primary-action dock-submit" disabled={!allFilled || state.isThinking || isDiceRolling} onClick={onSubmit}>
+        <button className="primary-action dock-submit" disabled={!allFilled || state.isThinking || isDiceRolling || Boolean(state.pendingCheck)} onClick={onSubmit}>
           <Send size={16} />
           {submitLabel}
         </button>
@@ -157,7 +162,7 @@ export function ActionDock({
           return (
             <button
               className={cardClass}
-              disabled={state.isThinking}
+              disabled={state.isThinking || Boolean(state.pendingCheck)}
               key={player.id}
               onClick={() => state.exploreMode === 'together' ? onActorChange(index) : onSplitPlayerChange(index)}
               type="button"
