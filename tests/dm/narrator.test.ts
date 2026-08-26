@@ -34,7 +34,7 @@ const ctx: DmContext = {
     reachableScenes: [],
     npcs: [],
     items: [],
-    playerLocations: { 亨利: '雾港' },
+    partyLocation: '雾港',
     knownClueNames: [],
     recentFacts: [],
     scenario: {
@@ -131,7 +131,6 @@ describe('callNarrator retry repair', () => {
     const output = await callNarrator(config, {
       ctx,
       actions: [{ player: '亨利', action: '我检查窗户。' }],
-      mode: 'together',
       history: []
     });
 
@@ -155,7 +154,6 @@ describe('callNarrator retry repair', () => {
     const output = await callNarrator(config, {
       ctx,
       actions: [{ player: '亨利', action: '进入酒吧。' }],
-      mode: 'together',
       history: []
     });
 
@@ -173,7 +171,6 @@ describe('callNarrator retry repair', () => {
     const output = await callNarrator(config, {
       ctx,
       actions: [{ player: '亨利', action: '追问他看见了什么。' }],
-      mode: 'together',
       history: []
     });
 
@@ -189,7 +186,6 @@ describe('callNarrator retry repair', () => {
     const output = await callNarrator(config, {
       ctx,
       actions: [{ player: '亨利', action: '检查照片。' }],
-      mode: 'together',
       history: []
     });
 
@@ -212,7 +208,6 @@ describe('callNarrator retry repair', () => {
     const output = await callNarrator(config, {
       ctx,
       actions: [{ player: '亨利', action: '给酒保小费。' }],
-      mode: 'together',
       history: []
     });
 
@@ -234,7 +229,6 @@ describe('callNarrator retry repair', () => {
     const output = await callNarrator(config, {
       ctx,
       actions: [{ player: '亨利', action: '检查油布包。' }],
-      mode: 'together',
       history: []
     });
 
@@ -264,7 +258,6 @@ describe('callNarrator retry repair', () => {
     const output = await callNarrator(config, {
       ctx,
       actions: [{ player: '亨利', action: '我向雾里的钟声走去。' }],
-      mode: 'together',
       history: []
     });
 
@@ -327,7 +320,6 @@ describe('callNarrator retry repair', () => {
     const output = await callNarrator(chatConfig, {
       ctx,
       actions: [{ player: '亨利', action: '我查看码头地面。' }],
-      mode: 'together',
       history: []
     });
 
@@ -357,7 +349,6 @@ describe('callNarrator retry repair', () => {
     const output = await callNarrator(config, {
       ctx,
       actions: [{ player: '亨利', action: '继续追问。' }],
-      mode: 'together',
       history: []
     });
 
@@ -378,7 +369,6 @@ describe('callNarrator retry repair', () => {
     const output = await callNarrator(config, {
       ctx,
       actions: [{ player: '亨利', action: '观察窗边。' }],
-      mode: 'together',
       history: [],
       validateOutput: () => ({ severity: 'warning', message: '非权威氛围细节' })
     });
@@ -403,7 +393,6 @@ describe('callNarrator retry repair', () => {
     const output = await callNarrator(config, {
       ctx,
       actions: [{ player: '亨利', action: '继续观察。' }],
-      mode: 'together',
       history: [],
       validateOutput: () => ({ severity: 'advisory', message: '可以给出更具体的局面变化' })
     });
@@ -423,7 +412,6 @@ describe('callNarrator retry repair', () => {
     await expect(callNarrator(config, {
       ctx,
       actions: [{ player: '亨利', action: '继续观察。' }],
-      mode: 'together',
       history: [],
       validateOutput: () => ({ severity: 'blocking', message: '不得改写权威状态' })
     })).rejects.toThrow('不得改写权威状态');
@@ -441,7 +429,6 @@ describe('callNarrator retry repair', () => {
     await expect(callNarrator(badConfig, {
       ctx,
       actions: [{ player: '亨利', action: '我查看码头地面。' }],
-      mode: 'together',
       history: []
     })).rejects.toThrow(/endpoint|协议|模型|chat-compatible/i);
   });

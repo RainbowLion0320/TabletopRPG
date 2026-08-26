@@ -11,7 +11,7 @@
  * 只做"把 context 翻译成 prompt"和"把响应翻译成结构化数据"。
  */
 
-import type { ApiConfig, ExploreMode, NarrativeKeywordHint } from '../types/game';
+import type { ApiConfig, NarrativeKeywordHint } from '../types/game';
 import { jsonrepair } from 'jsonrepair';
 import type { PlayerAction } from '../services/aiDm';
 import { normalizeNarrativeKeywordHints } from '../services/narrativeKeywords';
@@ -294,11 +294,7 @@ export function buildNarratorSystemPrompt(ctx: DmContext): string {
     }`,
     `# 在场 NPC\n${formatNpcs(ctx.dynamic.npcs)}`,
     `# 物品\n${formatItems(ctx.dynamic.items, ctx.dynamic.knownClueNames)}`,
-    `# 玩家定位\n${
-      Object.entries(ctx.dynamic.playerLocations)
-        .map(([n, s]) => `${n} → ${s}`)
-        .join('，') || '（无）'
-    }`,
+    `# 队伍位置\n全体调查员 → ${ctx.dynamic.partyLocation}`,
     `# 已发现线索\n${ctx.dynamic.knownClueNames.join('、') || '（无）'}`,
     `# 最近确认事实（不得无依据改写）\n${formatRecentFacts(ctx.dynamic.recentFacts)}`,
     `# 调查员卡\n${formatPlayers(ctx.dynamic)}`,
@@ -312,14 +308,9 @@ export function buildNarratorSystemPrompt(ctx: DmContext): string {
 }
 
 export function buildNarratorUserMessage(
-  actions: PlayerAction[],
-  mode: 'together' | 'split'
+  actions: PlayerAction[]
 ): string {
-  if (mode === 'together') {
-    return `【本轮行动宣言】\n${actions.map((a) => `${a.player}：${a.action}`).join('\n')}\n【共同调查规则】按声明顺序结算；若其中有人明确前往新场景，前置行动完成后全队同行，不得写成分头留在不同地点。严格保留每位调查员本轮明确使用的物件和姿态，不得擅自换成其背包中的其他装备。`;
-  }
-  const a = actions[0];
-  return `【${a.player} 在 ${a.scene ?? '当前场景'}】${a.action}`;
+  return `【本轮行动宣言】\n${actions.map((a) => `${a.player}：${a.action}`).join('\n')}\n【队伍规则】按声明顺序结算；全体调查员始终共享同一场景，若有人明确前往新场景，前置行动完成后全队同步移动，不得留下任何成员。严格保留每位调查员本轮明确使用的物件和姿态，不得擅自换成其背包中的其他装备。`;
 }
 
 // ---------- 响应解析 ----------
@@ -665,7 +656,6 @@ async function requestNarrator(
 export interface CallNarratorInput {
   ctx: DmContext;
   actions: PlayerAction[];
-  mode: ExploreMode;
   /** 此前轮次的 conversationHistory（已经过窗口截断） */
   history: LlmTextInputMessage[];
   /** 本轮允许的工具名集（来自 Director.allowedTools）；不传则使用全集 */
@@ -759,7 +749,7 @@ export async function callNarrator(
   input: CallNarratorInput
 ): Promise<NarratorOutput> {
   const systemPrompt = buildNarratorSystemPrompt(input.ctx);
-  const userMessage = buildNarratorUserMessage(input.actions, input.mode);
+  const userMessage = buildNarratorUserMessage(input.actions);
   const tools = filterToolsByAllowed(input.allowedToolNames);
   const playerNames = playerNamesFromContext(input.ctx);
 

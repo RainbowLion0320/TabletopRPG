@@ -14,7 +14,6 @@ import { ApiConfigModal } from '../components/shared/ApiConfigModal';
 import type { EntityDetail } from '../dm/entityDetail';
 import { getNarrativeMarkDetail } from '../dm/entityDetail';
 import type { NarrativeMarkTarget } from '../services/narrativeMarkup';
-import type { SceneId } from '../types/game';
 import type { GameController } from './useGameController';
 
 interface GameScreenProps {
@@ -46,12 +45,10 @@ export function GameScreen({ controller, onHome, onRestart }: GameScreenProps) {
       <SceneStage state={state} />
       <TopBar state={state} onToggleMenu={() => controller.setMenuOpen(!controller.menuOpen)} />
       <GameMenu
-        mode={state.exploreMode}
         open={controller.menuOpen}
         onHome={handleHome}
         onLoad={controller.loadCurrentLatest}
         onManageSaves={controller.openSaveManager}
-        onModeChange={controller.setExploreMode}
         onOpenApi={controller.openApiSettings}
         onOpenJournal={controller.openJournal}
         onRestart={handleRestart}
@@ -80,11 +77,8 @@ export function GameScreen({ controller, onHome, onRestart }: GameScreenProps) {
       <ActionDock
         isDiceRolling={Boolean(controller.diceRoll)}
         state={state}
-        onActorChange={controller.setCurrentActor}
         onDeclarationChange={controller.setDeclaration}
         onRoll={controller.handleRoll}
-        onSplitPlayerChange={controller.setCurrentSplitPlayer}
-        onSplitSceneChange={(playerIndex, sceneId: SceneId) => controller.setPlayerScene(playerIndex, sceneId)}
         onSubmit={controller.submitAction}
         onSuggestion={controller.applySuggestion}
       />

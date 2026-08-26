@@ -1,7 +1,7 @@
 # TabletopRPG PRD
 
 > Version: v0.9
-> Updated: 2026-07-12
+> Updated: 2026-08-26
 > Product baseline: Vite + React + TypeScript MVP
 
 ## 1. Product Positioning
@@ -13,7 +13,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 | User | Need |
 | --- | --- |
 | TRPG player without a dedicated KP | Start a lightweight investigation session quickly |
-| Small local group | Share one screen and submit actions together or one investigator at a time |
+| Small local group | Share one screen, declare actions in turn, and resolve each round as one party |
 | Developer/designer team | Iterate module data, prompts, UI, and assets inside one repository |
 
 ## 3. Current MVP Scope
@@ -25,8 +25,8 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 - Main game screen with scene art, narrative feed, action dock, investigator party portraits/status, menu, and a fullscreen investigation workspace centered on a player-known case board.
 - Mixed case board: authored main-clue spine, reviewed AI events/theories, entity dossier insights, automatic relationship layout, investigation-thread navigation, search, type filters, and a narrow-screen grouped list.
 - Safe interactive narrative highlighting for people, locations, evidence, skills, checks, and temporary model-suggested clue/danger/state phrases.
-- Together mode: all selected investigators submit one action round together.
-- Split mode: one investigator acts in a selected scene at a time.
+- Party exploration: all selected investigators always share one scene, declare actions sequentially, and resolve the completed round together.
+- Party movement: any valid scene transition moves every investigator and synchronizes the chapter, backdrop, resident NPC, and AI context.
 - AI DM integration through OpenAI Responses, MiMo, or a custom OpenAI-compatible Chat Completions endpoint.
 - Strict JSON-oriented AI response contract with fallback parsing.
 - D100 skill check flow handled by the frontend.

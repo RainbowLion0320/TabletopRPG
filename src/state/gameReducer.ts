@@ -31,10 +31,6 @@ export type GameAction =
   | { type: 'start'; players: Investigator[] }
   | { type: 'restore'; state: GameState }
   | { type: 'setThinking'; value: boolean }
-  | { type: 'setExploreMode'; mode: GameState['exploreMode'] }
-  | { type: 'setCurrentSplitPlayer'; index: number }
-  | { type: 'setCurrentActor'; index: number }
-  | { type: 'setPlayerScene'; playerIndex: number; sceneId: SceneId }
   | { type: 'setDeclaration'; playerId: string; text: string }
   | { type: 'clearDeclarations' }
   | { type: 'advanceActor' }
@@ -432,14 +428,6 @@ function normalizeClues(value: unknown) {
   });
 }
 
-function normalizePlayerLocations(value: unknown, players: Investigator[], fallback: SceneId) {
-  const source = isRecord(value) ? value : {};
-  return Object.fromEntries(players.map((player) => [
-    player.id,
-    normalizeSceneId(source[player.id] ?? fallback)
-  ])) as Record<string, SceneId>;
-}
-
 function normalizeDeclarations(value: unknown, players: Investigator[]) {
   const source = isRecord(value) ? value : {};
   const declarations: Record<string, string> = {};
@@ -449,6 +437,25 @@ function normalizeDeclarations(value: unknown, players: Investigator[]) {
     if (declaration) declarations[player.id] = declaration;
   });
   return declarations;
+}
+
+/**
+ * Compatibility boundary for saves created before the party had one canonical
+ * location. The focused investigator's last visible scene becomes the whole
+ * party scene; obsolete per-player fields are never copied into GameState.
+ */
+function normalizePartySceneFromSave(source: Record<string, unknown>, players: Investigator[], fallback: SceneId) {
+  const persistedScene = normalizeSceneId(source.currentScene, fallback);
+  if (source.exploreMode !== 'split') return persistedScene;
+
+  const locations = isRecord(source.playerLocations) ? source.playerLocations : {};
+  const focusedIndex = players.length
+    ? clamp(Math.floor(numberValue(source.currentSplitPlayer, 0)), 0, players.length - 1)
+    : 0;
+  const focusedPlayer = players[focusedIndex];
+  return focusedPlayer
+    ? normalizeSceneId(locations[focusedPlayer.id], persistedScene)
+    : persistedScene;
 }
 
 function normalizeStringList(value: unknown, fallback: string[]) {
@@ -556,16 +563,6 @@ function resolveActiveNpcAfterResponse(
       : response.activeNpc,
     requestedActiveNpcProvided: hasOwn(response, 'activeNpc')
   });
-}
-
-function moveFocusedPlayers(state: GameState, sceneId: SceneId): Record<string, SceneId> {
-  if (state.exploreMode === 'split') {
-    const player = state.players[state.currentSplitPlayer];
-    return player
-      ? { ...state.playerLocations, [player.id]: sceneId }
-      : state.playerLocations;
-  }
-  return Object.fromEntries(state.players.map((player) => [player.id, sceneId])) as Record<string, SceneId>;
 }
 
 function normalizeEventLog(value: unknown): PersistedDMEvent[] {
@@ -1300,7 +1297,6 @@ function normalizeAiResponse(value: AiResponse, state: GameState): AiResponse {
 export function createInitialGameState(players: Investigator[]): GameState {
   const startScene = scenarioDefinition.manifest.startSceneId;
   const activeNpcName = defaultActiveNpcForScene(startScene);
-  const locations = Object.fromEntries(players.map((player) => [player.id, startScene]));
   const suggestionsByPlayerId = defaultSuggestionsForPlayers(players);
   const suggestions = firstSuggestionListByPlayerOrder(
     suggestionsByPlayerId,
@@ -1309,10 +1305,7 @@ export function createInitialGameState(players: Investigator[]): GameState {
   );
   return {
     players,
-    exploreMode: 'together',
-    currentSplitPlayer: 0,
     currentActorIndex: 0,
-    playerLocations: locations,
     declarations: {},
     pendingCheck: null,
     currentScene: startScene,
@@ -1346,19 +1339,7 @@ export function hydrateGameState(value: unknown): GameState {
     .map((player, index) => normalizeInvestigator(player, index))
     .filter((player): player is Investigator => Boolean(player));
   const base = createInitialGameState(players);
-  const persistedScene = normalizeSceneId(source.currentScene, base.currentScene);
-  const exploreMode = source.exploreMode === 'split' ? 'split' : 'together';
-  const currentSplitPlayer = players.length
-    ? clamp(Math.floor(numberValue(source.currentSplitPlayer, 0)), 0, players.length - 1)
-    : 0;
-  const persistedLocations = normalizePlayerLocations(source.playerLocations, players, persistedScene);
-  const splitPlayer = players[currentSplitPlayer];
-  const currentScene = exploreMode === 'split' && splitPlayer
-    ? persistedLocations[splitPlayer.id] ?? persistedScene
-    : persistedScene;
-  const playerLocations = exploreMode === 'together'
-    ? Object.fromEntries(players.map((player) => [player.id, currentScene])) as Record<string, SceneId>
-    : persistedLocations;
+  const currentScene = normalizePartySceneFromSave(source, players, base.currentScene);
   const rawHistory = normalizeConversationHistory(source.conversationHistory);
   const rawSuggestionsByPlayerId = normalizeSuggestionsByPlayerId(
     source.suggestionsByPlayerId ?? source.suggestions,
@@ -1429,12 +1410,9 @@ export function hydrateGameState(value: unknown): GameState {
 
   const hydrated: GameState = {
     ...base,
-    exploreMode,
-    currentSplitPlayer,
     currentActorIndex: players.length
       ? clamp(Math.floor(numberValue(source.currentActorIndex, 0)), 0, players.length - 1)
       : 0,
-    playerLocations,
     declarations: normalizeDeclarations(source.declarations, players),
     pendingCheck: (() => {
       const check = normalizeCheck(source.pendingCheck, players);
@@ -1574,78 +1552,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return hydrateGameState(action.state);
     case 'setThinking':
       return { ...state, isThinking: action.value };
-    case 'setExploreMode': {
-      const focusedPlayer = state.players[state.currentSplitPlayer];
-      const currentScene = action.mode === 'split' && focusedPlayer
-        ? state.playerLocations[focusedPlayer.id] ?? state.currentScene
-        : state.currentScene;
-      const playerLocations = action.mode === 'together'
-        ? Object.fromEntries(state.players.map((player) => [player.id, currentScene])) as Record<string, SceneId>
-        : state.playerLocations;
-      const activeNpcName = resolveActiveNpcForScene({
-        previousScene: state.currentScene,
-        nextScene: currentScene,
-        previousActiveNpc: state.activeNpcName,
-        requestedActiveNpcProvided: false
-      });
-      return addMessage({
-        ...state,
-        exploreMode: action.mode,
-        currentScene,
-        playerLocations,
-        activeNpcId: npcIdFromName(activeNpcName),
-        activeNpcName
-      }, {
-        type: 'system',
-        text: action.mode === 'split' ? '切换为「分头探索」模式。' : '切换为「一起行动」模式。'
-      });
-    }
-    case 'setCurrentActor':
-      if (state.exploreMode === 'together') return state;
-      return { ...state, currentActorIndex: state.players.length ? clamp(action.index, 0, state.players.length - 1) : 0 };
-    case 'setCurrentSplitPlayer': {
-      const currentSplitPlayer = state.players.length ? clamp(action.index, 0, state.players.length - 1) : 0;
-      if (state.exploreMode !== 'split') return { ...state, currentSplitPlayer };
-      const player = state.players[currentSplitPlayer];
-      const currentScene = player ? state.playerLocations[player.id] ?? state.currentScene : state.currentScene;
-      const activeNpcName = resolveActiveNpcForScene({
-        previousScene: state.currentScene,
-        nextScene: currentScene,
-        previousActiveNpc: state.activeNpcName,
-        requestedActiveNpcProvided: false
-      });
-      return {
-        ...state,
-        currentSplitPlayer,
-        currentScene,
-        activeNpcId: npcIdFromName(activeNpcName),
-        activeNpcName
-      };
-    }
-    case 'setPlayerScene': {
-      const player = state.players[action.playerIndex];
-      if (!player) return state;
-      const changesFocusedScene = state.exploreMode === 'split' && action.playerIndex === state.currentSplitPlayer;
-      const activeNpcName = changesFocusedScene
-        ? resolveActiveNpcForScene({
-            previousScene: state.currentScene,
-            nextScene: action.sceneId,
-            previousActiveNpc: state.activeNpcName,
-            requestedActiveNpcProvided: false
-          })
-        : state.activeNpcName;
-      return {
-        ...state,
-        playerLocations: { ...state.playerLocations, [player.id]: action.sceneId },
-        ...(changesFocusedScene
-          ? {
-              currentScene: action.sceneId,
-              activeNpcId: npcIdFromName(activeNpcName),
-              activeNpcName
-            }
-          : {})
-      };
-    }
     case 'setDeclaration':
       return { ...state, declarations: { ...state.declarations, [action.playerId]: action.text } };
     case 'clearDeclarations':
@@ -1726,7 +1632,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         },
         clues: appendNewClues(state.clues, response.stateUpdate?.newItems),
         currentScene,
-        playerLocations: sceneChange ? moveFocusedPlayers(state, currentScene) : state.playerLocations,
         activeNpcName: resolveActiveNpcAfterResponse(
           response,
           state.currentScene,

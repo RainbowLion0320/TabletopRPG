@@ -2,24 +2,11 @@ import { storyData } from '../data/storyData';
 import type { PlayerAction } from '../services/aiDm';
 import type { CheckRequest, DiceResult, GameState } from '../types/game';
 
-export function buildSplitAction(state: GameState): PlayerAction {
-  const player = state.players[state.currentSplitPlayer] ?? state.players[0];
-  const sceneId = state.playerLocations[player.id] ?? 'S01';
-  return {
-    player: player.name,
-    action: state.declarations[player.id] || '等待',
-    scene: storyData.scenes[sceneId].name
-  };
-}
-
 export function buildPlayerActions(state: GameState): PlayerAction[] {
-  if (state.exploreMode === 'together') {
-    return state.players.map((player) => ({
-      player: player.name,
-      action: state.declarations[player.id] || '等待'
-    }));
-  }
-  return [buildSplitAction(state)];
+  return state.players.map((player) => ({
+    player: player.name,
+    action: state.declarations[player.id] || '等待'
+  }));
 }
 
 export function buildDiceResultMessage(check: CheckRequest, result: DiceResult) {
@@ -40,9 +27,6 @@ export function buildDiceResultAction(state: GameState, check: CheckRequest, che
 }
 
 export function findSuggestionTargetPlayerId(state: GameState) {
-  if (state.exploreMode === 'split') {
-    return state.players[state.currentSplitPlayer]?.id ?? null;
-  }
-  // Together mode: suggestions go to the actor whose turn it currently is.
+  // Suggestions go to the actor whose declaration is currently being entered.
   return state.players[state.currentActorIndex]?.id ?? null;
 }

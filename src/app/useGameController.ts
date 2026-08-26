@@ -11,7 +11,7 @@ import { AiResponseFormatError, buildUserMessage, type PlayerAction } from '../s
 import { prepareCheck, rollD100 } from '../services/dice';
 import { persistApiConfig, readApiConfig } from '../services/storage';
 import { createInitialGameState, gameReducer } from '../state/gameReducer';
-import type { ApiConfig, GameState, Investigator, SceneId } from '../types/game';
+import type { ApiConfig, GameState, Investigator } from '../types/game';
 import { AiProviderConfigError } from '../dm/llm/errors';
 import { runDmTurn } from '../dm/pipeline';
 import type { DmBackgroundUpdate } from '../dm/types';
@@ -122,46 +122,26 @@ export function useGameController() {
   function submitAction() {
     if (!state.players.length || state.pendingCheck || diceRollInFlightRef.current) return;
 
-    if (state.exploreMode === 'together') {
-      // Sequential turn-taking: each player acts one at a time. The DM is only
-      // invoked after every party member has submitted their action.
-      const actor = state.players[state.currentActorIndex];
-      if (!actor) return;
-      const declaration = state.declarations[actor.id]?.trim();
-      if (!declaration) return;
+    // Players declare sequentially, then the complete party turn is resolved once.
+    const actor = state.players[state.currentActorIndex];
+    if (!actor) return;
+    const declaration = state.declarations[actor.id]?.trim();
+    if (!declaration) return;
 
-      dispatch({
-        type: 'appendMessage',
-        message: { type: 'player', text: declaration, playerName: actor.name }
-      });
+    dispatch({
+      type: 'appendMessage',
+      message: { type: 'player', text: declaration, playerName: actor.name }
+    });
 
-      const isLast = state.currentActorIndex >= state.players.length - 1;
-      if (!isLast) {
-        dispatch({ type: 'advanceActor' });
-        return;
-      }
-
-      // Last actor: aggregate all declarations and run the DM round.
-      const actions = buildPlayerActions(state);
-      dispatch({ type: 'appendHistory', role: 'user', content: buildUserMessage(actions, state.exploreMode) });
-      dispatch({ type: 'clearDeclarations' });
-      runAi(actions);
+    const isLast = state.currentActorIndex >= state.players.length - 1;
+    if (!isLast) {
+      dispatch({ type: 'advanceActor' });
       return;
     }
 
-    // Split mode: original single-actor flow (one action -> immediate DM).
+    // Last actor: aggregate every declaration and run one DM round for the party.
     const actions = buildPlayerActions(state);
-    actions.forEach((action) => {
-      dispatch({
-        type: 'appendMessage',
-        message: {
-          type: 'player',
-          text: action.scene ? `[${action.scene}] ${action.action}` : action.action,
-          playerName: action.player
-        }
-      });
-    });
-    dispatch({ type: 'appendHistory', role: 'user', content: buildUserMessage(actions, state.exploreMode) });
+    dispatch({ type: 'appendHistory', role: 'user', content: buildUserMessage(actions) });
     dispatch({ type: 'clearDeclarations' });
     runAi(actions);
   }
@@ -398,25 +378,8 @@ export function useGameController() {
     setJournalOpen(false);
   }
 
-  function setExploreMode(mode: GameState['exploreMode']) {
-    dispatch({ type: 'setExploreMode', mode });
-    setMenuOpen(false);
-  }
-
   function setDeclaration(playerId: string, text: string) {
     dispatch({ type: 'setDeclaration', playerId, text });
-  }
-
-  function setCurrentSplitPlayer(index: number) {
-    dispatch({ type: 'setCurrentSplitPlayer', index });
-  }
-
-  function setCurrentActor(index: number) {
-    dispatch({ type: 'setCurrentActor', index });
-  }
-
-  function setPlayerScene(playerIndex: number, sceneId: SceneId) {
-    dispatch({ type: 'setPlayerScene', playerIndex, sceneId });
   }
 
   return {
@@ -445,13 +408,9 @@ export function useGameController() {
     saveManagerOpen,
     saves: saveSlots.saves,
     setApiOpen,
-    setCurrentSplitPlayer,
-    setCurrentActor,
     setDeclaration,
     setDrawerOpen,
-    setExploreMode,
     setMenuOpen,
-    setPlayerScene,
     setSaveManagerOpen,
     startGame,
     state,

@@ -85,8 +85,6 @@ export interface MakeStateOptions {
  */
 export function makeState(options: MakeStateOptions = {}): GameState {
   const players = options.players ?? [makeInvestigator({ name: '亨利' })];
-  const playerLocations: Record<string, SceneId> = {};
-  for (const p of players) playerLocations[p.id] = options.currentScene ?? 'S01';
   const clues = (options.clueIds ?? []).map((cid) => ({
     id: cid,
     name: cid,
@@ -96,10 +94,7 @@ export function makeState(options: MakeStateOptions = {}): GameState {
   }));
   return {
     players,
-    exploreMode: 'together',
-    currentSplitPlayer: 0,
     currentActorIndex: 0,
-    playerLocations,
     declarations: {},
     pendingCheck: null,
     currentScene: options.currentScene ?? 'S01',

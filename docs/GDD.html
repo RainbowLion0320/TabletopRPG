@@ -180,7 +180,7 @@ footer {
 <body>
 <nav id="sidebar">
   <div class="nav-title">GDD Mirror</div>
-<a href="#s0" class="">0. 当前实现状态（2026-07-11 对齐补充）</a>
+<a href="#s0" class="">0. 当前实现状态（2026-08-26 对齐补充）</a>
 <a href="#s0-1" class="sub">0.1 当前已实现</a>
 <a href="#s0-2" class="sub">0.2 当前未实现但保留为设计目标</a>
 <a href="#s0-3" class="sub">0.3 阅读约定</a>
@@ -229,9 +229,9 @@ footer {
 <main>
   <div class="content">
 <header class="doc-header"><h1>《雾中消逝》AI跑团 游戏设计文档 (GDD)</h1><p class="doc-subtitle">Full GDD mirror - Source: docs/GDD.md - Updated 2026-05-29</p></header>
-<blockquote><p>设计版本：v0.8 | 原始基线：2026-05-15</p><p>实现对齐补充：2026-07-11</p><p>规则体系：COC 第7版 | 首发模组：《雾中消逝》| 作者：舒爾茲上尉</p></blockquote>
+<blockquote><p>设计版本：v0.8 | 原始基线：2026-05-15</p><p>实现对齐补充：2026-08-26</p><p>规则体系：COC 第7版 | 首发模组：《雾中消逝》| 作者：舒爾茲上尉</p></blockquote>
 <hr>
-<h2 id="s0">0. 当前实现状态（2026-07-11 对齐补充）</h2>
+<h2 id="s0">0. 当前实现状态（2026-08-26 对齐补充）</h2>
 <blockquote><p>本文是完整 GDD，包含当前已实现内容、未开发模块、后续设计目标和细节规则。</p><p>当前可运行产品的产品范围见 <code>docs/PRD.md</code>，技术契约见 <code>docs/SPEC.md</code>。未实现模块不删除，统一按 backlog / 待开发处理。</p></blockquote>
 <h3 id="s0-1">0.1 当前已实现</h3>
 <div class="table-wrap"><table>
@@ -242,7 +242,7 @@ footer {
 <tr><td>角色系统</td><td>4 个预设调查员选择，支持 1-4 人开局；选角页展示立绘、完整属性、派生数值、技能和背景摘要</td></tr>
 <tr><td>主界面</td><td>场景图、调查员立绘、可交互富文本叙事区、行动输入、队伍状态、全屏资料界面、菜单</td></tr>
 <tr><td>案件板</td><td>混合调查台：静态主线、AI 审核事件/推测、实体档案、自动关系图与移动端调查脉络列表</td></tr>
-<tr><td>探索模式</td><td>一起行动 / 分头探索</td></tr>
+<tr><td>队伍探索</td><td>所有调查员始终同行，逐人声明后整队结算</td></tr>
 <tr><td>AI DM</td><td>OpenAI Responses / MiMo / Chat-compatible 自定义端点，严格 JSON 输出 + 工具校验 + 一次修复重试</td></tr>
 <tr><td>检定</td><td>前端 D100，核心数值规则集中在 <code>src/data/gameRules.ts</code>，AI 只请求检定并根据结果继续叙事</td></tr>
 <tr><td>存档</td><td><code>trpg-saves-v2</code> 存档槽位，最多保留 12 条，支持最近存档、列表载入和删除</td></tr>
@@ -518,15 +518,15 @@ AI DM解析：
 <ul>
 <li>同一浏览器/同一屏幕，本地 hot-seat 体验。</li>
 <li>当前可选 1-4 名预设调查员。</li>
-<li>一起行动（Together）：所有调查员各输入一条本轮行动，AI 一次性结算。</li>
-<li>分头探索（Split）：选择一名调查员和所在场景，AI 单独结算该调查员行动。</li>
+<li>所有调查员始终处于同一场景；前端按座位顺序逐人收集本轮行动，AI 一次性结算完整队伍回合。</li>
+<li>任一调查员触发合法场景移动时，全队同步进入新场景，不存在逐人选择场景或单人结算入口。</li>
 <li>多玩家冲突按 7.6 执行：首次重输，本轮仍冲突则使用 <code>幸运</code> 检定仲裁。</li>
 </ul>
 <p><strong>探索阶段轮序</strong></p>
 <ul>
-<li>Together 没有固定座位顺序，以本轮声明整体结算。</li>
-<li>Split 用 <code>currentSplitPlayer</code> 指定当前行动调查员。</li>
-<li><code>playerLocations</code> 只在 Split 中表达每名调查员所在场景。</li>
+<li><code>currentActorIndex</code> 仅控制当前显示哪名调查员的行动输入框。</li>
+<li>每名调查员完成声明后进入下一位；最后一位提交时组合为“本轮行动宣言”。</li>
+<li><code>currentScene</code> 是全队唯一的位置事实，场景图、章节、在场 NPC 与 AI 上下文均从它同步派生。</li>
 </ul>
 <p><strong>战斗阶段轮序（设计目标，当前 MVP 未自动化）</strong></p>
 <ul>
@@ -537,9 +537,8 @@ AI DM解析：
 <p><strong>本地数据结构（当前实现）</strong></p>
 <pre><code class="language-typescript">GameState {
   players: Investigator[];      // 当前 MVP：1-4 名预设调查员
-  exploreMode: &quot;together&quot; | &quot;split&quot;;
-  currentSplitPlayer: number;
-  playerLocations: Record&lt;string, SceneId&gt;;
+  currentActorIndex: number;
+  currentScene: SceneId;        // 全队共享的唯一位置
   declarations: Record&lt;string, string&gt;;
   flags: Record&lt;string, unknown&gt;;
 }</code></pre>
@@ -605,30 +604,25 @@ AI DM输出结构（JSON）
 <li>重开、读档、返回首页、超时或卸载会取消旧请求，旧会话结果不得写入当前游戏。</li>
 </ul>
 <h3 id="s7-3">7.3 自由度边界控制（核心设计）</h3>
-<p><strong>Layer 1：物理合理性（硬限制）</strong></p>
+<p>系统采用“硬主线、软过程”的三层事实模型：</p>
+<p><strong>Layer 1：权威状态（硬边界）</strong></p>
 <ul>
-<li>未持有武器→不能用该武器攻击</li>
-<li>已昏迷→不能主动行动</li>
-<li>违背物理定律的行为→拒绝</li>
+<li>前端骰果、HP/SAN/物品、当前场景、正式线索、剧情变量、遭遇人数和结局不可由自由文本改写。</li>
+<li>主线事件、状态变化和切场必须经工具提议、Director 审核与 reducer 落地。</li>
+<li>物理现实、角色实际能力/资源、内容安全和 prompt 注入仍是明确边界。</li>
 </ul>
-<p><strong>Layer 2：COC规则合理性</strong></p>
+<p><strong>Layer 2：连续性事实（AI 可即兴）</strong></p>
 <ul>
-<li>行动对应技能检定</li>
-<li>资源消耗（弹药/MP）需有库存</li>
-<li>每轮行动次数限制</li>
+<li>AI 可创造不会直接解锁主线的临时环境、无名路人、NPC 即时反应、含糊传闻、局部障碍、机会和代价。</li>
+<li>这些内容可以影响玩家之后的做法并保持连续，但不能升级为正式线索、确定人物关系、隐藏地点或结局条件。</li>
+<li>一轮可包含多项独立检定，不设置固定的一轮一次行动或一次检定上限。</li>
 </ul>
-<p><strong>Layer 3：叙事合理性（软限制，弹性处理）</strong></p>
+<p><strong>Layer 3：氛围细节（自由发挥）</strong></p>
 <ul>
-<li>非常规行动（利用环境）→允许，给予难度修正</li>
-<li>创意解法→允许，可给予优势骰奖励</li>
-<li>剧情外行为→允许，但不推进主线</li>
+<li>感官、节奏、动作、对话措辞和场面调度由 AI DM 自由主持。</li>
+<li>非常规行动与剧情外行为先让其发生，再由检定、代价、NPC 反应和环境后果自然塑造方向。</li>
 </ul>
-<p><strong>Layer 4：内容安全（绝对限制）</strong></p>
-<ul>
-<li>拒绝prompt注入（&quot;忘记你的规则&quot;/&quot;你现在是&quot;类）</li>
-<li>拒绝无限制暴力描写</li>
-<li>拒绝破坏游戏结构的行动</li>
-</ul>
+<p>生产管线对语义问题分级处理：权威冲突阻断，明显质量问题只让 AI 重写一次，普通风格偏差直接放行。前端不再用固定模板替换 AI DM 的整段回复。</p>
 <h3 id="s7-4">7.4 AI DM容错度（已决策）</h3>
 <p>AI DM 容错度用于衡量：当玩家提出非常规、非预设、绕路或高风险行动时，AI 是直接拒绝、要求检定、给出代价，还是允许剧情大幅改写。</p>
 <div class="table-wrap"><table>
@@ -739,7 +733,7 @@ AI DM输出结构（JSON）
 </ul>
 <p><strong>AI 记忆长度</strong></p>
 <ul>
-<li>当前实现通过 <code>conversationHistory</code> 保留近期对话，通过 <code>flags</code>、<code>clues</code>、<code>currentScene</code>、<code>playerLocations</code> 和行动日志保留结构化状态。</li>
+<li>当前实现通过 <code>conversationHistory</code> 保留近期对话，通过 <code>flags</code>、<code>clues</code>、全队唯一的 <code>currentScene</code> 和行动日志保留结构化状态。</li>
 <li>当上下文过长时，AI DM 优先依赖结构化状态，不把长篇自然语言回忆作为唯一事实来源。</li>
 <li>后续需要增加摘要压缩时，摘要只能记录已发生事实、线索、NPC态度和未解决问题，不应改写骰子结果或剧情标记。</li>
 </ul>
@@ -834,7 +828,7 @@ AI代理：服务端统一调用（隐藏密钥）
 <tr><td>P0</td><td>D100 检定</td><td>已实现</td><td>前端骰子权威，数值规则集中在 <code>gameRules.ts</code>，含 <code>幸运</code> 冲突仲裁</td></tr>
 <tr><td>P0</td><td>剧情标记 / 线索 / 场景</td><td>已实现基础版</td><td>5 个场景、6 个 NPC 条目、8 个线索物品</td></tr>
 <tr><td>P0</td><td>自动化 smoke tests</td><td>已实现</td><td>覆盖标题页、选角立绘/完整属性、主界面、全屏案件板资料界面、动态案件板推测、无 API Key、存档/读档、非法存档、大失败优先</td></tr>
-<tr><td>P1</td><td>本地同屏多人</td><td>已实现基础版</td><td>1-4 名预设调查员，Together/Split 两种探索方式</td></tr>
+<tr><td>P1</td><td>本地同屏多人</td><td>已实现基础版</td><td>1-4 名预设调查员逐人声明、整队结算，所有成员始终同行</td></tr>
 <tr><td>P1</td><td>存档 / 读档 / 存档管理</td><td>已实现</td><td><code>trpg-saves-v2</code> 最近存档、存档列表、指定载入和删除</td></tr>
 <tr><td>P2</td><td>5 步自定义角色创建</td><td>Backlog</td><td>保留骰点、技能分配、导出设计</td></tr>
 <tr><td>P2</td><td>完整战斗轮序 / 伤害 / SAN 疯狂</td><td>Backlog</td><td>规则保留，当前 MVP 未自动化</td></tr>

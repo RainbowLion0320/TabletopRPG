@@ -26,7 +26,7 @@ export function getActiveKnowledgeBase(): KnowledgeBase {
 }
 
 export interface RevealContext {
-  /** 玩家阵营当前所在场景（注意：split 模式各人可能不同） */
+  /** 玩家队伍当前共同所在场景 */
   currentScene: SceneId;
   /** 历史上访问过的场景集合 */
   visitedScenes: ReadonlySet<SceneId>;

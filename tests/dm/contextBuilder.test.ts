@@ -18,7 +18,6 @@ describe('contextBuilder', () => {
     const state = makeState({ players: [henry, ada], currentScene: 'S01' });
 
     const ctx = buildDmContext(state, kb, {
-      mode: 'together',
       checkPlayer: '亨利',
       relevantSkills: ['侦查', '聆听']
     });
@@ -40,7 +39,7 @@ describe('contextBuilder', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '亨利' }), makeInvestigator({ name: '艾达' })]
     });
-    const ctx = buildDmContext(state, kb, { mode: 'together' });
+    const ctx = buildDmContext(state, kb);
     expect(ctx.dynamic.spotlightPlayer).toBeNull();
     expect(ctx.dynamic.otherPlayers).toHaveLength(2);
   });
@@ -51,25 +50,24 @@ describe('contextBuilder', () => {
       content: `turn-${i}`
     }));
     const state = makeState({ conversationHistory: history });
-    const ctx = buildDmContext(state, kb, { mode: 'together' }, { recentTurnWindow: 6 });
+    const ctx = buildDmContext(state, kb, {}, { recentTurnWindow: 6 });
     expect(ctx.recentTurns).toHaveLength(6);
     expect(ctx.recentTurns[0].content).toBe('turn-24');
     expect(ctx.recentTurns[5].content).toBe('turn-29');
   });
 
-  it('includes scene snapshot, reachable scenes, and player locations', () => {
+  it('includes the scene snapshot, reachable scenes, and shared party location', () => {
     const state = makeState({ currentScene: 'S01' });
-    const ctx = buildDmContext(state, kb, { mode: 'together' });
+    const ctx = buildDmContext(state, kb);
     expect(ctx.dynamic.currentScene.public.id).toBe('S01');
     expect(ctx.dynamic.reachableScenes.map((s) => s.id)).toEqual([]);
-    // single default fixture player should be located in S01
-    const playerName = state.players[0].name;
-    expect(ctx.dynamic.playerLocations[playerName]).toBe('摩勒住宅');
+    expect(ctx.dynamic.partyLocation).toBe('摩勒住宅');
+    expect(buildNarratorSystemPrompt(ctx)).toContain('全体调查员 → 摩勒住宅');
   });
 
   it('only exposes authored narrative cues after their prerequisites are known', () => {
     const state = makeState({ currentScene: 'S01' });
-    const ctx = buildDmContext(state, kb, { mode: 'together' });
+    const ctx = buildDmContext(state, kb);
 
     expect(ctx.static.npcDirectory).toEqual(expect.arrayContaining([
       expect.objectContaining({ name: '洛夫·蒙特利尔', role: '警察局长' })
@@ -93,7 +91,7 @@ describe('contextBuilder', () => {
     state.scenarioProgress.beatStates.B01 = 'completed';
     state.scenarioProgress.beatStates.B02 = 'active';
     state.scenarioProgress.clueStates.I04 = 'discovered';
-    const discoveredCtx = buildDmContext(state, kb, { mode: 'together' });
+    const discoveredCtx = buildDmContext(state, kb);
     expect(discoveredCtx.dynamic.scenario.allowedEvents).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: 'EV_FIND_I04',
@@ -112,7 +110,7 @@ describe('contextBuilder', () => {
     state.scenarioProgress.beatStates.B05 = 'active';
     state.scenarioProgress.knownFactIds = ['F08'];
 
-    const ctx = buildDmContext(state, kb, { mode: 'together' });
+    const ctx = buildDmContext(state, kb);
     expect(ctx.dynamic.scenario.beatTitle).toBe('');
     expect(ctx.dynamic.scenario.dmFacts).toEqual([
       '老赫特酒保掌握“老鼠”线索，可提供贝尔街方向。'
@@ -128,7 +126,7 @@ describe('contextBuilder', () => {
     state.scenarioProgress.encounters.ENC01.defeated = 3;
     state.scenarioProgress.encounters.ENC01.round = 4;
 
-    const ctx = buildDmContext(state, kb, { mode: 'together' });
+    const ctx = buildDmContext(state, kb);
     expect(ctx.dynamic.scenario.finaleRoute).toBe('combat');
     expect(ctx.dynamic.scenario.encounters).toContainEqual(expect.objectContaining({
       id: 'ENC01', total: 4, defeated: 3, remaining: 1, round: 4
@@ -142,10 +140,10 @@ describe('contextBuilder', () => {
   it('exposes summary from state when not overridden', () => {
     const state = makeState();
     state.longTermMemorySummary = 'previous summary';
-    const ctx = buildDmContext(state, kb, { mode: 'together' });
+    const ctx = buildDmContext(state, kb);
     expect(ctx.summary).toBe('previous summary');
 
-    const ctxOverride = buildDmContext(state, kb, { mode: 'together' }, { summary: 'override' });
+    const ctxOverride = buildDmContext(state, kb, {}, { summary: 'override' });
     expect(ctxOverride.summary).toBe('override');
   });
 
@@ -161,7 +159,7 @@ describe('contextBuilder', () => {
         }
       ]
     });
-    const ctx = buildDmContext(state, kb, { mode: 'together' });
+    const ctx = buildDmContext(state, kb);
     expect(ctx.dynamic.workingMemory.pendingConsequences).toHaveLength(1);
     expect(ctx.dynamic.workingMemory.pendingConsequences[0].id).toBe('thugs');
     expect(ctx.dynamic.workingMemory.pendingConsequences[0].remainingTurns).toBe(2);
@@ -237,7 +235,7 @@ describe('contextBuilder', () => {
       }
     ];
 
-    const ctx = buildDmContext(state, kb, { mode: 'together' });
+    const ctx = buildDmContext(state, kb);
     const isabella = ctx.dynamic.npcs.find((n) => n.public.name === '伊莎贝拉·摩勒');
 
     expect(isabella?.mindModel?.coreMotivation).toBe('找回父亲');
@@ -254,7 +252,7 @@ describe('contextBuilder', () => {
     const ctx = buildDmContext(
       state,
       kb,
-      { mode: 'together' },
+      {},
       {
         retrievedMemories: [
           {

@@ -13,8 +13,6 @@
  * 两者实现保持一致；如调整请同步修改两边。
  */
 
-import type { GameState } from '../types/game';
-
 export interface PlayerAction {
   player: string;
   action: string;
@@ -28,10 +26,6 @@ export class AiResponseFormatError extends Error {
   }
 }
 
-export function buildUserMessage(actions: PlayerAction[], mode: GameState['exploreMode']) {
-  if (mode === 'together') {
-    return `【本轮行动宣言】\n${actions.map((item) => `${item.player}：${item.action}`).join('\n')}`;
-  }
-  const action = actions[0];
-  return `【${action.player} 在 ${action.scene ?? '当前场景'}】${action.action}`;
+export function buildUserMessage(actions: PlayerAction[]) {
+  return `【本轮行动宣言】\n${actions.map((item) => `${item.player}：${item.action}`).join('\n')}`;
 }

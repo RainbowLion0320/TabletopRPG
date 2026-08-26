@@ -19,13 +19,10 @@ describe('ActionDock player-specific suggestions', () => {
       <ActionDock
         isDiceRolling={false}
         state={state}
-        onActorChange={vi.fn()}
         onDeclarationChange={vi.fn()}
         onSubmit={vi.fn()}
         onRoll={vi.fn()}
         onSuggestion={vi.fn()}
-        onSplitPlayerChange={vi.fn()}
-        onSplitSceneChange={vi.fn()}
       />
     );
 
@@ -45,13 +42,10 @@ describe('ActionDock player-specific suggestions', () => {
       <ActionDock
         isDiceRolling
         state={state}
-        onActorChange={vi.fn()}
         onDeclarationChange={vi.fn()}
         onSubmit={vi.fn()}
         onRoll={vi.fn()}
         onSuggestion={vi.fn()}
-        onSplitPlayerChange={vi.fn()}
-        onSplitSceneChange={vi.fn()}
       />
     );
 
@@ -86,19 +80,15 @@ describe('ActionDock player-specific suggestions', () => {
       <ActionDock
         isDiceRolling={false}
         state={state}
-        onActorChange={vi.fn()}
         onDeclarationChange={vi.fn()}
         onSubmit={vi.fn()}
         onRoll={vi.fn()}
         onSuggestion={vi.fn()}
-        onSplitPlayerChange={vi.fn()}
-        onSplitSceneChange={vi.fn()}
       />
     );
 
     expect(screen.getByText(/本轮第 1\/2 个/)).toBeInTheDocument();
     expect(screen.getByPlaceholderText('亨利 想要做什么...')).toBeDisabled();
-    expect(screen.getByRole('button', { name: /亨利 HP/ })).toBeDisabled();
     expect(screen.getByRole('button', { name: '下一位' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '掷骰' })).toBeEnabled();
   });
@@ -114,18 +104,14 @@ describe('ActionDock player-specific suggestions', () => {
       <ActionDock
         isDiceRolling={false}
         state={state}
-        onActorChange={vi.fn()}
         onDeclarationChange={vi.fn()}
         onSubmit={vi.fn()}
         onRoll={vi.fn()}
         onSuggestion={vi.fn()}
-        onSplitPlayerChange={vi.fn()}
-        onSplitSceneChange={vi.fn()}
       />
     );
 
     expect(screen.queryByRole('button', { name: '追问上一场景人物' })).toBeNull();
     expect(screen.getByPlaceholderText('亨利 想要做什么...')).toBeDisabled();
-    expect(screen.getByRole('button', { name: /亨利 HP/ })).toBeDisabled();
   });
 });

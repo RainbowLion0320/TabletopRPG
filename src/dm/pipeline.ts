@@ -502,7 +502,7 @@ export async function runDmTurn(
   // 0) 意图分类（规则版）
   const intent = classifyIntent(input.actions);
   const baseDirectorCtx = { state: input.state, kb, actions: input.actions };
-  const allowed = allowedTools(baseDirectorCtx, { intent, mode: input.state.exploreMode });
+  const allowed = allowedTools(baseDirectorCtx, { intent });
   const inferredStoryCalls = inferStoryEventsFromActions(input.actions, input.state, kb);
   const requiredChecks = buildRequiredChecks(input.actions, input.state);
   const progressBefore = getScenarioProgressForState(input.state);
@@ -670,7 +670,6 @@ export async function runDmTurn(
     input.state,
     kb,
     {
-      mode: input.state.exploreMode,
       checkPlayer: pickSpotlightPlayer(input.actions),
       relevantSkills: intent.relevantSkills
     },
@@ -754,7 +753,6 @@ export async function runDmTurn(
     narrator = await callNarrator(config, {
       ctx,
       actions: input.actions,
-      mode: input.state.exploreMode,
       history,
       allowedToolNames: allowed,
       lookupResolver,

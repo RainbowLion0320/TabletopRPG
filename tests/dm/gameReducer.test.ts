@@ -520,7 +520,7 @@ describe('gameReducer applyAiResponse pendingConsequences merge', () => {
     expect(next.messages.some((message) => message.text.includes('难度提高为极难'))).toBe(true);
   });
 
-  it('moves every investigator location when together-mode scene state changes', () => {
+  it('uses one canonical scene when the party moves', () => {
     const henry = makeInvestigator({ id: 'p-henry', name: '亨利' });
     const ada = makeInvestigator({ id: 'p-ada', name: '艾达' });
     const state = makeState({
@@ -533,7 +533,6 @@ describe('gameReducer applyAiResponse pendingConsequences merge', () => {
     });
 
     expect(next.currentScene).toBe('S04');
-    expect(next.playerLocations).toEqual({ 'p-henry': 'S04', 'p-ada': 'S04' });
     expect(next.activeNpcName).toBeNull();
   });
 
@@ -742,20 +741,8 @@ describe('gameReducer consolidateMemory', () => {
   });
 });
 
-describe('gameReducer actor selection', () => {
-  it('does not let together-mode actor clicks skip the sequential action order', () => {
-    const state = makeState({
-      players: [makeInvestigator({ name: '亨利' }), makeInvestigator({ name: '艾达' })]
-    });
-
-    const next = gameReducer(state, { type: 'setCurrentActor', index: 1 });
-
-    expect(next.currentActorIndex).toBe(0);
-  });
-});
-
 describe('gameReducer scene focus synchronization', () => {
-  it('updates chapter scene, resident NPC, and all together-mode locations on a scene change', () => {
+  it('updates chapter scene and resident NPC for the whole party on a scene change', () => {
     const henry = makeInvestigator({ id: 'p-henry', name: '亨利' });
     const ada = makeInvestigator({ id: 'p-ada', name: '艾达' });
     const state = makeState({
@@ -777,7 +764,6 @@ describe('gameReducer scene focus synchronization', () => {
     expect(next.currentScene).toBe('S02');
     expect(next.activeNpcId).toBe('N03');
     expect(next.activeNpcName).toBe('洛夫·蒙特利尔');
-    expect(next.playerLocations).toEqual({ 'p-henry': 'S02', 'p-ada': 'S02' });
   });
 
   it('settles a source-scene story event before applying the paired scene change', () => {
@@ -835,27 +821,6 @@ describe('gameReducer scene focus synchronization', () => {
     expect(next.activeNpcName).toBe('伊莎贝拉·摩勒');
   });
 
-  it('moves the visible stage with the selected investigator in split mode', () => {
-    const henry = makeInvestigator({ id: 'p-henry', name: '亨利' });
-    const ada = makeInvestigator({ id: 'p-ada', name: '艾达' });
-    const state = makeState({
-      players: [henry, ada],
-      currentScene: 'S01',
-      activeNpcName: '伊莎贝拉·摩勒'
-    });
-    state.exploreMode = 'split';
-    state.playerLocations = { 'p-henry': 'S01', 'p-ada': 'S03' };
-
-    const moved = gameReducer(state, { type: 'setPlayerScene', playerIndex: 0, sceneId: 'S02' });
-    expect(moved.currentScene).toBe('S02');
-    expect(moved.activeNpcId).toBe('N03');
-    expect(moved.activeNpcName).toBe('洛夫·蒙特利尔');
-
-    const switched = gameReducer(moved, { type: 'setCurrentSplitPlayer', index: 1 });
-    expect(switched.currentScene).toBe('S03');
-    expect(switched.activeNpcId).toBe('N04');
-    expect(switched.activeNpcName).toBe('老赫特之家酒保');
-  });
 });
 
 describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
@@ -955,7 +920,7 @@ describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
     }));
   });
 
-  it('repairs legacy split saves whose visible scene lagged behind the selected player location', () => {
+  it('collapses obsolete per-investigator save locations into one party scene', () => {
     const hydrated = hydrateGameState({
       players: [
         { id: 'p1', name: '亨利', attrs: {}, hp: 12, mp: 12, san: 60, luck: 50, currentHp: 12, currentMp: 12, currentSan: 60, skills: {} },
@@ -964,7 +929,6 @@ describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
       exploreMode: 'split',
       currentSplitPlayer: 1,
       currentScene: 'S01',
-      activeNpcName: null,
       playerLocations: { p1: 'S02', p2: 'S03' },
       flags: {},
       conversationHistory: []
@@ -973,7 +937,9 @@ describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
     expect(hydrated.currentScene).toBe('S03');
     expect(hydrated.activeNpcId).toBe('N04');
     expect(hydrated.activeNpcName).toBe('老赫特之家酒保');
-    expect(hydrated.playerLocations).toEqual({ p1: 'S02', p2: 'S03' });
+    expect(Object.keys(hydrated)).not.toEqual(expect.arrayContaining([
+      'exploreMode', 'currentSplitPlayer', 'playerLocations'
+    ]));
   });
 
   it('drops legacy player-visible progression prompts from saved messages', () => {

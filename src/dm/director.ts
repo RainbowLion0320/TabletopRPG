@@ -11,7 +11,7 @@
  *   · request_check.player 必须是当前玩家阵营成员
  */
 
-import type { ExploreMode, GameState, SceneId } from '../types/game';
+import type { GameState, SceneId } from '../types/game';
 import type { ClassifiedIntent } from './intentClassifier';
 import type { KnowledgeBase, DmToolCall, DmToolName } from './types';
 import { validateToolCallShape } from './tools';
@@ -42,7 +42,6 @@ export interface DirectorContext {
 
 export interface AllowedToolsOptions {
   intent: ClassifiedIntent;
-  mode: ExploreMode;
 }
 
 const BASELINE_TOOLS: DmToolName[] = [
@@ -59,9 +58,8 @@ const BASELINE_TOOLS: DmToolName[] = [
  *
  * 规则：
  * - request_check / propose_state_update / reveal_secret / lookup_entity 始终可用；
- * - propose_scene_change 仅在 together 模式 且 本轮明确含移动或 combat 时允许：
- *     · split 模式下场景由玩家在 UI 里逐个选择，AI 不应主动推动；
- *     · together 模式下只有玩家明说"走/跟/逃/追"时才合理切场。
+ * - propose_scene_change 仅在本轮明确含移动或 combat 时允许；
+ *   场景变更始终作用于整个调查队伍。
  * - update_npc_mind 仅在 social/info 或 combat 意图时允许（需要与 NPC 互动）；
  *     其他场景下不暴露该工具，避免 Narrator 越位调用。
  */
@@ -71,7 +69,6 @@ export function allowedTools(
 ): DmToolName[] {
   const allowed: DmToolName[] = [...BASELINE_TOOLS];
   if (
-    options.mode === 'together' &&
     (options.intent.hasMovement || options.intent.intentKind === 'move' || options.intent.intentKind === 'combat')
   ) {
     allowed.push('propose_scene_change');

@@ -140,7 +140,7 @@ function CtxPane({ trace }: { trace: DmTrace }) {
         <pre className="dm-debug-pre">{JSON.stringify({
           currentScene: ctx.dynamic.currentScene,
           reachableScenes: ctx.dynamic.reachableScenes,
-          playerLocations: ctx.dynamic.playerLocations,
+          partyLocation: ctx.dynamic.partyLocation,
           knownClueNames: ctx.dynamic.knownClueNames
         }, null, 2)}</pre>
       </Section>

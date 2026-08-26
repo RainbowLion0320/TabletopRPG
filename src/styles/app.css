@@ -528,41 +528,15 @@ button {
   display: block;
 }
 
-.menu-group p {
-  color: var(--quiet);
-  font-size: 12px;
-  letter-spacing: 2px;
-  margin: 0 0 8px;
-}
-
-.mode-segment {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  border: 1px solid var(--line-soft);
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.mode-segment button, .menu-list button {
+.menu-list button {
   border: 0;
   background: transparent;
   color: var(--muted);
   cursor: pointer;
 }
 
-.mode-segment button {
-  padding: 10px;
-}
-
-.mode-segment button.active {
-  background: var(--gold);
-  color: #1b1208;
-}
-
 .menu-list {
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid var(--line-soft);
+  margin: 0;
 }
 
 .menu-list button {
@@ -1041,15 +1015,9 @@ button {
   border-radius: 5px;
   background: rgba(0,0,0,0.2);
   padding: 4px 8px;
-  cursor: pointer;
   transition: border-color 0.2s, background 0.2s;
   color: inherit;
   text-align: left;
-}
-
-.party-compact:hover {
-  border-color: var(--gold);
-  background: rgba(216,189,122,0.06);
 }
 
 .party-compact.active {
@@ -1116,19 +1084,19 @@ button {
   background: #7a9ab8;
 }
 
-.suggestion-row, .split-tabs, .scene-chips, .dock-footer {
+.suggestion-row {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.suggestion-row span, .dock-footer span {
+.suggestion-row span {
   color: var(--quiet);
   font-size: 12px;
 }
 
-.suggestion-row button, .split-tabs button, .scene-chips button {
+.suggestion-row button {
   border: 1px solid var(--line-soft);
   border-radius: 999px;
   background: rgba(0,0,0,0.25);
@@ -1137,15 +1105,9 @@ button {
   cursor: pointer;
 }
 
-.suggestion-row button:hover, .split-tabs button.active, .scene-chips button.active {
+.suggestion-row button:hover {
   border-color: var(--gold);
   color: var(--gold);
-}
-
-.split-controls {
-  display: grid;
-  gap: 8px;
-  margin: 8px 0;
 }
 
 .action-input-grid {

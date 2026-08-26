@@ -78,12 +78,10 @@ type Screen = 'title' | 'setup' | 'game';
 ```ts
 {
   players,
-  exploreMode,
-  currentSplitPlayer,
-  playerLocations,
+  currentActorIndex,
   declarations,
   pendingCheck,
-  currentScene,
+  currentScene, // canonical location shared by the whole party
   activeNpcName,
   clues,
   flags,
@@ -226,7 +224,7 @@ The DM must not say "you cannot do that" merely because an action is outside the
 
 ### Multi-player Conflict Rules
 
-Together mode can submit multiple player declarations in one AI turn. When the AI DM judges that player demands conflict materially, it must follow this sequence:
+Each party round submits multiple player declarations in one AI turn. When the AI DM judges that player demands conflict materially, it must follow this sequence:
 
 1. First conflict: do not resolve irreversible consequences. Ask the players to re-enter the current round with a coherent plan.
 2. Second conflict: request frontend dice arbitration. The current MVP uses a `幸运` check.

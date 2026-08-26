@@ -9,7 +9,7 @@
  * 设计：
  *  - 零 LLM 调用，纯关键字 + 字典命中
  *  - 永远是"过宽优于过窄"：宁可多塞一两个相关技能给 Narrator，也不要漏了关键技能
- *  - 输入是 PlayerAction[]（多人 together 模式会合并所有动作的 relevantSkills 并集）
+ *  - 输入是 PlayerAction[]（多人队伍回合会合并所有动作的 relevantSkills 并集）
  */
 
 import type { PlayerAction } from '../services/aiDm';

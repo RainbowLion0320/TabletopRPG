@@ -64,10 +64,7 @@ function createDynamicCaseBoardSave(): GameState {
   ];
   return {
     players,
-    exploreMode: 'together',
-    currentSplitPlayer: 0,
     currentActorIndex: 0,
-    playerLocations: { inspector: 'S01', nurse: 'S01' },
     declarations: {},
     pendingCheck: null,
     currentScene: 'S01',
@@ -195,7 +192,6 @@ function createV8EndingSave(): GameState {
   return {
     ...state,
     currentScene: 'S05',
-    playerLocations: { inspector: 'S05', nurse: 'S05' },
     activeNpcId: 'N02',
     activeNpcName: '埃里克·摩勒',
     scenarioProgress: progress
@@ -243,7 +239,6 @@ function createNegotiationCheckSave(): GameState {
   return {
     ...state,
     currentScene: 'S05',
-    playerLocations: { inspector: 'S05', nurse: 'S05' },
     activeNpcId: 'N02',
     activeNpcName: '埃里克·摩勒',
     pendingCheck: {
@@ -285,7 +280,6 @@ function createPoliceStationSave(): GameState {
   return {
     ...state,
     currentScene: 'S02',
-    playerLocations: { inspector: 'S02', nurse: 'S02' },
     activeNpcId: 'N03',
     activeNpcName: '洛夫·蒙特利尔',
     scenarioProgress: progress
@@ -720,10 +714,6 @@ test('save manager can load and delete explicit save slots', async ({ page }) =>
   await page.getByRole('button', { name: /菜单/ }).click();
   await page.getByRole('button', { name: /保存游戏/ }).click();
   await expect(page.getByText('已保存')).toBeVisible();
-
-  await page.getByRole('button', { name: /菜单/ }).click();
-  await page.getByRole('button', { name: '分头探索' }).click();
-  await expect(page.getByText('切换为「分头探索」模式。')).toBeVisible();
 
   await page.getByRole('button', { name: /菜单/ }).click();
   await page.getByRole('button', { name: /存档管理/ }).click();

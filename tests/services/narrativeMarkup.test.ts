@@ -45,7 +45,6 @@ describe('narrative markup', () => {
     expect(hidden.filter((segment) => segment.mark?.kind === 'location')).toEqual([]);
 
     state.currentScene = 'S05';
-    state.playerLocations = Object.fromEntries(state.players.map((player) => [player.id, 'S05']));
     const revealed = markNarrativeText(text, state);
     expect(revealed.filter((segment) => segment.mark?.kind === 'location').map((segment) => segment.text))
       .toEqual(['港口', '码头']);

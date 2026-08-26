@@ -27,7 +27,7 @@ function intent(partial: Partial<ClassifiedIntent> = {}): ClassifiedIntent {
 
 describe('director.allowedTools', () => {
   it('always exposes baseline tools including structured story events', () => {
-    const tools = allowedTools(ctx(), { intent: intent(), mode: 'together' });
+    const tools = allowedTools(ctx(), { intent: intent() });
     expect(tools).toEqual(
       expect.arrayContaining([
         'request_check',
@@ -41,31 +41,27 @@ describe('director.allowedTools', () => {
     expect(tools).not.toContain('propose_scene_change');
   });
 
-  it('grants propose_scene_change only in together + move/combat', () => {
-    const t1 = allowedTools(ctx(), { intent: intent({ intentKind: 'move' }), mode: 'together' });
+  it('grants propose_scene_change only for movement or combat', () => {
+    const t1 = allowedTools(ctx(), { intent: intent({ intentKind: 'move' }) });
     expect(t1).toContain('propose_scene_change');
 
-    const t2 = allowedTools(ctx(), { intent: intent({ intentKind: 'combat' }), mode: 'together' });
+    const t2 = allowedTools(ctx(), { intent: intent({ intentKind: 'combat' }) });
     expect(t2).toContain('propose_scene_change');
 
-    const t3 = allowedTools(ctx(), { intent: intent({ intentKind: 'move' }), mode: 'split' });
+    const t3 = allowedTools(ctx(), { intent: intent({ intentKind: 'social' }) });
     expect(t3).not.toContain('propose_scene_change');
 
-    const t4 = allowedTools(ctx(), { intent: intent({ intentKind: 'social' }), mode: 'together' });
-    expect(t4).not.toContain('propose_scene_change');
-
     const mixed = allowedTools(ctx(), {
-      intent: intent({ intentKind: 'observe', hasMovement: true }),
-      mode: 'together'
+      intent: intent({ intentKind: 'observe', hasMovement: true })
     });
     expect(mixed).toContain('propose_scene_change');
   });
 
   it('grants update_npc_mind only for interaction-heavy intents', () => {
-    const social = allowedTools(ctx(), { intent: intent({ intentKind: 'social' }), mode: 'together' });
-    const research = allowedTools(ctx(), { intent: intent({ intentKind: 'research' }), mode: 'together' });
-    const combat = allowedTools(ctx(), { intent: intent({ intentKind: 'combat' }), mode: 'together' });
-    const observe = allowedTools(ctx(), { intent: intent({ intentKind: 'observe' }), mode: 'together' });
+    const social = allowedTools(ctx(), { intent: intent({ intentKind: 'social' }) });
+    const research = allowedTools(ctx(), { intent: intent({ intentKind: 'research' }) });
+    const combat = allowedTools(ctx(), { intent: intent({ intentKind: 'combat' }) });
+    const observe = allowedTools(ctx(), { intent: intent({ intentKind: 'observe' }) });
 
     expect(social).toContain('update_npc_mind');
     expect(research).toContain('update_npc_mind');

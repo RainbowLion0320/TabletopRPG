@@ -5,8 +5,6 @@ export type ItemId = string;
 export type BeatId = string;
 export type FactId = string;
 
-export type ExploreMode = 'together' | 'split';
-
 export type MessageRole = 'dm' | 'player' | 'system';
 
 export interface Attributes {
@@ -489,14 +487,11 @@ export interface RetrievedEpisodicMemory {
 
 export interface GameState {
   players: Investigator[];
-  exploreMode: ExploreMode;
-  currentSplitPlayer: number;
   /**
-   * In together mode, the index of the player whose action input is currently visible.
+   * The index of the player whose action input is currently visible.
    * Players act sequentially; advances on "下一位" and resets to 0 after submission.
    */
   currentActorIndex: number;
-  playerLocations: Record<string, SceneId>;
   declarations: Record<string, string>;
   pendingCheck: CheckRequest | null;
   currentScene: SceneId;

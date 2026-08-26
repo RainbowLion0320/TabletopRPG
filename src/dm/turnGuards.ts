@@ -1810,7 +1810,7 @@ export function validateNarratorSemantics(
     if (!knownDestination) return `不得把模组未声明地点写成已抵达场景：${unknownVenueArrival}`;
   }
   if (targetId && /与此同时[^。；\n]{0,24}(?:独自|一人|发动汽车|驾车|开车)/.test(output.narrative)) {
-    return '共同调查切场时全队同行，不得把移动写成单人分头行动';
+    return '队伍切场时所有调查员必须同步移动，不得让任何成员留在其他场景';
   }
   for (const [sceneId, entry] of Object.entries(kb.scenes) as Array<[SceneId, KnowledgeBase['scenes'][SceneId]]>) {
     if (sceneId === state.currentScene || sceneId === targetId) continue;

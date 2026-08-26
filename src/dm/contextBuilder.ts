@@ -11,7 +11,6 @@
 import type {
   AtomicFact,
   ConversationTurn,
-  ExploreMode,
   GameState,
   Investigator,
   NpcMindModel,
@@ -47,8 +46,6 @@ import {
 // ---------- 上下文契约 ----------
 
 export interface DmContextIntent {
-  /** 行动模式（together / split） */
-  mode: ExploreMode;
   /** 本轮预期被检定的玩家名；若不确定可留空 */
   checkPlayer?: string | null;
   /** 与本轮相关的技能名集合（用于玩家卡精简） */
@@ -86,8 +83,8 @@ export interface DmContextDynamic {
   npcs: NpcSnapshotWithMind[];
   /** 仅当前场景关联的物品；已发现物品在前 */
   items: ItemSnapshot[];
-  /** 玩家定位 name → 场景名（脱敏） */
-  playerLocations: Record<string, string>;
+  /** 全队共享的当前场景名（脱敏） */
+  partyLocation: string;
   /** 已发现的线索名列表 */
   knownClueNames: string[];
   /** 最近确认的原子事实，供长期一致性约束使用。 */
@@ -172,16 +169,6 @@ function toFullPlayerCard(p: Investigator, relevantSkills: string[]): PlayerCard
     relevantSkills: skills,
     background: p.background
   };
-}
-
-function buildPlayerLocations(state: GameState, kb: KnowledgeBase): Record<string, string> {
-  const out: Record<string, string> = {};
-  const fallback = kb.scenes[state.currentScene]?.public.name ?? state.currentScene;
-  for (const player of state.players) {
-    const sceneId = state.playerLocations[player.id] ?? state.currentScene;
-    out[player.name] = kb.scenes[sceneId]?.public.name ?? fallback;
-  }
-  return out;
 }
 
 function buildSceneItems(
@@ -286,7 +273,7 @@ export interface BuildDmContextOptions {
 export function buildDmContext(
   state: GameState,
   kb: KnowledgeBase,
-  intent: DmContextIntent,
+  intent: DmContextIntent = {},
   options: BuildDmContextOptions = {}
 ): DmContext {
   const ctx = deriveRevealContext(state);
@@ -359,7 +346,7 @@ export function buildDmContext(
       }),
       npcs: enrichedNpcs,
       items: buildSceneItems(kb, state.currentScene, ctx, revealed),
-      playerLocations: buildPlayerLocations(state, kb),
+      partyLocation: currentScene.public.name,
       knownClueNames: state.clues.map((clue) => clue.name),
       recentFacts: (state.atomicFacts ?? []).slice(-20),
       workingMemory: wmWithIntents,

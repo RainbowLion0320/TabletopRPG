@@ -1,55 +1,35 @@
 import { Dice5, Flag, Send } from 'lucide-react';
-import type { GameState, SceneId } from '../../types/game';
-import { sceneList, storyData } from '../../data/storyData';
-import { getAvailableSceneExits, getScenarioDefinition, getScenarioProgressForState } from '../../scenario/engine';
+import type { GameState } from '../../types/game';
+import { getScenarioDefinition, getScenarioProgressForState } from '../../scenario/engine';
 
 interface ActionDockProps {
   isDiceRolling: boolean;
   state: GameState;
-  onActorChange: (index: number) => void;
   onDeclarationChange: (playerId: string, text: string) => void;
   onSubmit: () => void;
   onRoll: () => void;
   onSuggestion: (text: string) => void;
-  onSplitPlayerChange: (index: number) => void;
-  onSplitSceneChange: (playerIndex: number, sceneId: SceneId) => void;
 }
 
 export function ActionDock({
   isDiceRolling,
-  onActorChange,
   onDeclarationChange,
   onRoll,
-  onSplitPlayerChange,
-  onSplitSceneChange,
   onSubmit,
   onSuggestion,
   state
 }: ActionDockProps) {
-  const splitActor = state.players[state.currentSplitPlayer] ?? state.players[0];
-  const togetherActor = state.players[state.currentActorIndex] ?? state.players[0];
-  const togetherIsLast = state.currentActorIndex >= state.players.length - 1;
-
-  const currentActor = state.exploreMode === 'split' ? splitActor : togetherActor;
+  const currentActor = state.players[state.currentActorIndex] ?? state.players[0];
+  const isLastActor = state.currentActorIndex >= state.players.length - 1;
   const currentSuggestions = currentActor
     ? state.suggestionsByPlayerId[currentActor.id] ?? state.suggestions
     : state.suggestions;
 
-  const allFilled = state.exploreMode === 'split'
-    ? Boolean(state.declarations[splitActor?.id ?? '']?.trim())
-    : Boolean(state.declarations[togetherActor?.id ?? '']?.trim());
-
-  const submitLabel = state.exploreMode === 'together'
-    ? (togetherIsLast ? '提交' : '下一位')
-    : '提交';
+  const allFilled = Boolean(state.declarations[currentActor?.id ?? '']?.trim());
+  const submitLabel = isLastActor ? '提交' : '下一位';
   const scenario = getScenarioDefinition();
   const progress = getScenarioProgressForState(state);
   const ending = scenario.progression.endings.find((item) => item.id === progress.endingId);
-  const splitLocation = state.playerLocations[splitActor?.id ?? ''] ?? state.currentScene;
-  const splitSceneIds = new Set([
-    splitLocation,
-    ...getAvailableSceneExits(progress, splitLocation).map((exit) => exit.sceneId)
-  ]);
 
   if (ending) {
     return (
@@ -62,7 +42,7 @@ export function ActionDock({
 
   return (
     <section className="action-dock">
-      {/* 条件区域：检定 / 建议 / 分头控制 */}
+      {/* 条件区域：检定 / 建议 */}
       {state.pendingCheck ? (
         <div className="check-card">
           <div>
@@ -86,35 +66,6 @@ export function ActionDock({
           {currentSuggestions.slice(0, 3).map((text) => (
             <button key={text} onClick={() => onSuggestion(text)}>{text}</button>
           ))}
-        </div>
-      ) : null}
-
-      {state.exploreMode === 'split' ? (
-        <div className="split-controls">
-          <div className="split-tabs">
-            {state.players.map((player, index) => (
-              <button
-                className={index === state.currentSplitPlayer ? 'active' : ''}
-                disabled={state.isThinking || Boolean(state.pendingCheck)}
-                key={player.id}
-                onClick={() => onSplitPlayerChange(index)}
-              >
-                {player.name}
-              </button>
-            ))}
-          </div>
-          <div className="scene-chips">
-            {sceneList.filter((scene) => splitSceneIds.has(scene.id)).map((scene) => (
-              <button
-                className={state.playerLocations[splitActor.id] === scene.id ? 'active' : ''}
-                disabled={state.isThinking || Boolean(state.pendingCheck)}
-                key={scene.id}
-                onClick={() => onSplitSceneChange(state.currentSplitPlayer, scene.id)}
-              >
-                {scene.name}
-              </button>
-            ))}
-          </div>
         </div>
       ) : null}
 
@@ -155,17 +106,13 @@ export function ActionDock({
         {state.players.map((player, index) => {
           const hpPct = Math.round((player.currentHp / player.hp) * 100);
           const sanPct = Math.round((player.currentSan / player.san) * 100);
-          const isActiveActor = state.exploreMode === 'together' && index === state.currentActorIndex;
-          const hasActed = state.exploreMode === 'together' && index < state.currentActorIndex;
-          const isSplitActor = state.exploreMode === 'split' && index === state.currentSplitPlayer;
-          const cardClass = `party-compact${isActiveActor || isSplitActor ? ' active' : ''}${hasActed ? ' acted' : ''}`;
+          const isActiveActor = index === state.currentActorIndex;
+          const hasActed = index < state.currentActorIndex;
+          const cardClass = `party-compact${isActiveActor ? ' active' : ''}${hasActed ? ' acted' : ''}`;
           return (
-            <button
+            <article
               className={cardClass}
-              disabled={state.isThinking || Boolean(state.pendingCheck)}
               key={player.id}
-              onClick={() => state.exploreMode === 'together' ? onActorChange(index) : onSplitPlayerChange(index)}
-              type="button"
               title={`${player.name} ${player.job} | HP ${player.currentHp}/${player.hp} | SAN ${player.currentSan}/${player.san}`}
             >
               <strong>{player.name}</strong>
@@ -177,7 +124,7 @@ export function ActionDock({
                 <div className="mini-bar"><i className="san" style={{ width: `${sanPct}%` }} /></div>
                 <span className="bar-value">{player.currentSan}/{player.san}</span>
               </div>
-            </button>
+            </article>
           );
         })}
       </div>
