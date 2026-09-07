@@ -21,7 +21,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 ### In Scope
 
 - Title screen with new game, continue game, and AI settings.
-- Preset investigator selection for 1-4 investigators, with portraits, full attributes, derived stats, skill values, and background cues.
+- Preset investigator selection for 1-4 investigators, defaulting to Henry alone for solo play, with portraits, full attributes, derived stats, skill values, and background cues.
 - Main game screen with scene art, narrative feed, action dock, investigator party portraits/status, menu, and a fullscreen investigation workspace centered on a player-known case board.
 - Mixed case board: authored main-clue spine, reviewed AI events/theories, entity dossier insights, automatic relationship layout, investigation-thread navigation, search, type filters, and a narrow-screen grouped list.
 - Safe interactive narrative highlighting for people, locations, evidence, skills, checks, and temporary model-suggested clue/danger/state phrases.
@@ -52,7 +52,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 
 1. User opens title screen.
 2. User chooses "开始游戏".
-3. User selects 1-4 preset investigators.
+3. Henry is selected by default. The user can play immediately, replace him, or select additional investigators (1-4 total).
 4. App initializes a new `GameState` at scene `S01`.
 5. User enters the main game screen.
 
@@ -87,6 +87,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 | --- | --- |
 | Startup | `npm run dev` opens the app through Vite; `npm run build` succeeds |
 | New game | Preset selection can enter the main game with at least one investigator |
+| Party size | Solo play is the default; browser regression covers solo, two-investigator and four-investigator submission, D100 continuation, and save/load |
 | Submit action | Missing API key opens AI settings instead of crashing |
 | AI response | Malformed output has bounded automatic recovery (at most three normal Narrator attempts) and is never displayed as DM narrative; manual retry retains the same round |
 | AI lifecycle | Narrator is player-visible before optional cognition jobs finish; background results are ordered and stale sessions cannot write state |

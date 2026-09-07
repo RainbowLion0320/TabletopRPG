@@ -39,22 +39,18 @@ async function gotoClean(page: Page) {
   await page.goto('/');
 }
 
-async function startNewGame(page: Page) {
+async function startNewGame(page: Page, partySize: 1 | 2 | 3 | 4 = 1) {
   await gotoClean(page);
   await expect(page.getByRole('heading', { name: '雾中消逝' })).toBeVisible();
   await page.getByRole('button', { name: /开始游戏/ }).click();
   await expect(page.getByRole('heading', { name: '选择调查员' })).toBeVisible();
-  await expect(page.locator('.preset-card-modern.selected')).toHaveCount(2);
+  await expect(page.locator('.preset-card-modern.selected')).toHaveCount(1);
+  for (let index = 1; index < partySize; index++) {
+    await page.locator('.preset-card-modern').nth(index).locator('strong').click();
+  }
+  await expect(page.locator('.preset-card-modern.selected')).toHaveCount(partySize);
   await page.getByRole('button', { name: /进入游戏/ }).click();
   await expect(page.locator('.game-screen')).toBeVisible();
-}
-
-async function submitTogetherActions(page: Page, firstAction: string, secondAction: string) {
-  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill(firstAction);
-  await page.getByRole('button', { name: '下一位' }).click();
-  await expect(page.getByPlaceholder('艾达·华莱士 想要做什么...')).toBeVisible();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill(secondAction);
-  await page.getByRole('button', { name: '提交' }).click();
 }
 
 function createDynamicCaseBoardSave(): GameState {
@@ -286,8 +282,8 @@ function createPoliceStationSave(): GameState {
   };
 }
 
-test('new game reaches the main game screen with preset investigators', async ({ page }) => {
-  await startNewGame(page);
+test('a selected two-investigator party reaches the main game with both status cards', async ({ page }) => {
+  await startNewGame(page, 2);
 
   await expect(page.getByPlaceholder('亨利·格雷 想要做什么...')).toBeVisible();
   await expect(page.getByRole('button', { name: '下一位' })).toBeDisabled();
@@ -343,6 +339,24 @@ test('new game reaches the main game screen with preset investigators', async ({
   expect(gameLayout.narrativeBottom).toBeLessThanOrEqual(gameLayout.actionDockTop + 24);
   expect(gameLayout.narrativeLeft).toBeGreaterThanOrEqual(0);
   expect(gameLayout.actionDockLeft).toBeGreaterThanOrEqual(0);
+});
+
+test('a solo player can replace the default investigator and cannot start an empty party', async ({ page }) => {
+  await gotoClean(page);
+  await page.getByRole('button', { name: /开始游戏/ }).click();
+  const cards = page.locator('.preset-card-modern');
+  const start = page.getByRole('button', { name: /进入游戏/ });
+  await expect(page.locator('.preset-card-modern.selected')).toHaveCount(1);
+  await expect(cards.nth(0)).toHaveAttribute('aria-pressed', 'true');
+  await cards.nth(0).locator('strong').click();
+  await expect(start).toBeDisabled();
+  await cards.nth(1).locator('strong').click();
+  await expect(page.locator('.preset-card-modern.selected')).toHaveCount(1);
+  await start.click();
+  await expect(page.locator('.party-strip-compact .party-compact')).toHaveCount(1);
+  await expect(page.getByPlaceholder('艾达·华莱士 想要做什么...')).toBeVisible();
+  await expect(page.getByRole('button', { name: '提交', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '下一位', exact: true })).toHaveCount(0);
 });
 
 test('investigator setup shows portraits and full attribute blocks', async ({ page }) => {
@@ -475,7 +489,7 @@ test('investigator setup scrolls vertically on narrow screens', async ({ page })
 });
 
 test('player action messages keep the player name and action on one line', async ({ page }) => {
-  await startNewGame(page);
+  await startNewGame(page, 2);
 
   await page.getByRole('button', { name: '侦查门廊与窗边痕迹' }).click();
   await page.getByRole('button', { name: '下一位' }).click();
@@ -683,7 +697,8 @@ test('submitting an action without an API key opens AI settings instead of crash
   test.skip(hasEnvDefaultApiKey, 'requires no default API key from process env or .env.local');
   await startNewGame(page);
 
-  await submitTogetherActions(page, '检查书房桌面。', '安抚并询问伊莎贝拉。');
+  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('检查书房桌面。');
+  await page.getByRole('button', { name: '提交' }).click();
 
   await expect(page.getByText('请先在菜单中配置 AI API Key。')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'AI DM 配置' })).toBeVisible();
@@ -720,7 +735,7 @@ test('save manager can load and delete explicit save slots', async ({ page }) =>
   const saveManager = page.getByRole('dialog', { name: '存档管理' });
   await expect(saveManager).toBeVisible();
   await expect(saveManager.getByText('摩勒住宅')).toBeVisible();
-  await expect(saveManager.getByText('亨利·格雷、艾达·华莱士')).toBeVisible();
+  await expect(saveManager.getByText('亨利·格雷', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: /载入存档/ }).click();
   await expect(page.getByPlaceholder('亨利·格雷 想要做什么...')).toBeVisible();

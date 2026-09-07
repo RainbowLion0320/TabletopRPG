@@ -24,7 +24,7 @@ const attrRows = [
 const otherAttrRows = attrRows.filter(([key]) => key !== 'Luck');
 
 export function CharacterSetup({ onBack, onStart }: CharacterSetupProps) {
-  const [selectedIds, setSelectedIds] = useState<string[]>(() => presets.slice(0, 2).map((item) => item.id));
+  const [selectedIds, setSelectedIds] = useState<string[]>(() => presets.slice(0, 1).map((item) => item.id));
   const [expandedAttrIds, setExpandedAttrIds] = useState<string[]>([]);
   const selectedPlayers = useMemo(
     () => presets.filter((preset) => selectedIds.includes(preset.id)).map(createInvestigatorFromPreset),

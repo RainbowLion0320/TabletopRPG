@@ -23,7 +23,7 @@ updated: 2026-09-07
 |------|------|------|
 | [团队成员](entities/team.md) | 团队成员分工与资源交付职责 | ✅ |
 | [AI DM 系统](entities/ai_dm.md) | AI DM Provider adapter、前后台回合、三级语义复核、受控自由叙事与多检定队列 | ✅ 已实现 |
-| [角色系统](entities/character_system.md) | 当前预设调查员选择、立绘、完整属性、职业/技能数据结构、派生数值规则 | ✅ 已实现（预设选择） |
+| [角色系统](entities/character_system.md) | 默认单人、可选 1-4 名调查员、立绘、属性、职业/技能与派生数值 | ✅ 已实现（预设选择） |
 | [存档系统](entities/save_system.md) | v8 存档、失败回合续跑、API 配置与存储错误处理 | ✅ 已实现（最近存档、列表、删除） |
 
 ## 概念页（concepts/）

@@ -57,7 +57,7 @@ type Screen = 'title' | 'setup' | 'game';
 | Screen | Responsibility |
 | --- | --- |
 | `title` | New game, continue latest save, AI settings |
-| `setup` | Select 1-4 preset investigators |
+| `setup` | Select 1-4 preset investigators; initial selection contains only the first preset (Henry) |
 | `game` | Scene, narrative, action dock, party strip, fullscreen reference panel, menu |
 
 `src/app` is split by responsibility:
@@ -354,6 +354,7 @@ The project uses Playwright for core smoke coverage.
 Current smoke coverage:
 
 - Title screen -> preset investigator setup -> main game screen.
+- Default solo selection, replacing the investigator, and rejecting an empty party; one-, two-, and four-investigator action/D100/AI/save-load flows. Party tests explicitly select additional investigators.
 - Investigator setup shows four portraits and full attribute blocks.
 - Submitting actions without an API key opens AI settings instead of crashing.
 - Saving a game enables "continue latest save" from the title screen.

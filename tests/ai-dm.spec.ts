@@ -1,11 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 
+const investigatorNames = ['亨利·格雷', '艾达·华莱士', '托马斯·贝尔', '罗伯特·肖'];
+
 async function startGameWithApi(page: Page, config: Record<string, string> = {
   provider: 'openai',
   protocol: 'responses',
   apiKey: 'test-key',
   model: 'test-model'
-}) {
+}, partySize: 1 | 2 | 3 | 4 = 2) {
   await page.addInitScript(() => {
     window.localStorage.clear();
   });
@@ -15,6 +17,13 @@ async function startGameWithApi(page: Page, config: Record<string, string> = {
 
   await page.goto('/');
   await page.getByRole('button', { name: /开始游戏/ }).click();
+  // Most existing provider tests deliberately exercise a party. Select it
+  // explicitly so they do not depend on the product's solo default.
+  await expect(page.locator('.preset-card-modern.selected')).toHaveCount(1);
+  for (let index = 1; index < partySize; index++) {
+    await page.locator('.preset-card-modern').nth(index).locator('strong').click();
+  }
+  await expect(page.locator('.preset-card-modern.selected')).toHaveCount(partySize);
   await page.getByRole('button', { name: /进入游戏/ }).click();
   await expect(page.locator('.game-screen')).toBeVisible();
 }
@@ -322,15 +331,14 @@ test('AI DM scene changes update the chapter, backdrop, party location, and resi
   expect(sceneToolWasAvailable).toBe(true);
 });
 
-test('D100 check plays a locked-result roll and reveal before continuing the AI turn', async ({ page }) => {
+for (const partySize of [1, 2, 4] as const) {
+test(`${partySize} investigator(s): submit, locked D100 result, AI continuation and save/load`, async ({ page }) => {
+  const partyNames = investigatorNames.slice(0, partySize);
   const resolvedNarrative = JSON.stringify({
     narrative: '骰子结果已经落定，门锁上的细小刮痕显露出来。',
     activeNpc: null,
     nextPrompt: '继续检查刮痕。',
-    playerChoices: {
-      '亨利·格雷': ['判断刮痕方向'],
-      '艾达·华莱士': ['检查残留金属屑']
-    },
+    playerChoices: Object.fromEntries(partyNames.map((name) => [name, ['判断刮痕方向']])),
     keywords: []
   });
   let narratorAttempt = 0;
@@ -355,11 +363,18 @@ test('D100 check plays a locked-result roll and reveal before continuing the AI 
     });
   });
 
-  await startGameWithApi(page);
-  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('检查门锁。');
-  await page.getByRole('button', { name: '下一位' }).click();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('在旁观察。');
-  await page.getByRole('button', { name: '提交' }).click();
+  await startGameWithApi(page, undefined, partySize);
+  await expect(page.locator('.party-strip-compact .party-compact')).toHaveCount(partySize);
+  if (partySize === 1) await expect(page.getByRole('button', { name: '下一位' })).toHaveCount(0);
+  for (const [index, name] of partyNames.entries()) {
+    await page.getByPlaceholder(`${name} 想要做什么...`).fill(index === 0 ? '检查门锁。' : '在旁观察。');
+    await page.getByRole('button', { name: index === partySize - 1 ? '提交' : '下一位', exact: true }).click();
+    if (index < partySize - 1) {
+      await expect(page.getByRole('button', { name: '掷骰', exact: true })).toHaveCount(0);
+      expect(narratorAttempt).toBe(0);
+    }
+  }
+  await expect(page.locator('.story-message.player')).toHaveCount(partySize);
 
   await expect(page.getByText('亨利·格雷 · 侦查')).toBeVisible();
   await expect(page.getByText('难度：普通，阈值 75')).toBeVisible();
@@ -398,7 +413,28 @@ test('D100 check plays a locked-result roll and reveal before continuing the AI 
   expect(narratorAttempt).toBe(1);
   expect(resultTurnBody).toContain('掷出 42');
   expect(resultTurnBody).toContain('普通成功');
+  for (const name of partyNames) expect(resultTurnBody).toContain(name);
+  await page.getByRole('button', { name: /菜单/ }).click();
+  await page.getByRole('button', { name: /保存游戏/ }).click();
+  const saved = await page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem('trpg-saves-v2') ?? '[]')[0].gameState;
+    return {
+      players: state.players.map((player: { name: string }) => player.name),
+      pendingCheck: state.pendingCheck,
+      rolls: state.conversationHistory.filter((turn: { role: string; content: string }) =>
+        turn.role === 'user' && turn.content.startsWith('【检定结果】')).length
+    };
+  });
+  expect(saved).toEqual({ players: partyNames, pendingCheck: null, rolls: 1 });
+  await page.getByRole('button', { name: /菜单/ }).click();
+  await page.getByRole('button', { name: /返回首页/ }).click();
+  await page.getByRole('button', { name: /继续游戏/ }).click();
+  await expect(page.locator('.party-strip-compact .party-compact')).toHaveCount(partySize);
+  await expect(page.getByPlaceholder('亨利·格雷 想要做什么...')).toBeVisible();
+  await expect(page.getByRole('button', { name: partySize === 1 ? '提交' : '下一位', exact: true })).toBeDisabled();
+  await expect(page.locator('.story-message.player')).toHaveCount(partySize);
 });
+}
 
 test('narrative highlights remain safe, clickable and stable across desktop and narrow layouts', async ({ page }) => {
   const narrator = JSON.stringify({
