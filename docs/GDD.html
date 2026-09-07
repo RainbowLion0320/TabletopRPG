@@ -180,7 +180,7 @@ footer {
 <body>
 <nav id="sidebar">
   <div class="nav-title">GDD Mirror</div>
-<a href="#s0" class="">0. 当前实现状态（2026-08-26 对齐补充）</a>
+<a href="#s0" class="">0. 当前实现状态（2026-09-07 对齐补充）</a>
 <a href="#s0-1" class="sub">0.1 当前已实现</a>
 <a href="#s0-2" class="sub">0.2 当前未实现但保留为设计目标</a>
 <a href="#s0-3" class="sub">0.3 阅读约定</a>
@@ -229,9 +229,9 @@ footer {
 <main>
   <div class="content">
 <header class="doc-header"><h1>《雾中消逝》AI跑团 游戏设计文档 (GDD)</h1><p class="doc-subtitle">Full GDD mirror - Source: docs/GDD.md - Updated 2026-05-29</p></header>
-<blockquote><p>设计版本：v0.8 | 原始基线：2026-05-15</p><p>实现对齐补充：2026-08-26</p><p>规则体系：COC 第7版 | 首发模组：《雾中消逝》| 作者：舒爾茲上尉</p></blockquote>
+<blockquote><p>设计版本：v0.8 | 原始基线：2026-05-15</p><p>实现对齐补充：2026-09-07</p><p>规则体系：COC 第7版 | 首发模组：《雾中消逝》| 作者：舒爾茲上尉</p></blockquote>
 <hr>
-<h2 id="s0">0. 当前实现状态（2026-08-26 对齐补充）</h2>
+<h2 id="s0">0. 当前实现状态（2026-09-07 对齐补充）</h2>
 <blockquote><p>本文是完整 GDD，包含当前已实现内容、未开发模块、后续设计目标和细节规则。</p><p>当前可运行产品的产品范围见 <code>docs/PRD.md</code>，技术契约见 <code>docs/SPEC.md</code>。未实现模块不删除，统一按 backlog / 待开发处理。</p></blockquote>
 <h3 id="s0-1">0.1 当前已实现</h3>
 <div class="table-wrap"><table>
@@ -246,8 +246,9 @@ footer {
 <tr><td>AI DM</td><td>OpenAI Responses / MiMo / Chat-compatible 自定义端点，严格 JSON 输出 + 工具校验 + 一次修复重试</td></tr>
 <tr><td>检定</td><td>前端 D100，核心数值规则集中在 <code>src/data/gameRules.ts</code>，AI 只请求检定并根据结果继续叙事</td></tr>
 <tr><td>存档</td><td><code>trpg-saves-v2</code> 存档槽位，最多保留 12 条，支持最近存档、列表载入和删除</td></tr>
-<tr><td>剧本数据</td><td>5 个场景、6 个 NPC 条目、8 个线索物品</td></tr>
+<tr><td>剧本数据</td><td>5 个场景、5 个 NPC 条目、8 个线索物品</td></tr>
 </tbody></table></div>
+<p>本轮稳定性修正保留现有剧本、玩法和自由行动范围：未完成的 AI 回合可保存并重试；多角色成败分别结算；SAN 与属性检定读取角色实际值；连续检定保留先前声明和骰果；摘要压缩不重置正式回合；结局奖励在状态重算时保持一致。标题沿用原动画，运行时转换为约 458 KB WebM；资料与设置等弹窗补齐键盘操作。</p>
 <h3 id="s0-2">0.2 当前未实现但保留为设计目标</h3>
 <div class="table-wrap"><table>
 <thead><tr><th>模块</th><th>处理方式</th></tr></thead>
@@ -599,7 +600,7 @@ AI DM输出结构（JSON）
 <li>完整 Markdown JSON 代码块可以被提取解析，但 system prompt 要求模型不要返回代码块。</li>
 <li>第一次输出语法无效时，前端先用本地确定性 JSON repair 修复，并重新验证完整 Narrator 字段；截断或缺字段内容不能直接展示。</li>
 <li>本地无法修复时，前端才向同一 Provider 发送一次格式修复请求；重试结果再次经过严格解析和本地修复。</li>
-<li>重试后仍无效时，前端拦截原始输出，只显示系统错误，不把坏 JSON、Markdown 或混合文本展示为 DM 叙事。</li>
+<li>修复重试后仍无效时，控制器再尝试一次完整生成（普通 Narrator 请求累计最多三次）；仍失败则显示系统错误与“重试本轮”，保留原声明和已确认骰果，允许存档后续跑。坏 JSON、Markdown 或混合文本不会作为 DM 叙事展示。</li>
 <li>Narrator 完成后立即展示叙事；总结、事实、NPC 心智、情景记忆和动态案件板在后台继续，按回合顺序落地。</li>
 <li>重开、读档、返回首页、超时或卸载会取消旧请求，旧会话结果不得写入当前游戏。</li>
 </ul>

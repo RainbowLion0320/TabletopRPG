@@ -42,6 +42,7 @@ export interface RevealContext {
  */
 export function deriveRevealContext(state: GameState): RevealContext {
   const visited = new Set<SceneId>([state.currentScene]);
+  state.scenarioProgress?.visitedSceneIds.forEach((sceneId) => visited.add(sceneId));
   state.clues.forEach((clue) => visited.add(clue.scene));
   for (const [key, value] of Object.entries(state.flags ?? {})) {
     if (!value) continue;

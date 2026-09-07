@@ -33,6 +33,17 @@ function rawSlot(id: number, moduleVersion: string, contentHash: string) {
 }
 
 describe('storage save compatibility', () => {
+  it('preserves separate saves created within the same millisecond', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1000);
+    saveGameState(makeState());
+    saveGameState(makeState());
+    expect(readSaveLibrary().saves.map((slot) => slot.id)).toEqual([1001, 1000]);
+  });
+
+  it('does not create unstable ids for invalid saved timestamps', () => {
+    localStorage.setItem(SAVE_KEY, JSON.stringify([{ ...rawSlot(1, '1.1.13', '494364d4cfda2ab2'), id: 'bad-id' }]));
+    expect(readSaveLibrary().saves).toEqual([]);
+  });
   beforeEach(() => {
     localStorage.clear();
     vi.spyOn(console, 'warn').mockImplementation(() => {});

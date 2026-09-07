@@ -13,11 +13,8 @@
  * 两者实现保持一致；如调整请同步修改两边。
  */
 
-export interface PlayerAction {
-  player: string;
-  action: string;
-  scene?: string;
-}
+export type { CheckContinuationAction as PlayerAction } from '../types/game';
+import type { CheckContinuationAction as PlayerAction } from '../types/game';
 
 export class AiResponseFormatError extends Error {
   constructor(message: string) {

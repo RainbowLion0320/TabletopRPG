@@ -920,6 +920,7 @@ export function getScenarioProgressForState(state: {
   clues?: Array<{ id: string }>;
   flags?: Record<string, unknown>;
   conversationHistory?: Array<{ role: string; content?: unknown }>;
+  summarizedTurnCount?: number;
 }): ScenarioProgress {
   if (state.scenarioProgress) {
     const progress = state.scenarioProgress;
@@ -945,7 +946,7 @@ export function getScenarioProgressForState(state: {
     currentScene: state.currentScene,
     clueIds: (state.clues ?? []).map((clue) => clue.id),
     flags: state.flags ?? {},
-    turn: countCompletedGameTurns(state.conversationHistory ?? [])
+    turn: countCompletedGameTurns(state.conversationHistory ?? [], state.summarizedTurnCount)
   });
 }
 

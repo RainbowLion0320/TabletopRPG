@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useDialogFocus } from './useDialogFocus';
 import {
   defaultEndpointForProvider,
   defaultModelForProvider,
@@ -12,12 +13,15 @@ import type { AiProtocol, AiProvider, ApiConfig } from '../../types/game';
 interface ApiConfigModalProps {
   open: boolean;
   onClose: () => void;
-  onSave: (config: ApiConfig) => void;
+  onSave: (config: ApiConfig) => void | Promise<void>;
 }
 
 export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
   const [config, setConfig] = useState<ApiConfig>(() => readApiConfig() ?? getEnvDefaultApiConfig());
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(open, dialogRef, onClose);
 
   useEffect(() => {
     if (open) {
@@ -40,23 +44,31 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
     }));
   };
 
-  const save = () => {
+  const save = async () => {
+    if (saving) return;
     const normalized = normalizeApiConfig(config);
     const validation = getApiConfigValidationError(normalized);
     if (validation) {
       setError(validation);
       return;
     }
-    onSave(normalized);
+    setSaving(true);
+    try {
+      await onSave(normalized);
+    } catch {
+      setError('保存失败，浏览器存储不可用或空间不足，请检查后重试。');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const titleId = 'api-config-modal-title';
 
   return (
     <div className="modal-backdrop">
-      <div className="modal-card" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <div ref={dialogRef} tabIndex={-1} className="modal-card" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <h2 id={titleId}>AI DM 配置</h2>
-        <p>保存后会同时写入本地浏览器与项目根目录的 <code>.env.local</code>（已 gitignore），下次启动自动生效。</p>
+        <p>设置保存在当前浏览器，下次打开自动生效。</p>
         <label>
           Provider
           <select
@@ -108,8 +120,8 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
         </label>
         {error ? <p className="modal-error">{error}</p> : null}
         <footer>
-          <button className="ghost-btn" onClick={onClose}>取消</button>
-          <button className="primary-btn" onClick={save}>保存</button>
+          <button className="ghost-btn" disabled={saving} onClick={onClose}>取消</button>
+          <button className="primary-btn" disabled={saving} onClick={() => void save()}>{saving ? '保存中…' : '保存'}</button>
         </footer>
       </div>
     </div>

@@ -1,5 +1,7 @@
 import { Play, Settings } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import type { SaveSlot } from '../../types/game';
+import fogVideo from '../../../assets/scenes/scene_main_fog_london.webm';
 
 interface TitleScreenProps {
   hasSaves: boolean;
@@ -10,9 +12,29 @@ interface TitleScreenProps {
 }
 
 export function TitleScreen({ hasSaves, latestSave, onLoadLatest, onNewGame, onOpenApi }: TitleScreenProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || typeof window.matchMedia !== 'function') return;
+    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updatePlayback = () => {
+      if (motion.matches || document.hidden) video.pause();
+      else void video.play().catch(() => undefined);
+    };
+    updatePlayback();
+    motion.addEventListener('change', updatePlayback);
+    document.addEventListener('visibilitychange', updatePlayback);
+    return () => {
+      motion.removeEventListener('change', updatePlayback);
+      document.removeEventListener('visibilitychange', updatePlayback);
+      video.pause();
+    };
+  }, []);
   return (
     <section className="title-screen">
-      <div className="title-backdrop" />
+      <div className="title-backdrop" aria-hidden="true">
+        <video ref={videoRef} src={fogVideo} muted loop playsInline preload="auto" disablePictureInPicture />
+      </div>
       <div className="title-content">
         <p className="title-kicker">DISAPPEAR IN FOG · AI TRPG</p>
         <h1>雾中消逝</h1>

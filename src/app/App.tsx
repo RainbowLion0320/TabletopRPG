@@ -32,6 +32,7 @@ export function App() {
           onOpenApi={game.openApiSettings}
         />
         <ApiConfigModal open={game.apiOpen} onClose={() => game.setApiOpen(false)} onSave={game.saveApi} />
+        {game.toast ? <div className="toast" role="status">{game.toast}</div> : null}
       </>
     );
   }

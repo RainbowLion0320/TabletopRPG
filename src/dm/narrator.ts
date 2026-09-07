@@ -654,6 +654,7 @@ async function requestNarrator(
 
 // ---------- Main entry ----------
 export interface CallNarratorInput {
+  maxAttempts?: 1 | 2;
   ctx: DmContext;
   actions: PlayerAction[];
   /** 此前轮次的 conversationHistory（已经过窗口截断） */
@@ -764,7 +765,7 @@ export async function callNarrator(
   let lookupRoundsUsed = 0;
   let lastMalformedRaw = '';
   let semanticCorrection = '';
-  const maxAttempts = 2;
+  const maxAttempts = input.maxAttempts ?? 2;
   const retryOnAbort = true;
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {

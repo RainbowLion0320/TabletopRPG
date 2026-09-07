@@ -1,4 +1,6 @@
 import type { IncompatibleSaveSlot, SaveSlot } from '../../types/game';
+import { useRef } from 'react';
+import { useDialogFocus } from '../shared/useDialogFocus';
 
 interface SaveManagerModalProps {
   open: boolean;
@@ -17,11 +19,13 @@ export function SaveManagerModal({
   open,
   saves
 }: SaveManagerModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(open, dialogRef, onClose);
   if (!open) return null;
 
   return (
     <div className="modal-backdrop">
-      <div aria-labelledby="save-manager-title" className="modal-card save-manager-card" role="dialog">
+      <div ref={dialogRef} tabIndex={-1} aria-modal="true" aria-labelledby="save-manager-title" className="modal-card save-manager-card" role="dialog">
         <h2 id="save-manager-title">存档管理</h2>
         <p>选择一个存档载入，或删除不需要的本地存档。</p>
 

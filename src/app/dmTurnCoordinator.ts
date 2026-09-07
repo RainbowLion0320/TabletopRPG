@@ -33,7 +33,25 @@ export class DmTurnCoordinator {
   }
 
   isCurrent(task: DmSessionTask): boolean {
-    return task.generation === this.generation && !task.controller.signal.aborted;
+    return this.isSessionCurrent(task) && !task.controller.signal.aborted;
+  }
+
+  isSessionCurrent(task: DmSessionTask): boolean {
+    return task.generation === this.generation;
+  }
+
+  /** Abort also settles work whose provider fails to observe the signal. */
+  waitFor<T>(task: DmSessionTask, promise: Promise<T>): Promise<T> {
+    const signal = task.controller.signal;
+    return new Promise<T>((resolve, reject) => {
+      const abort = () => reject(signal.reason ?? new DOMException('Aborted', 'AbortError'));
+      signal.addEventListener('abort', abort, { once: true });
+      promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', abort));
+      if (signal.aborted) {
+        signal.removeEventListener('abort', abort);
+        abort();
+      }
+    });
   }
 
   finish(task: DmSessionTask): void {
@@ -60,7 +78,7 @@ export class DmTurnCoordinator {
     onError?: (error: unknown) => void
   ): Promise<void> {
     // Observe the promise immediately so a later turn cannot leave an early rejection unhandled.
-    const settled: Promise<Settled<T>> = promise.then(
+    const settled: Promise<Settled<T>> = this.waitFor(task, promise).then(
       (value): Settled<T> => ({ status: 'fulfilled', value }),
       (reason): Settled<T> => ({ status: 'rejected', reason })
     );

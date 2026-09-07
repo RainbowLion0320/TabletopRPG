@@ -10,6 +10,13 @@ function renderDrawer(state = makeState({ activeNpcName: '伊莎贝拉·摩勒' 
 }
 
 describe('InfoDrawer v7 investigation workspace', () => {
+  it('supports keyboard/accessibility activation without loading the closed board', () => {
+    const onOpen = vi.fn();
+    const { container } = render(<InfoDrawer open={false} onClose={vi.fn()} onOpen={onOpen} state={makeState()} />);
+    expect(container.querySelector('.case-board-view')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '资料' }), { detail: 0 });
+    expect(onOpen).toHaveBeenCalledOnce();
+  });
   it('opens on a spoiler-safe case board with only visible entities', async () => {
     renderDrawer();
     expect(await screen.findByRole('heading', { name: '案件板' }, { timeout: 5_000 })).toBeInTheDocument();

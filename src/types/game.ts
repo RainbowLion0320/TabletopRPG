@@ -266,6 +266,12 @@ export interface CheckContinuationAction {
   player: string;
   action: string;
   scene?: string;
+  /** 本地骰子结算元数据，用于区分同轮不同调查员/技能/线索的结果。 */
+  checkResult?: {
+    skill: string;
+    outcome: DiceResult['level'];
+    targetItemIds?: string[];
+  };
 }
 
 export interface CheckResolutionContract {
@@ -510,6 +516,10 @@ export interface GameState {
   longTermMemorySummary?: string;
   /** 已被总结进 summary 的 conversationHistory 上界（下标，不含） */
   summarizedUntilIndex?: number;
+  /** 正式行动中已移出原文历史的回合数，防止摘要后时间线倒退。 */
+  summarizedTurnCount?: number;
+  /** 已提交但尚未获得 DM 响应的行动；失败或读档后可原样重试。 */
+  pendingDmActions?: CheckContinuationAction[];
   /** DM 事件时间线（最多 200 条），phase 8 起持久化 */
   eventLog?: PersistedDMEvent[];
   /** 未结算后果队列，每轮 -1 直到为 0 触发；phase 8 起持久化 */

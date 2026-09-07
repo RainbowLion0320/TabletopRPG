@@ -4,7 +4,7 @@ title: 项目全局综述
 tags: [overview, project, aligned]
 sources: [project_plan.md, ../../docs/PRD.md, ../../docs/SPEC.md, ../../docs/GDD.md]
 created: 2026-05-14
-updated: 2026-08-26
+updated: 2026-09-07
 ---
 
 # AI 跑团游戏 · 项目全局综述
@@ -16,7 +16,7 @@ updated: 2026-08-26
 ## 当前状态
 
 - **阶段**：MVP 核心闭环已可运行，正在进行文档/规格/代码对齐与稳定化。
-- **仓库**：`D:\Projects\TabletopRPG`（[GitHub](https://github.com/RainbowLion0320/TabletopRPG)）
+- **仓库**：[TabletopRPG](https://github.com/RainbowLion0320/TabletopRPG)（本地目录由各开发环境指定）
 - **当前事实源**：
   - PRD：`docs/PRD.md`
   - 技术规格：`docs/SPEC.md`
@@ -30,14 +30,14 @@ updated: 2026-08-26
 - 标题页、预设调查员选择页、横屏游戏主界面。
 - 4 个预设调查员，可选择 1-4 名进入游戏。
 - AI DM 支持 OpenAI Responses、MiMo 和自定义 OpenAI-compatible Chat Completions endpoint。
-- AI DM 响应进入游戏前执行 JSON 契约校验，格式无效时自动修复重试一次。
+- AI DM 响应进入游戏前执行 JSON 契约校验，格式无效时进行有上限的自动恢复；失败回合可保存、载入并重试。
 - D100 技能检定系统，骰子由前端执行。
 - 1-4 名调查员逐人声明、整队结算；所有成员始终共享同一场景并同步移动。
 - AI 推荐行动建议。
 - 对话富文本阅读层：人物稳定配色，地点/物证/技能/状态分类高亮，安全详情导航，以及可选的 Narrator 临时语义关键词。
 - 全屏资料界面：默认展示玩家已知的混合调查台；静态主线、AI 审核核心关系和确定性实体档案共同组成案件板，桌面自动布局、移动端按调查脉络分组，行动日志作为辅助页签保留。
 - localStorage v8 存档：记录模组版本、内容哈希和 `ScenarioProgress`，支持 v1-v7 确定性迁移。
-- 首个 YAML 剧本模块「雾中消逝」：5 个场景、4 个稳定 NPC、8 个线索、6 个剧情节点和 3 个结局。
+- 首个 YAML 剧本模块「雾中消逝」：5 个场景、5 个稳定 NPC、8 个线索、6 个剧情节点和 3 个结局。
 - 无脚本 Condition/Effect 推进引擎、条件出口、事件幂等、3/6 回合空转升级、可见目标/时钟与结局锁定。
 - Playwright smoke tests：覆盖标题页、选角、主界面、无 API Key、存档/读档、非法存档和 D100 大失败优先规则。
 

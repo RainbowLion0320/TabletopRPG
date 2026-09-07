@@ -12,6 +12,10 @@ export async function readJsonResponse<T extends object>(
     if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.slice(0, 120)}`);
     throw new AiResponseFormatError(`${label} response is not JSON: ${text.slice(0, 120)}`);
   }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    throw new AiResponseFormatError(`${label} response must be a JSON object`);
+  }
   if (!response.ok || data.error) {
     throw new Error(data.error?.message ?? `HTTP ${response.status}`);
   }

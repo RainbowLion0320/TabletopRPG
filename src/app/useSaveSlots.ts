@@ -20,14 +20,22 @@ export function useSaveSlots(notify: (text: string) => void) {
   }
 
   function saveCurrentGame(gameState: GameState) {
-    saveGameState(gameState);
-    refreshSaves();
-    notify('已保存');
+    try {
+      saveGameState(gameState);
+      refreshSaves();
+      notify('已保存');
+    } catch {
+      notify('保存失败：浏览器存储不可用或空间不足，请清理空间后重试。');
+    }
   }
 
   function deleteSaveSlot(id: number) {
-    setLibrary(deleteSave(id));
-    notify('已删除存档');
+    try {
+      setLibrary(deleteSave(id));
+      notify('已删除存档');
+    } catch {
+      notify('删除失败：浏览器存储不可用，请稍后重试。');
+    }
   }
 
   return {

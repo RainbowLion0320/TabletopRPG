@@ -27,7 +27,8 @@ function normalizeSaveSlot(value: unknown): SaveSlot | null {
   const gameState = hydrateGameState(value.gameState);
   if (!gameState.players.length) return null;
 
-  const id = Number(value.id) || Date.now();
+  const id = Number(value.id);
+  if (!Number.isSafeInteger(id) || id <= 0 || id > 8_640_000_000_000_000) return null;
   const savedAt = typeof value.savedAt === 'string' && value.savedAt.trim()
     ? value.savedAt
     : new Date(id).toLocaleString('zh-CN');
@@ -110,7 +111,11 @@ export function saveGameState(gameState: GameState) {
   const normalizedState = hydrateGameState(gameState);
   const rawSaves = parseArray(SAVE_KEY);
   const slot: SaveSlot = {
-    id: Date.now(),
+    id: Math.max(Date.now(), ...rawSaves.flatMap((save) => {
+      const previousId = isRecord(save) ? Number(save.id) : NaN;
+      return Number.isSafeInteger(previousId) && previousId > 0 && previousId < 8_640_000_000_000_000
+        ? [previousId + 1] : [];
+    })),
     savedAt: new Date().toLocaleString('zh-CN'),
     scene: storyData.scenes[normalizedState.currentScene].name,
     players: normalizedState.players.map((player) => player.name).join('、'),
@@ -171,23 +176,24 @@ export function writeApiConfig(config: ApiConfig) {
 }
 
 /**
- * Persist a config in three layers:
+ * Persist a config in two layers:
  *   1. Browser localStorage (synchronous, survives reloads in this browser).
  *   2. `.env.local` via the Vite dev-server middleware (`/__api_config`)
  *      — cross-browser, cross-machine-restart, since Vite reloads env vars on
  *      next boot. Silently no-ops in production builds.
  *
- * Returns true when the env-write succeeded (or was skipped in prod), false
- * when the dev middleware was reachable but rejected the payload.
+ * Returns true only when the env-write succeeded; false means the config is
+ * stored in this browser only (including production and static preview).
  */
 export async function persistApiConfig(config: ApiConfig): Promise<boolean> {
   writeApiConfig(config);
-  if (!import.meta.env.DEV) return true;
+  if (!import.meta.env.DEV) return false;
   try {
     const response = await fetch('/__api_config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(config)
+      body: JSON.stringify(config),
+      signal: AbortSignal.timeout(5_000)
     });
     return response.ok;
   } catch {

@@ -1,4 +1,6 @@
 import type { GameState, PersistedDMEvent, PersistedPendingConsequence } from '../../types/game';
+import { useRef } from 'react';
+import { useDialogFocus } from '../shared/useDialogFocus';
 
 interface DmJournalModalProps {
   open: boolean;
@@ -22,6 +24,8 @@ function eventLabel(kind: string): string {
 }
 
 export function DmJournalModal({ onClose, open, state }: DmJournalModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(open, dialogRef, onClose);
   if (!open) return null;
 
   const events: PersistedDMEvent[] = state.eventLog ?? [];
@@ -32,7 +36,7 @@ export function DmJournalModal({ onClose, open, state }: DmJournalModalProps) {
 
   return (
     <div className="modal-backdrop">
-      <div aria-labelledby="dm-journal-title" className="modal-card dm-journal-card" role="dialog">
+      <div ref={dialogRef} tabIndex={-1} aria-modal="true" aria-labelledby="dm-journal-title" className="modal-card dm-journal-card" role="dialog">
         <h2 id="dm-journal-title">KP 笔记</h2>
         <p>由 DM 引擎自动维护的剧情总结、后果队列与事件时间线。仅作 KP 视角参考。</p>
 

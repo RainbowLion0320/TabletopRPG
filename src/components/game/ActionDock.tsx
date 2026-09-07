@@ -9,6 +9,7 @@ interface ActionDockProps {
   onSubmit: () => void;
   onRoll: () => void;
   onSuggestion: (text: string) => void;
+  onRetry?: () => void;
 }
 
 export function ActionDock({
@@ -17,6 +18,7 @@ export function ActionDock({
   onRoll,
   onSubmit,
   onSuggestion,
+  onRetry,
   state
 }: ActionDockProps) {
   const currentActor = state.players[state.currentActorIndex] ?? state.players[0];
@@ -30,6 +32,7 @@ export function ActionDock({
   const scenario = getScenarioDefinition();
   const progress = getScenarioProgressForState(state);
   const ending = scenario.progression.endings.find((item) => item.id === progress.endingId);
+  const hasPendingTurn = Boolean(state.pendingDmActions?.length);
 
   if (ending) {
     return (
@@ -42,6 +45,12 @@ export function ActionDock({
 
   return (
     <section className="action-dock">
+      {hasPendingTurn && !state.isThinking && !state.pendingCheck ? (
+        <div className="check-card" role="status">
+          <div><strong>本轮行动已保留</strong><span>继续获取 DM 响应，已确认的骰点无需重掷。</span></div>
+          <button className="secondary-action" onClick={onRetry}>重试本轮</button>
+        </div>
+      ) : null}
       {/* 条件区域：检定 / 建议 */}
       {state.pendingCheck ? (
         <div className="check-card">
@@ -61,7 +70,7 @@ export function ActionDock({
         </div>
       ) : null}
 
-      {!state.pendingCheck && !state.isThinking && currentSuggestions.length ? (
+      {!hasPendingTurn && !state.pendingCheck && !state.isThinking && currentSuggestions.length ? (
         <div className="suggestion-row">
           {currentSuggestions.slice(0, 3).map((text) => (
             <button key={text} onClick={() => onSuggestion(text)}>{text}</button>
@@ -82,12 +91,13 @@ export function ActionDock({
             <input
               className="dock-input"
               autoFocus
-              disabled={isDiceRolling || state.isThinking || Boolean(state.pendingCheck)}
+              disabled={isDiceRolling || state.isThinking || hasPendingTurn || Boolean(state.pendingCheck)}
               value={state.declarations[currentActor.id] ?? ''}
               placeholder={`${currentActor.name} 想要做什么...`}
               onChange={(event) => onDeclarationChange(currentActor.id, event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === 'Enter' && allFilled && !state.isThinking && !state.pendingCheck) {
+                if (event.key === 'Enter' && !event.nativeEvent.isComposing && event.keyCode !== 229
+                  && !event.repeat && allFilled && !isDiceRolling && !state.isThinking && !hasPendingTurn && !state.pendingCheck) {
                   event.preventDefault();
                   onSubmit();
                 }
@@ -95,7 +105,7 @@ export function ActionDock({
             />
           </>
         ) : null}
-        <button className="primary-action dock-submit" disabled={!allFilled || state.isThinking || isDiceRolling || Boolean(state.pendingCheck)} onClick={onSubmit}>
+        <button className="primary-action dock-submit" disabled={!allFilled || state.isThinking || hasPendingTurn || isDiceRolling || Boolean(state.pendingCheck)} onClick={onSubmit}>
           <Send size={16} />
           {submitLabel}
         </button>
@@ -104,8 +114,8 @@ export function ActionDock({
       {/* 第二行：全部角色紧凑信息条（名 + HP + SAN 同行） */}
       <div className="party-strip-compact">
         {state.players.map((player, index) => {
-          const hpPct = Math.round((player.currentHp / player.hp) * 100);
-          const sanPct = Math.round((player.currentSan / player.san) * 100);
+          const hpPct = player.hp > 0 ? Math.round((player.currentHp / player.hp) * 100) : 0;
+          const sanPct = player.san > 0 ? Math.round((player.currentSan / player.san) * 100) : 0;
           const isActiveActor = index === state.currentActorIndex;
           const hasActed = index < state.currentActorIndex;
           const cardClass = `party-compact${isActiveActor ? ' active' : ''}${hasActed ? ' acted' : ''}`;

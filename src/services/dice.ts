@@ -2,7 +2,8 @@ import type {
   CheckContinuationAction,
   CheckRequest,
   DiceResult,
-  Investigator
+  Investigator,
+  Attributes
 } from '../types/game';
 import {
   gameRules,
@@ -16,8 +17,22 @@ export function getSkillTotal(player: Investigator, skill: string) {
   if (isLuckSkill(skill)) {
     return player.luck ?? player.attrs.Luck;
   }
-  const value = player.skills[skill];
+  const normalized = normalizeSkillName(skill);
+  if (['san', '理智', '理智值'].includes(normalized)) return player.currentSan;
+  const attributes: Record<string, keyof Attributes> = {
+    str: 'STR', 力量: 'STR', con: 'CON', 体质: 'CON', siz: 'SIZ', 体型: 'SIZ',
+    dex: 'DEX', 敏捷: 'DEX', app: 'APP', 外貌: 'APP', int: 'INT', 智力: 'INT',
+    pow: 'POW', 意志: 'POW', edu: 'EDU', 教育: 'EDU'
+  };
+  const attribute = Object.prototype.hasOwnProperty.call(attributes, normalized) ? attributes[normalized] : undefined;
+  if (attribute) return player.attrs[attribute];
+  const skillKey = Object.keys(player.skills).find((name) => normalizeSkillName(name) === normalized);
+  const value = skillKey ? player.skills[skillKey] : undefined;
   return value ? value.base + value.added : gameRules.skills.unknownSkillTotal;
+}
+
+function normalizeSkillName(skill: string) {
+  return skill.replace(/\s/g, '').replace(/（/g, '(').replace(/）/g, ')').toLowerCase();
 }
 
 export function prepareCheck(check: CheckRequest, players: Investigator[]): CheckRequest {
@@ -32,6 +47,7 @@ export function prepareCheck(check: CheckRequest, players: Investigator[]): Chec
     const queuedDifficulty = normalizeDifficultyLabel(queued.difficulty);
     return {
       ...queued,
+      player: queuedPlayer?.name ?? queued.player,
       queuedChecks: undefined,
       difficulty: queuedDifficulty,
       skillVal: queuedSkillVal,
@@ -40,6 +56,7 @@ export function prepareCheck(check: CheckRequest, players: Investigator[]): Chec
   });
   return {
     ...check,
+    player: player?.name ?? check.player,
     difficulty,
     skillVal,
     threshold: getDifficultyThreshold(skillVal, difficulty),

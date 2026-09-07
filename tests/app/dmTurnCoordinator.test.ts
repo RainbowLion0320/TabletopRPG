@@ -16,6 +16,19 @@ afterEach(() => {
 });
 
 describe('DmTurnCoordinator', () => {
+  it('lets later background updates through after a non-cooperating task times out', async () => {
+    vi.useFakeTimers();
+    const coordinator = new DmTurnCoordinator();
+    const applied: string[] = [];
+    const first = coordinator.begin(100);
+    const second = coordinator.begin(200);
+    const queuedFirst = coordinator.enqueue(first, new Promise<string>(() => {}), (value) => applied.push(value));
+    const queuedSecond = coordinator.enqueue(second, Promise.resolve('second'), (value) => applied.push(value));
+    await vi.advanceTimersByTimeAsync(100);
+    await Promise.all([queuedFirst, queuedSecond]);
+    expect(applied).toEqual(['second']);
+    coordinator.invalidate();
+  });
   it('applies background updates in DM turn order', async () => {
     const coordinator = new DmTurnCoordinator();
     const firstTask = coordinator.begin(180_000);

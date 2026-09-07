@@ -4,7 +4,7 @@ title: AI DM 系统
 tags: [ai, core, implemented]
 sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-14
-updated: 2026-08-26
+updated: 2026-09-07
 ---
 
 # AI DM 系统
@@ -151,7 +151,7 @@ Narrator 语义复核采用三级结果，不再由本地固定文案接管叙�
 - AI 响应必须通过 Narrator 的结构校验：`narrative`、`activeNpc`、`nextPrompt`、`playerChoices` 必须存在且类型正确。
 - 首次语法无效时，前端先使用 `jsonrepair` 做本地确定性修复；只有完整 Narrator 必填字段都存在时才接受。
 - 本地无法修复时，前端会把无效输出、诊断和 JSON 契约发回同一 Provider，请求重新输出一次。
-- 重试结果再次经过严格解析和本地修复；仍无效时原始输出会被拦截，只显示系统错误。
+- 重试结果再次经过严格解析和本地修复；仍无效时控制器只再尝试一次完整生成。普通 Narrator 请求累计最多三次，持续失败保留本轮声明与确认骰果，提供“重试本轮”。原始坏输出不进入叙事。
 - 工具调用由 Director 按当前场景、允许工具集、玩家、物品和 secret 条件校验；非法调用被拒绝而不是直接写状态。
 - JSON 格式修复与叙事语义复核相互独立：前者保证结构可解析，后者按 `blocking / advisory / warning` 分级，软问题不会触发本地模板替换。
 
@@ -162,6 +162,9 @@ Narrator 语义复核采用三级结果，不再由本地固定文案接管叙�
 - 长期记忆由 `src/dm/summarizer.ts`、`src/dm/memory/factExtractor.ts` 和 `src/dm/memory/system2Synthesizer.ts` 逐步落地。
 - 叙事前台不等待长期记忆；后台更新集中在 `DmBackgroundUpdate`，失败不会撤回有效叙事。
 - Summarizer 只接受非空 JSON `summary`，坏 JSON 不写入长期记忆。
+- 摘要落地核对完整源历史前缀，过期摘要不可覆盖新历史；正式回合计数累计已压缩部分，已访问场景从权威推进状态恢复。
+- 前台与后台等待均响应会话取消和超时，即使底层服务忽略 AbortSignal，也不会阻塞后续队列或写回新游戏。
+- 检定前奏不提前消耗延迟后果或启动认知总结；混合成败按玩家、技能、目标线索分别审核，作者解锁的线索立即进入后台案件板上下文。
 - Narrator 系统提示词每次基于最新状态重建，不依赖历史中的旧状态。
 
 ## 技能检定流程

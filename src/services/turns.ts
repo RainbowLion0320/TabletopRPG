@@ -11,12 +11,12 @@ export function isDiceResultHistoryTurn(turn: ConversationTurnLike): boolean {
     && turn.content.trimStart().startsWith(DICE_RESULT_PREFIX);
 }
 
-export function countCompletedGameTurns(history: readonly ConversationTurnLike[]): number {
-  return history.filter((turn) => turn.role === 'user' && !isDiceResultHistoryTurn(turn)).length;
+export function countCompletedGameTurns(history: readonly ConversationTurnLike[], summarizedTurnCount = 0): number {
+  return summarizedTurnCount + history.filter((turn) => turn.role === 'user' && !isDiceResultHistoryTurn(turn)).length;
 }
 
-export function getDmRequestTurn(history: readonly ConversationTurnLike[]): number {
-  const completed = countCompletedGameTurns(history);
-  const continuesCurrentTurn = history.length > 0 && isDiceResultHistoryTurn(history[history.length - 1]);
+export function getDmRequestTurn(history: readonly ConversationTurnLike[], summarizedTurnCount = 0): number {
+  const completed = countCompletedGameTurns(history, summarizedTurnCount);
+  const continuesCurrentTurn = history[history.length - 1]?.role === 'user';
   return Math.max(1, completed + (continuesCurrentTurn ? 0 : 1));
 }

@@ -206,11 +206,11 @@ function prioritizeNewlyAvailableDestinations(
 }
 
 function getCompletedTurnCount(state: GameState): number {
-  return countCompletedGameTurns(state.conversationHistory);
+  return countCompletedGameTurns(state.conversationHistory, state.summarizedTurnCount);
 }
 
 function getCurrentTurn(state: GameState): number {
-  return getDmRequestTurn(state.conversationHistory);
+  return getDmRequestTurn(state.conversationHistory, state.summarizedTurnCount);
 }
 
 function getUnsummarizedPairCount(state: GameState): number {
@@ -267,6 +267,7 @@ interface BackgroundUpdateParams {
   resolved: ResolvedDmTurn;
   traceId?: string;
   foregroundTimings: DmTurnTiming;
+  projectedProgress: GameState['scenarioProgress'];
 }
 
 async function runDmBackgroundUpdate(params: BackgroundUpdateParams): Promise<DmBackgroundUpdate> {
@@ -281,9 +282,10 @@ async function runDmBackgroundUpdate(params: BackgroundUpdateParams): Promise<Dm
     narrator,
     resolved,
     traceId,
-    foregroundTimings
+    foregroundTimings,
+    projectedProgress
   } = params;
-  const turn = ctx.dynamic.workingMemory.turnCount + 1;
+  const turn = currentTurn;
   const narrative = resolved.legacyResponse.narrative ?? narrator.narrative;
 
   const memoryPromise = (async (): Promise<DmMemoryUpdate | undefined> => {
@@ -371,7 +373,13 @@ async function runDmBackgroundUpdate(params: BackgroundUpdateParams): Promise<Dm
     }
 
     const caseBoardStart = nowMs();
-    const newClueIds = resolved.legacyResponse.stateUpdate?.newItems ?? [];
+    const previousClueIds = new Set(input.state.clues.map((clue) => clue.id));
+    const newClueIds = [...new Set([
+      ...(resolved.legacyResponse.stateUpdate?.newItems ?? []),
+      ...Object.entries(projectedProgress.clueStates).flatMap(([id, status]) =>
+        (status === 'discovered' || status === 'analyzed') && !previousClueIds.has(id) ? [id] : []
+      )
+    ])];
     const clueById = new Map(input.state.clues.map((clue) => [clue.id, clue]));
     for (const clueId of newClueIds) {
       const clue = storyData.items[clueId];
@@ -390,6 +398,8 @@ async function runDmBackgroundUpdate(params: BackgroundUpdateParams): Promise<Dm
       currentScene: projectedScene,
       activeNpcId: npcIdFromName(projectedActiveNpc),
       activeNpcName: projectedActiveNpc,
+      scenarioProgress: projectedProgress,
+      flags: { ...input.state.flags, ...(resolved.legacyResponse.stateUpdate?.flags ?? {}) },
       clues: Array.from(clueById.values()),
       atomicFacts: [...(input.state.atomicFacts ?? []), ...(factsToAppend ?? [])],
       eventLog: [...(input.state.eventLog ?? []), ...(resolved.events ?? [])]
@@ -562,6 +572,7 @@ export async function runDmTurn(
         storyEventIds: inferredStoryCalls.map((call) => String(call.arguments.eventId ?? '')),
         turn: currentTurn,
         completeTurn: false,
+        random: () => 0,
         actorName: inferStoryEventActor(
           input.actions,
           input.state,
@@ -645,7 +656,7 @@ export async function runDmTurn(
       legacyResponse: resolved.legacyResponse,
       events: resolved.events,
       actorName: checkEventActorName ?? undefined,
-      decayIntents: true,
+      decayIntents: false,
       timings
     };
   }
@@ -676,7 +687,7 @@ export async function runDmTurn(
     { summary: effectiveSummary, retrievedMemories }
   );
 
-  const history = effectiveHistory
+  const history = (effectiveHistory[effectiveHistory.length - 1]?.role === 'user' ? effectiveHistory.slice(0, -1) : effectiveHistory)
     .slice(-RECENT_TURN_WINDOW_PAIRS * 2)
     .map((turn) => ({ role: turn.role, content: turn.content }));
 
@@ -751,6 +762,7 @@ export async function runDmTurn(
   const narratorStart = nowMs();
   try {
     narrator = await callNarrator(config, {
+      maxAttempts: input.narratorAttempts,
       ctx,
       actions: input.actions,
       history,
@@ -814,7 +826,7 @@ export async function runDmTurn(
   const resolved = resolveDmTurn({
     narrator,
     acceptedCalls: directorResult.accepted,
-    turn: ctx.dynamic.workingMemory.turnCount + 1,
+    turn: currentTurn,
     pendingBefore: input.state.pendingConsequences ?? []
   });
   if (resolved.legacyResponse.check) {
@@ -846,7 +858,8 @@ export async function runDmTurn(
     previousScene: targetScene !== input.state.currentScene ? input.state.currentScene : undefined,
     storyEventIds: acceptedStoryEventIds,
     turn: currentTurn,
-    completeTurn: false,
+    completeTurn: !resolved.legacyResponse.check,
+    random: () => 0,
     actorName: input.actions[input.actions.length - 1]?.player
   });
   for (const [itemId, status] of Object.entries(projectedTransition.progress.clueStates)) {
@@ -901,7 +914,7 @@ export async function runDmTurn(
   const traceId = import.meta.env.DEV
     ? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     : undefined;
-  const backgroundUpdate = runDmBackgroundUpdate({
+  const backgroundUpdate = resolved.legacyResponse.check ? undefined : runDmBackgroundUpdate({
     config,
     input,
     kb,
@@ -910,7 +923,8 @@ export async function runDmTurn(
     narrator,
     resolved,
     traceId,
-    foregroundTimings: timings
+    foregroundTimings: timings,
+    projectedProgress: projectedTransition.progress
   });
 
   // 6) DEV 追踪：让右下角 DmDebugDrawer 看到这一轮经过的所有阶段
@@ -918,7 +932,7 @@ export async function runDmTurn(
     pushTrace({
       id: traceId ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       timestamp: Date.now(),
-      turn: ctx.dynamic.workingMemory.turnCount + 1,
+      turn: currentTurn,
       actions: input.actions.map((a) => ({ player: a.player, action: a.action, scene: a.scene })),
       ctx,
       narratorRaw: narrator.raw,
@@ -937,7 +951,7 @@ export async function runDmTurn(
     raw: narrator.raw,
     legacyResponse: resolved.legacyResponse,
     events: resolved.events,
-    decayIntents: true,
+    decayIntents: !resolved.legacyResponse.check,
     timings,
     backgroundUpdate
   };

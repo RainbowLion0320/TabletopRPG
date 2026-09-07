@@ -4,7 +4,7 @@ title: 存档系统
 tags: [save, storage, localStorage]
 sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-18
-updated: 2026-07-12
+updated: 2026-09-07
 ---
 
 # 存档系统
@@ -55,6 +55,10 @@ interface SaveSlot {
 - 新存档写入 `trpg-saves-v2`。
 - 最多保留 12 条。
 - 保存后刷新标题页“最近存档”状态。
+- 同毫秒连续保存使用递增 ID；写入或删除失败时显示提示，不假报成功。
+- 未完成 AI 回合保留 `pendingDmActions` 与本地确认骰果，可读档后“重试本轮”，不会重复声明或重掷。
+- 骰子动画及待确认结果期间禁止存档；结束结局不恢复遗留检定。
+- `summarizedTurnCount` 保留摘要移除的正式回合数，避免长局读档后回合倒退。
 
 ### 读档
 - 标题页“继续游戏”读取最新有效存档。
@@ -68,6 +72,7 @@ interface SaveSlot {
 
 ### API 配置
 - `trpg-api` 保存 provider、protocol、apiKey、endpoint、model。
+- 开发环境可同步写入 `.env.local`，保留无关配置和注释；写入不触发游戏刷新。生产版本只提示已保存到当前浏览器。
 
 ## 当前限制
 

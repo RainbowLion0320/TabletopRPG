@@ -1,7 +1,7 @@
 # TabletopRPG PRD
 
 > Version: v0.9
-> Updated: 2026-08-26
+> Updated: 2026-09-07
 > Product baseline: Vite + React + TypeScript MVP
 
 ## 1. Product Positioning
@@ -34,7 +34,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 - Player-visible objectives, clue progress, visible clocks, active act/scene, and ending-locked action area.
 - State updates for HP, SAN, flags, scene change, clues, active NPC, and suggested actions.
 - v8 localStorage saves with module version/hash validation and deterministic v1-v7 migration through `trpg-saves-v2`.
-- Built-in YAML module "雾中消逝": 5 scenes, 4 stable NPC entities, 8 clue items, 6 beats, fail-forward routes, and 3 endings.
+- Built-in YAML module "雾中消逝": 5 scenes, 5 stable NPC entities, 8 clue items, 6 beats, fail-forward routes, and 3 endings.
 - Automated smoke tests for the title/setup/game flow, setup portrait/full-attribute display, fullscreen case board reference panel, dynamic case board hypotheses, no-key AI settings guard, save/continue, invalid saves, and D100 fumble priority.
 
 ### Out of Scope for Current MVP
@@ -72,7 +72,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 5. The valid narrative is applied immediately and the thinking indicator is cleared.
 6. Summary, System2, fact extraction, episodic memory, and dynamic case board synthesis continue in the background without blocking player feedback.
 7. Background updates are applied in DM-turn order. Restart, load, home navigation, timeout, or unmount aborts the old session and prevents stale writes.
-8. If Narrator JSON is malformed, App first performs deterministic local syntax repair while rechecking the complete contract; only unrepairable output consumes one model-repair retry. If that still fails, raw output is blocked and shown only as a system error.
+8. If Narrator JSON is malformed, App first tries local syntax repair, then one model repair, then one final fresh attempt. Persistent failure shows a system error and a retry button. The original actions and confirmed dice results can be saved, loaded, and retried without duplicate history.
 
 ### Skill Check
 
@@ -88,7 +88,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 | Startup | `npm run dev` opens the app through Vite; `npm run build` succeeds |
 | New game | Preset selection can enter the main game with at least one investigator |
 | Submit action | Missing API key opens AI settings instead of crashing |
-| AI response | Malformed model output is retried once and never displayed as DM narrative |
+| AI response | Malformed output has bounded automatic recovery (at most three normal Narrator attempts) and is never displayed as DM narrative; manual retry retains the same round |
 | AI lifecycle | Narrator is player-visible before optional cognition jobs finish; background results are ordered and stale sessions cannot write state |
 | AI response | Invalid scene names, unknown NPCs, string numeric deltas, and clue names are normalized or ignored safely after format validation |
 | Narrative reading | Names use stable per-person colors; semantic marks preserve the exact source text and open player-safe details without rendering model HTML or exposing locked secret counts |
@@ -99,6 +99,9 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 | Case board fallback | A high-signal world observation may create a conservative event linked to its scene; generic continuation turns do not add noise |
 | Saves | v7 persists case-board insights and stable keys; v6 boards migrate deterministically without a model call |
 | Dice | 96-100 is treated as fumble before success levels |
+| Dice | SAN uses current sanity; attribute checks use actual attributes; mixed party outcomes are resolved independently |
+| Long sessions | Summary compaction preserves turn numbers and visited scenes; stale summaries cannot overwrite newer history |
+| Recovery | Storage errors are visible; unconfirmed dice results cannot be saved; settings do not reload an unsaved game |
 | Rules config | HP/MP/SAN, skill bases, difficulty thresholds, unknown skill fallback, and fumble range come from a centralized rules config |
 | Saves | Latest save is visible on title screen after saving and returning home |
 | Saves | Save manager lists valid slots, loads a selected slot, and deletes a selected slot |

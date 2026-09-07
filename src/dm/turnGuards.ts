@@ -358,22 +358,36 @@ export function inferStoryEventsFromActions(
   return effectiveLegacy ? [effectiveLegacy] : [];
 }
 
-function checkOutcomeFor(
+export function checkOutcomeFor(
   actions: PlayerAction[],
   playerName: string,
   skill: string
 ): 'success' | 'fail' | 'fumble' | null {
+  const structured = actions.find((action) => action.player === playerName && action.checkResult?.skill === skill)?.checkResult;
+  if (structured) return structured.outcome === 'fail' || structured.outcome === 'fumble' ? structured.outcome : 'success';
   const playerResults = actions.filter((action) =>
     action.player === playerName
     && DICE_RESULT_RE.test(action.action)
   );
   const result = playerResults.find((action) =>
     action.action.replace(/\s/g, '').includes(`的${skill}检定`)
-  )?.action ?? playerResults[0]?.action;
+  )?.action ?? (playerResults.length === 1 && !/的\s*\S+\s*检定/.test(playerResults[0].action) ? playerResults[0].action : undefined);
   if (!result) return null;
   if (/结果[：:]\s*大失败/.test(result)) return 'fumble';
   if (/结果[：:]\s*失败/.test(result)) return 'fail';
   return 'success';
+}
+
+/** Match one clue to its own roll, including legacy saved result text. */
+export function itemCheckOutcome(actions: PlayerAction[], state: GameState, itemId: string, kb = getActiveKnowledgeBase()) {
+  const structured = actions.find((action) => action.checkResult?.targetItemIds?.includes(itemId));
+  if (structured?.checkResult) return checkOutcomeFor([structured], structured.player, structured.checkResult.skill);
+  const target = explicitlyTargetedScenarioItemActions(actions, state, kb).find(({ item }) => item.id === itemId);
+  if (target) return checkOutcomeFor(actions, target.action.player, target.item.discovery.skill);
+  const item = getScenarioDefinition().world.items.find((candidate) => candidate.id === itemId);
+  if (!item) return null;
+  const candidates = actions.filter((action) => DICE_RESULT_RE.test(action.action));
+  return candidates.length === 1 ? checkOutcomeFor(candidates, candidates[0].player, item.discovery.skill) : null;
 }
 
 /** Returns the player whose own action proposed a structured story event. */
@@ -699,18 +713,20 @@ export function inferStoryEventFromActions(
     if (defersFinaleRoute
       && (eventId === 'EV_CHOOSE_NEGOTIATION' || eventId === 'EV_CHOOSE_COMBAT')) return false;
     const isCombatEvent = eventId === 'EV_COMBAT_ATTACK' || eventId === 'EV_CHOOSE_COMBAT';
+    const eligibleActions = actions.filter((action) => eventId === 'EV_BARTENDER_RAT'
+      || !actionIsFailedCheck(actions.filter((result) => result.player === action.player)));
     const matchesAction = isCombatEvent
-      ? actions.some((action) => !DICE_RESULT_RE.test(action.action)
+      ? eligibleActions.some((action) => !DICE_RESULT_RE.test(action.action)
         && (combatActorScore(action, state) > 0
           || (eventId === 'EV_CHOOSE_COMBAT'
             && hasAffirmativeMatch(action.action, COMBAT_ROUTE_SELECTION_RE))))
-      : actions.some((action) =>
+      : eligibleActions.some((action) =>
         !DICE_RESULT_RE.test(action.action)
         && hasAffirmativeMatch(action.action, pattern)
         && (eventId !== 'EV_BARTENDER_RAT'
           || !/(?:暂时|先)?不(?:再)?(?:打听|询问|追问|要求|索要|换取)(?:任何)?(?:消息|信息)?/.test(action.action))
       );
-    return matchesAction && (!actionIsFailedCheck(actions) || eventId === 'EV_BARTENDER_RAT');
+    return matchesAction;
   });
   if (available.has('EV_MEET_MONTREAL') && matchesMontrealMeetingEvent(actions, text)) {
     return {
@@ -748,11 +764,12 @@ export function inferDiscoveredItems(
   kb: KnowledgeBase,
   sceneId: SceneId
 ): string[] {
-  if (actionIsFailedCheck(actions)) return [];
   const found = new Set(state.clues.map((clue) => clue.id));
   const out: string[] = [];
   for (const [id, entry] of Object.entries(kb.items)) {
     if (found.has(id) || entry.public.scene !== sceneId) continue;
+    const outcome = itemCheckOutcome(actions, state, id, kb);
+    if (outcome === 'fail' || outcome === 'fumble') continue;
     const terms = [entry.public.name, ...(entry.public.aliases ?? [])].filter(Boolean);
     const match = terms.find((term) => narrative.includes(term));
     if (!match) continue;
@@ -995,7 +1012,7 @@ function lockedSceneReference(
   const projected = processScenarioTurn(progress, {
     currentScene: state.currentScene,
     storyEventIds: proposedEvents.map((event) => event.id),
-    turn: getDmRequestTurn(state.conversationHistory),
+    turn: getDmRequestTurn(state.conversationHistory, state.summarizedTurnCount),
     completeTurn: false
   }).progress;
   const visibleSceneIds = new Set([
@@ -1340,7 +1357,7 @@ export function validateNarratorSemantics(
     ? processScenarioTurn(progress, {
         currentScene: state.currentScene,
         storyEventIds: projectedCombatEventIds,
-        turn: getDmRequestTurn(state.conversationHistory),
+        turn: getDmRequestTurn(state.conversationHistory, state.summarizedTurnCount),
         completeTurn: false,
         actorName: actions[actions.length - 1]?.player
       }).progress
@@ -1512,7 +1529,10 @@ export function validateNarratorSemantics(
   })));
   const actionText = actions.map((action) => action.action).join('\n');
   const hasCheckOutcome = /【检定结果】/.test(actionText);
-  const failedCheck = actionIsFailedCheck(actions);
+  const failedItemCheck = (itemId: string) => {
+    const outcome = itemCheckOutcome(actions, state, itemId, kb);
+    return outcome === 'fail' || outcome === 'fumble';
+  };
   const uncommittedClueIds = inferDiscoveredItems(
     output.narrative,
     [],
@@ -1523,7 +1543,7 @@ export function validateNarratorSemantics(
     if (!hasCheckOutcome) return !proposedClueIds.has(clueId);
     const item = getScenarioDefinition().world.items.find((candidate) => candidate.id === clueId);
     const expectedEventId = item
-      ? failedCheck ? item.discovery.failureEventId : item.discovery.successEventId
+      ? failedItemCheck(clueId) ? item.discovery.failureEventId : item.discovery.successEventId
       : null;
     return expectedEventId
       ? !proposedEvents.some((event) => event.id === expectedEventId)
@@ -1534,7 +1554,7 @@ export function validateNarratorSemantics(
       const item = kb.items[clueId]?.public;
       const scenarioItem = getScenarioDefinition().world.items.find((candidate) => candidate.id === clueId);
       const expectedEventId = hasCheckOutcome && scenarioItem
-        ? failedCheck
+        ? failedItemCheck(clueId)
           ? scenarioItem.discovery.failureEventId
           : scenarioItem.discovery.successEventId
         : null;
@@ -1871,14 +1891,36 @@ export function validateAuthoritativeNarratorSemantics(
   const successfulCheck = actions.some((action) =>
     /【检定结果】[\s\S]*结果[：:]\s*(?:成功|普通成功|困难成功|极难成功|大成功)/.test(action.action)
   );
+  if (failedCheck && successfulCheck) {
+    // A mixed batch can truthfully contain both words. Only reject a sentence
+    // when its named investigator/skill unambiguously identifies the result.
+    for (const sentence of output.narrative.split(/[。；！？\n]/)) {
+      const named = actions.filter((action) => DICE_RESULT_RE.test(action.action) && sentence.includes(action.player));
+      const outcomes = named.filter((action) => {
+        const skill = action.checkResult?.skill ?? /的\s*(.+?)\s*检定/.exec(action.action)?.[1];
+        return named.length === 1 || Boolean(skill && sentence.includes(skill));
+      });
+      if (!outcomes.length) continue;
+      const failed = actionIsFailedCheck(outcomes);
+      const succeeded = outcomes.some((action) => /结果[：:]\s*(?:成功|普通成功|困难成功|极难成功|大成功)/.test(action.action));
+      if (failed && !succeeded && /(?:检定|掷骰)[^，]{0,20}(?:成功|通过)/.test(sentence)) {
+        return '正文不得把前端已经结算的失败检定改写为成功';
+      }
+      if (succeeded && !failed && /(?:检定|掷骰)[^，]{0,20}(?:失败|未通过)/.test(sentence)) {
+        return '正文不得把前端已经结算的成功检定改写为失败';
+      }
+    }
+  }
   if (
     failedCheck
+    && !successfulCheck
     && /(?:检定|掷骰)[^。；！？\n]{0,20}(?:成功|通过)|成功通过[^。；！？\n]{0,12}(?:检定|掷骰)/.test(output.narrative)
   ) {
     return '正文不得把前端已经结算的失败检定改写为成功';
   }
   if (
     successfulCheck
+    && !failedCheck
     && /(?:检定|掷骰)[^。；！？\n]{0,20}(?:失败|未通过)|未能通过[^。；！？\n]{0,12}(?:检定|掷骰)/.test(output.narrative)
   ) {
     return '正文不得把前端已经结算的成功检定改写为失败';

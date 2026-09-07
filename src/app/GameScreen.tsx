@@ -79,6 +79,7 @@ export function GameScreen({ controller, onHome, onRestart }: GameScreenProps) {
         state={state}
         onDeclarationChange={controller.setDeclaration}
         onRoll={controller.handleRoll}
+        onRetry={controller.retryPendingTurn}
         onSubmit={controller.submitAction}
         onSuggestion={controller.applySuggestion}
       />

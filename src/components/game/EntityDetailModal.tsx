@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef } from 'react';
+import { useId, useRef } from 'react';
+import { useDialogFocus } from '../shared/useDialogFocus';
 import { X, Lock } from 'lucide-react';
 import type { EntityDetail } from '../../dm/entityDetail';
 
@@ -8,23 +9,10 @@ interface EntityDetailModalProps {
 }
 
 export function EntityDetailModal({ detail, onClose }: EntityDetailModalProps) {
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
-  useEffect(() => {
-    if (!detail) return;
-    returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    closeRef.current?.focus();
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose();
-    }
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      returnFocusRef.current?.focus();
-    };
-  }, [detail, onClose]);
+  useDialogFocus(Boolean(detail), dialogRef, onClose);
 
   if (!detail) return null;
 
@@ -36,13 +24,14 @@ export function EntityDetailModal({ detail, onClose }: EntityDetailModalProps) {
         className="entity-detail-card"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
+        ref={dialogRef}
+        tabIndex={-1}
       >
         {/* 关闭按钮 */}
         <button
           aria-label="关闭详情"
           className="entity-detail-close"
           onClick={onClose}
-          ref={closeRef}
           title="关闭"
           type="button"
         >

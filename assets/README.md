@@ -35,3 +35,13 @@ assets/
 - 优先使用 `.png` 格式（支持透明通道）
 - 大图压缩后再提交。`scene_main_fog_london.gif` 属于高表现力主视觉资源，不按单纯体积冗余处理；替换时应以美术表现和加载体验共同评估。
 - 原始设计稿（PSD/AI）不需要提交到仓库
+
+## 标题动画的运行时版本
+
+标题页播放 `scenes/scene_main_fog_london.webm`，保留原 GIF 的画面与时长；原 GIF 作为美术源文件保留，不再随网页构建发布。页面隐藏或用户选择减少动态效果时暂停播放。
+
+使用 FFmpeg 可复现编码：
+
+```sh
+ffmpeg -i assets/scenes/scene_main_fog_london.gif -an -c:v libvpx-vp9 -b:v 0 -crf 32 -deadline good -cpu-used 3 -row-mt 1 -threads 4 -pix_fmt yuv420p assets/scenes/scene_main_fog_london.webm
+```

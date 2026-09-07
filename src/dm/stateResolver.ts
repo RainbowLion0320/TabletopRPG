@@ -258,7 +258,7 @@ export function resolveDmTurn(input: ResolveInput): ResolveOutput {
 
   // 处理现有 pendingConsequences：衰减一轮，<=0 的计为本轮触发。
   // 仅输出 triggered id；reducer 负责在存档中迁移 / 移除。
-  if (pendingBefore && pendingBefore.length) {
+  if (pendingBefore && pendingBefore.length && !checks.length) {
     for (const item of pendingBefore) {
       const next = item.remainingTurns - 1;
       if (next <= 0) {

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useRef, useState, useCallback, useEffect } from 'react';
 import { BookOpen, Clock3, GripVertical, Target, X } from 'lucide-react';
 import type { GameState } from '../../types/game';
+import { useDialogFocus } from '../shared/useDialogFocus';
 import { storyData } from '../../data/storyData';
 import { getScenarioDefinition, getScenarioProgressForState, getVisibleScenarioObjectives } from '../../scenario/engine';
 
@@ -93,6 +94,7 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
   useEffect(() => {
     if (drawerRef.current) drawerRef.current.inert = !open;
   }, [open]);
+  useDialogFocus(open, drawerRef, onClose, tabRef);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (!e.touches[0]) return;
@@ -115,6 +117,11 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
         style={{ top: `${tabTop}%` }}
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
+        onClick={(event) => {
+          // Pointer activation is handled by the drag gesture; keyboard and
+          // accessibility activation dispatch a click without a pointer press.
+          if (event.detail === 0) onOpen();
+        }}
         title="资料（可拖拽）"
       >
         <GripVertical size={12} className="drawer-grip" />
@@ -126,6 +133,7 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
         aria-label="资料"
         className={`info-drawer-react fullscreen ${open ? 'open' : ''}`}
         id="game-info-drawer"
+        tabIndex={-1}
         ref={drawerRef}
       >
         <header>
@@ -173,7 +181,7 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
           </section>
         ) : null}
 
-        {activeTab === 'board' ? (
+        {open && activeTab === 'board' ? (
           <Suspense fallback={<p className="empty-note">正在整理案件资料...</p>}>
             <CaseBoard state={state} />
           </Suspense>

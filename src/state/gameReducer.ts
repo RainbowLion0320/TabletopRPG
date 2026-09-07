@@ -31,14 +31,15 @@ export type GameAction =
   | { type: 'start'; players: Investigator[] }
   | { type: 'restore'; state: GameState }
   | { type: 'setThinking'; value: boolean }
+  | { type: 'setPendingDmActions'; actions: CheckContinuationAction[] }
   | { type: 'setDeclaration'; playerId: string; text: string }
   | { type: 'clearDeclarations' }
   | { type: 'advanceActor' }
   | { type: 'appendMessage'; message: Omit<NarrativeMessage, 'id'> }
   | { type: 'appendHistory'; role: 'user' | 'assistant'; content: string }
-  | { type: 'applyAiResponse'; response: AiResponse; raw: string; actorName?: string }
+  | { type: 'applyAiResponse'; response: AiResponse; raw: string; actorName?: string; randomSeed?: number }
   | { type: 'setPendingCheck'; check: CheckRequest | null }
-  | { type: 'applyDiceResult'; result: DiceResult; resultAction?: CheckContinuationAction }
+  | { type: 'applyDiceResult'; result: DiceResult; resultAction?: CheckContinuationAction; randomSeed?: number }
   | { type: 'setSuggestions'; suggestions: string[] }
   | { type: 'addLog'; text: string }
   | { type: 'appendEvents'; events: PersistedDMEvent[] }
@@ -48,6 +49,7 @@ export type GameAction =
       summarizedUntilIndex: number;
       remainingHistory: GameState['conversationHistory'];
       sourceHistoryLength?: number;
+      sourceHistory?: GameState['conversationHistory'];
     }
   | { type: 'appendFacts'; facts: AtomicFact[] }
   | { type: 'updateNpcMindModel'; npcId: string; partial: Partial<NpcMindModel> }
@@ -61,6 +63,16 @@ const scenarioDefinition = getScenarioDefinition();
 const initialMessage = scenarioDefinition.presentation.openingNarrative;
 const ACTION_LOG_LIMIT = 500;
 let messageIdSequence = 0;
+
+// The controller samples once per action. Replaying a reducer action (including
+// React StrictMode and the dice continuation preview) must retain its rewards.
+function scenarioRandom(seed = 0) {
+  let value = Math.floor(seed * 0x100000000) >>> 0;
+  return () => {
+    value = (Math.imul(value, 1664525) + 1013904223) >>> 0;
+    return value / 0x100000000;
+  };
+}
 
 function id() {
   messageIdSequence = (messageIdSequence + 1) % Number.MAX_SAFE_INTEGER;
@@ -181,7 +193,7 @@ function normalizeInvestigator(value: unknown, index: number): Investigator | nu
 
 function normalizeSceneId(value: unknown, fallback: SceneId = 'S01'): SceneId {
   const text = stringValue(value);
-  if (text in storyData.scenes) return text as SceneId;
+  if (Object.prototype.hasOwnProperty.call(storyData.scenes, text)) return text as SceneId;
 
   const byName = Object.values(storyData.scenes).find((scene) => scene.name === text);
   return byName?.id ?? fallback;
@@ -201,10 +213,22 @@ function normalizeCheckActions(value: unknown): CheckContinuationAction[] | unde
     const actionPlayer = stringValue(item.player);
     const actionText = stringValue(item.action);
     if (!actionPlayer || !actionText) return [];
+    const checkResult = isRecord(item.checkResult)
+      && ['success', 'hard', 'crit', 'fail', 'fumble'].includes(String(item.checkResult.outcome))
+      && typeof item.checkResult.skill === 'string'
+      ? {
+          skill: item.checkResult.skill,
+          outcome: item.checkResult.outcome as DiceResult['level'],
+          targetItemIds: Array.isArray(item.checkResult.targetItemIds)
+            ? item.checkResult.targetItemIds.filter((id): id is string => typeof id === 'string' && Object.prototype.hasOwnProperty.call(storyData.items, id))
+            : undefined
+        }
+      : undefined;
     return [{
       player: actionPlayer,
       action: actionText,
-      scene: typeof item.scene === 'string' ? item.scene : undefined
+      scene: typeof item.scene === 'string' ? item.scene : undefined,
+      ...(checkResult ? { checkResult } : {})
     }];
   });
   return actions.length ? actions : undefined;
@@ -474,7 +498,10 @@ const INITIAL_SUGGESTION_SETS = [
 function defaultSuggestionsForPlayers(players: Investigator[]): Record<string, string[]> {
   const out: Record<string, string[]> = {};
   players.forEach((player, index) => {
-    out[player.id] = [...INITIAL_SUGGESTION_SETS[index % INITIAL_SUGGESTION_SETS.length]];
+    const personal = INITIAL_SUGGESTION_SETS[index % INITIAL_SUGGESTION_SETS.length];
+    out[player.id] = index === 0
+      ? [scenarioDefinition.presentation.initialSuggestions[0], ...personal.slice(0, 2)]
+      : [...personal];
   });
   return out;
 }
@@ -1321,6 +1348,7 @@ export function createInitialGameState(players: Investigator[]): GameState {
     isThinking: false,
     longTermMemorySummary: '',
     summarizedUntilIndex: 0,
+    summarizedTurnCount: 0,
     eventLog: [],
     pendingConsequences: [],
     atomicFacts: [],
@@ -1341,6 +1369,7 @@ export function hydrateGameState(value: unknown): GameState {
   const base = createInitialGameState(players);
   const currentScene = normalizePartySceneFromSave(source, players, base.currentScene);
   const rawHistory = normalizeConversationHistory(source.conversationHistory);
+  const summarizedTurnCount = Math.max(0, Math.floor(numberValue(source.summarizedTurnCount, 0)));
   const rawSuggestionsByPlayerId = normalizeSuggestionsByPlayerId(
     source.suggestionsByPlayerId ?? source.suggestions,
     players,
@@ -1359,7 +1388,7 @@ export function hydrateGameState(value: unknown): GameState {
     currentScene,
     clueIds: normalizedClues.map((clue) => clue.id),
     flags: isRecord(source.flags) ? source.flags : {},
-    turn: countCompletedGameTurns(rawHistory)
+    turn: countCompletedGameTurns(rawHistory, summarizedTurnCount)
   });
   const withdrewAutomaticPharmacyMap = currentScene === 'S04'
     && scenarioProgress.clueStates.I07 === 'unknown'
@@ -1415,6 +1444,7 @@ export function hydrateGameState(value: unknown): GameState {
       : 0,
     declarations: normalizeDeclarations(source.declarations, players),
     pendingCheck: (() => {
+      if (scenarioProgress.endingId) return null;
       const check = normalizeCheck(source.pendingCheck, players);
       return restoreAuthoredPendingCheck(check, players, currentScene, scenarioProgress);
     })(),
@@ -1431,6 +1461,8 @@ export function hydrateGameState(value: unknown): GameState {
     suggestions,
     suggestionsByPlayerId,
     isThinking: false,
+    pendingDmActions: scenarioProgress.endingId ? undefined : normalizeCheckActions(source.pendingDmActions),
+    summarizedTurnCount,
     longTermMemorySummary: withdrewAutomaticPharmacyMap
       ? ''
       : typeof source.longTermMemorySummary === 'string' ? source.longTermMemorySummary : '',
@@ -1521,6 +1553,7 @@ function applyScenarioTransition(
     activeNpcId: transition.progress.endingId ? null : state.activeNpcId,
     activeNpcName: transition.progress.endingId ? null : state.activeNpcName,
     pendingCheck: (() => {
+      if (transition.progress.endingId) return null;
       const transitioned = transition.requestedCheck
         ? prepareCheck(transition.requestedCheck, state.players)
         : null;
@@ -1552,6 +1585,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return hydrateGameState(action.state);
     case 'setThinking':
       return { ...state, isThinking: action.value };
+    case 'setPendingDmActions':
+      return { ...state, pendingDmActions: action.actions };
     case 'setDeclaration':
       return { ...state, declarations: { ...state.declarations, [action.playerId]: action.text } };
     case 'clearDeclarations':
@@ -1574,6 +1609,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case 'addLog':
       return addLog(state, action.text);
     case 'applyDiceResult': {
+      if (!state.pendingCheck || state.scenarioProgress?.endingId) return state;
       const pendingCheck = state.pendingCheck
         ? advanceCheckQueue(state.pendingCheck, action.resultAction, state.players)
         : null;
@@ -1584,11 +1620,27 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if (state.pendingCheck?.scenarioCheckId) {
         next = applyScenarioTransition(next, processScenarioTurn(getScenarioProgressForState(state), {
           currentScene: state.currentScene,
-          turn: countCompletedGameTurns(state.conversationHistory),
+          turn: countCompletedGameTurns(state.conversationHistory, state.summarizedTurnCount),
           completeTurn: false,
           actorName: state.pendingCheck.player,
+          random: scenarioRandom(action.randomSeed),
           checkResult: { id: state.pendingCheck.scenarioCheckId, outcome: action.result.level }
         }), state.pendingCheck.player);
+      }
+      // Authored outcomes can request another check (e.g. listen -> persuade).
+      // Carry the original declarations and all rolled results into that check.
+      if (!pendingCheck && next.pendingCheck) {
+        next = {
+          ...next,
+          pendingCheck: {
+            ...next.pendingCheck,
+            continuationActions: state.pendingCheck.continuationActions,
+            resolvedActions: [
+              ...(state.pendingCheck.resolvedActions ?? []),
+              ...(action.resultAction ? [action.resultAction] : [])
+            ]
+          }
+        };
       }
       return next;
     }
@@ -1607,7 +1659,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const decayed: PersistedPendingConsequence[] = [];
       for (const item of prevPending) {
         if (triggeredIds.has(item.id)) continue;
-        decayed.push({ ...item, remainingTurns: Math.max(0, item.remainingTurns - 1) });
+        decayed.push({ ...item, remainingTurns: Math.max(0, item.remainingTurns - (response.check ? 0 : 1)) });
       }
       const merged = [...decayed];
       for (const fresh of scheduledNew) {
@@ -1643,6 +1695,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         suggestions: firstSuggestionListByPlayerOrder(suggestionsByPlayerId, state.players, state.suggestions),
         conversationHistory: [...state.conversationHistory, { role: 'assistant' as const, content: action.raw }],
         isThinking: false,
+        pendingDmActions: undefined,
         currentActorIndex: 0,
         pendingConsequences: merged
       };
@@ -1651,8 +1704,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         currentScene,
         previousScene: sceneChange ? state.currentScene : undefined,
         storyEventIds: response.stateUpdate?.storyEventIds,
-        turn: countCompletedGameTurns(state.conversationHistory),
+        turn: countCompletedGameTurns(state.conversationHistory, state.summarizedTurnCount),
         completeTurn: !response.check,
+        random: scenarioRandom(action.randomSeed),
         actorName: action.actorName ?? state.players[state.currentActorIndex]?.name
       });
       nextState = applyScenarioTransition(
@@ -1716,14 +1770,22 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, eventLog: next };
     }
     case 'consolidateMemory': {
-      const suffix = typeof action.sourceHistoryLength === 'number'
-        && state.conversationHistory.length > action.sourceHistoryLength
-        ? state.conversationHistory.slice(action.sourceHistoryLength)
-        : [];
+      // An older background summary may already have compacted this prefix.
+      // A length alone cannot identify it: reject stale snapshots, preserving
+      // all newer messages and the summary that actually owns this history.
+      if (action.sourceHistory && !action.sourceHistory.every((turn, index) =>
+        turn.role === state.conversationHistory[index]?.role
+        && turn.content === state.conversationHistory[index]?.content
+      )) return state;
+      const sourceLength = action.sourceHistory?.length ?? action.sourceHistoryLength ?? state.conversationHistory.length;
+      const removedLength = Math.max(0, sourceLength - action.remainingHistory.length);
+      const removedTurns = countCompletedGameTurns(state.conversationHistory.slice(0, removedLength));
+      const suffix = state.conversationHistory.slice(sourceLength);
       return {
         ...state,
         longTermMemorySummary: action.summary,
         summarizedUntilIndex: action.summarizedUntilIndex,
+        summarizedTurnCount: (state.summarizedTurnCount ?? 0) + removedTurns,
         conversationHistory: [...action.remainingHistory, ...suffix]
       };
     }

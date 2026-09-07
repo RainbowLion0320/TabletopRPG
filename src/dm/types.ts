@@ -183,7 +183,9 @@ export interface DmTurnInput {
   /** 完整游戏状态（只读） */
   state: GameState;
   /** 本轮玩家行动声明 */
-  actions: Array<{ player: string; action: string; scene?: string }>;
+  actions: import('../types/game').CheckContinuationAction[];
+  /** Optional final recovery pass; default Narrator gets one repair retry. */
+  narratorAttempts?: 1 | 2;
   /** Cancels all foreground and background model calls belonging to this DM turn. */
   signal?: AbortSignal;
 }

@@ -53,7 +53,7 @@ export function deriveWorkingMemory(state: GameState, kb: KnowledgeBase): Workin
   // 已发现物品也保留在 in-scope（用于回顾性叙述）
   ctx.foundItemIds.forEach((id) => inScopeItemIds.add(id));
 
-  const turnCount = countCompletedGameTurns(state.conversationHistory);
+  const turnCount = countCompletedGameTurns(state.conversationHistory, state.summarizedTurnCount);
 
   return {
     turnCount,

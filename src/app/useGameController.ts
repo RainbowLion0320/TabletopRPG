@@ -16,13 +16,14 @@ import { AiProviderConfigError } from '../dm/llm/errors';
 import { runDmTurn } from '../dm/pipeline';
 import type { DmBackgroundUpdate } from '../dm/types';
 import { DmTurnCoordinator } from './dmTurnCoordinator';
+import type { DmSessionTask } from './dmTurnCoordinator';
+import { getApiConfigValidationError } from '../config/aiConfig';
 import {
   DICE_ROLL_DURATION_MS,
   type DiceRollPresentation
 } from './diceRollAnimation';
 
 const AI_DM_TIMEOUT_MS = 180_000;
-const AI_DM_FORMAT_ATTEMPTS = 3;
 
 export function useGameController() {
   const { notify, toast } = useToast();
@@ -36,6 +37,8 @@ export function useGameController() {
   const [diceRoll, setDiceRoll] = useState<DiceRollPresentation | null>(null);
   const dmCoordinatorRef = useRef(new DmTurnCoordinator());
   const diceRollInFlightRef = useRef(false);
+  const foregroundTaskRef = useRef<DmSessionTask | null>(null);
+  const submittedStateRef = useRef<GameState | null>(null);
 
   useEffect(() => () => {
     dmCoordinatorRef.current.invalidate();
@@ -66,8 +69,14 @@ export function useGameController() {
   }, [diceRoll]);
 
   function cancelDiceRoll() {
+    foregroundTaskRef.current = null;
+    submittedStateRef.current = null;
     diceRollInFlightRef.current = false;
     setDiceRoll(null);
+    setDrawerOpen(false);
+    setJournalOpen(false);
+    setSaveManagerOpen(false);
+    setApiOpen(false);
   }
 
   function startGame(players: Investigator[]) {
@@ -86,6 +95,10 @@ export function useGameController() {
   }
 
   function saveCurrentGame() {
+    if (diceRollInFlightRef.current) {
+      notify('请先确认本次掷骰结果，再保存。');
+      return;
+    }
     saveSlots.saveCurrentGame(state);
     setMenuOpen(false);
   }
@@ -120,20 +133,24 @@ export function useGameController() {
   }
 
   function submitAction() {
-    if (!state.players.length || state.pendingCheck || diceRollInFlightRef.current) return;
+    if (!state.players.length || state.pendingCheck || state.pendingDmActions?.length
+      || state.isThinking || foregroundTaskRef.current || state.scenarioProgress?.endingId
+      || diceRollInFlightRef.current || submittedStateRef.current === state) return;
 
     // Players declare sequentially, then the complete party turn is resolved once.
     const actor = state.players[state.currentActorIndex];
     if (!actor) return;
     const declaration = state.declarations[actor.id]?.trim();
     if (!declaration) return;
+    const isLast = state.currentActorIndex >= state.players.length - 1;
+    if (isLast && !requireApiConfig()) return;
+    submittedStateRef.current = state;
 
     dispatch({
       type: 'appendMessage',
       message: { type: 'player', text: declaration, playerName: actor.name }
     });
 
-    const isLast = state.currentActorIndex >= state.players.length - 1;
     if (!isLast) {
       dispatch({ type: 'advanceActor' });
       return;
@@ -141,12 +158,13 @@ export function useGameController() {
 
     // Last actor: aggregate every declaration and run one DM round for the party.
     const actions = buildPlayerActions(state);
-    dispatch({ type: 'appendHistory', role: 'user', content: buildUserMessage(actions) });
+    const historyAction = { type: 'appendHistory' as const, role: 'user' as const, content: buildUserMessage(actions) };
+    dispatch(historyAction);
     dispatch({ type: 'clearDeclarations' });
-    runAi(actions);
+    void runAi(actions, gameReducer(state, historyAction));
   }
 
-  function applyBackgroundUpdate(update: DmBackgroundUpdate, sourceHistoryLength: number) {
+  function applyBackgroundUpdate(update: DmBackgroundUpdate, sourceHistory: GameState['conversationHistory']) {
     const {
       memoryUpdate,
       factsToAppend,
@@ -161,7 +179,7 @@ export function useGameController() {
         summary: memoryUpdate.summary,
         summarizedUntilIndex: memoryUpdate.summarizedUntilIndex,
         remainingHistory: memoryUpdate.remainingHistory,
-        sourceHistoryLength
+        sourceHistory
       });
     }
     if (factsToAppend && factsToAppend.length) {
@@ -183,39 +201,40 @@ export function useGameController() {
     }
   }
 
-  async function runAi(actions: PlayerAction[], turnState: GameState = state) {
+  function requireApiConfig(): ApiConfig | null {
     const config = readApiConfig();
-    if (!config?.apiKey) {
-      dispatch({ type: 'appendMessage', message: { type: 'system', text: '请先在菜单中配置 AI API Key。' } });
+    const validation = config ? getApiConfigValidationError(config) : '请先在菜单中配置 AI API Key。';
+    if (validation) {
+      dispatch({ type: 'appendMessage', message: { type: 'system', text: config ? `请补全 AI DM 配置：${validation}` : validation } });
       setApiOpen(true);
-      return;
+      return null;
     }
+    return config;
+  }
+
+  async function runAi(actions: PlayerAction[], turnState: GameState = state) {
+    if (foregroundTaskRef.current) return;
+    dispatch({ type: 'setPendingDmActions', actions });
+    const config = requireApiConfig();
+    if (!config) return;
     const coordinator = dmCoordinatorRef.current;
     const task = coordinator.begin(AI_DM_TIMEOUT_MS);
+    foregroundTaskRef.current = task;
     try {
       dispatch({ type: 'setThinking', value: true });
-      const sourceHistoryLength = turnState.conversationHistory.length;
-      let turnResult: Awaited<ReturnType<typeof runDmTurn>> | null = null;
-      for (let attempt = 1; attempt <= AI_DM_FORMAT_ATTEMPTS; attempt += 1) {
-        try {
-          turnResult = await runDmTurn(config, {
-            state: turnState,
-            actions,
-            signal: task.controller.signal
-          });
-          break;
-        } catch (error) {
-          const shouldRetry = error instanceof AiResponseFormatError
-            && attempt < AI_DM_FORMAT_ATTEMPTS
-            && coordinator.isCurrent(task);
-          if (!shouldRetry) throw error;
-          if (import.meta.env.DEV) {
-            // eslint-disable-next-line no-console
-            console.warn(`[useGameController] retrying malformed DM turn (${attempt + 1}/${AI_DM_FORMAT_ATTEMPTS})`);
-          }
-        }
+      // Keep automatic recovery, but cap the fallback to one fresh attempt
+      // instead of nesting three full two-attempt Narrator runs.
+      let turnResult: Awaited<ReturnType<typeof runDmTurn>>;
+      try {
+        turnResult = await coordinator.waitFor(task, runDmTurn(config, {
+          state: turnState, actions, signal: task.controller.signal
+        }));
+      } catch (error) {
+        if (!(error instanceof AiResponseFormatError) || !coordinator.isCurrent(task)) throw error;
+        turnResult = await coordinator.waitFor(task, runDmTurn(config, {
+          state: turnState, actions, signal: task.controller.signal, narratorAttempts: 1
+        }));
       }
-      if (!turnResult) throw new AiResponseFormatError('DM 引擎连续返回无效格式');
       const {
         raw,
         legacyResponse,
@@ -242,6 +261,7 @@ export function useGameController() {
         type: 'applyAiResponse',
         response: prepared,
         raw,
+        randomSeed: Math.random(),
         actorName: actorName
           ?? actions[actions.length - 1]?.player
           ?? turnState.players[turnState.currentActorIndex]?.name
@@ -253,7 +273,7 @@ export function useGameController() {
         void coordinator.enqueue(
           task,
           backgroundUpdate,
-          (update) => applyBackgroundUpdate(update, sourceHistoryLength),
+          (update) => applyBackgroundUpdate(update, turnState.conversationHistory),
           (error) => {
             if (import.meta.env.DEV) {
               // eslint-disable-next-line no-console
@@ -268,6 +288,10 @@ export function useGameController() {
         coordinator.finish(task);
       }
     } catch (error) {
+      if (!coordinator.isSessionCurrent(task)) {
+        coordinator.finish(task);
+        return;
+      }
       if (task.timedOut) {
         coordinator.finish(task);
         dispatch({ type: 'setThinking', value: false });
@@ -298,11 +322,19 @@ export function useGameController() {
         type: 'appendMessage',
         message: { type: 'system', text: `${prefix}：${error instanceof Error ? error.message : String(error)}` }
       });
+    } finally {
+      if (foregroundTaskRef.current === task) foregroundTaskRef.current = null;
     }
   }
 
+  function retryPendingTurn() {
+    if (!state.pendingDmActions?.length || state.isThinking || state.pendingCheck
+      || state.scenarioProgress?.endingId) return;
+    void runAi(state.pendingDmActions);
+  }
+
   function handleRoll() {
-    if (!state.pendingCheck || diceRollInFlightRef.current) return;
+    if (!state.pendingCheck || state.isThinking || state.scenarioProgress?.endingId || diceRollInFlightRef.current) return;
     const check = state.pendingCheck;
     const result = rollD100(check);
     diceRollInFlightRef.current = true;
@@ -318,8 +350,9 @@ export function useGameController() {
     if (!diceRoll || diceRoll.phase !== 'revealed' || !diceRollInFlightRef.current) return;
     const { check, result } = diceRoll;
     const checkMessage = buildDiceResultMessage(check, result);
-    const resultAction = buildDiceResultAction(state, check, checkMessage);
-    const rolledState = gameReducer(state, { type: 'applyDiceResult', result, resultAction });
+    const resultAction = buildDiceResultAction(state, check, checkMessage, result);
+    const diceAction = { type: 'applyDiceResult' as const, result, resultAction, randomSeed: Math.random() };
+    const rolledState = gameReducer(state, diceAction);
     const continuationState = gameReducer(rolledState, {
       type: 'appendHistory',
       role: 'user',
@@ -327,10 +360,10 @@ export function useGameController() {
     });
     diceRollInFlightRef.current = false;
     setDiceRoll(null);
-    dispatch({ type: 'applyDiceResult', result, resultAction });
+    dispatch(diceAction);
     dispatch({ type: 'appendHistory', role: 'user', content: checkMessage });
     if (rolledState.pendingCheck || rolledState.scenarioProgress?.endingId) return;
-    runAi([
+    void runAi([
       ...(check.continuationActions ?? []),
       ...(check.resolvedActions ?? []),
       resultAction
@@ -342,13 +375,12 @@ export function useGameController() {
     if (playerId) dispatch({ type: 'setDeclaration', playerId, text });
   }
 
-  function saveApi(config: ApiConfig) {
+  async function saveApi(config: ApiConfig) {
+    const envWritten = await persistApiConfig(config);
     setApiOpen(false);
-    void persistApiConfig(config).then((envWritten) => {
-      notify(envWritten
-        ? 'AI 设置已保存并写入 .env.local，下次启动自动生效'
-        : 'AI 设置已保存至本地浏览器（环境变量未同步）');
-    });
+    notify(envWritten
+      ? 'AI 设置已保存，下次启动自动生效'
+      : 'AI 设置已保存至本地浏览器');
   }
 
   function returnHome() {
@@ -402,6 +434,7 @@ export function useGameController() {
     openSaveManager,
     refreshSaves: saveSlots.refreshSaves,
     restartSetup,
+    retryPendingTurn,
     returnHome,
     saveApi,
     saveCurrentGame,

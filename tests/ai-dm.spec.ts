@@ -163,6 +163,40 @@ test('AI DM recovers an exhausted malformed turn without duplicating player hist
   expect(historyRoles).toEqual(['user', 'assistant']);
 });
 
+test('an exhausted turn can be saved, loaded and retried without duplicating declarations', async ({ page }) => {
+  let attempts = 0;
+  await page.route('https://api.openai.com/v1/responses', async (route) => {
+    const body = route.request().postDataJSON() as { instructions?: string };
+    const narrator = body.instructions?.includes('COC 第七版 AI DM Agent');
+    if (narrator) attempts++;
+    const content = narrator
+      ? attempts <= 3 ? '{"narrative":"truncated' : JSON.stringify({
+        narrative: 'The saved turn resumes with both declarations intact.',
+        activeNpc: '伊莎贝拉·摩勒', nextPrompt: 'Continue.',
+        playerChoices: { '亨利·格雷': ['Inspect the desk'], '艾达·华莱士': ['Watch the hallway'] }
+      })
+      : JSON.stringify({ facts: [], nodes: [], edges: [] });
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(responseBody(content)) });
+  });
+  await startGameWithApi(page);
+  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the study.');
+  await page.getByRole('button', { name: '下一位' }).click();
+  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the hallway.');
+  await page.getByRole('button', { name: '提交' }).click();
+  await expect(page.getByRole('button', { name: '重试本轮' })).toBeVisible();
+  expect(attempts).toBe(3);
+  await page.getByRole('button', { name: /菜单/ }).click();
+  await page.getByRole('button', { name: /保存游戏/ }).click();
+  await page.getByRole('button', { name: /菜单/ }).click();
+  await page.getByRole('button', { name: /返回首页/ }).click();
+  await page.getByRole('button', { name: /继续游戏/ }).click();
+  await page.getByRole('button', { name: '重试本轮' }).click();
+  await expect(page.getByText('The saved turn resumes with both declarations intact.')).toBeVisible();
+  await expect(page.locator('.story-message.player')).toHaveCount(2);
+  await expect(page.getByRole('button', { name: '重试本轮' })).toHaveCount(0);
+  expect(attempts).toBe(4);
+});
+
 test('AI DM repairs unescaped dialogue quotes locally without interrupting the turn', async ({ page }) => {
   const malformed = '{"narrative":"伊莎贝拉说父亲总提到"水里的东西"，随后沉默下来。","activeNpc":"伊莎贝拉·摩勒","nextPrompt":"继续追问吗？","playerChoices":{"亨利·格雷":["追问细节"],"艾达·华莱士":["观察她的反应"]}}';
   let narratorAttempts = 0;

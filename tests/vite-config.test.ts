@@ -1,7 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { AI_ENV_KEYS, mergeEnvValues } from '../vite.config';
+import { AI_ENV_KEYS, isLocalConfigRequest, mergeEnvValues, updateEnvLocalContent } from '../vite.config';
 
 describe('Vite AI env writer helpers', () => {
+  it('rejects cross-origin and simple form requests to the local configuration writer', () => {
+    expect(isLocalConfigRequest({ 'content-type': 'text/plain', host: '127.0.0.1:5273' })).toBe(false);
+    expect(isLocalConfigRequest({ 'content-type': 'application/json', host: '127.0.0.1:5273', origin: 'https://example.com' })).toBe(false);
+    expect(isLocalConfigRequest({ 'content-type': 'application/json', host: '127.0.0.1:5273', origin: 'http://127.0.0.1:5273' })).toBe(true);
+    expect(isLocalConfigRequest({ 'content-type': 'application/json', 'sec-fetch-site': 'cross-site' })).toBe(false);
+  });
+
+  it('preserves unrelated comments and quoted values when replacing managed settings', () => {
+    const existing = '# Keep this comment\nOTHER="contains # hash"\nVITE_AI_MODEL=old\n';
+    expect(updateEnvLocalContent(existing, { VITE_AI_MODEL: 'new', VITE_AI_API_KEY: 'sk-$literal#key' }))
+      .toBe('# Keep this comment\nOTHER="contains # hash"\nVITE_AI_API_KEY="sk-\\$literal#key"\nVITE_AI_MODEL="new"\n');
+    expect(() => updateEnvLocalContent(existing, { VITE_AI_MODEL: 'new\nINJECTED=true' })).toThrow(/single-line/);
+  });
   it('manages the complete AI provider config key set', () => {
     expect(AI_ENV_KEYS).toEqual([
       'VITE_AI_PROVIDER',

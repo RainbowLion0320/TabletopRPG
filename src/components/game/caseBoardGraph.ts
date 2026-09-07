@@ -134,7 +134,7 @@ function deriveThreads(nodes: CaseBoardDisplayNode[], edges: CaseBoardDisplayEdg
 
 export function buildCaseBoardGraphModel(state: GameState): CaseBoardGraphModel {
   const visible = getVisibleCaseBoard(caseBoard, state);
-  const currentTurn = countCompletedGameTurns(state.conversationHistory);
+  const currentTurn = countCompletedGameTurns(state.conversationHistory, state.summarizedTurnCount);
   const activeInsights = (state.caseBoard?.insights ?? []).filter((insight) => insight.status === 'active');
   const insightCount = new Map<string, number>();
   const latestInsightTurn = new Map<string, number>();

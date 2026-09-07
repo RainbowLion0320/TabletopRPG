@@ -15,6 +15,7 @@ import type { GameState, SceneId } from '../types/game';
 import type { ClassifiedIntent } from './intentClassifier';
 import type { KnowledgeBase, DmToolCall, DmToolName } from './types';
 import { validateToolCallShape } from './tools';
+import { itemCheckOutcome } from './turnGuards';
 import {
   getAvailableSceneExits,
   getAvailableStoryEvents,
@@ -36,7 +37,7 @@ export interface DirectorResult {
 export interface DirectorContext {
   state: GameState;
   kb: KnowledgeBase;
-  actions?: Array<{ action: string }>;
+  actions?: Array<{ action: string; player?: string; checkResult?: import('../types/game').CheckContinuationAction['checkResult'] }>;
   scenarioProgressForSceneValidation?: GameState['scenarioProgress'];
 }
 
@@ -174,22 +175,17 @@ function validateStoryEvent(call: DmToolCall, ctx: DirectorContext): SemanticRes
   if (!allowed.some((event) => event.id === eventId)) {
     return { ok: false, reason: `剧情事件 ${eventId} 不属于当前活动节点或条件尚未满足` };
   }
-  const actionText = ctx.actions?.map((action) => action.action).join('\n') ?? '';
-  const failed = /【检定结果】[\s\S]*结果[：:]\s*(?:失败|大失败)/.test(actionText);
-  const succeeded = /【检定结果】[\s\S]*结果[：:]\s*(?:成功|普通成功|困难成功|极难成功|大成功)/.test(actionText);
-  if (failed || succeeded) {
-    const mismatchedItem = getScenarioDefinition().world.items.find((item) =>
-      failed
-        ? item.discovery.successEventId === eventId && item.discovery.failureEventId !== eventId
-        : item.discovery.failureEventId === eventId && item.discovery.successEventId !== eventId
-    );
-    if (mismatchedItem) {
-      const expectedEventId = failed
-        ? mismatchedItem.discovery.failureEventId
-        : mismatchedItem.discovery.successEventId;
+  const actions = (ctx.actions ?? []).map((action) => ({ ...action, player: action.player ?? '' }));
+  for (const item of getScenarioDefinition().world.items) {
+    if (![item.discovery.successEventId, item.discovery.failureEventId].includes(eventId)) continue;
+    const outcome = itemCheckOutcome(actions, ctx.state, item.id, ctx.kb);
+    if (!outcome) continue;
+    const failed = outcome === 'fail' || outcome === 'fumble';
+    const expectedEventId = failed ? item.discovery.failureEventId : item.discovery.successEventId;
+    if (eventId !== expectedEventId) {
       return {
         ok: false,
-        reason: `${eventId} 与本轮${failed ? '失败' : '成功'}检定不符；${mismatchedItem.id} 应结算 ${expectedEventId}`
+        reason: `${eventId} 与本轮${failed ? '失败' : '成功'}检定不符；${item.id} 应结算 ${expectedEventId}`
       };
     }
   }

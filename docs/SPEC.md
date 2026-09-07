@@ -1,7 +1,7 @@
 # TabletopRPG Technical Spec
 
 > Version: v0.7
-> Updated: 2026-07-11
+> Updated: 2026-09-07
 > Scope: current React/Vite implementation
 
 ## 1. Runtime Stack
@@ -91,6 +91,8 @@ type Screen = 'title' | 'setup' | 'game';
   suggestions,
   isThinking,
   longTermMemorySummary,
+  summarizedTurnCount, // formal rounds removed by accepted summary compaction
+  pendingDmActions, // resumable actions and locally confirmed roll metadata
   eventLog,
   atomicFacts,
   npcMindModels,
@@ -137,6 +139,10 @@ Current formulas:
 
 Current UI loads the latest valid save from the title/menu shortcuts. Save Manager lists valid slots, loads a selected slot, and deletes a selected slot.
 
+Save ids are monotonic, including saves in the same millisecond. Storage failures surface to the player. An unfinished AI response persists its actions and confirmed dice metadata in `pendingDmActions`; loading enables manual retry without another declaration or roll. Saving is blocked during an unconfirmed dice animation/result. Optional `summarizedTurnCount` preserves formal round numbering across compaction; older saves default it to zero without fabricating missing history.
+
+AI settings persist to browser storage first. Development can additionally write managed keys to `.env.local`, preserving unrelated comments and quoting. The local writer accepts same-origin JSON with validated single-line values and a 16 KB limit. App-managed env writes do not reload the current game; other browsers pick them up after the next server start.
+
 Save payload version `8` records `moduleId`, `moduleVersion`, `contentHash`, and authoritative `ScenarioProgress`. v1-v7 saves migrate deterministically from scene, clues, flags, and event history; S04/S05 migrations never replay entry SAN, encounters, or rewards. A content hash mismatch without a module migration is rejected. v7 case-board migration remains deterministic and does not call a model.
 
 ## 8. AI DM Contract
@@ -182,7 +188,7 @@ Checks and state changes are not fields in Narrator JSON. Narrator proposes them
 2. Narrator first performs strict `JSON.parse`, validates required fields, and parses provider-native tool calls before Director sees the result.
 3. Syntax failures are passed through the deterministic `jsonrepair` parser locally. Locally repaired output is accepted only when all Narrator contract fields are present, so truncated JSON cannot be promoted into player-visible narrative.
 4. If local repair cannot produce a complete contract, the frontend sends one repair prompt to the same provider with the invalid output and diagnostic message.
-5. The retry response goes through the same strict/local pipeline. If it is still invalid, raw output is blocked and a system error is shown. Raw malformed JSON/Markdown must never be appended as player-visible DM narrative.
+5. The retry response goes through the same strict/local pipeline. A format failure permits one final fresh pipeline attempt with `narratorAttempts: 1` (at most three normal Narrator attempts overall, excluding tool lookups or protocol capability negotiation). Persistent failure retains the round and offers manual retry. Raw malformed JSON/Markdown must never be appended as player-visible DM narrative.
 
 ### Narrative Markup And Safe Details
 
@@ -206,6 +212,9 @@ Checks and state changes are not fields in Narrator JSON. Narrator proposes them
 5. Every LLM request receives the turn's `AbortSignal`. A 180-second task timer is cleared on completion.
 6. New game, restart, save load, return home, component unmount, or timeout invalidates the session, aborts active fetches, and prevents stale foreground or background writes.
 7. Background failures are soft failures and do not retract a valid Narrator result. Invalid or empty Summarizer JSON is discarded rather than stored as long-term memory.
+8. Aborting also settles coordinator waits when a provider ignores its signal, so an obsolete background promise cannot block later updates forever. Summary compaction is accepted only while its exact source history remains a prefix; removed formal rounds accumulate in `summarizedTurnCount`.
+9. The pending player turn is omitted from prompt history because the action payload already contains it. Check preludes do not decay intents/consequences or run cognition; final settlement advances them once. Background case-board context projects newly unlocked authored clues and flags.
+10. Reducer actions receive one `randomSeed` from the controller. Authored random rewards reuse it during React replay and dice continuation projection. SAN checks read current sanity, attributes resolve by Chinese/English name, and skill punctuation/whitespace is normalized.
 
 ### Freedom and Tolerance Rules
 
@@ -324,7 +333,7 @@ Dice presentation rules:
 | S04 | 卡森其药店 |
 | S05 | 泰晤士港 |
 
-Story data also includes 6 NPC entries and 8 item entries. Assets are imported directly by Vite from `assets/`.
+Story data also includes 5 NPC entries and 8 item entries. Assets are imported directly by Vite from `assets/`. The title uses a 458 KB VP9/WebM conversion of the original 50.45 MB GIF; playback pauses on hidden pages and reduced-motion preference. The case board loads only when opened. Dialogs contain keyboard focus, support Escape, and restore their opener.
 
 ## 11. Known Technical Limits
 

@@ -1,9 +1,32 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ActionDock } from '../../src/components/game/ActionDock';
 import { makeInvestigator, makeState } from '../dm/fixtures';
 
 describe('ActionDock player-specific suggestions', () => {
+  it('does not submit when Enter confirms Chinese IME input or repeats a held key', () => {
+    const state = makeState();
+    state.declarations[state.players[0].id] = '询问情况';
+    const onSubmit = vi.fn();
+    render(<ActionDock isDiceRolling={false} state={state} onDeclarationChange={vi.fn()} onSubmit={onSubmit} onRoll={vi.fn()} onSuggestion={vi.fn()} />);
+    const input = screen.getByRole('textbox');
+    fireEvent.keyDown(input, { key: 'Enter', isComposing: true });
+    fireEvent.keyDown(input, { key: 'Enter', keyCode: 229 });
+    fireEvent.keyDown(input, { key: 'Enter', repeat: true });
+    expect(onSubmit).not.toHaveBeenCalled();
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onSubmit).toHaveBeenCalledOnce();
+  });
+
+  it('offers retry for preserved actions and prevents another round from overwriting them', () => {
+    const state = makeState();
+    state.pendingDmActions = [{ player: state.players[0].name, action: '询问情况' }];
+    const retry = vi.fn();
+    render(<ActionDock isDiceRolling={false} state={state} onDeclarationChange={vi.fn()} onSubmit={vi.fn()} onRoll={vi.fn()} onSuggestion={vi.fn()} onRetry={retry} />);
+    expect(screen.getByRole('textbox')).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: '重试本轮' }));
+    expect(retry).toHaveBeenCalledOnce();
+  });
   it('shows suggestions for the current actor only', () => {
     const henry = makeInvestigator({ id: 'p-henry', name: '亨利' });
     const ada = makeInvestigator({ id: 'p-ada', name: '艾达' });

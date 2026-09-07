@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { enqueueCheck, rollD100 } from '../../src/services/dice';
+import { enqueueCheck, getSkillTotal, prepareCheck, rollD100 } from '../../src/services/dice';
 import type { CheckRequest } from '../../src/types/game';
 import { makeInvestigator } from '../dm/fixtures';
 
@@ -8,6 +8,18 @@ afterEach(() => {
 });
 
 describe('D100 authored check queues', () => {
+  it('uses current sanity, actual attributes and normalized skill punctuation', () => {
+    const player = makeInvestigator({ name: '亨利', currentSan: 31 }, { '格斗（拳）': 65 });
+    player.attrs.STR = 70;
+    expect(getSkillTotal(player, 'SAN')).toBe(31);
+    expect(getSkillTotal(player, '理智')).toBe(31);
+    expect(getSkillTotal(player, '力量')).toBe(70);
+    expect(getSkillTotal(player, ' str ')).toBe(70);
+    expect(getSkillTotal(player, '格斗 (拳)')).toBe(65);
+    const check = prepareCheck({ skill: '力量', player: '不存在', difficulty: '困难' }, [player]);
+    expect(check.player).toBe(player.name);
+    expect(check.threshold).toBe(35);
+  });
   it('keeps the same authored check id when different investigators own separate rolls', () => {
     const players = [
       makeInvestigator({ name: '亨利' }, { '格斗（拳）': 55 }),
