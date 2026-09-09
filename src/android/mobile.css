@@ -65,11 +65,13 @@ html.android-app, .android-app body, .android-app #root { width: 100%; height: 1
 .android-app .preset-skill-list { gap: 4px; }
 .android-app .preset-skill-list span { flex-shrink: 1; font-size: 11px; padding: 3px 5px; }
 
-/* NPC stage above the reading area; actions stay within thumb reach at the bottom. */
-.android-app .game-screen { --game-top: calc(48px + var(--mobile-top)); --npc-height: 0px; --game-bottom: max(10px, env(safe-area-inset-bottom, 0px)); height: var(--mobile-height); min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: var(--game-top) var(--npc-height) minmax(0, 1fr) auto; padding: 0 var(--mobile-right) var(--game-bottom) var(--mobile-left); }
-.android-app .game-screen:has(.scene-npc) { --npc-height: clamp(112px, 22dvh, 230px); }
-.android-app .scene-stage { height: 100%; }
-.android-app .scene-npc { top: var(--game-top); bottom: auto; left: var(--mobile-left); right: auto; width: calc(100% - var(--mobile-left) - var(--mobile-right)); height: var(--npc-height); max-height: none; object-fit: contain; object-position: center bottom; transform: none; opacity: 1; filter: saturate(.9) brightness(.96) drop-shadow(0 8px 20px rgba(0,0,0,.55)); -webkit-mask-image: linear-gradient(#000 86%, transparent); mask-image: linear-gradient(#000 86%, transparent); }
+/* All current scene paintings are 1896 × 1080. Reserve their own wide frame
+   instead of cropping them to fill the portrait screen behind the reading UI. */
+.android-app .game-screen { --game-top: calc(48px + var(--mobile-top)); --scene-height: min(calc(100vw * 1080 / 1896), calc(50dvh - var(--game-top))); --game-bottom: max(10px, env(safe-area-inset-bottom, 0px)); height: var(--mobile-height); min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: var(--game-top) var(--scene-height) minmax(0, 1fr) auto; padding: 0 var(--mobile-right) var(--game-bottom) var(--mobile-left); }
+.android-app .scene-stage { position: relative; grid-column: 1; grid-row: 2; top: auto; left: calc(0px - var(--mobile-left)); right: auto; width: calc(100% + var(--mobile-left) + var(--mobile-right)); height: 100%; min-height: 0; overflow: hidden; isolation: isolate; }
+.android-app .scene-backdrop-img { object-fit: contain; object-position: center; filter: saturate(.85) brightness(.86); }
+.android-app .scene-shade { background: linear-gradient(to bottom, rgba(5,5,5,.08), transparent 45%, rgba(5,5,5,.4)); }
+.android-app .scene-npc { top: auto; bottom: 0; left: var(--mobile-left); right: auto; width: calc(100% - var(--mobile-left) - var(--mobile-right)); height: calc(100% - 8px); max-height: none; object-fit: contain; object-position: center bottom; transform: none; opacity: 1; filter: saturate(.9) brightness(.96) drop-shadow(0 8px 20px rgba(0,0,0,.55)); -webkit-mask-image: linear-gradient(#000 86%, transparent); mask-image: linear-gradient(#000 86%, transparent); }
 .android-app .game-top { padding: var(--mobile-top) var(--mobile-right) 0 var(--mobile-left); align-items: center; }
 .android-app .brand-block { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; gap: 3px 8px; max-width: calc(100% - 100px); min-width: 0; }
 .android-app .brand-title { grid-column: 1 / -1; font-size: 14px; line-height: 1.3; }
@@ -81,7 +83,7 @@ html.android-app, .android-app body, .android-app #root { width: 100%; height: 1
 .android-app .drawer-tab span, .android-app .drawer-tab .drawer-grip { display: none; }
 .android-app .narrative-panel { position: relative; grid-column: 1; grid-row: 3; inset: auto; min-width: 0; min-height: 0; max-height: none; height: 100%; padding: 0 8px 6px; overflow-x: hidden; overscroll-behavior: contain; scroll-padding-top: 40px; }
 .android-app .narrative-panel.expanded { position: relative; grid-row: 1 / 4; inset: auto; max-height: none; z-index: 24; padding-top: var(--mobile-top); border-radius: 10px 10px 0 0; }
-.android-app .game-screen:has(.narrative-panel.expanded) .scene-npc { visibility: hidden; }
+.android-app .game-screen:has(.narrative-panel.expanded) .scene-stage { visibility: hidden; }
 .android-app .narrative-header { padding: 0; min-height: 32px; }
 .android-app .narrative-toggle-btn { width: 44px; height: 32px; flex-shrink: 0; }
 .android-app .narrative-panel .npc-nameplate { min-height: 32px; padding: 0 8px; font-size: 11px; background: transparent; border: 0; text-align: left; }
@@ -236,7 +238,8 @@ html.android-app, .android-app body, .android-app #root { width: 100%; height: 1
    Width, not CSS orientation, controls columns: an IME can make a portrait
    window wider than it is tall without rotating the device. */
 @media (max-height: 500px) {
-  .android-app .game-screen:has(.scene-npc) { --npc-height: 0px; }
+  .android-app .game-screen { --scene-height: 0px; }
+  .android-app .scene-stage { visibility: hidden; }
   .android-app .scene-npc { visibility: hidden; }
   .android-app .game-screen:has(.dock-input:focus) .suggestion-row { display: none; }
   .android-app .entity-detail-card:has(.entity-detail-portrait-wrap) { grid-template-rows: minmax(0, 1fr); }

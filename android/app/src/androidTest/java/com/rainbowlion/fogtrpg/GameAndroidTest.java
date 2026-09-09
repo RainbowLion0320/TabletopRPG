@@ -147,15 +147,17 @@ public class GameAndroidTest {
                     assertEquals("All four status cards fit without horizontal scrolling", "true", js("document.querySelector('.party-strip-compact').scrollWidth<=document.querySelector('.party-strip-compact').clientWidth+1"));
                     viewport(320, 568);
                     assertEquals("Smallest four-player HUD keeps every value inside its card", "true", js("Array.from(document.querySelectorAll('.party-compact,.party-strip-compact')).every(e=>e.scrollWidth<=e.clientWidth+1)"));
-                    assertEquals("Smallest four-player reading area remains usable", "true", js("document.querySelector('.narrative-panel').clientHeight>=180"));
+                    assertEquals("Smallest four-player reading area remains usable", "true", js("document.querySelector('.narrative-panel').clientHeight>=140"));
                     screenshot("portrait-320x568-four-game");
                     viewport(size[0], size[1]);
                 }
-                assertEquals("Reading area keeps at least 180 CSS pixels", "true", js("document.querySelector('.narrative-panel').clientHeight>=180"));
+                assertEquals("Reading area keeps at least 140 CSS pixels", "true", js("document.querySelector('.narrative-panel').clientHeight>=140"));
                 until("document.querySelector('.scene-npc').complete && document.querySelector('.scene-npc').naturalWidth>0");
                 assertEquals("NPC has its own visible stage above both panels", "true", js("(()=>{const n=document.querySelector('.scene-npc').getBoundingClientRect(),p=document.querySelector('.narrative-panel').getBoundingClientRect(),d=document.querySelector('.action-dock').getBoundingClientRect();return n.width>innerWidth*.9&&n.height>=110&&n.left>=0&&n.top>=44&&n.bottom<=p.top+.5&&d.top>=p.bottom-.5&&d.left===p.left&&d.right===p.right&&d.bottom<=innerHeight-8})()"));
-                // Scenes without a portrait reclaim the reserved stage, then restore this scene.
-                assertEquals("No empty stage when an NPC is absent", "true", js("(()=>{const n=document.querySelector('.scene-npc'),parent=n.parentNode;n.remove();try{return document.querySelector('.narrative-panel').getBoundingClientRect().top<80}finally{parent.appendChild(n)}})()"));
+                until("document.querySelector('.scene-backdrop-img').complete && document.querySelector('.scene-backdrop-img').naturalWidth>0");
+                assertEquals("Whole scene fits a full-width upper frame without stretching or cropping", "true", js("(()=>{const i=document.querySelector('.scene-backdrop-img'),b=i.getBoundingClientRect(),p=document.querySelector('.narrative-panel').getBoundingClientRect();return getComputedStyle(i).objectFit==='contain'&&Math.abs(b.width/b.height-i.naturalWidth/i.naturalHeight)<.01&&b.left===0&&Math.abs(b.width-innerWidth)<1&&b.top>=44&&b.bottom<=innerHeight*.5+.5&&b.bottom<=p.top+.5})()"));
+                // Keep the background visible in scenes with no NPC.
+                assertEquals("Scene framing is independent of NPC presence", "true", js("(()=>{const n=document.querySelector('.scene-npc'),parent=n.parentNode,p=document.querySelector('.narrative-panel'),top=p.getBoundingClientRect().top;n.remove();try{return p.getBoundingClientRect().top===top&&document.querySelector('.scene-backdrop-img').getBoundingClientRect().height>100}finally{parent.appendChild(n)}})()"));
                 screenshot(prefix + "-game");
                 js("document.querySelector('.narrative-toggle-btn').click()"); reachable(".narrative-toggle-btn");
                 assertEquals("Expanded reading reclaims the stage and keeps the dock aligned", "true", js("(()=>{const p=document.querySelector('.narrative-panel').getBoundingClientRect(),d=document.querySelector('.action-dock').getBoundingClientRect();return p.top<10&&p.width>innerWidth*.9&&p.left===d.left&&p.right===d.right})()"));
@@ -184,7 +186,7 @@ public class GameAndroidTest {
                 reachable(".save-slot-card:last-child .danger"); screenshot(prefix + "-saves"); click("关闭");
                 menu("KP 笔记"); reachable(".dm-journal-card footer button"); click("关闭");
                 viewport(size[0], 300); fill(".dock-input", "输入法占位后仍可完成输入。");
-                assertEquals("Keyboard space prioritizes reading and input", "true", js("document.querySelector('.narrative-panel').getBoundingClientRect().width>innerWidth*.9 && getComputedStyle(document.querySelector('.scene-npc')).visibility==='hidden'"));
+                assertEquals("Keyboard space prioritizes reading and input", "true", js("document.querySelector('.narrative-panel').getBoundingClientRect().width>innerWidth*.9 && getComputedStyle(document.querySelector('.scene-stage')).visibility==='hidden' && document.querySelector('.scene-stage').getBoundingClientRect().height===0"));
                 reachable(".dock-input"); reachable(".dock-submit"); screenshot(prefix + "-keyboard");
                 // The API form must also keep the focused field and Save usable above an IME.
                 viewport(size[0], size[1]); menu("AI 设置"); viewport(size[0], 300);
