@@ -6,12 +6,14 @@ import { TitleScreen } from '../components/setup/TitleScreen';
 import type { Investigator } from '../types/game';
 import { GameScreen } from './GameScreen';
 import { useGameController } from './useGameController';
+import { usePortraitLayout } from '../platform/layout';
 
 type Screen = 'title' | 'setup' | 'game';
 
 export function App() {
   const [screen, setScreen] = useState<Screen>('title');
   const game = useGameController();
+  const portrait = usePortraitLayout();
 
   function startGame(players: Investigator[]) {
     game.startGame(players);
@@ -35,7 +37,8 @@ export function App() {
         />
         <ApiConfigModal open={game.apiOpen} onClose={() => game.setApiOpen(false)} onSave={game.saveApi} />
         {game.toast ? <div className="toast" role="status">{game.toast}</div> : null}
-      </> : screen === 'setup' ? <CharacterSetup onBack={() => setScreen('title')} onStart={startGame} /> : <GameScreen
+      </> : screen === 'setup' ? <CharacterSetup portrait={portrait} onBack={() => setScreen('title')} onStart={startGame} /> : <GameScreen
+        autoFocusInput={!portrait}
         controller={game}
         onHome={() => setScreen('title')}
         onRestart={() => setScreen('setup')}

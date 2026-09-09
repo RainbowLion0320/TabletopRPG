@@ -24,7 +24,7 @@ updated: 2026-09-09
 
 ## 当前架构结构
 
-Android 客户端增加 Capacitor 8 / Java 原生容器、独立 Vite 入口、Keystore 加密存储和 OkHttp 传输；共享游戏核心的网页默认行为保持不变。详见 [[concepts/android_app]]。
+Android 客户端增加 Capacitor 8 / Java 原生容器、独立 Vite 入口、Keystore 加密存储和 OkHttp 传输；共享游戏核心的网页存储/网络默认行为保持不变；0.4.0 在当前分支的网页入口和 APK 共享 [[concepts/game_ui]] 主题及手机布局。详见 [[concepts/android_app]]。
 
 ```
 src/

@@ -94,7 +94,7 @@ export function CharacterSetup({ onBack, onStart, portrait = false }: CharacterS
               tabIndex={0}
               aria-pressed={selected}
             >
-              <span className="preset-select-mark">{selected ? '已选' : '选择'}</span>
+              <span className="preset-select-mark">{selected && <Check size={10} aria-hidden="true" />}{selected ? '已选' : '选择'}</span>
               <div className="preset-portrait-frame">
                 <img src={preset.portrait} alt={`${preset.name} 立绘`} />
               </div>

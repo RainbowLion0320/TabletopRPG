@@ -1,0 +1,280 @@
+/* Shared phone layout for Android and mobile web. Root specificity covers portals.
+   Use available CSS viewport space, never physical device pixels or page zoom. */
+html.portrait-ui {
+  --mobile-left: max(10px, env(safe-area-inset-left, 0px));
+  --mobile-right: max(10px, env(safe-area-inset-right, 0px));
+  --mobile-top: max(6px, env(safe-area-inset-top, 0px));
+  --mobile-bottom: max(6px, env(safe-area-inset-bottom, 0px));
+  --mobile-height: 100dvh;
+  --mobile-dialog-height: calc(var(--mobile-height) - var(--mobile-top) - var(--mobile-bottom));
+  font-size: 14px; -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; overscroll-behavior: none; }
+.portrait-ui button, .portrait-ui input, .portrait-ui select { font-size: inherit; }
+.portrait-ui button { touch-action: manipulation; }
+.portrait-ui input, .portrait-ui select { min-width: 0; max-width: 100%; }
+.portrait-ui .primary-btn, .portrait-ui .ghost-btn, .portrait-ui .icon-text-btn, .portrait-ui .primary-action, .portrait-ui .secondary-action { min-height: 44px; padding: 0 14px; gap: 6px; font-size: 13px; }
+.portrait-ui .dm-debug-fab, .portrait-ui .dm-debug-drawer { display: none; }
+.portrait-ui .android-start-error { display: grid; place-content: center; height: 100%; overflow: auto; padding: 16px; text-align: center; }
+.portrait-ui .android-start-error h1 { color: var(--gold); font-size: 20px; }
+.portrait-ui .android-notice { position: fixed; left: var(--mobile-left); right: var(--mobile-right); bottom: var(--mobile-bottom); z-index: 12000; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; max-height: var(--mobile-dialog-height); overflow: auto; border: 1px solid var(--gold); background: #211b12; }
+.portrait-ui .android-notice button { color: var(--gold); border: 0; background: transparent; min-height: 44px; flex-shrink: 0; }
+.portrait-ui .toast { position: fixed; max-width: calc(100% - 32px); width: max-content; padding: 8px 14px; font-size: 12px; overflow-wrap: anywhere; text-align: center; pointer-events: none; }
+
+/* Portrait title and investigator list, with a fixed selection footer. */
+.portrait-ui .title-screen { height: var(--mobile-height); min-height: 0; overflow-y: auto; padding: var(--mobile-top) var(--mobile-right) var(--mobile-bottom) var(--mobile-left); }
+.portrait-ui .title-backdrop { overflow: hidden; }
+.portrait-ui .title-backdrop video { display: block; }
+.portrait-ui .title-content { width: min(460px, 100%); padding: 24px 10px; }
+.portrait-ui .title-kicker { font-size: 10px; letter-spacing: 3px; margin-bottom: 12px; }
+.portrait-ui .title-content h1 { font-size: clamp(32px, 10vw, 52px); letter-spacing: .18em; padding-left: .18em; line-height: 1.2; }
+.portrait-ui .title-subtitle { font-size: 13px; line-height: 1.6; margin: 14px 0 22px; }
+.portrait-ui .title-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 320px; margin-inline: auto; }
+.portrait-ui .title-actions > :nth-child(-n+2) { grid-column: 1 / -1; min-height: 48px; }
+.portrait-ui .title-save-hint { font-size: 11px; line-height: 1.5; margin: 12px 0 0; overflow-wrap: anywhere; }
+.portrait-ui .setup-screen { height: var(--mobile-height); min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: var(--mobile-top) var(--mobile-right) var(--mobile-bottom) var(--mobile-left); }
+.portrait-ui .setup-header { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; flex: 0 0 auto; gap: 10px; margin: 0 auto 10px; min-height: 44px; }
+.portrait-ui .setup-header h1 { font-size: 20px; letter-spacing: 2px; }
+.portrait-ui .setup-header .eyebrow { display: none; }
+.portrait-ui .setup-header-actions { gap: 6px; min-width: 0; }
+.portrait-ui .setup-header-actions > .primary-btn { flex: 0 0 auto; padding: 0 10px; white-space: nowrap; }
+.portrait-ui .setup-heading { text-align: center; }
+.portrait-ui .setup-header > .icon-text-btn { padding-inline: 8px; }
+.portrait-ui .setup-footer { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 2px 0; border-top: 1px solid var(--line-soft); }
+.portrait-ui .setup-footer > span { color: var(--muted); font-size: 12px; }
+.portrait-ui .setup-footer strong { color: var(--gold); font-size: 15px; }
+.portrait-ui .setup-footer .primary-btn { min-height: 48px; flex: 0 0 auto; min-width: 130px; }
+.portrait-ui .preset-grid-modern { width: 100%; min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; grid-template-columns: minmax(0, 1fr); gap: 12px; align-content: start; align-items: start; padding: 2px 2px 12px; scroll-padding: 4px; }
+.portrait-ui .preset-card-modern { min-width: 0; grid-template-columns: clamp(82px, 25vw, 140px) minmax(0, 1fr); transform: none; }
+.portrait-ui .preset-portrait-frame { border-right: 1px solid var(--line-soft); border-bottom: 0; aspect-ratio: 3 / 5; }
+.portrait-ui .preset-select-mark { left: 5px; right: auto; top: 5px; padding: 3px 7px; font-size: 10px; }
+.portrait-ui .preset-card-content { min-width: 0; grid-template-columns: minmax(0, 1fr); grid-template-areas: 'name' 'meta' 'desc' 'vitals' 'notes' 'toggle' 'details'; gap: 5px; padding: 10px; overflow-wrap: anywhere; }
+.portrait-ui .preset-card-content > strong { font-size: 16px; line-height: 1.3; }
+.portrait-ui .preset-card-content > small { font-size: 11px; line-height: 1.4; }
+.portrait-ui .preset-card-content > p { font-size: 12px; line-height: 1.5; }
+.portrait-ui .preset-vitals { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 2px 0; gap: 4px; }
+.portrait-ui .preset-vitals span, .portrait-ui .preset-attrs span { padding: 4px 2px; }
+.portrait-ui .preset-vitals em, .portrait-ui .preset-attrs em { font-size: 13px; margin-top: 2px; }
+.portrait-ui .preset-background-notes { font-size: 11px; line-height: 1.4; gap: 3px; }
+.portrait-ui .preset-background-notes span { padding-left: 5px; }
+.portrait-ui .preset-attrs-toggle { min-height: 36px; margin: 0; padding: 0 10px; font-size: 11px; color: var(--muted); }
+.portrait-ui .preset-other-panel { position: static; grid-area: details; min-width: 0; max-height: none; overflow: visible; padding: 6px; box-shadow: none; margin-top: 2px; }
+.portrait-ui .preset-other-panel[hidden] { display: none; }
+.portrait-ui .preset-attrs { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.portrait-ui .preset-skill-list { gap: 4px; }
+.portrait-ui .preset-skill-list span { flex-shrink: 1; font-size: 11px; padding: 3px 5px; }
+
+/* All current scene paintings are 1896 × 1080. Reserve their own wide frame
+   instead of cropping them to fill the portrait screen behind the reading UI. */
+.portrait-ui .game-screen { --game-top: calc(48px + var(--mobile-top)); --scene-height: min(calc(100vw * 1080 / 1896), calc(50dvh - var(--game-top))); --game-bottom: max(10px, env(safe-area-inset-bottom, 0px)); height: var(--mobile-height); min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: var(--game-top) var(--scene-height) minmax(0, 1fr) auto; padding: 0 var(--mobile-right) var(--game-bottom) var(--mobile-left); }
+.portrait-ui .scene-stage { position: relative; grid-column: 1; grid-row: 2; top: auto; left: calc(0px - var(--mobile-left)); right: auto; width: calc(100% + var(--mobile-left) + var(--mobile-right)); height: 100%; min-height: 0; overflow: hidden; isolation: isolate; }
+.portrait-ui .scene-backdrop-img { object-fit: contain; object-position: center; filter: saturate(.85) brightness(.86); }
+.portrait-ui .scene-shade { background: linear-gradient(to bottom, rgba(5,5,5,.08), transparent 45%, rgba(5,5,5,.4)); }
+.portrait-ui .scene-npc { top: auto; bottom: 0; left: var(--mobile-left); right: auto; width: calc(100% - var(--mobile-left) - var(--mobile-right)); height: calc(100% - 8px); max-height: none; object-fit: contain; object-position: center bottom; transform: none; opacity: 1; filter: saturate(.9) brightness(.96) drop-shadow(0 8px 20px rgba(0,0,0,.55)); -webkit-mask-image: linear-gradient(#000 86%, transparent); mask-image: linear-gradient(#000 86%, transparent); }
+.portrait-ui .game-top { padding: var(--mobile-top) var(--mobile-right) 0 var(--mobile-left); align-items: center; }
+.portrait-ui .brand-block { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; gap: 3px 8px; max-width: calc(100% - 100px); min-width: 0; }
+.portrait-ui .brand-title { grid-column: 1 / -1; font-size: 14px; line-height: 1.3; }
+.portrait-ui .brand-scene { font-size: 11px; margin: 0; }
+.portrait-ui .brand-scene::before, .portrait-ui .brand-scene::after { display: none; }
+.portrait-ui .world-time { font-size: 10px; margin: 0; white-space: nowrap; }
+.portrait-ui .menu-button { width: 44px; height: 44px; flex: 0 0 44px; }
+.portrait-ui .drawer-tab { top: var(--mobile-top) !important; right: calc(var(--mobile-right) + 50px); width: 44px; height: 44px; min-height: 44px; padding: 0; display: grid; place-items: center; border-radius: 8px; border: 1px solid var(--line-soft); }
+.portrait-ui .drawer-tab span, .portrait-ui .drawer-tab .drawer-grip { display: none; }
+.portrait-ui .narrative-panel { position: relative; grid-column: 1; grid-row: 3; inset: auto; min-width: 0; min-height: 0; max-height: none; height: 100%; padding: 0 8px 6px; overflow-x: hidden; overscroll-behavior: contain; scroll-padding-top: 40px; }
+.portrait-ui .narrative-panel.expanded { position: relative; grid-row: 1 / 4; inset: auto; max-height: none; z-index: 24; padding-top: var(--mobile-top); border-radius: 10px 10px 0 0; }
+.portrait-ui .game-screen:has(.narrative-panel.expanded) .scene-stage { visibility: hidden; }
+.portrait-ui .narrative-header { padding: 0; min-height: 32px; }
+.portrait-ui .narrative-toggle-btn { width: 44px; height: 32px; flex-shrink: 0; }
+.portrait-ui .narrative-panel .npc-nameplate { min-height: 32px; padding: 0 8px; font-size: 11px; background: transparent; border: 0; text-align: left; }
+.portrait-ui .story-message { font-size: 15px; margin-bottom: 8px; padding: 6px 8px; overflow-wrap: anywhere; }
+.portrait-ui .story-message p { line-height: 1.65; }
+.portrait-ui .story-message.player { padding: 5px 8px; max-width: 92%; }
+.portrait-ui .story-message.player .player-message-line { flex-wrap: wrap; }
+.portrait-ui .message-label { font-size: 11px; margin-bottom: 3px; }
+.portrait-ui .player-inline-name, .portrait-ui .player-inline-separator { font-size: 12px; }
+.portrait-ui .action-dock { position: relative; grid-column: 1; grid-row: 4; inset: auto; min-width: 0; max-height: 45dvh; padding: 6px; }
+.portrait-ui .dock-input-row { flex-wrap: nowrap; gap: 6px; }
+.portrait-ui .dock-actor-label > span { display: none; }
+.portrait-ui .dock-actor-avatar { width: 26px; height: 32px; }
+.portrait-ui .dock-input { min-height: 44px; font-size: 14px; padding: 0 9px; }
+.portrait-ui .dock-submit { min-height: 44px !important; font-size: 13px !important; padding: 0 12px !important; }
+.portrait-ui .suggestion-row { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 6px; margin-bottom: 3px; }
+.portrait-ui .suggestion-row::-webkit-scrollbar { display: none; }
+.portrait-ui .suggestion-row button { flex-shrink: 0; min-height: 36px; padding: 0 10px; font-size: 12px; white-space: nowrap; }
+.portrait-ui .party-strip-compact { gap: 5px; padding-top: 3px; margin-top: 3px; }
+.portrait-ui .party-compact { padding: 2px 5px; gap: 5px; }
+.portrait-ui .party-compact strong, .portrait-ui .party-compact-bars .bar-value { font-size: 11px; }
+.portrait-ui .party-compact-bars { gap: 3px; }
+.portrait-ui .party-compact-bars .mini-bar { width: 20px; }
+/* Two columns keep 2–4 investigators readable on a narrow portrait screen. */
+.portrait-ui .party-strip-compact:has(.party-compact:nth-child(2)) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow-x: hidden; }
+.portrait-ui .party-strip-compact:has(.party-compact:nth-child(2)) .party-compact { min-width: 0; flex-direction: column; align-items: flex-start; gap: 2px; }
+.portrait-ui .party-strip-compact:has(.party-compact:nth-child(2)) .mini-bar { display: none; }
+.portrait-ui .check-card { align-items: center; padding: 3px 7px; gap: 10px; margin-bottom: 3px; }
+.portrait-ui .check-card > div { min-width: 0; gap: 2px; }
+.portrait-ui .check-card strong { font-size: 13px; }
+.portrait-ui .check-card span { font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
+.portrait-ui .check-card > button { flex-shrink: 0; min-height: 44px; padding: 0 12px; }
+.portrait-ui .action-dock:has(.check-card) .dock-input-row { display: none; }
+.portrait-ui .ending-dock { gap: 10px; padding: 8px; font-size: 13px; line-height: 1.5; }
+.portrait-ui .ending-dock > svg { flex-shrink: 0; }
+.portrait-ui .game-menu { top: calc(var(--mobile-top) + 48px); right: var(--mobile-right); width: min(360px, calc(100% - var(--mobile-left) - var(--mobile-right))); max-height: calc(var(--mobile-dialog-height) - 48px); padding: 8px; overflow-y: auto; }
+.portrait-ui .menu-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 6px; }
+.portrait-ui .menu-list button { min-height: 44px; padding: 6px 8px; font-size: 13px; }
+
+/* Portrait sheets: fixed close/save controls and independently scrolling bodies. */
+.portrait-ui .modal-backdrop, .portrait-ui .entity-detail-overlay, .portrait-ui .dice-roll-overlay { padding: var(--mobile-top) var(--mobile-right) var(--mobile-bottom) var(--mobile-left); }
+.portrait-ui .modal-card { width: min(480px, 100%); min-width: 0; max-height: var(--mobile-dialog-height); padding: 16px; overflow-y: auto; overscroll-behavior: contain; font-size: 14px; }
+.portrait-ui .modal-card h2 { flex-shrink: 0; font-size: 19px; line-height: 1.3; margin: 0 0 4px; }
+.portrait-ui .modal-card > p { flex-shrink: 0; margin: 2px 0 8px; font-size: 12px; line-height: 1.5; }
+.portrait-ui .modal-card footer { display: flex; flex-shrink: 0; margin-top: 12px; gap: 10px; }
+.portrait-ui .modal-card footer > button { flex: 1; }
+.portrait-ui .modal-card label { min-width: 0; font-size: 12px; line-height: 1.3; margin: 0; gap: 4px; }
+.portrait-ui .modal-card input:not([type='range']), .portrait-ui .modal-card select { min-height: 44px; width: 100%; padding: 8px 10px; font-size: 14px; color: var(--text); background: #171410; border: 1px solid var(--line); border-radius: 5px; }
+.portrait-ui .api-config-card, .portrait-ui .audio-settings, .portrait-ui .save-manager-card, .portrait-ui .dm-journal-card { display: flex; flex-direction: column; overflow: hidden; }
+.portrait-ui .api-config-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-height: 0; overflow-y: auto; padding: 1px 3px 3px; scroll-padding: 8px; }
+.portrait-ui .api-config-fields .modal-error { grid-column: 1 / -1; margin: 0; font-size: 12px; }
+.portrait-ui .audio-settings { width: min(480px, 100%); }
+.portrait-ui .audio-settings > header { flex-shrink: 0; min-height: 44px; }
+.portrait-ui .audio-close { width: 44px; height: 44px; }
+.portrait-ui .audio-settings-body { min-height: 0; overflow-y: auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.portrait-ui .audio-settings .audio-intro { grid-column: 1 / -1; margin: 0; font-size: 12px; }
+.portrait-ui .audio-channel { min-width: 0; padding: 8px 0 0; }
+.portrait-ui .audio-channel-heading { gap: 6px; }
+.portrait-ui .audio-channel-heading > span { font-size: 14px; gap: 6px; }
+.portrait-ui .audio-channel-heading > button { min-height: 44px; padding: 0; gap: 6px; font-size: 12px; }
+.portrait-ui .audio-settings .audio-channel label { margin-top: 6px; gap: 0; }
+.portrait-ui .audio-settings .audio-channel input[type='range'] { min-height: 44px; height: 44px; }
+.portrait-ui .audio-channel p { margin-top: 2px; font-size: 11px; }
+.portrait-ui .audio-settings .audio-preview { min-height: 36px; margin-top: 4px; padding: 0 10px; }
+.portrait-ui .audio-settings .audio-note { grid-column: 1 / -1; font-size: 11px; margin: 0; }
+.portrait-ui .audio-credits { grid-column: 1 / -1; padding-top: 0; }
+.portrait-ui .audio-credits summary { min-height: 36px; padding: 10px 0; font-size: 11px; }
+.portrait-ui .audio-credits p { overflow-wrap: anywhere; font-size: 11px; margin: 6px 0; }
+.portrait-ui .save-list { min-height: 0; max-height: none; margin: 0; gap: 8px; padding-right: 3px; }
+.portrait-ui .save-slot-card { min-width: 0; padding: 12px; gap: 10px; flex-direction: column; align-items: stretch; }
+.portrait-ui .save-slot-card > div { min-width: 0; overflow-wrap: anywhere; }
+.portrait-ui .save-slot-card strong { font-size: 14px; }
+.portrait-ui .save-slot-card span, .portrait-ui .save-slot-card small { margin-top: 3px; font-size: 11px; line-height: 1.4; }
+.portrait-ui .save-slot-actions { gap: 8px; justify-content: flex-end; }
+.portrait-ui .save-slot-actions button { padding: 0 10px; white-space: nowrap; }
+.portrait-ui .dm-journal-body { min-height: 0; overflow-y: auto; }
+.portrait-ui .dm-journal-section { margin-top: 8px; }
+.portrait-ui .dm-journal-section h3 { margin-bottom: 6px; padding-bottom: 4px; font-size: 13px; }
+.portrait-ui .dm-journal-section p { margin: 6px 0; font-size: 12px; }
+.portrait-ui .dm-journal-events { max-height: none; overflow: visible; }
+.portrait-ui .dm-journal-events li { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+.portrait-ui .dm-journal-pending li { padding: 6px 8px; }
+.portrait-ui .entity-detail-card { width: min(480px, 100%); max-width: 100%; height: min(680px, var(--mobile-dialog-height)); max-height: var(--mobile-dialog-height); padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); overflow: hidden; border-radius: 8px; }
+.portrait-ui .entity-detail-card:has(.entity-detail-portrait-wrap) { grid-template-rows: clamp(100px, 20dvh, 160px) minmax(0, 1fr); gap: 12px; }
+.portrait-ui .entity-detail-close { top: 4px; right: 4px; width: 44px; height: 44px; }
+.portrait-ui .entity-detail-portrait-wrap { margin: 0; min-height: 0; align-items: center; justify-content: center; }
+.portrait-ui .entity-detail-portrait { width: 100%; height: 100%; max-height: 100%; object-fit: contain; }
+.portrait-ui .entity-detail-body { min-height: 0; min-width: 0; overflow-y: auto; padding-right: 4px; }
+.portrait-ui .entity-detail-header { min-height: 36px; padding: 0 44px 8px 0; margin-bottom: 10px; flex-wrap: wrap; gap: 4px 10px; }
+.portrait-ui .entity-detail-header h3 { font-size: 18px; letter-spacing: 0; }
+.portrait-ui .entity-detail-header span { font-size: 11px; }
+.portrait-ui .entity-detail-section { margin-bottom: 10px; }
+.portrait-ui .entity-detail-section h4 { font-size: 11px; margin-bottom: 6px; }
+.portrait-ui .entity-detail-known, .portrait-ui .entity-detail-unknown { padding: 7px 10px; }
+.portrait-ui .entity-detail-known p { font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
+
+/* Shallow archive header; lists and inspector take the remaining height. */
+.portrait-ui .info-drawer-react { position: fixed; width: 100%; height: var(--mobile-height); max-height: var(--mobile-height); display: flex; flex-direction: column; overflow: hidden; padding: var(--mobile-top) var(--mobile-right) var(--mobile-bottom) var(--mobile-left); }
+.portrait-ui .info-drawer-react > header { display: grid; grid-template-columns: minmax(0, 1fr) 44px; flex: 0 0 auto; gap: 6px; padding-bottom: 4px; margin-bottom: 6px; }
+.portrait-ui .info-drawer-title { width: auto; }
+.portrait-ui .info-drawer-title h2 { font-size: 18px; }
+.portrait-ui .info-drawer-title > span { display: none; }
+.portrait-ui .info-drawer-tabs { grid-column: 1 / -1; grid-row: 2; order: 0; width: 100%; min-width: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.portrait-ui .info-drawer-tabs button { min-height: 44px; min-width: 64px; padding: 0 12px; font-size: 13px; }
+.portrait-ui .info-drawer-react > header > button { grid-column: 2; grid-row: 1; order: 0; width: 44px; height: 44px; }
+.portrait-ui .info-drawer-react > section { min-height: 0; flex: 1; overflow-y: auto; margin-top: 0; padding: 0 2px 8px; overscroll-behavior: contain; }
+.portrait-ui .drawer-section h3 { font-size: 14px; margin: 10px 0; }
+.portrait-ui .objective-row { padding: 7px 0; gap: 8px; font-size: 13px; }
+.portrait-ui .progress-stat, .portrait-ui .clock-row { font-size: 12px; }
+.portrait-ui .log-list-modern p { font-size: 12px; line-height: 1.6; margin: 6px 0; overflow-wrap: anywhere; }
+.portrait-ui .case-board-view { display: flex; flex-direction: column; gap: 6px; }
+.portrait-ui .case-board-heading { flex: 0 0 auto; flex-direction: row; align-items: center; gap: 8px; }
+.portrait-ui .case-board-heading h3 { display: none; }
+.portrait-ui .case-board-heading p { font-size: 11px; margin: 0; }
+.portrait-ui .case-board-heading > span { padding: 0; border: 0; font-size: 10px; white-space: normal; text-align: right; }
+.portrait-ui .case-board-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; flex: 0 0 auto; gap: 8px; }
+.portrait-ui .case-board-search { grid-column: 1 / -1; width: auto; min-width: 0; min-height: 44px; }
+.portrait-ui .case-board-search input { font-size: 14px; min-height: 44px; }
+.portrait-ui .case-board-toolbar select, .portrait-ui .case-board-toolbar > button { min-width: 0; min-height: 44px; font-size: 13px; padding: 0 10px; }
+.portrait-ui .case-board-workspace, .portrait-ui .case-board-workspace.has-inspector { min-height: 0; height: auto; flex: 1; overflow: auto; }
+.portrait-ui .case-board-inspector[role='dialog'] { position: fixed; inset: 0; z-index: 220; height: var(--mobile-height); display: flex; flex-direction: column; background: #100e0c; padding: var(--mobile-top) var(--mobile-right) var(--mobile-bottom) var(--mobile-left); }
+.portrait-ui .case-board-inspector > header { flex: 0 0 auto; flex-wrap: nowrap; gap: 8px; padding: 0 0 6px; margin: 0; }
+.portrait-ui .case-board-inspector header button { width: 44px; height: 44px; flex: 0 0 44px; }
+.portrait-ui .case-board-inspector-scroll { min-height: 0; height: auto; flex: 1; padding: 0 8px 8px; }
+.portrait-ui .case-board-inspector section { padding: 10px 0; }
+.portrait-ui .case-board-inspector h4 { font-size: 16px; }
+.portrait-ui .case-board-inspector p, .portrait-ui .case-board-inspector li { font-size: 13px; overflow-wrap: anywhere; }
+@media (max-width: 900px) {
+  .portrait-ui .case-board-workspace, .portrait-ui .case-board-workspace.has-inspector { display: block; }
+  .portrait-ui .case-board-mobile-list { display: grid; gap: 12px; padding: 6px 0 12px; }
+  .portrait-ui .case-board-mobile-list > section { grid-template-columns: minmax(0, 1fr); gap: 10px; align-items: start; }
+  .portrait-ui .case-board-mobile-list h4 { grid-column: 1 / -1; font-size: 11px; }
+  .portrait-ui .case-board-mobile-card { padding: 12px; font-size: 14px; overflow-wrap: anywhere; }
+}
+@media (min-width: 901px) {
+  .portrait-ui .case-board-workspace { grid-template-columns: 130px minmax(0, 1fr); }
+  .portrait-ui .case-board-workspace.has-inspector { grid-template-columns: 120px minmax(0, 1fr) 260px; }
+  .portrait-ui .case-board-inspector { display: flex; flex-direction: column; }
+  .portrait-ui .case-board-threads { padding: 8px 6px 8px 0; }
+}
+
+/* Vertical dice composition preserves the supplied art and its font. */
+.portrait-ui .dice-roll-card { width: min(360px, 100%); max-height: var(--mobile-dialog-height); display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.portrait-ui .dice-roll-panel { flex: 0 0 auto; width: min(100%, calc((var(--mobile-dialog-height) - 128px) * 639 / 890)); }
+.portrait-ui .dice-roll-card > header { flex: 0 0 auto; width: 100%; }
+.portrait-ui .dice-roll-card > header p { font-size: 16px; }
+.portrait-ui .dice-roll-card > footer { flex: 0 0 auto; width: 100%; }
+.portrait-ui .dice-roll-confirm { width: min(260px, 100%); min-height: 48px; }
+.portrait-ui .dice-roll-hint { display: none; }
+
+/* Usable after the viewport resizes for the keyboard, including short split windows.
+   Width, not CSS orientation, controls columns: an IME can make a portrait
+   window wider than it is tall without rotating the device. */
+@media (max-height: 500px) {
+  .portrait-ui .game-screen { --scene-height: 0px; }
+  .portrait-ui .scene-stage { visibility: hidden; }
+  .portrait-ui .scene-npc { visibility: hidden; }
+  .portrait-ui .game-screen:has(.dock-input:focus) .suggestion-row { display: none; }
+  .portrait-ui .entity-detail-card:has(.entity-detail-portrait-wrap) { grid-template-rows: minmax(0, 1fr); }
+  .portrait-ui .entity-detail-portrait-wrap { display: none; }
+  .portrait-ui .api-config-card > p { display: none; }
+  .portrait-ui .modal-card { padding: 12px; }
+}
+@media (max-height: 300px) {
+  .portrait-ui .game-screen { --game-top: 0px; }
+  .portrait-ui .game-top, .portrait-ui .drawer-tab, .portrait-ui .suggestion-row, .portrait-ui .party-strip-compact { display: none; }
+  .portrait-ui .action-dock { max-height: 55dvh; }
+  .portrait-ui .title-content { padding: 8px 0; }
+  .portrait-ui .title-kicker, .portrait-ui .title-subtitle { display: none; }
+  .portrait-ui .title-content h1 { font-size: 28px; margin-bottom: 10px; }
+  .portrait-ui .title-actions > :nth-child(-n+2) { grid-column: auto; min-height: 44px; }
+  .portrait-ui .case-board-heading { display: none; }
+  .portrait-ui .info-drawer-tabs { grid-column: 1; grid-row: 1; }
+  .portrait-ui .info-drawer-title { display: none; }
+}
+@media (max-width: 360px) {
+  .portrait-ui .setup-header { gap: 6px; }
+  .portrait-ui .setup-header h1 { font-size: 18px; letter-spacing: 0; }
+  .portrait-ui .preset-card-content { padding: 8px; }
+  .portrait-ui .preset-card-content > strong { font-size: 16px; }
+  .portrait-ui .preset-vitals { gap: 3px; }
+  .portrait-ui .dock-submit { padding-inline: 10px !important; }
+  .portrait-ui .party-compact { gap: 4px; padding-inline: 4px; }
+  .portrait-ui .party-compact-bars { gap: 2px; }
+  .portrait-ui .party-compact-bars .mini-bar { width: 12px; }
+  .portrait-ui .brand-block { gap: 2px 5px; }
+  .portrait-ui .world-time { font-size: 9px; }
+}
+/* Large portrait tablets retain the same vertical hierarchy with roomier lists. */
+@media (min-width: 600px) {
+  .portrait-ui .preset-grid-modern { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .portrait-ui .case-board-mobile-list > section { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .portrait-ui .party-strip-compact:has(.party-compact:nth-child(3)) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}

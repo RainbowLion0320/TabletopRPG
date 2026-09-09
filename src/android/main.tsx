@@ -1,11 +1,15 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { initializeAndroidPlatform } from './native';
+import { initializeGameUi } from '../platform/layout';
 import '../styles/app.css';
 import './mobile.css';
+import '../styles/game-ui.css';
 
 // Scope phone layout overrides above shared/lazy component styles, including portals.
 document.documentElement.classList.add('android-app');
+const releaseUi = initializeGameUi(true);
+if (import.meta.hot) import.meta.hot.dispose(releaseUi);
 const root = ReactDOM.createRoot(document.getElementById('root')!);
 async function start() {
   try {

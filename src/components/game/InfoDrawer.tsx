@@ -112,6 +112,7 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
     <>
       <button
         aria-controls="game-info-drawer"
+        aria-label="资料"
         aria-expanded={open}
         ref={tabRef}
         className={`drawer-tab${isDragging.current ? ' dragging' : ''}`}

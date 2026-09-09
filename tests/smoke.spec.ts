@@ -294,17 +294,31 @@ test('a selected two-investigator party reaches the main game with both status c
     const scene = top.querySelector('.brand-scene');
     const titleStyle = title ? getComputedStyle(title) : null;
     const sceneStyle = scene ? getComputedStyle(scene) : null;
+    const rgb = (color: string) => (color.match(/[\d.]+/g) ?? []).map(Number);
+    const background = rgb(getComputedStyle(top).backgroundColor);
+    const luminance = (channels: number[]) => channels.slice(0, 3).map(value => {
+      const linear = value / 255;
+      return linear <= .04045 ? linear / 12.92 : ((linear + .055) / 1.055) ** 2.4;
+    }).reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0);
+    const contrast = (color: string) => {
+      const channels = rgb(color), alpha = channels[3] ?? 1;
+      const foreground = channels.slice(0, 3).map((value, index) => value * alpha + background[index] * (1 - alpha));
+      return (luminance(foreground) + .05) / (luminance(background) + .05);
+    };
     return {
-      sceneColor: sceneStyle?.color ?? '',
+      topBottom: top.getBoundingClientRect().bottom,
+      npcTop: document.querySelector('.scene-npc')?.getBoundingClientRect().top ?? -1,
+      sceneContrast: contrast(sceneStyle?.color ?? ''),
       sceneFontSize: Number.parseFloat(sceneStyle?.fontSize ?? '0'),
-      titleColor: titleStyle?.color ?? '',
+      titleContrast: contrast(titleStyle?.color ?? ''),
       titleFontSize: Number.parseFloat(titleStyle?.fontSize ?? '0')
     };
   });
-  expect(brandPresentation.titleColor).toMatch(/rgba\(.+,\s*0\.\d+\)/);
-  expect(brandPresentation.sceneColor).toMatch(/rgba\(.+,\s*0\.\d+\)/);
+  expect(brandPresentation.titleContrast).toBeGreaterThanOrEqual(4.5);
+  expect(brandPresentation.sceneContrast).toBeGreaterThanOrEqual(4.5);
   expect(brandPresentation.titleFontSize).toBeLessThanOrEqual(30);
   expect(brandPresentation.sceneFontSize).toBeLessThanOrEqual(14);
+  expect(brandPresentation.npcTop).toBeGreaterThanOrEqual(brandPresentation.topBottom);
   await expect(page.locator('.party-strip-compact .party-compact')).toHaveCount(2);
   await expect(page.getByText('伊莎贝拉·摩勒').first()).toBeVisible();
 
@@ -479,16 +493,19 @@ test('investigator setup scrolls vertically on narrow screens', async ({ page })
 
   const setupScreen = page.locator('.setup-screen');
   await expect(setupScreen).toBeVisible();
-  const metrics = await setupScreen.evaluate((element) => ({
+  const cardList = setupScreen.locator('.preset-grid-modern');
+  const metrics = await cardList.evaluate((element) => ({
     clientHeight: element.clientHeight,
     scrollHeight: element.scrollHeight
   }));
   expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
 
-  await setupScreen.evaluate((element) => {
+  await cardList.evaluate((element) => {
     element.scrollTop = element.scrollHeight;
   });
-  await expect.poll(() => setupScreen.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await expect.poll(() => cardList.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await expect(page.getByRole('button', { name: '进入游戏', exact: true })).toBeInViewport();
+  await expect(setupScreen.locator('.preset-card-modern').last()).toBeInViewport();
 });
 
 test('player action messages keep the player name and action on one line', async ({ page }) => {

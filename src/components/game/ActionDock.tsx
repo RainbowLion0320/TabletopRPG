@@ -92,6 +92,7 @@ export function ActionDock({
             </div>
             <input
               className="dock-input"
+              aria-label={`${currentActor.name}的行动`}
               autoFocus={autoFocusInput}
               disabled={isDiceRolling || state.isThinking || hasPendingTurn || Boolean(state.pendingCheck)}
               value={state.declarations[currentActor.id] ?? ''}
