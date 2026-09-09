@@ -23,7 +23,7 @@ updated: 2026-09-09
 |------|------|------|
 | [团队成员](entities/team.md) | 团队成员分工与资源交付职责 | ✅ |
 | [AI DM 系统](entities/ai_dm.md) | Provider adapter、内部摘要隔离、连接/格式错误分类、回合续跑与多检定队列 | ✅ 已实现 |
-| [角色系统](entities/character_system.md) | 默认单人、可选 1-4 名调查员、立绘、属性、职业/技能与派生数值 | ✅ 已实现（预设选择） |
+| [角色系统](entities/character_system.md) | 默认单人、1-4 名调查员、预设选角与局内实时属性/技能/装备档案 | ✅ 已实现 |
 | [存档系统](entities/save_system.md) | v8 存档、失败回合续跑、API 配置与存储错误处理 | ✅ 已实现（最近存档、列表、删除） |
 
 ## 概念页（concepts/）
@@ -33,7 +33,7 @@ updated: 2026-09-09
 | [核心玩法循环](concepts/core_loop.md) | 行动、检定队列与汇总结算；骰子统一字体、单一结果等级和手动确认 | ✅ 已实现 |
 | [提示词工程](concepts/prompt_engineering.md) | 三层事实边界、分级语义复核、当前内嵌提示词结构与外部化计划 | ✅ |
 | [技术选型](concepts/tech_stack.md) | React/Vite/TypeScript、多 Provider、localStorage、数值规则配置 | ✅ |
-| [Android 游戏客户端](concepts/android_app.md) | 独立 APK、0.4.2 展开阅读边界、游戏图标、竖屏 UI、完整场景与 NPC、原生 HTTP、加密存储、自动续玩与正式签名 | ✅ 已实现 |
+| [Android 游戏客户端](concepts/android_app.md) | 独立 APK、0.4.3 调查员档案、竖屏 UI、完整场景与 NPC、原生 HTTP、加密存储、自动续玩与正式签名 | ✅ 已实现 |
 | [共享交互 UI](concepts/game_ui.md) | 黄铜档案风格、控件状态、手机竖屏与新版网页共用布局 | ✅ 已实现 |
 | [音乐与音效系统](concepts/audio_system.md) | 分场景配乐、环境与骰子音效、选角顶栏图标、独立开关/音量记忆、素材授权 | ✅ 已实现 |
 | [动态案件板与调查台](concepts/case_board.md) | v7 核心关系、实体档案、审核规则、自动布局与 v6 迁移 | ✅ 已实现 |

@@ -4,7 +4,7 @@ title: 角色系统
 tags: [character, coc, game-system]
 sources: [project_plan.md, ../../docs/PRD.md]
 created: 2026-05-18
-updated: 2026-09-07
+updated: 2026-09-09
 ---
 
 # 角色系统
@@ -25,6 +25,8 @@ updated: 2026-09-07
 单人输入后直接“提交”，多人逐人“下一位”后统一结算。浏览器回归分别覆盖单人、双人和四人的行动、检定续写与存档恢复，多人测试显式添加角色。
 
 ## 预设调查员
+
+0.4.3 提供局内调查员档案：点击行动区头像、任意队员状态卡或正文玩家姓名，即可查看当前资源、八项基础属性、可搜索的完整技能及普通/困难/极难阈值、明确记录的随身装备和人物背景。数据随当前游戏状态更新；档案内查看队友不会改变行动顺序和输入草稿。面板固定关闭/分类控件，正文独立滚动，支持手机竖屏、系统返回和焦点恢复。见 [[concepts/game_ui]] 及 [档案验收](../../docs/reviews/2026-09-09-investigator-sheet.md)。
 
 | 角色名 | 职业 | 定位 |
 |--------|------|------|
@@ -73,7 +75,7 @@ updated: 2026-09-07
 
 ## 技能系统
 
-当前 `src/data/skills.ts` 定义 23 个技能，分为观察、社交、知识、战斗、行动、特殊 6 类。技能值结构为：
+当前 `src/data/skills.ts` 定义 24 个技能，分为观察、社交、知识、战斗、行动、特殊 6 类。技能值结构为：
 
 ```ts
 {
@@ -83,7 +85,7 @@ updated: 2026-09-07
 }
 ```
 
-总技能值 = `base + added`。
+普通技能总值 = `base + added`；幸运检定读取当前 `player.luck`，理智检定读取 `currentSan`。档案技能值与检定阈值复用 `getSkillTotal` / `getDifficultyThreshold`，不另写 UI 公式。
 
 `equipment` 保存角色明确携带的装备。武器行动必须同时满足“装备清单中有对应武器”和“角色具备对应技能”；职业名称不隐式赋予武器。
 
@@ -125,10 +127,11 @@ interface Investigator {
 - 学者预设角色或隐藏未使用职业。
 - 角色导入/导出。
 - 替换为玩家角色专属立绘；当前选角页复用现有立绘资产。
-- 角色卡详情页。
 
 ## 被引用于
 - [[overview]]
 - [[entities/ai_dm]]
 - [[decisions/ai_role_decision]]
 - [[concepts/core_loop]]
+- [[concepts/android_app]]
+- [[concepts/game_ui]]

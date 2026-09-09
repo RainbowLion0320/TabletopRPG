@@ -10,6 +10,7 @@ interface ActionDockProps {
   onSubmit: () => void;
   onRoll: () => void;
   onSuggestion: (text: string) => void;
+  onInspectPlayer: (playerId: string) => void;
   onRetry?: () => void;
 }
 
@@ -21,6 +22,7 @@ export function ActionDock({
   onSubmit,
   onSuggestion,
   onRetry,
+  onInspectPlayer,
   state
 }: ActionDockProps) {
   const currentActor = state.players[state.currentActorIndex] ?? state.players[0];
@@ -85,9 +87,9 @@ export function ActionDock({
         {currentActor ? (
           <>
             <div className="dock-actor-label">
-              <div className="dock-actor-avatar">
+              <button className="dock-actor-avatar" type="button" aria-label={`查看${currentActor.name}的属性`} aria-haspopup="dialog" title="查看调查员档案" onClick={(event) => { event.currentTarget.focus({ preventScroll: true }); onInspectPlayer(currentActor.id); }}>
                 {currentActor.portrait ? <img src={currentActor.portrait} alt="" /> : <span>{currentActor.name.slice(0, 1)}</span>}
-              </div>
+              </button>
               <span>{currentActor.name}</span>
             </div>
             <input
@@ -123,21 +125,25 @@ export function ActionDock({
           const hasActed = index < state.currentActorIndex;
           const cardClass = `party-compact${isActiveActor ? ' active' : ''}${hasActed ? ' acted' : ''}`;
           return (
-            <article
+            <button
               className={cardClass}
               key={player.id}
+              type="button"
+              aria-label={`查看${player.name}的属性，HP ${player.currentHp}/${player.hp}，SAN ${player.currentSan}/${player.san}`}
+              aria-haspopup="dialog"
+              onClick={(event) => { event.currentTarget.focus({ preventScroll: true }); onInspectPlayer(player.id); }}
               title={`${player.name} ${player.job} | HP ${player.currentHp}/${player.hp} | SAN ${player.currentSan}/${player.san}`}
             >
               <strong>{player.name}</strong>
-              <div className="party-compact-bars">
+              <span className="party-compact-bars">
                 <span className="bar-label hp">HP</span>
-                <div className="mini-bar"><i style={{ width: `${hpPct}%` }} /></div>
+                <span className="mini-bar"><i style={{ width: `${hpPct}%` }} /></span>
                 <span className="bar-value">{player.currentHp}/{player.hp}</span>
                 <span className="bar-label san">SAN</span>
-                <div className="mini-bar"><i className="san" style={{ width: `${sanPct}%` }} /></div>
+                <span className="mini-bar"><i className="san" style={{ width: `${sanPct}%` }} /></span>
                 <span className="bar-value">{player.currentSan}/{player.san}</span>
-              </div>
-            </article>
+              </span>
+            </button>
           );
         })}
       </div>

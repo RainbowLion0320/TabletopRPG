@@ -405,6 +405,67 @@ for (const size of [{ width: 320, height: 568, party: 4 }, { width: 390, height:
   });
 }
 
+for (const size of [{ width: 390, height: 844, party: 1 }, { width: 1440, height: 900, party: 2 }, { width: 320, height: 568, party: 4 }] as const) {
+  test(`investigator sheets keep ${size.party}-player drafts and turns intact at ${size.width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize(size);
+    await startNewGame(page, size.party);
+    if (size.width <= 700) {
+      const layout = await page.locator('.game-screen').evaluate((screen) => {
+        const panel = screen.querySelector('.narrative-panel')!, dock = screen.querySelector('.action-dock')!.getBoundingClientRect();
+        return { readingHeight: panel.clientHeight, dockBottom: dock.bottom, viewport: innerHeight };
+      });
+      expect(layout.readingHeight).toBeGreaterThanOrEqual(140);
+      expect(layout.dockBottom).toBeLessThanOrEqual(layout.viewport - 8);
+    }
+    const draft = '先记录窗边痕迹，再查看队友的技能。';
+    await page.getByRole('textbox', { name: '亨利·格雷的行动' }).fill(draft);
+    const avatar = page.getByRole('button', { name: '查看亨利·格雷的属性', exact: true });
+    const avatarBox = await avatar.boundingBox();
+    expect(avatarBox!.width).toBeGreaterThanOrEqual(44); expect(avatarBox!.height).toBeGreaterThanOrEqual(44);
+    await avatar.click();
+    const sheet = page.locator('.investigator-sheet');
+    await expect(sheet).toHaveAccessibleName('亨利·格雷');
+    await expect(sheet.locator('[data-stat="hp"] dd')).toHaveText('12 / 12');
+    await expect(sheet.locator('.investigator-attributes > div')).toHaveCount(8);
+    if (size.party > 1) {
+      const teammate = size.party === 4 ? '罗伯特·肖' : '艾达·华莱士';
+      await sheet.getByRole('button', { name: teammate, exact: true }).click();
+      await expect(sheet).toHaveAccessibleName(teammate);
+      await sheet.getByRole('button', { name: '亨利·格雷', exact: true }).click();
+    }
+    await page.screenshot({ path: testInfo.outputPath('sheet-attributes.png') });
+    await sheet.getByRole('tab', { name: '技能', exact: true }).click();
+    const search = sheet.getByRole('searchbox', { name: '搜索技能' });
+    await search.fill('侦查');
+    await expect(sheet.locator('tbody tr')).toHaveCount(1);
+    await expect(sheet.locator('tbody td')).toHaveText(['75', '37', '15']);
+    await sheet.getByRole('button', { name: '清除技能搜索' }).click();
+    await sheet.locator('.investigator-body').evaluate((element) => { element.scrollTop = element.scrollHeight; });
+    await expect(search).toBeInViewport();
+    await expect(sheet.getByRole('columnheader', { name: '困难' })).toBeInViewport();
+    await expect(sheet.getByRole('button', { name: '关闭调查员档案' })).toBeInViewport();
+    await page.screenshot({ path: testInfo.outputPath('sheet-skills.png') });
+    await sheet.getByRole('tab', { name: '随身与背景' }).click();
+    await expect(sheet).toContainText('苏格兰场徽章');
+    await page.keyboard.press('Escape');
+    await expect(sheet).toHaveCount(0); await expect(avatar).toBeFocused();
+    await expect(page.getByRole('textbox', { name: '亨利·格雷的行动' })).toHaveValue(draft);
+    await expect(page.locator('.party-compact.active')).toContainText('亨利·格雷');
+    await page.locator('.party-compact').last().click();
+    await expect(sheet).toHaveAccessibleName(size.party === 4 ? '罗伯特·肖' : size.party === 2 ? '艾达·华莱士' : '亨利·格雷');
+    await sheet.getByRole('button', { name: '关闭调查员档案' }).click();
+    if (size.party > 1) {
+      await page.getByRole('button', { name: '下一位', exact: true }).click();
+      await page.getByRole('textbox', { name: '艾达·华莱士的行动' }).fill('继续查看房间');
+      await page.locator('.story-message.player').getByRole('button', { name: '查看亨利·格雷详情' }).click();
+      await expect(sheet).toHaveAccessibleName('亨利·格雷');
+      await sheet.getByRole('button', { name: '关闭调查员档案' }).click();
+      await expect(page.getByRole('textbox', { name: '艾达·华莱士的行动' })).toHaveValue('继续查看房间');
+      await expect(page.locator('.party-compact.active')).toContainText('艾达·华莱士');
+    }
+  });
+}
+
 test('a solo player can replace the default investigator and cannot start an empty party', async ({ page }) => {
   await gotoClean(page);
   await page.getByRole('button', { name: /开始游戏/ }).click();

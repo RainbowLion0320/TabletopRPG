@@ -6,6 +6,10 @@
 
 ## Android edition (2026-09-09)
 
+In 0.4.3, `GameScreen` stores only an inspected player ID for the new `InvestigatorSheet`. The sheet derives its content from the current `state.players`, preserving live updates without copying resources into UI state. `ActionDock` exposes native buttons for avatars and status cards; player narrative marks route to the same dossier while NPCs retain their existing detail view. Skill totals and difficulty thresholds use `getSkillTotal` / `getDifficultyThreshold`, including current luck. Equipment is taken only from explicit records. The modal uses a body portal and the existing dialog focus/back stack, with independent content scrolling, fixed search and keyboard-accessible tabs. It never calls the model or changes gameplay state, resources, declarations or actor index.
+
+The portrait grid now allows the scene track to shrink from its preferred aspect-ratio height while the narrative track reserves 142px including its frame. This keeps at least 140px of narrative panel and the bottom dock inside a 320×568 four-player viewport after touch targets grow. Background artwork remains contained without distortion; keyboard-reduced windows still reclaim the stage.
+
 In 0.4.2, `NarrativePanel` is a clipped flex column with a non-shrinking header and a separate, labelled `.narrative-scroll` region. Latest-message scrolling targets that region using its own relative offsets. Expanded portrait reading spans grid rows 2–3, below navigation and above actions; desktop expansion begins at the 64px navigation boundary. The toggle exposes `aria-expanded`. Scrolling never moves the NPC header or exposes text behind it.
 
 Android 0.4.1 uses `@mipmap/ic_launcher` / `ic_launcher_round`, with legacy density PNGs, API 26 adaptive layers and API 33 monochrome layers. The splash theme shares the application icon. `scripts/prepare-app-icons.mjs` packages the supplied two-color artwork, centers its foreground within the 66/108 adaptive safe area, and emits web ICO / touch icons into `public/icons`; both entry points reference those local files.

@@ -4,11 +4,24 @@ import { ActionDock } from '../../src/components/game/ActionDock';
 import { makeInvestigator, makeState } from '../dm/fixtures';
 
 describe('ActionDock player-specific suggestions', () => {
+  it('opens the requested investigator from the avatar or party card without submitting or changing a draft', () => {
+    const state = makeState({ players: [makeInvestigator({ id: 'henry', name: '亨利' }), makeInvestigator({ id: 'ada', name: '艾达' })] });
+    state.currentActorIndex = 1;
+    state.declarations.ada = '检查窗边';
+    const inspect = vi.fn(), submit = vi.fn(), change = vi.fn();
+    render(<ActionDock onInspectPlayer={inspect} isDiceRolling={false} state={state} onDeclarationChange={change} onSubmit={submit} onRoll={vi.fn()} onSuggestion={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: '查看艾达的属性', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: /查看亨利的属性，HP/ }));
+    expect(inspect.mock.calls).toEqual([['ada'], ['henry']]);
+    expect(submit).not.toHaveBeenCalled(); expect(change).not.toHaveBeenCalled();
+    expect(screen.getByRole('textbox')).toHaveValue('检查窗边');
+    expect(state.currentActorIndex).toBe(1);
+  });
   it('does not submit when Enter confirms Chinese IME input or repeats a held key', () => {
     const state = makeState();
     state.declarations[state.players[0].id] = '询问情况';
     const onSubmit = vi.fn();
-    render(<ActionDock isDiceRolling={false} state={state} onDeclarationChange={vi.fn()} onSubmit={onSubmit} onRoll={vi.fn()} onSuggestion={vi.fn()} />);
+    render(<ActionDock onInspectPlayer={vi.fn()} isDiceRolling={false} state={state} onDeclarationChange={vi.fn()} onSubmit={onSubmit} onRoll={vi.fn()} onSuggestion={vi.fn()} />);
     const input = screen.getByRole('textbox');
     fireEvent.keyDown(input, { key: 'Enter', isComposing: true });
     fireEvent.keyDown(input, { key: 'Enter', keyCode: 229 });
@@ -22,7 +35,7 @@ describe('ActionDock player-specific suggestions', () => {
     const state = makeState();
     state.pendingDmActions = [{ player: state.players[0].name, action: '询问情况' }];
     const retry = vi.fn();
-    render(<ActionDock isDiceRolling={false} state={state} onDeclarationChange={vi.fn()} onSubmit={vi.fn()} onRoll={vi.fn()} onSuggestion={vi.fn()} onRetry={retry} />);
+    render(<ActionDock onInspectPlayer={vi.fn()} isDiceRolling={false} state={state} onDeclarationChange={vi.fn()} onSubmit={vi.fn()} onRoll={vi.fn()} onSuggestion={vi.fn()} onRetry={retry} />);
     expect(screen.getByRole('textbox')).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: '重试本轮' }));
     expect(retry).toHaveBeenCalledOnce();
@@ -40,7 +53,7 @@ describe('ActionDock player-specific suggestions', () => {
 
     render(
       <ActionDock
-        isDiceRolling={false}
+        onInspectPlayer={vi.fn()} isDiceRolling={false}
         state={state}
         onDeclarationChange={vi.fn()}
         onSubmit={vi.fn()}
@@ -63,6 +76,7 @@ describe('ActionDock player-specific suggestions', () => {
 
     render(
       <ActionDock
+        onInspectPlayer={vi.fn()}
         isDiceRolling
         state={state}
         onDeclarationChange={vi.fn()}
@@ -101,7 +115,7 @@ describe('ActionDock player-specific suggestions', () => {
 
     render(
       <ActionDock
-        isDiceRolling={false}
+        onInspectPlayer={vi.fn()} isDiceRolling={false}
         state={state}
         onDeclarationChange={vi.fn()}
         onSubmit={vi.fn()}
@@ -125,7 +139,7 @@ describe('ActionDock player-specific suggestions', () => {
 
     render(
       <ActionDock
-        isDiceRolling={false}
+        onInspectPlayer={vi.fn()} isDiceRolling={false}
         state={state}
         onDeclarationChange={vi.fn()}
         onSubmit={vi.fn()}

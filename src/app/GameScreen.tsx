@@ -7,6 +7,7 @@ import { GameMenu } from '../components/game/GameMenu';
 import { InfoDrawer } from '../components/game/InfoDrawer';
 import { NarrativePanel } from '../components/game/NarrativePanel';
 import { EntityDetailModal } from '../components/game/EntityDetailModal';
+import { InvestigatorSheet } from '../components/game/InvestigatorSheet';
 import { SaveManagerModal } from '../components/game/SaveManagerModal';
 import { SceneStage } from '../components/game/SceneStage';
 import { TopBar } from '../components/game/TopBar';
@@ -26,8 +27,14 @@ interface GameScreenProps {
 export function GameScreen({ controller, onHome, onRestart, autoFocusInput = true }: GameScreenProps) {
   const { state } = controller;
   const [narrativeDetail, setNarrativeDetail] = useState<EntityDetail | null>(null);
+  const [inspectedPlayerId, setInspectedPlayerId] = useState<string | null>(null);
 
   const handleNarrativeMarkOpen = useCallback((target: NarrativeMarkTarget, sourceText: string) => {
+    const player = target.kind === 'person' && state.players.find((item) => item.id === target.id || item.name === (target.canonicalName ?? target.id));
+    if (player) {
+      setInspectedPlayerId(player.id);
+      return;
+    }
     setNarrativeDetail(getNarrativeMarkDetail(target, state, sourceText));
   }, [state]);
 
@@ -84,10 +91,12 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
         onRetry={controller.retryPendingTurn}
         onSubmit={controller.submitAction}
         onSuggestion={controller.applySuggestion}
+        onInspectPlayer={setInspectedPlayerId}
       />
       <DiceRollOverlay onConfirm={controller.confirmDiceResult} roll={controller.diceRoll} />
       <ApiConfigModal open={controller.apiOpen} onClose={() => controller.setApiOpen(false)} onSave={controller.saveApi} />
       <EntityDetailModal detail={narrativeDetail} onClose={() => setNarrativeDetail(null)} />
+      {inspectedPlayerId && <InvestigatorSheet players={state.players} selectedId={inspectedPlayerId} onSelect={setInspectedPlayerId} onClose={() => setInspectedPlayerId(null)} />}
       {controller.toast ? <div className="toast">{controller.toast}</div> : null}
       <DmDebugDrawer />
     </main>

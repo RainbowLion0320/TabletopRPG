@@ -21,9 +21,12 @@ updated: 2026-09-09
 
 0.4.2 展开故事仅占据顶栏与底部操作之间的空间，正文在 NPC 信息条下方独立滚动；NPC 名牌及收起按钮不随历史消息移动。APK 和新版网页共享修复，见 [展开阅读验收](../../docs/reviews/2026-09-09-expanded-reading.md)。
 
+0.4.3 头像和队员卡增加点击、按下与焦点反馈，打开三页调查员档案：属性、技能、随身与背景。面板用小立绘和黄铜格保持紧凑，顶部关闭与分类常驻，正文独立滚动；多人查看不切换行动角色。实时数值来自游戏状态，技能计算复用规则函数。见 [[entities/character_system]] 与 [档案验收](../../docs/reviews/2026-09-09-investigator-sheet.md)。
+
 ## 被引用于
 
 - [[index]]
 - [[overview]]
 - [[concepts/android_app]]
 - [[concepts/tech_stack]]
+- [[entities/character_system]]

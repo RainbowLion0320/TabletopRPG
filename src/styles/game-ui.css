@@ -239,6 +239,12 @@
 :root.fog-ui .party-compact.acted { opacity: .75; }
 :root.fog-ui .party-strip-compact { border-top-color: #51412b; }
 :root.fog-ui .dock-actor-avatar { border-radius: 1px; border-color: #ab8851; background: #17120c; }
+:root.fog-ui .dock-actor-avatar { width: 44px; height: 44px; padding: 3px; cursor: pointer; }
+:root.fog-ui .party-compact { cursor: pointer; min-height: 40px; }
+:root.fog-ui :is(.dock-actor-avatar, .party-compact):active { border-color: #f0cf8b; box-shadow: inset 0 0 0 1px #f0cf8b; }
+@media (hover: hover) {
+  :root.fog-ui :is(.dock-actor-avatar, .party-compact):hover { border-color: #e4c181; background-color: #3a2e1d; }
+}
 :root.fog-ui .mini-bar, :root.fog-ui .mini-bar i { border-radius: 0; }
 :root.fog-ui .check-card { border-color: #9a7c49; background: #302718; }
 :root.fog-ui .menu-list button { justify-content: flex-start; box-shadow: inset 0 -1px #57452d; padding-inline: 12px; }

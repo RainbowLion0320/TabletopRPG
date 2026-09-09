@@ -159,6 +159,32 @@ public class GameAndroidTest {
                 // Keep the background visible in scenes with no NPC.
                 assertEquals("Scene framing is independent of NPC presence", "true", js("(()=>{const n=document.querySelector('.scene-npc'),parent=n.parentNode,p=document.querySelector('.narrative-panel'),top=p.getBoundingClientRect().top;n.remove();try{return p.getBoundingClientRect().top===top&&document.querySelector('.scene-backdrop-img').getBoundingClientRect().height>100}finally{parent.appendChild(n)}})()"));
                 screenshot(prefix + "-game");
+                fill(".dock-input", "查看属性时保留这段行动草稿");
+                reachable(".dock-actor-avatar"); nativeTap(".dock-actor-avatar");
+                until("document.querySelector('.investigator-sheet')"); reachable(".investigator-close");
+                assertEquals("Character sheet reads the selected investigator", "true", js("document.querySelector('.investigator-identity h2').textContent==='亨利·格雷'&&document.querySelectorAll('.investigator-attributes>div').length===8"));
+                if (partySize > 1) {
+                    js("document.querySelector('.investigator-party button:last-child').click()");
+                    until("document.querySelector('.investigator-party button:last-child').getAttribute('aria-pressed')==='true'");
+                    js("document.querySelector('.investigator-party button:first-child').click()");
+                }
+                screenshot(prefix + "-attributes"); click("技能");
+                fill(".investigator-search input", "侦查");
+                assertEquals("Skill thresholds match the game rules", "true", js("Array.from(document.querySelectorAll('.investigator-skills tbody td')).map(e=>e.textContent).join(',')==='75,37,15'"));
+                fill(".investigator-search input", ""); js("document.querySelector('.investigator-body').scrollTop=99999");
+                reachable(".investigator-search input"); reachable(".investigator-close"); screenshot(prefix + "-skills");
+                click("随身与背景");
+                js("document.querySelector('.investigator-background dd').textContent='长篇角色背景记录。'.repeat(150);document.querySelector('.investigator-body').scrollTop=99999");
+                reachable(".investigator-close");
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                until("!document.querySelector('.investigator-sheet')");
+                assertEquals("Inspecting a teammate preserves the current action and actor", "true", js("document.querySelector('.dock-input').value==='查看属性时保留这段行动草稿'&&document.querySelector('.party-compact.active strong').textContent==='亨利·格雷'"));
+                js("document.querySelector('.party-compact:last-child').click()"); until("document.querySelector('.investigator-sheet')");
+                assertEquals("Status cards inspect their own player", "true", js("document.querySelector('.investigator-identity h2').textContent===document.querySelector('.party-compact:last-child strong').textContent"));
+                click("技能"); viewport(size[0], 300);
+                js("document.querySelector('.investigator-search input').focus()");
+                reachable(".investigator-search input"); reachable(".investigator-close"); screenshot(prefix + "-sheet-keyboard");
+                js("document.querySelector('.investigator-close').click()"); viewport(size[0], size[1]); fill(".dock-input", "");
                 js("document.querySelector('.narrative-toggle-btn').click()"); reachable(".narrative-toggle-btn");
                 assertEquals("Expanded reading stays below navigation and above the dock", "true", js("(()=>{const p=document.querySelector('.narrative-panel').getBoundingClientRect(),d=document.querySelector('.action-dock').getBoundingClientRect(),n=document.querySelector('.game-top').getBoundingClientRect();return p.top>=n.bottom&&p.bottom<=d.top+.5&&p.width>innerWidth*.9&&p.left===d.left&&p.right===d.right})()"));
                 js("(()=>{const e=document.createElement('div');e.id='qa-long-story';e.className='story-message dm';e.textContent='调查员沿着门廊仔细查看，斑驳的木板上留下了一道浅浅的划痕。伊莎贝拉回忆起那天走廊里急促的脚步声。'.repeat(40);document.querySelector('.narrative-scroll').appendChild(e)})()");
