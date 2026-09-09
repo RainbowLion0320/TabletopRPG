@@ -8,6 +8,8 @@
 
 ### Android companion build — 2026-09-09
 
+Version 0.4.2 bounds expanded reading below the chapter/location bar and above the action dock. The NPC/title and collapse control stay outside the independently scrolling story, so long histories cannot cover either header. This applies to the APK and new web build, with regression coverage for small phones, multi-player histories and desktop navigation.
+
 Version 0.4.1 applies the artist-supplied game icon to Android launchers, system splash and web favicons. Adaptive masks retain the full symbol, older launchers receive density-specific PNGs, and supported themed launchers receive a monochrome layer.
 
 Version 0.4.0 adds a complete investigation-themed interaction system shared by the APK and new web build. Aged brass plates, dark leather surfaces and file tabs replace generic rounded controls. Primary/secondary actions, icons, suggestions, cards, forms, toggles, faders and dialogs share explicit selected, pressed, disabled and keyboard-focus states. APK and web viewports up to 700 CSS pixels share the portrait structure; wider web layouts retain their space with the same visual system. Art must not obscure text or reduce access to actions. See [UI_SYSTEM.md](UI_SYSTEM.md).

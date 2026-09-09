@@ -355,6 +355,56 @@ test('a selected two-investigator party reaches the main game with both status c
   expect(gameLayout.actionDockLeft).toBeGreaterThanOrEqual(0);
 });
 
+for (const size of [{ width: 320, height: 568, party: 4 }, { width: 390, height: 844, party: 2 }, { width: 1440, height: 900, party: 1 }]) {
+  test(`expanded story keeps navigation and its header above long history at ${size.width}x${size.height}`, async ({ page }, testInfo) => {
+    await page.setViewportSize(size);
+    const state = createDynamicCaseBoardSave();
+    state.players = Array.from({ length: size.party }, (_, index) => makeInvestigator({ id: `reader-${index}`, name: ['亨利·格雷', '艾达·华莱士', '托马斯·贝尔', '罗伯特·肖'][index] }));
+    state.messages = Array.from({ length: 20 }, (_, index) => index % 2 === 0
+      ? { id: `history-${index}`, type: 'player' as const, playerName: state.players[index % size.party].name, text: '仔细观察窗边的痕迹，向伊莎贝拉询问失踪前发生的事情。' }
+      : { id: `history-${index}`, type: 'dm' as const, text: '浓雾压在摩勒住宅的窗外。伊莎贝拉停顿片刻，回忆起那天走廊里急促的脚步声。调查员沿着门廊仔细查看，斑驳的木板上留下了一道浅浅的划痕。\n\n'.repeat(4), npcName: null });
+    await gotoWithSave(page, state);
+    await page.getByRole('button', { name: '继续游戏' }).click();
+    const toggle = page.locator('.narrative-toggle-btn');
+    const scroll = page.getByRole('region', { name: '剧情记录', exact: true });
+    await expect.poll(() => scroll.evaluate((element) => {
+      const latest = element.querySelector<HTMLElement>('.story-message:last-child')!;
+      return Math.abs(element.scrollTop - Math.min(latest.offsetTop, element.scrollHeight - element.clientHeight));
+    })).toBeLessThanOrEqual(1);
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    const header = await page.locator('.narrative-header').boundingBox();
+    expect(header).not.toBeNull();
+    for (const fraction of [0, 0.5, 1]) {
+      await scroll.evaluate((element, fraction) => element.scrollTo({ top: (element.scrollHeight - element.clientHeight) * fraction, behavior: 'instant' }), fraction);
+      await expect.poll(() => scroll.evaluate((element) => element.scrollTop / (element.scrollHeight - element.clientHeight))).toBeCloseTo(fraction, 2);
+      const geometry = await scroll.evaluate((element) => {
+        const panel = element.closest('.narrative-panel')!;
+        const p = panel.getBoundingClientRect(), h = panel.querySelector('.narrative-header')!.getBoundingClientRect();
+        const body = element.getBoundingClientRect(), nav = document.querySelector('.game-top')!.getBoundingClientRect(), dock = document.querySelector('.action-dock')!.getBoundingClientRect();
+        return { headerTop: h.top, panelTop: p.top, navBottom: nav.bottom, bodyTop: body.top, headerBottom: h.bottom, bodyBottom: body.bottom, dockTop: dock.top, panelScroll: panel.scrollTop };
+      });
+      expect(geometry.panelTop).toBeGreaterThanOrEqual(geometry.navBottom);
+      expect(geometry.headerTop).toBeCloseTo(header!.y, 0);
+      expect(geometry.bodyTop).toBeGreaterThanOrEqual(geometry.headerBottom);
+      expect(geometry.bodyBottom).toBeLessThanOrEqual(geometry.dockTop);
+      expect(geometry.panelScroll).toBe(0);
+      await expect(toggle).toBeInViewport();
+    }
+    await page.screenshot({ path: testInfo.outputPath('expanded-long-story.png') });
+    await page.getByRole('button', { name: '菜单', exact: true }).click();
+    await expect(page.getByRole('button', { name: '保存游戏', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: '菜单', exact: true }).click();
+    await page.getByRole('button', { name: '资料', exact: true }).click();
+    await page.getByRole('button', { name: '关闭资料', exact: true }).click();
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('.scene-stage')).toBeVisible();
+    await expect(page.locator('.dock-input')).toBeInViewport();
+    await expect(page.locator('.narrative-header')).toBeInViewport();
+  });
+}
+
 test('a solo player can replace the default investigator and cannot start an empty party', async ({ page }) => {
   await gotoClean(page);
   await page.getByRole('button', { name: /开始游戏/ }).click();

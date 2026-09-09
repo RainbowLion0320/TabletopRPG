@@ -73,13 +73,13 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
     const panel = ref.current;
     const latest = latestMessageRef.current;
     if (!panel || !latest) return;
-    panel.scrollTo({ top: Math.max(0, latest.offsetTop - 56), behavior: 'smooth' });
+    panel.scrollTo({ top: latest.offsetTop, behavior: 'smooth' });
   }, [state.messages.length]);
 
   const activeNpc = state.activeNpcName ? storyData.npcs[state.activeNpcName] : null;
 
   return (
-    <div className={`narrative-panel${expanded ? ' expanded' : ''}`} ref={ref}>
+    <div className={`narrative-panel${expanded ? ' expanded' : ''}`}>
       <div className="narrative-header">
         {activeNpc ? (
           <button
@@ -102,6 +102,7 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
         )}
         <button
           className="narrative-toggle-btn"
+          aria-expanded={expanded}
           onClick={() => setExpanded(!expanded)}
           title={expanded ? '收起' : '展开'}
           type="button"
@@ -109,39 +110,41 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
           {expanded ? <Shrink size={16} /> : <Expand size={16} />}
         </button>
       </div>
-      {visibleMessages.map((message, index) => (
-        <div
-          className={`story-message ${message.type}`}
-          key={message.id}
-          ref={index === visibleMessages.length - 1 ? latestMessageRef : undefined}
-        >
-          {message.type === 'dm' ? <div className="message-label">AI DM</div> : null}
-          {message.type === 'player' ? (
-            <p className="player-message-line">
-              <button
-                aria-label={`查看${message.playerName ?? '玩家'}详情`}
-                className="player-inline-name narrative-mark narrative-mark-person"
-                onClick={() => {
-                  const player = state.players.find((item) => item.name === message.playerName);
-                  if (!player) return;
-                  onMarkOpen?.({
-                    kind: 'person', id: player.id, label: player.name, source: 'deterministic', canonicalName: player.name
-                  }, message.text);
-                }}
-                style={{ '--person-color': getPersonColor(state, message.playerName ?? '玩家') } as CSSProperties}
-                type="button"
-              >
-                {message.playerName ?? '玩家'}
-              </button>
-              <span className="player-inline-separator">：</span>
-              <span className="player-message-text"><RichNarrativeText message={message} onMarkOpen={onMarkOpen} state={state} /></span>
-            </p>
-          ) : (
-            <p><RichNarrativeText message={message} onMarkOpen={onMarkOpen} state={state} /></p>
-          )}
-        </div>
-      ))}
-      {state.isThinking ? <ThinkingIndicator /> : null}
+      <div className="narrative-scroll" ref={ref} role="region" aria-label="剧情记录" tabIndex={0}>
+        {visibleMessages.map((message, index) => (
+          <div
+            className={`story-message ${message.type}`}
+            key={message.id}
+            ref={index === visibleMessages.length - 1 ? latestMessageRef : undefined}
+          >
+            {message.type === 'dm' ? <div className="message-label">AI DM</div> : null}
+            {message.type === 'player' ? (
+              <p className="player-message-line">
+                <button
+                  aria-label={`查看${message.playerName ?? '玩家'}详情`}
+                  className="player-inline-name narrative-mark narrative-mark-person"
+                  onClick={() => {
+                    const player = state.players.find((item) => item.name === message.playerName);
+                    if (!player) return;
+                    onMarkOpen?.({
+                      kind: 'person', id: player.id, label: player.name, source: 'deterministic', canonicalName: player.name
+                    }, message.text);
+                  }}
+                  style={{ '--person-color': getPersonColor(state, message.playerName ?? '玩家') } as CSSProperties}
+                  type="button"
+                >
+                  {message.playerName ?? '玩家'}
+                </button>
+                <span className="player-inline-separator">：</span>
+                <span className="player-message-text"><RichNarrativeText message={message} onMarkOpen={onMarkOpen} state={state} /></span>
+              </p>
+            ) : (
+              <p><RichNarrativeText message={message} onMarkOpen={onMarkOpen} state={state} /></p>
+            )}
+          </div>
+        ))}
+        {state.isThinking ? <ThinkingIndicator /> : null}
+      </div>
     </div>
   );
 }

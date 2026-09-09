@@ -217,6 +217,7 @@
 :root.fog-ui:not(.portrait-ui) .menu-button { width: 44px; height: 44px; flex-shrink: 0; }
 :root.fog-ui:not(.portrait-ui) .scene-stage { top: 64px; height: calc(50dvh - 64px); }
 :root.fog-ui:not(.portrait-ui) .scene-npc { height: calc(100% - 8px); }
+:root.fog-ui:not(.portrait-ui) .narrative-panel.expanded { top: 64px; }
 :root.fog-ui :is(.narrative-panel, .action-dock) {
   background-color: #15130f;
   background-image: linear-gradient(#191711f5, #11110ff5), var(--ui-grain);

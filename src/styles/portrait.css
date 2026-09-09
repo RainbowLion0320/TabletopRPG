@@ -81,8 +81,8 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 .portrait-ui .menu-button { width: 44px; height: 44px; flex: 0 0 44px; }
 .portrait-ui .drawer-tab { top: var(--mobile-top) !important; right: calc(var(--mobile-right) + 50px); width: 44px; height: 44px; min-height: 44px; padding: 0; display: grid; place-items: center; border-radius: 8px; border: 1px solid var(--line-soft); }
 .portrait-ui .drawer-tab span, .portrait-ui .drawer-tab .drawer-grip { display: none; }
-.portrait-ui .narrative-panel { position: relative; grid-column: 1; grid-row: 3; inset: auto; min-width: 0; min-height: 0; max-height: none; height: 100%; padding: 0 8px 6px; overflow-x: hidden; overscroll-behavior: contain; scroll-padding-top: 40px; }
-.portrait-ui .narrative-panel.expanded { position: relative; grid-row: 1 / 4; inset: auto; max-height: none; z-index: 24; padding-top: var(--mobile-top); border-radius: 10px 10px 0 0; }
+.portrait-ui .narrative-panel { position: relative; grid-column: 1; grid-row: 3; inset: auto; min-width: 0; min-height: 0; max-height: none; height: 100%; padding: 0 8px 6px; }
+.portrait-ui .narrative-panel.expanded { position: relative; grid-row: 2 / 4; inset: auto; max-height: none; z-index: 24; padding-top: 0; border-radius: 10px 10px 0 0; }
 .portrait-ui .game-screen:has(.narrative-panel.expanded) .scene-stage { visibility: hidden; }
 .portrait-ui .narrative-header { padding: 0; min-height: 32px; }
 .portrait-ui .narrative-toggle-btn { width: 44px; height: 32px; flex-shrink: 0; }

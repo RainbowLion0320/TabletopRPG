@@ -160,7 +160,17 @@ public class GameAndroidTest {
                 assertEquals("Scene framing is independent of NPC presence", "true", js("(()=>{const n=document.querySelector('.scene-npc'),parent=n.parentNode,p=document.querySelector('.narrative-panel'),top=p.getBoundingClientRect().top;n.remove();try{return p.getBoundingClientRect().top===top&&document.querySelector('.scene-backdrop-img').getBoundingClientRect().height>100}finally{parent.appendChild(n)}})()"));
                 screenshot(prefix + "-game");
                 js("document.querySelector('.narrative-toggle-btn').click()"); reachable(".narrative-toggle-btn");
-                assertEquals("Expanded reading reclaims the stage and keeps the dock aligned", "true", js("(()=>{const p=document.querySelector('.narrative-panel').getBoundingClientRect(),d=document.querySelector('.action-dock').getBoundingClientRect();return p.top<10&&p.width>innerWidth*.9&&p.left===d.left&&p.right===d.right})()"));
+                assertEquals("Expanded reading stays below navigation and above the dock", "true", js("(()=>{const p=document.querySelector('.narrative-panel').getBoundingClientRect(),d=document.querySelector('.action-dock').getBoundingClientRect(),n=document.querySelector('.game-top').getBoundingClientRect();return p.top>=n.bottom&&p.bottom<=d.top+.5&&p.width>innerWidth*.9&&p.left===d.left&&p.right===d.right})()"));
+                js("(()=>{const e=document.createElement('div');e.id='qa-long-story';e.className='story-message dm';e.textContent='调查员沿着门廊仔细查看，斑驳的木板上留下了一道浅浅的划痕。伊莎贝拉回忆起那天走廊里急促的脚步声。'.repeat(40);document.querySelector('.narrative-scroll').appendChild(e)})()");
+                String headerTop = js("document.querySelector('.narrative-header').getBoundingClientRect().top");
+                for (double fraction : new double[] {0, .5, 1}) {
+                    js("(()=>{const s=document.querySelector('.narrative-scroll');s.scrollTop=(s.scrollHeight-s.clientHeight)*" + fraction + "})()");
+                    assertEquals("Story header stays fixed when history scrolls", headerTop, js("document.querySelector('.narrative-header').getBoundingClientRect().top"));
+                    assertEquals("Only the story body scrolls below the header", "true", js("(()=>{const p=document.querySelector('.narrative-panel'),s=document.querySelector('.narrative-scroll'),h=document.querySelector('.narrative-header').getBoundingClientRect();return p.scrollTop===0&&s.scrollHeight>s.clientHeight&&s.getBoundingClientRect().top>=h.bottom})()"));
+                    reachable(".narrative-toggle-btn"); reachable(".menu-button"); reachable(".drawer-tab"); reachable(".dock-input");
+                }
+                screenshot(prefix + "-expanded");
+                js("document.querySelector('#qa-long-story').remove();document.querySelector('.narrative-scroll').scrollTop=0");
                 js("document.querySelector('.narrative-toggle-btn').click();document.querySelector('.npc-nameplate').click()");
                 reachable(".entity-detail-close"); screenshot(prefix + "-entity");
                 // Long unlocked descriptions scroll without moving the close control.
@@ -188,6 +198,10 @@ public class GameAndroidTest {
                 viewport(size[0], 300); fill(".dock-input", "输入法占位后仍可完成输入。");
                 assertEquals("Keyboard space prioritizes reading and input", "true", js("document.querySelector('.narrative-panel').getBoundingClientRect().width>innerWidth*.9 && getComputedStyle(document.querySelector('.scene-stage')).visibility==='hidden' && document.querySelector('.scene-stage').getBoundingClientRect().height===0"));
                 reachable(".dock-input"); reachable(".dock-submit"); screenshot(prefix + "-keyboard");
+                js("document.querySelector('.narrative-toggle-btn').click()");
+                reachable(".narrative-toggle-btn"); reachable(".dock-input"); reachable(".dock-submit");
+                assertEquals("Expanded story keeps its header above the keyboard-sized body", "true", js("(()=>{const h=document.querySelector('.narrative-header').getBoundingClientRect(),s=document.querySelector('.narrative-scroll').getBoundingClientRect(),d=document.querySelector('.action-dock').getBoundingClientRect();return h.top>=0&&s.top>=h.bottom&&s.bottom<=d.top+.5})()"));
+                js("document.querySelector('.narrative-toggle-btn').click()");
                 // The API form must also keep the focused field and Save usable above an IME.
                 viewport(size[0], size[1]); menu("AI 设置"); viewport(size[0], 300);
                 js("document.querySelector('.api-config-fields input[type=password]').focus()");
