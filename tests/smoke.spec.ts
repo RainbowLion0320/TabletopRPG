@@ -619,6 +619,46 @@ test('investigator setup scrolls vertically on narrow screens', async ({ page })
   await expect(setupScreen.locator('.preset-card-modern').last()).toBeInViewport();
 });
 
+test('portrait selection keeps one investigator per row across the former 600px breakpoint', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 1000 });
+  await gotoClean(page);
+  await page.getByRole('button', { name: /开始游戏/ }).click();
+  const cards = page.locator('.preset-card-modern');
+  const list = page.locator('.preset-grid-modern');
+  const start = page.locator('.setup-footer .primary-btn');
+  await expect(page.locator('.preset-card-modern.selected')).toHaveCount(1);
+  await cards.nth(1).locator('strong').click();
+  for (const width of [390, 562, 599, 600, 601, 700]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await list.evaluate(element => { element.scrollTop = 0; });
+    const bounds = await cards.evaluateAll(elements => elements.map(element => {
+      const r = element.getBoundingClientRect();
+      return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width };
+    }));
+    for (let index = 1; index < bounds.length; index++) {
+      expect(bounds[index].left).toBeCloseTo(bounds[0].left, 0);
+      expect(bounds[index].right).toBeCloseTo(bounds[0].right, 0);
+      expect(bounds[index].top).toBeGreaterThanOrEqual(bounds[index - 1].bottom + 8);
+    }
+    expect(bounds[0].width).toBeGreaterThan(width * .9);
+    await expect(page.locator('.preset-card-modern.selected')).toHaveCount(2);
+    await cards.first().locator('.preset-attrs-toggle').click();
+    await expect(page.locator('.preset-card-modern.selected')).toHaveCount(2);
+    expect(await cards.first().locator('.preset-card-content').evaluate(e => e.scrollWidth <= e.clientWidth + 1)).toBe(true);
+    await expect(start).toBeInViewport();
+    await cards.first().locator('.preset-attrs-toggle').click();
+    if (width === 600) await page.screenshot({ path: testInfo.outputPath('portrait-selection-600.png') });
+    await list.evaluate(element => { element.scrollTop = element.scrollHeight; });
+    await expect(cards.last()).toBeInViewport();
+    await expect(start).toBeInViewport();
+  }
+  await cards.nth(2).locator('strong').click();
+  await cards.nth(3).locator('strong').click();
+  await expect(page.locator('.preset-card-modern.selected')).toHaveCount(4);
+  await start.click();
+  await expect(page.locator('.party-compact')).toHaveCount(4);
+});
+
 test('player action messages keep the player name and action on one line', async ({ page }) => {
   await startNewGame(page, 2);
 

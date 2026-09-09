@@ -8,6 +8,8 @@
 
 ### Android companion build — 2026-09-09
 
+Version 0.4.4 keeps one investigator per row throughout portrait selection, including phones reporting 600 or more CSS pixels and portrait tablets. Each card keeps artwork beside readable information; wide lists are centered and capped at 720px. Selection count and start remain fixed below the scrolling list, and expanding attributes preserves the selected party.
+
 Version 0.4.3 makes the action avatar, every party status card and player names in the story open a complete investigator dossier. Players can inspect live HP/MP/SAN/luck, eight base attributes, searchable skills with all three check thresholds, recorded equipment and background. Inspecting teammates never changes the active turn or draft. Identity, close and tabs stay outside scrolling content; Android Back, keyboard focus return and keyboard-reduced layouts are supported.
 
 Version 0.4.2 bounds expanded reading below the chapter/location bar and above the action dock. The NPC/title and collapse control stay outside the independently scrolling story, so long histories cannot cover either header. This applies to the APK and new web build, with regression coverage for small phones, multi-player histories and desktop navigation.

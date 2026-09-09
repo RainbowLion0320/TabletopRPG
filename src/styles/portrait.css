@@ -65,6 +65,9 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 .portrait-ui .preset-skill-list { gap: 4px; }
 .portrait-ui .preset-skill-list span { flex-shrink: 1; font-size: 11px; padding: 3px 5px; }
 
+/* Every portrait device uses one investigator per row, including wide logical screens. */
+.portrait-ui :is(.setup-header, .setup-footer, .preset-grid-modern) { width: 100%; max-width: 720px; margin-inline: auto; }
+
 /* All current scene paintings are 1896 × 1080. Reserve their own wide frame
    instead of cropping them to fill the portrait screen behind the reading UI. */
 /* Let the scene yield space before reading drops below 140px (plus the frame border). */
@@ -275,7 +278,6 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 }
 /* Large portrait tablets retain the same vertical hierarchy with roomier lists. */
 @media (min-width: 600px) {
-  .portrait-ui .preset-grid-modern { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .portrait-ui .case-board-mobile-list > section { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .portrait-ui .party-strip-compact:has(.party-compact:nth-child(3)) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }

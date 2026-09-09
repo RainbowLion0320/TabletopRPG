@@ -114,6 +114,30 @@ public class GameAndroidTest {
         click(label);
     }
 
+    @Test public void portraitSelectionStaysSingleColumnOnWidePhones() throws Exception {
+        // Dedicated QA canvas: at least 1400 x 2000 physical pixels at density 320.
+        fresh();
+        try {
+            viewport(562, 1000); click("开始游戏");
+            until("document.querySelectorAll('.preset-card-modern.selected').length===1");
+            js("document.querySelectorAll('.preset-card-modern strong')[1].click()");
+            for (int width : new int[] {562, 599, 600, 601, 700}) {
+                viewport(width, 1000);
+                js("document.querySelector('.preset-grid-modern').scrollTop=0");
+                assertEquals("Portrait cards stay full-width in one vertical column", "true", js("(()=>{const cards=Array.from(document.querySelectorAll('.preset-card-modern')).map(e=>e.getBoundingClientRect());return cards[0].width>innerWidth*.9&&cards.every((r,i)=>!i||(r.left===cards[0].left&&r.right===cards[0].right&&r.top>=cards[i-1].bottom+8))})()"));
+                js("document.querySelector('.preset-attrs-toggle').click()");
+                assertEquals("Expanding attributes keeps the selected party and fits inside the card", "true", js("document.querySelectorAll('.preset-card-modern.selected').length===2&&Array.from(document.querySelectorAll('.preset-card-content,.preset-vitals')).every(e=>e.scrollWidth<=e.clientWidth+1)"));
+                reachable(".setup-footer .primary-btn"); js("document.querySelector('.preset-attrs-toggle').click()");
+                screenshot("single-column-" + width);
+                js("document.querySelector('.preset-grid-modern').scrollTop=99999");
+                reachable(".preset-card-modern:last-child .preset-attrs-toggle"); reachable(".setup-footer .primary-btn");
+            }
+            js("document.querySelectorAll('.preset-card-modern strong')[2].click();document.querySelectorAll('.preset-card-modern strong')[3].click()");
+            until("document.querySelectorAll('.preset-card-modern.selected').length===4");
+            click("进入游戏"); until("document.querySelectorAll('.party-compact').length===4");
+        } finally { activity.close(); }
+    }
+
     @Test public void portraitDialogsAndReadingStayWithinPhoneViewport() throws Exception {
         // Run on a dedicated emulator at least 860 x 1864 physical pixels at density 320.
         for (int[] size : new int[][] {{320,568}, {360,640}, {390,844}, {430,932}}) {
