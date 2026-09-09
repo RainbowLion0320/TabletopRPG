@@ -12,7 +12,7 @@
     <style name="AppTheme.NoActionBar" parent="AppTheme" />
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">#0D0C0A</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_fog</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>

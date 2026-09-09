@@ -6,6 +6,8 @@
 
 ## Android edition (2026-09-09)
 
+Android 0.4.1 uses `@mipmap/ic_launcher` / `ic_launcher_round`, with legacy density PNGs, API 26 adaptive layers and API 33 monochrome layers. The splash theme shares the application icon. `scripts/prepare-app-icons.mjs` packages the supplied two-color artwork, centers its foreground within the 66/108 adaptive safe area, and emits web ICO / touch icons into `public/icons`; both entry points reference those local files.
+
 In 0.4.0, `src/platform/layout.ts` initializes `fog-ui` and the reactive `portrait-ui` class. Native always uses portrait; the web entry uses it up to 700 CSS pixels and updates the setup footer via `useSyncExternalStore`. Visual rules live in `src/styles/game-ui.css`, phone allocation in `src/styles/portrait.css`; `src/android/mobile.css` imports the shared layout. Root-specific theme selectors cover lazy-loaded dialogs while retaining the absolute/fixed positioning of overlay controls. The original web checkout remains a saved release; the new web build shares the APK design system. See [UI_SYSTEM.md](UI_SYSTEM.md).
 
 `mobile/index.html` and `src/android/main.tsx` are built by `vite.android.config.ts` into `dist-android`, then packaged by Capacitor 8 into `com.rainbowlion.fogtrpg`. Android 7 / WebView 110 minimum, compile/target SDK 36, JDK 21, AGP 8.13 / Gradle 8.14.3. The web entry and its CSS remain independently buildable.

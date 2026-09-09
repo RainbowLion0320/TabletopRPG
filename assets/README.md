@@ -30,6 +30,7 @@ assets/
 ├── investigators/  # 预设调查员立绘
 ├── ui/dice/        # 骰子弹窗面板、静态骰子和透明动画帧图
 ├── ui/chrome/      # 共享交互 UI 黄铜框与轻皮革纹理
+├── ui/app-icon/    # 美术交付的游戏图标与平台输出说明
 └── fonts/          # 骰子界面字魂云雀宋 WOFF2
 ```
 
@@ -44,6 +45,8 @@ assets/
 骰子资源的来源、坐标和动画处理见 [骰子美术说明](ui/dice/README.md)，字体范围及原许可标注见 [字体说明](fonts/README.md)。骰子弹窗全部文字统一使用美术提供的字魂云雀宋。
 
 ## 共享交互 UI
+
+0.4.1 的应用桌面图标、系统启动图标和网页 favicon 见 [图标资源说明](ui/app-icon/README.md)。
 
 0.4.0 的按钮、页签、表单、开关、弹窗和档案风格见 [交互 UI 规范](../docs/UI_SYSTEM.md)，新增材质来源及生成提示见 [黄铜 UI 资源](ui/chrome/README.md)。
 

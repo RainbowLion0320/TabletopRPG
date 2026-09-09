@@ -8,6 +8,8 @@
 
 ### Android companion build — 2026-09-09
 
+Version 0.4.1 applies the artist-supplied game icon to Android launchers, system splash and web favicons. Adaptive masks retain the full symbol, older launchers receive density-specific PNGs, and supported themed launchers receive a monochrome layer.
+
 Version 0.4.0 adds a complete investigation-themed interaction system shared by the APK and new web build. Aged brass plates, dark leather surfaces and file tabs replace generic rounded controls. Primary/secondary actions, icons, suggestions, cards, forms, toggles, faders and dialogs share explicit selected, pressed, disabled and keyboard-focus states. APK and web viewports up to 700 CSS pixels share the portrait structure; wider web layouts retain their space with the same visual system. Art must not obscure text or reduce access to actions. See [UI_SYSTEM.md](UI_SYSTEM.md).
 
 The Android edition is a separate, installable APK that preserves the existing web release. It reuses the same investigation, rules, art, audio and 1–4-player hot-seat game. The Android entry adds a touch-friendly portrait layout, system-back behavior, encrypted local settings/saves and automatic session recovery. On first entering the game, players supply their own AI DM API configuration; build-time developer keys are never bundled. Local assets work without a desktop server; AI turns still require a configured online service. Release packaging and acceptance checks are defined in [ANDROID.md](ANDROID.md).

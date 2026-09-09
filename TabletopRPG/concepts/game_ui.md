@@ -17,6 +17,8 @@ updated: 2026-09-09
 
 规范见 [UI_SYSTEM.md](../../docs/UI_SYSTEM.md)，新增运行时材质、生成提示和转换步骤见 [UI 资源](../../assets/ui/chrome/README.md)，验证见 [0.4.0 检查记录](../../docs/reviews/2026-09-09-ui-system.md)。客户端与音频机制见 [[concepts/android_app]]、[[concepts/audio_system]]。
 
+0.4.1 加入美术提供的应用图标，覆盖安卓桌面、启动页、网页标签及手机快捷图标，保持源图配色和形状；见 [图标说明](../../assets/ui/app-icon/README.md)。
+
 ## 被引用于
 
 - [[index]]
