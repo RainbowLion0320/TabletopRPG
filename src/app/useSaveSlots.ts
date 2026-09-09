@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { deleteSave, readSaveLibrary, saveGameState } from '../services/storage';
 import type { GameState } from '../types/game';
+import { flushGameStorage } from '../platform/storage';
 
 export function useSaveSlots(notify: (text: string) => void) {
   const [library, setLibrary] = useState(() => readSaveLibrary());
@@ -19,9 +20,10 @@ export function useSaveSlots(notify: (text: string) => void) {
     return latestLibrary.saves[0] ?? null;
   }
 
-  function saveCurrentGame(gameState: GameState) {
+  async function saveCurrentGame(gameState: GameState) {
     try {
       saveGameState(gameState);
+      await flushGameStorage();
       refreshSaves();
       notify('已保存');
     } catch {
@@ -29,9 +31,11 @@ export function useSaveSlots(notify: (text: string) => void) {
     }
   }
 
-  function deleteSaveSlot(id: number) {
+  async function deleteSaveSlot(id: number) {
     try {
-      setLibrary(deleteSave(id));
+      const updated = deleteSave(id);
+      await flushGameStorage();
+      setLibrary(updated);
       notify('已删除存档');
     } catch {
       notify('删除失败：浏览器存储不可用，请稍后重试。');

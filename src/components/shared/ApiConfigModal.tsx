@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useDialogFocus } from './useDialogFocus';
+import { usingNativeStorage } from '../../platform/storage';
 import {
   defaultEndpointForProvider,
   defaultModelForProvider,
@@ -56,7 +57,7 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
     try {
       await onSave(normalized);
     } catch {
-      setError('保存失败，浏览器存储不可用或空间不足，请检查后重试。');
+      setError(usingNativeStorage() ? '保存失败，本机存储不可用或空间不足，请检查后重试。' : '保存失败，浏览器存储不可用或空间不足，请检查后重试。');
     } finally {
       setSaving(false);
     }
@@ -68,7 +69,7 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
     <div className="modal-backdrop">
       <div ref={dialogRef} tabIndex={-1} className="modal-card" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <h2 id={titleId}>AI DM 配置</h2>
-        <p>设置保存在当前浏览器，下次打开自动生效。</p>
+        <p>{usingNativeStorage() ? '设置加密保存在本机，下次打开自动生效。' : '设置保存在当前浏览器，下次打开自动生效。'}</p>
         <label>
           Provider
           <select

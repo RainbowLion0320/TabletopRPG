@@ -1,0 +1,201 @@
+package com.rainbowlion.fogtrpg;
+
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.os.SystemClock;
+import android.view.KeyEvent;
+import android.view.MotionEvent;
+import android.view.ViewGroup;
+import android.webkit.WebView;
+import androidx.test.core.app.ActivityScenario;
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
+import org.json.JSONObject;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import okhttp3.mockwebserver.Dispatcher;
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
+import okhttp3.mockwebserver.SocketPolicy;
+import static org.junit.Assert.*;
+
+/** Runs inside the installed APK, using its real WebView, native HTTP and Android Keystore. */
+@RunWith(AndroidJUnit4.class)
+public class GameAndroidTest {
+    private ActivityScenario<MainActivity> activity;
+    private final Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+
+    private String js(String expression) throws Exception {
+        CountDownLatch done = new CountDownLatch(1);
+        AtomicReference<String> result = new AtomicReference<>();
+        activity.onActivity(a -> a.getBridge().getWebView().evaluateJavascript(expression, value -> { result.set(value); done.countDown(); }));
+        assertTrue("JavaScript callback", done.await(10, TimeUnit.SECONDS));
+        return result.get();
+    }
+    private void until(String expression) throws Exception {
+        long deadline = SystemClock.elapsedRealtime() + 20000;
+        do { if ("true".equals(js("Boolean(" + expression + ")"))) return; SystemClock.sleep(100); }
+        while (SystemClock.elapsedRealtime() < deadline);
+        fail("Timed out: " + expression + "\n" + js("document.body.innerText.slice(-1400)"));
+    }
+    private void click(String text) throws Exception {
+        String match = "Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === " + JSONObject.quote(text) + ")";
+        until(match + " && !" + match + ".disabled"); js(match + ".click()");
+    }
+    private void fill(String selector, String value) throws Exception {
+        js("(()=>{const e=document.querySelector(" + JSONObject.quote(selector) + ");Object.getOwnPropertyDescriptor(e.tagName==='SELECT'?HTMLSelectElement.prototype:HTMLInputElement.prototype,'value').set.call(e," + JSONObject.quote(value) + ");e.dispatchEvent(new Event(e.tagName==='SELECT'?'change':'input',{bubbles:true}));})()");
+    }
+    private void screenshot(String name) throws Exception {
+        // DOM updates can precede WebView's next compositor frame on a background emulator.
+        SystemClock.sleep(600);
+        File folder = new File(context.getExternalFilesDir(null), "qa"); folder.mkdirs();
+        Bitmap bitmap = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
+        try (FileOutputStream output = new FileOutputStream(new File(folder, name + ".png"))) { bitmap.compress(Bitmap.CompressFormat.PNG, 100, output); }
+        bitmap.recycle();
+    }
+    private void fresh() throws Exception {
+        context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE).edit().clear().commit();
+        activity = ActivityScenario.launch(MainActivity.class);
+        until("document.querySelector('.title-screen')");
+    }
+    private void nativeTap(String selector) throws Exception {
+        org.json.JSONArray point = new org.json.JSONArray(js("(()=>{const r=document.querySelector(" + JSONObject.quote(selector) + ").getBoundingClientRect();return [(r.x+r.width/2)*devicePixelRatio,(r.y+r.height/2)*devicePixelRatio]})()"));
+        long now = SystemClock.uptimeMillis();
+        MotionEvent down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, (float) point.getDouble(0), (float) point.getDouble(1), 0);
+        MotionEvent up = MotionEvent.obtain(now, now + 80, MotionEvent.ACTION_UP, (float) point.getDouble(0), (float) point.getDouble(1), 0);
+        InstrumentationRegistry.getInstrumentation().sendPointerSync(down);
+        InstrumentationRegistry.getInstrumentation().sendPointerSync(up);
+        down.recycle(); up.recycle();
+    }
+    private void configure(String endpoint, String protocol) throws Exception {
+        until("document.querySelector('#api-config-modal-title')");
+        fill(".modal-card select", "custom");
+        until("document.querySelector('.modal-card select').value === 'custom'");
+        // Each select is nested in its own label.
+        js("(()=>{const e=document.querySelectorAll('.modal-card select')[1];Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(e," + JSONObject.quote(protocol) + ");e.dispatchEvent(new Event('change',{bubbles:true}));})()");
+        fill(".modal-card input:not([type=password])", endpoint);
+        fill(".modal-card input[type=password]", "android-qa-only-token");
+        fill(".modal-card label:last-of-type input", "android-qa-model");
+        click("保存"); until("!document.querySelector('#api-config-modal-title')");
+    }
+
+    @Test public void partyFlowUsesNativeNetworkAndEncryptedRecovery() throws Exception {
+        for (int party : new int[] { 1, 2, 4 }) {
+            AtomicInteger narratorCalls = new AtomicInteger();
+            try (MockWebServer server = new MockWebServer()) {
+                server.setDispatcher(new Dispatcher() {
+                    @Override public MockResponse dispatch(RecordedRequest request) {
+                        String body = request.getBody().readUtf8();
+                        boolean narrator = body.contains("COC 第七版 AI DM Agent");
+                        if (narrator) narratorCalls.incrementAndGet();
+                        assertEquals("Bearer android-qa-only-token", request.getHeader("Authorization"));
+                        String content = narrator ? "{\"narrative\":\"Android 调查继续，伊莎贝拉说明父亲失踪的经过。\",\"activeNpc\":\"伊莎贝拉·摩勒\",\"nextPrompt\":\"继续调查。\",\"playerChoices\":{}}" : "{\"facts\":[],\"nodes\":[],\"edges\":[]}";
+                        String response = request.getPath().endsWith("/responses") ? "{\"output_text\":" + JSONObject.quote(content) + "}" : "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":" + JSONObject.quote(content) + "}}]}";
+                        return new MockResponse().setHeader("Content-Type", "application/json").setBody(response);
+                    }
+                });
+                server.start(); fresh();
+                click("开始游戏"); until("document.querySelectorAll('.preset-card-modern.selected').length === 1");
+                for (int i = 1; i < party; i++) js("document.querySelectorAll('.preset-card-modern strong')[" + i + "].click()");
+                until("document.querySelectorAll('.preset-card-modern.selected').length === " + party);
+                click("进入游戏"); configure(server.url("/v1").toString(), party == 1 ? "responses" : "chat-completions");
+                until("document.querySelectorAll('.party-compact').length === " + party);
+                screenshot("party-" + party);
+                assertEquals("Readable narrative", "true", js("document.querySelector('.narrative-panel').clientHeight > 90"));
+                for (int i = 0; i < party; i++) {
+                    fill(".dock-input", "接受委托并询问失踪经过");
+                    click(i == party - 1 ? "提交" : "下一位");
+                }
+                until("document.body.innerText.includes('Android 调查继续')");
+                assertEquals(1, narratorCalls.get());
+                until("document.querySelectorAll('.story-message.player').length === " + party);
+                assertEquals("No API token in WebView storage", "null", js("localStorage.getItem('trpg-api')"));
+                assertFalse(context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE).getAll().toString().contains("android-qa-only-token"));
+                assertTrue(context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE).contains("trpg-api"));
+                SystemClock.sleep(300);
+                activity.recreate(); until("document.querySelector('.title-screen')"); click("继续游戏");
+                until("document.body.innerText.includes('Android 调查继续')");
+                assertEquals("No repeated API prompt", "false", js("Boolean(document.querySelector('#api-config-modal-title'))"));
+                screenshot("restored-" + party);
+                if (party == 1) {
+                    js("document.querySelector('.drawer-tab').click()");
+                    until("document.querySelector('.info-drawer-react.open .case-board-mobile-card')");
+                    assertEquals("Case information is reachable on a short display", "true", js("innerWidth>900 || document.querySelector('.case-board-mobile-card').getBoundingClientRect().top < innerHeight-60"));
+                    screenshot("caseboard");
+                    js("document.querySelector('[aria-label=关闭资料]').click()");
+                }
+            } finally { if (activity != null) activity.close(); }
+        }
+    }
+
+    @Test public void nativeCancellationStopsTheNetworkCall() throws Exception {
+        try (MockWebServer server = new MockWebServer()) {
+            server.enqueue(new MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE)); server.start(); fresh();
+            js("window.nativeCancelResult=null;window.Capacitor.nativePromise('AiTransport','request',{id:'999-1',url:" + JSONObject.quote(server.url("/").toString()) + ",method:'POST',body:'{}',headers:{}}).then(()=>window.nativeCancelResult='completed',e=>window.nativeCancelResult=e.code)");
+            assertNotNull(server.takeRequest(10, TimeUnit.SECONDS));
+            js("window.Capacitor.nativePromise('AiTransport','cancel',{id:'999-1'})");
+            until("window.nativeCancelResult === 'ABORTED'");
+        } finally { if (activity != null) activity.close(); }
+    }
+
+    @Test public void diceRecoveryReducedViewportAndSystemBack() throws Exception {
+        fresh();
+        try {
+            click("开始游戏"); click("进入游戏"); configure("http://127.0.0.1:1/v1", "responses");
+            // The authored door-lock check is entirely local until the result is confirmed.
+            fill(".dock-input", "检查门锁。"); click("提交");
+            until("document.querySelector('.check-card') && document.querySelector('.dock-input').disabled");
+            js("Math.random = () => .999"); click("掷骰");
+            until("document.querySelector('.dice-roll-overlay')");
+            SystemClock.sleep(300); // Acknowledged encrypted write before activity/process recreation.
+            activity.recreate(); until("document.querySelector('.title-screen')"); click("继续游戏");
+            until("document.querySelector('.dice-roll-overlay.revealed')");
+            assertEquals("\"100\"", js("document.querySelector('.dice-roll-total').textContent"));
+            assertEquals("\"大失败\"", js("document.querySelector('.dice-roll-outcome h3').textContent"));
+            screenshot("locked-fumble-restored");
+            click("确认结果"); until("document.body.innerText.includes('本轮行动已保留')");
+            assertEquals("One player action after network failure", "1", js("document.querySelectorAll('.story-message.player').length"));
+            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+            until("document.querySelector('.game-menu.open')");
+            click("返回首页"); click("开始游戏"); click("进入游戏");
+            until("document.querySelector('.dock-input') && !document.querySelector('.dock-input').disabled");
+            double before = Double.parseDouble(js("innerHeight"));
+            activity.onActivity(a -> {
+                // Simulate the stable WebView area after a keyboard occupies half the display.
+                // Emulator IMEs may route all input to the host and report a zero-height keyboard.
+                WebView web = a.getBridge().getWebView();
+                ViewGroup.LayoutParams params = web.getLayoutParams();
+                params.height = web.getHeight() / 2;
+                web.setLayoutParams(params);
+            });
+            until("innerHeight < " + (before * .8));
+            assertEquals("Action input remains inside the resized viewport", "true", js("(()=>{const r=document.querySelector('.dock-input').getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight})()"));
+            assertEquals("Submit is not covered by another control", "true", js("(()=>{const r=document.querySelector('.dock-submit').getBoundingClientRect();return !!document.elementFromPoint(r.x+r.width/2,r.y+r.height/2).closest('.dock-submit')})()"));
+            screenshot("keyboard-insets");
+        } finally { activity.close(); }
+    }
+
+    @Test public void audioStartsOnTouchAndSwitchesPersist() throws Exception {
+        fresh();
+        try {
+            js("window.AudioContext=class extends window.AudioContext { constructor(...args){super(...args);window.qaAudio=this;} decodeAudioData(...args){return super.decodeAudioData(...args).then(b=>{window.qaDecoded=(window.qaDecoded||0)+1;return b;})} }");
+            nativeTap("button[aria-label='声音设置']");
+            until("window.qaAudio && window.qaAudio.state === 'running'");
+            until("window.qaDecoded > 0");
+            until("document.querySelector('#audio-settings-title')");
+            nativeTap("button[role='switch'][aria-label='背景音乐']");
+            until("document.querySelector('[aria-label=背景音乐]').getAttribute('aria-checked') === 'false'");
+            SystemClock.sleep(300);
+            activity.recreate(); until("document.querySelector('.title-screen')"); click("声音设置");
+            until("document.querySelector('[aria-label=背景音乐]').getAttribute('aria-checked') === 'false'");
+            assertEquals("Effects stay independently enabled", "\"true\"", js("document.querySelector('[aria-label=游戏音效]').getAttribute('aria-checked')"));
+        } finally { activity.close(); }
+    }
+}

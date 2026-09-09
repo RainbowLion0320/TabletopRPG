@@ -10,6 +10,7 @@ import { useToast } from './useToast';
 import { AiResponseFormatError, buildUserMessage, type PlayerAction } from '../services/aiDm';
 import { prepareCheck, rollD100 } from '../services/dice';
 import { persistApiConfig, readApiConfig } from '../services/storage';
+import { usingNativeStorage } from '../platform/storage';
 import { createInitialGameState, gameReducer } from '../state/gameReducer';
 import type { ApiConfig, GameState, Investigator } from '../types/game';
 import { AiProviderConfigError } from '../dm/llm/errors';
@@ -83,6 +84,16 @@ export function useGameController() {
     cancelDiceRoll();
     dmCoordinatorRef.current.invalidate();
     dispatch({ type: 'start', players });
+  }
+
+  function restoreSession(restoredState: GameState, restoredRoll: DiceRollPresentation | null) {
+    cancelDiceRoll();
+    dmCoordinatorRef.current.invalidate();
+    dispatch({ type: 'restore', state: restoredState });
+    if (restoredRoll) {
+      diceRollInFlightRef.current = true;
+      setDiceRoll({ ...restoredRoll, phase: 'revealed', revealAt: undefined });
+    }
   }
 
   function loadLatest() {
@@ -380,7 +391,7 @@ export function useGameController() {
     setApiOpen(false);
     notify(envWritten
       ? 'AI 设置已保存，下次启动自动生效'
-      : 'AI 设置已保存至本地浏览器');
+      : usingNativeStorage() ? 'AI 设置已加密保存至本机' : 'AI 设置已保存至本地浏览器');
   }
 
   function returnHome() {
@@ -434,6 +445,7 @@ export function useGameController() {
     openSaveManager,
     refreshSaves: saveSlots.refreshSaves,
     restartSetup,
+    restoreSession,
     retryPendingTurn,
     returnHome,
     saveApi,

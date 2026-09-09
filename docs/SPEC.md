@@ -4,6 +4,16 @@
 > Updated: 2026-09-09
 > Scope: current React/Vite implementation
 
+## Android edition (2026-09-09)
+
+`mobile/index.html` and `src/android/main.tsx` are built by `vite.android.config.ts` into `dist-android`, then packaged by Capacitor 8 into `com.rainbowlion.fogtrpg`. Android 7 / WebView 110 minimum, compile/target SDK 36, JDK 21, AGP 8.13 / Gradle 8.14.3. The web entry and its CSS remain independently buildable.
+
+`src/platform/storage.ts` supplies the shared storage port (browser defaults to localStorage). Android installs an ordered, retryable cache backed by application-private AES-GCM data with an Android Keystore key. `flushGameStorage` is required before showing successful saves/configuration confirmation. Backups are disabled. `src/android/session.ts` persists state plus locked dice presentation; hydration applies existing scenario compatibility checks, removes stale thinking state, preserves pending actions for explicit retry, and reconstructs the roll result deterministically. No AI credentials are embedded or synchronized to the web edition.
+
+`src/dm/llm/transport.ts` injects the Android HTTP implementation below the existing LLM HTTP/client/adapter layers. `AiTransportPlugin` uses OkHttp with 20-second connection / 180-second call limits, a 4 MB response cap, real cancellation and preserved status codes. Redirects and TLS verification bypasses are disabled. Player-configured HTTP gateways are supported; HTTPS remains the provider default. Game business modules still cannot directly invoke endpoints or protocol fields.
+
+The mobile stylesheet adapts viewport allocation, keyboard resizing, touch targets, menus and dice layout. Native lifecycle events pause audio and flush storage; system back handles the active modal, drawer, menu or title exit. Android-only build optimization converts PNG art to bounded WebP without editing original assets. Android Vite builds disable `.env` loading and blank all `VITE_AI_*` defaults. Release signing uses persistent keys outside Git; see [ANDROID.md](ANDROID.md) for setup, build and native test commands.
+
 ## 1. Runtime Stack
 
 | Layer | Choice |

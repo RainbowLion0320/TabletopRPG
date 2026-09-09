@@ -41,6 +41,13 @@ vite-preview.log
 # Node（如果将来引入）
 node_modules/
 dist/
+dist-android/
+.android-local.json
+*.keystore
+*.jks
+*.p12
+*.apk
+*.aab
 playwright-report/
 test-results/
 output/

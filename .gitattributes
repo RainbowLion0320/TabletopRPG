@@ -1,0 +1,5 @@
+# Generated content is compared byte-for-byte by scenario:check on every platform.
+src/data/scenarios/**/runtime.generated.ts text eol=lf
+src/scenario/generated/*.d.ts text eol=lf
+docs/scenarios/*.md text eol=lf
+android/gradlew text eol=lf

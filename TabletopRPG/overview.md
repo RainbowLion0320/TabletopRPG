@@ -15,6 +15,8 @@ updated: 2026-09-09
 
 ## 当前状态
 
+- **Android 独立版本**：新增 [[concepts/android_app]]，离线资源随 APK 打包，AI 配置由玩家填写；独立入口、手机布局、原生网络、加密存储与自动续玩。原网页目录及主分支保持不变。
+
 - **阶段**：MVP 核心闭环已可运行，正在进行文档/规格/代码对齐与稳定化。
 - **仓库**：[TabletopRPG](https://github.com/RainbowLion0320/TabletopRPG)（本地目录由各开发环境指定）
 - **当前事实源**：

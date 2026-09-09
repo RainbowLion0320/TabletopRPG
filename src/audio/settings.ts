@@ -1,3 +1,5 @@
+import { gameStorage } from '../platform/storage';
+
 export interface AudioSettings {
   musicEnabled: boolean;
   effectsEnabled: boolean;
@@ -23,11 +25,11 @@ export function normalizeAudioSettings(value: unknown): AudioSettings {
 }
 
 export function loadAudioSettings(): AudioSettings {
-  try { return normalizeAudioSettings(JSON.parse(localStorage.getItem(AUDIO_SETTINGS_KEY) ?? 'null')); }
+  try { return normalizeAudioSettings(JSON.parse(gameStorage.getItem(AUDIO_SETTINGS_KEY) ?? 'null')); }
   catch { return { ...defaultAudioSettings }; }
 }
 
 export function saveAudioSettings(settings: AudioSettings): void {
-  try { localStorage.setItem(AUDIO_SETTINGS_KEY, JSON.stringify(settings)); }
+  try { gameStorage.setItem(AUDIO_SETTINGS_KEY, JSON.stringify(settings)); }
   catch { /* Audio controls still work when browser storage is unavailable. */ }
 }

@@ -23,6 +23,7 @@ updated: 2026-09-09
 验证包含音频异步竞态、开关互不影响、后台暂停、真实解码/响度/循环端点、窄屏键盘交互和 1/2/4 人导航。
 
 ## 被引用于
+- [[concepts/android_app]]
 - [[index]]
 - [[overview]]
 - [[decisions/mvp_scope]]

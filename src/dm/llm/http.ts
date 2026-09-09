@@ -1,4 +1,5 @@
 import { AiConnectionError, AiHttpError, AiResponseFormatError } from './errors';
+import { modelFetch } from './transport';
 
 export async function requestJsonResponse<T extends object>(
   url: string,
@@ -7,7 +8,7 @@ export async function requestJsonResponse<T extends object>(
 ): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(url, init);
+    response = await modelFetch(url, init);
   } catch (error) {
     throwConnectionError(error, init.signal);
   }

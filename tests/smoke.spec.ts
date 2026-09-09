@@ -365,6 +365,9 @@ test('investigator setup shows portraits and full attribute blocks', async ({ pa
 
   await expect(page.getByRole('heading', { name: '选择调查员' })).toBeVisible();
   await expect(page.locator('.preset-card-modern img')).toHaveCount(4);
+  await expect.poll(() => page.locator('.preset-card-modern img').evaluateAll(images =>
+    images.every(image => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0)
+  )).toBe(true);
   const portraitAssets = await page.locator('.preset-card-modern img').evaluateAll((images) => images.map((image) => {
     const portrait = image as HTMLImageElement;
     return {

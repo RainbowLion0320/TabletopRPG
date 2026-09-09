@@ -3,6 +3,7 @@ import type { GameState } from '../../types/game';
 import { getScenarioDefinition, getScenarioProgressForState } from '../../scenario/engine';
 
 interface ActionDockProps {
+  autoFocusInput?: boolean;
   isDiceRolling: boolean;
   state: GameState;
   onDeclarationChange: (playerId: string, text: string) => void;
@@ -13,6 +14,7 @@ interface ActionDockProps {
 }
 
 export function ActionDock({
+  autoFocusInput = true,
   isDiceRolling,
   onDeclarationChange,
   onRoll,
@@ -90,7 +92,7 @@ export function ActionDock({
             </div>
             <input
               className="dock-input"
-              autoFocus
+              autoFocus={autoFocusInput}
               disabled={isDiceRolling || state.isThinking || hasPendingTurn || Boolean(state.pendingCheck)}
               value={state.declarations[currentActor.id] ?? ''}
               placeholder={`${currentActor.name} 想要做什么...`}

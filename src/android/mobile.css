@@ -1,0 +1,89 @@
+:root { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+html, body, #root { width: 100%; height: 100%; overscroll-behavior: none; }
+body { min-width: 320px; }
+.android-start-error { display: grid; place-content: center; min-height: 100%; padding: 24px; text-align: center; }
+.android-start-error h1 { color: var(--gold); font-size: 24px; }
+.android-notice { position: fixed; left: max(16px, env(safe-area-inset-left)); right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); z-index: 12000; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px; border: 1px solid var(--gold); background: #211b12; }
+.android-notice button { color: var(--gold); border: 0; background: transparent; min-height: 44px; flex-shrink: 0; }
+.modal-backdrop { padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+.modal-card { max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; }
+.modal-card input, .modal-card select { min-height: 44px; font-size: 16px; }
+.action-row input { font-size: 16px; min-height: 44px; }
+.menu-button, .drawer-tab, .info-drawer-tabs button { min-height: 44px; min-width: 44px; }
+.dm-debug-fab, .dm-debug-drawer { display: none; }
+.game-screen { height: 100dvh; display: grid; grid-template-rows: clamp(72px, 22dvh, 150px) minmax(0, 1fr) auto; padding: 0 max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+.scene-stage { height: 100%; }
+.scene-npc { top: 0; bottom: auto; left: auto; right: 18%; height: 46dvh; transform: none; opacity: .85; }
+.narrative-panel { position: relative; grid-row: 2; inset: auto; min-height: 0; max-height: none; height: 100%; padding: 0 16px 12px; }
+.narrative-panel.expanded { position: relative; grid-row: 1 / 3; inset: auto; max-height: none; z-index: 24; }
+.narrative-toggle-btn { width: 44px; height: 44px; }
+.narrative-header { padding: 2px 0; }
+.story-message { font-size: 16px; line-height: 1.75; }
+.action-dock { position: relative; grid-row: 3; inset: auto; max-height: min(48dvh, 200px); padding: 6px 10px; }
+.dock-input-row { flex-wrap: nowrap; }
+.dock-input { font-size: 16px; min-height: 44px; }
+.dock-submit { min-height: 44px !important; font-size: 14px !important; }
+.suggestion-row { flex-wrap: nowrap; overflow-x: auto; margin-bottom: 4px; }
+.suggestion-row button { flex-shrink: 0; min-height: 40px; font-size: 13px; }
+.party-strip-compact { padding-top: 4px; margin-top: 4px; }
+.party-compact strong, .party-compact-bars .bar-value { font-size: 11px; }
+.game-menu { top: 60px; right: max(12px, env(safe-area-inset-right)); max-height: calc(100dvh - 72px); overflow-y: auto; }
+.menu-list button { min-height: 44px; }
+.info-drawer-react { max-height: 100dvh; padding-top: max(16px, env(safe-area-inset-top)); }
+@media (max-height: 400px) {
+  .game-screen { grid-template-rows: 60px minmax(0, 1fr) auto; }
+  .brand-block { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; max-width: calc(100% - 60px); }
+  .brand-scene { margin-top: 0; }
+  .world-time { margin-left: 0; }
+  .action-dock { max-height: 46dvh; }
+  .dock-actor-label > span { display: none; }
+  .check-card { padding: 6px; margin-bottom: 4px; }
+  .check-card span { font-size: 12px; }
+}
+@media (max-height: 260px) {
+  .game-screen { grid-template-rows: 0 minmax(0, 1fr) auto; }
+  .game-top, .party-strip-compact, .suggestion-row, .drawer-tab { display: none; }
+  .action-dock { max-height: 65dvh; }
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  .info-drawer-react > header { flex-wrap: nowrap; gap: 12px; padding-bottom: 8px; margin-bottom: 8px; }
+  .info-drawer-title { width: auto; }
+  .info-drawer-title h2 { font-size: 20px; }
+  .info-drawer-title > span { display: none; }
+  .info-drawer-tabs { order: 0; width: auto; flex: 1; display: flex; }
+  .info-drawer-react header > button { order: 0; min-width: 44px; min-height: 44px; }
+  .case-board-heading { flex-direction: row; align-items: center; gap: 8px; }
+  .case-board-heading h3 { display: none; }
+  .case-board-heading p { font-size: 12px; }
+  .case-board-toolbar { flex-wrap: nowrap; }
+  .case-board-search { width: auto; flex: 1; min-width: 0; min-height: 44px; }
+  .case-board-toolbar select, .case-board-toolbar > button { flex: 0 1 auto; min-height: 44px; max-width: 170px; }
+  .dice-roll-card { width: min(560px, calc(100vw - 40px)); display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, .8fr); grid-template-rows: 1fr 1fr; align-items: center; gap: 16px; }
+  .dice-roll-panel { grid-column: 1; grid-row: 1 / 3; width: min(100%, calc((100dvh - 24px) * 639 / 890)); justify-self: center; }
+  .dice-roll-card > header { grid-column: 2; grid-row: 1; align-self: end; }
+  .dice-roll-card > footer { grid-column: 2; grid-row: 2; align-self: start; }
+  .dice-roll-hint { display: none; }
+  .setup-screen { padding: 16px max(20px, env(safe-area-inset-right)) 20px max(20px, env(safe-area-inset-left)); }
+  .setup-header { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); gap: 12px; margin-bottom: 16px; }
+  .setup-header h1 { font-size: 24px; letter-spacing: 2px; }
+  .setup-header .eyebrow { margin: 0 0 5px; font-size: 9px; }
+  .setup-header-actions { gap: 8px; }
+  .setup-header-actions > .primary-btn { flex: initial; padding: 0 12px; white-space: nowrap; }
+  .preset-grid-modern { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .preset-card-modern { grid-template-columns: minmax(80px, 30%) 1fr; }
+  .preset-portrait-frame { border-right: 1px solid var(--line-soft); border-bottom: 0; }
+  .preset-card-content { padding: 14px 10px; }
+  .preset-card-content > strong { font-size: 20px; }
+  .preset-vitals { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  .preset-background-notes { font-size: 11px; }
+  .game-top { padding: 8px max(14px, env(safe-area-inset-right)) 8px max(14px, env(safe-area-inset-left)); }
+  .brand-title { font-size: 15px; }
+  .brand-scene { font-size: 13px; }
+  .world-time { font-size: 10px; }
+  .modal-card { padding: 18px; width: min(620px, calc(100vw - 48px)); }
+  .audio-settings { width: min(520px, calc(100vw - 48px)); }
+}
+@media (orientation: portrait) {
+  .title-content { padding: 24px; }
+  .setup-screen { padding: max(20px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom)); }
+}

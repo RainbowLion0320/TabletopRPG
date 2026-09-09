@@ -4,7 +4,7 @@ title: 技术选型
 tags: [tech, architecture, decision, react, vite]
 sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-14
-updated: 2026-07-11
+updated: 2026-09-09
 ---
 
 # 技术选型
@@ -23,6 +23,8 @@ updated: 2026-07-11
 | **策划文档** | Markdown + Wiki | Git 可追溯，便于 AI/人协作维护 |
 
 ## 当前架构结构
+
+Android 客户端增加 Capacitor 8 / Java 原生容器、独立 Vite 入口、Keystore 加密存储和 OkHttp 传输；共享游戏核心的网页默认行为保持不变。详见 [[concepts/android_app]]。
 
 ```
 src/
@@ -95,6 +97,7 @@ AI Provider 配置由 `ApiConfig` 统一承载：`provider`、`protocol`、`endp
 - **浏览器直调 API**：适合 Demo，不适合共享密钥的公开生产环境。
 
 ## 被引用于
+- [[concepts/android_app]]
 - [[overview]]
 - [[entities/ai_dm]]
 - [[entities/save_system]]

@@ -137,6 +137,10 @@ export function enqueueCheck(
 
 export function rollD100(check: CheckRequest): DiceResult {
   const roll = Math.floor(Math.random() * gameRules.dice.sides) + 1;
+  return evaluateD100(check, roll);
+}
+
+export function evaluateD100(check: CheckRequest, roll: number): DiceResult {
   const skillVal = check.skillVal ?? check.threshold ?? gameRules.skills.unknownSkillTotal;
   const requiredThreshold = getDifficultyThreshold(skillVal, check.difficulty);
 

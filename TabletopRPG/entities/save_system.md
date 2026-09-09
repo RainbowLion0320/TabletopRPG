@@ -4,12 +4,14 @@ title: 存档系统
 tags: [save, storage, localStorage]
 sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-18
-updated: 2026-09-07
+updated: 2026-09-09
 ---
 
 # 存档系统
 
 ## 概述
+
+Android 独立客户端通过同一存储端口使用本机 Keystore 加密保存，并额外自动记录续玩状态、待重试行动和已锁定骰点；原网页继续使用 localStorage。详见 [[concepts/android_app]]。
 
 当前存档系统基于 browser localStorage。UI 支持保存当前游戏、读取最近有效存档、标题页继续游戏、存档列表、指定载入和删除单个存档。
 
@@ -85,6 +87,7 @@ interface SaveSlot {
 - 长期部署时考虑服务端存储或文件下载。
 
 ## 被引用于
+- [[concepts/android_app]]
 - [[overview]]
 - [[concepts/tech_stack]]
 - [[concepts/core_loop]]

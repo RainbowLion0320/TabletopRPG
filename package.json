@@ -23,9 +23,19 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "npm run scenario:check && vitest run",
     "test:watch": "vitest",
-    "test:smoke": "playwright test"
+    "test:smoke": "playwright test",
+    "android:dev": "vite --config vite.android.config.ts",
+    "android:setup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-android.ps1",
+    "build:android:web": "npm run scenario:check && tsc -b && vite build --config vite.android.config.ts",
+    "android:sync": "npm run build:android:web && cap sync android",
+    "android:debug": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android.ps1 -DebugBuild",
+    "android:apk": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android.ps1",
+    "android:test": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android.ps1 -NativeTests"
   },
   "dependencies": {
+    "@capacitor/android": "8.5.1",
+    "@capacitor/app": "8.1.1",
+    "@capacitor/core": "8.5.1",
     "@xyflow/react": "^12.11.2",
     "elkjs": "^0.11.1",
     "jsonrepair": "^3.15.0",
@@ -34,6 +44,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "8.5.1",
     "@playwright/test": "^1.60.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -44,6 +55,7 @@
     "ajv": "^8.20.0",
     "jsdom": "^29.1.1",
     "json-schema-to-typescript": "^15.0.4",
+    "sharp": "0.35.4",
     "typescript": "^6.0.3",
     "vite": "^8.0.14",
     "vitest": "^4.1.7",

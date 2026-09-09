@@ -17,12 +17,13 @@ import type { NarrativeMarkTarget } from '../services/narrativeMarkup';
 import type { GameController } from './useGameController';
 
 interface GameScreenProps {
+  autoFocusInput?: boolean;
   controller: GameController;
   onHome: () => void;
   onRestart: () => void;
 }
 
-export function GameScreen({ controller, onHome, onRestart }: GameScreenProps) {
+export function GameScreen({ controller, onHome, onRestart, autoFocusInput = true }: GameScreenProps) {
   const { state } = controller;
   const [narrativeDetail, setNarrativeDetail] = useState<EntityDetail | null>(null);
 
@@ -75,6 +76,7 @@ export function GameScreen({ controller, onHome, onRestart }: GameScreenProps) {
       />
       <NarrativePanel state={state} onMarkOpen={handleNarrativeMarkOpen} />
       <ActionDock
+        autoFocusInput={autoFocusInput}
         isDiceRolling={Boolean(controller.diceRoll)}
         state={state}
         onDeclarationChange={controller.setDeclaration}

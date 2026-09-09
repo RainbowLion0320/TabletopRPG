@@ -3,6 +3,7 @@ import { isAiProtocol, isAiProvider, normalizeApiConfig } from '../config/aiConf
 import { storyData } from '../data/storyData';
 import { hydrateGameState } from '../state/gameReducer';
 import { ScenarioContentMismatchError } from '../scenario/engine';
+import { gameStorage, flushGameStorage } from '../platform/storage';
 
 const SAVE_KEY = 'trpg-saves-v2';
 const API_KEY = 'trpg-api';
@@ -10,7 +11,7 @@ const MAX_SAVES = 12;
 
 function parseArray(key: string): unknown[] {
   try {
-    const value = JSON.parse(localStorage.getItem(key) || '[]');
+    const value = JSON.parse(gameStorage.getItem(key) || '[]');
     return Array.isArray(value) ? value : [];
   } catch {
     return [];
@@ -125,7 +126,7 @@ export function saveGameState(gameState: GameState) {
     contentHash: normalizedState.scenarioProgress.contentHash,
     version: 8
   };
-  localStorage.setItem(SAVE_KEY, JSON.stringify([
+  gameStorage.setItem(SAVE_KEY, JSON.stringify([
     slot,
     ...rawSaves.filter((save) => !isRecord(save) || Number(save.id) !== slot.id)
   ].slice(0, MAX_SAVES)));
@@ -134,7 +135,7 @@ export function saveGameState(gameState: GameState) {
 
 export function deleteSave(id: number) {
   const rawSaves = parseArray(SAVE_KEY).filter((slot) => !isRecord(slot) || Number(slot.id) !== id);
-  localStorage.setItem(SAVE_KEY, JSON.stringify(rawSaves));
+  gameStorage.setItem(SAVE_KEY, JSON.stringify(rawSaves));
   return readSaveLibrary();
 }
 
@@ -160,7 +161,7 @@ export function getEnvDefaultApiConfig(): ApiConfig {
 
 export function readApiConfig(): ApiConfig | null {
   try {
-    const cfg = JSON.parse(localStorage.getItem(API_KEY) || 'null') as ApiConfig | null;
+    const cfg = JSON.parse(gameStorage.getItem(API_KEY) || 'null') as ApiConfig | null;
     if (cfg && cfg.apiKey) {
       return normalizeApiConfig(cfg);
     }
@@ -172,7 +173,7 @@ export function readApiConfig(): ApiConfig | null {
 }
 
 export function writeApiConfig(config: ApiConfig) {
-  localStorage.setItem(API_KEY, JSON.stringify(normalizeApiConfig(config)));
+  gameStorage.setItem(API_KEY, JSON.stringify(normalizeApiConfig(config)));
 }
 
 /**
@@ -187,6 +188,7 @@ export function writeApiConfig(config: ApiConfig) {
  */
 export async function persistApiConfig(config: ApiConfig): Promise<boolean> {
   writeApiConfig(config);
+  await flushGameStorage();
   if (!import.meta.env.DEV) return false;
   try {
     const response = await fetch('/__api_config', {

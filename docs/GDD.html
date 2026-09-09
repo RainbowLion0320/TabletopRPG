@@ -180,30 +180,31 @@ footer {
 <body>
 <nav id="sidebar">
   <div class="nav-title">GDD Mirror</div>
-<a href="#s0" class="">0. 当前实现状态（2026-09-09 对齐补充）</a>
+<a href="#s0" class="">安卓版实现补充（2026-09-09）</a>
+<a href="#s1" class="">0. 当前实现状态（2026-09-09 对齐补充）</a>
 <a href="#s0-1" class="sub">0.1 当前已实现</a>
 <a href="#s0-2" class="sub">0.2 当前未实现但保留为设计目标</a>
 <a href="#s0-3" class="sub">0.3 阅读约定</a>
-<a href="#s1" class="">一、核心定位</a>
+<a href="#s2" class="">一、核心定位</a>
 <a href="#h-1" class="sub">核心体验宣言</a>
-<a href="#s2" class="">二、玩家流程总览</a>
-<a href="#s3" class="">三、COC规则引擎</a>
+<a href="#s3" class="">二、玩家流程总览</a>
+<a href="#s4" class="">三、COC规则引擎</a>
 <a href="#s3-1" class="sub">3.1 角色属性（COC 第7版）</a>
 <a href="#s3-2" class="sub">3.2 技能检定系统</a>
 <a href="#s3-3" class="sub">3.3 《雾中消逝》常用技能初始值</a>
 <a href="#s3-4" class="sub">3.4 战斗系统</a>
 <a href="#s3-5" class="sub">3.5 SAN值系统</a>
-<a href="#s4" class="">四、剧本模组：《雾中消逝》</a>
-<a href="#s5" class="">五、展示层设计</a>
+<a href="#s5" class="">四、剧本模组：《雾中消逝》</a>
+<a href="#s6" class="">五、展示层设计</a>
 <a href="#s5-1" class="sub">5.1 界面布局</a>
 <a href="#s5-2" class="sub">5.2 场景图规划</a>
 <a href="#s5-3" class="sub">5.3 立绘规划</a>
 <a href="#s5-4" class="sub">5.4 骰子动画</a>
 <a href="#s5-5" class="sub">5.5 音乐与音效（已实现）</a>
-<a href="#s6" class="">六、多人系统设计</a>
+<a href="#s7" class="">六、多人系统设计</a>
 <a href="#s6-1" class="sub">6.1 MVP阶段：本地同屏多人</a>
 <a href="#s6-2" class="sub">6.2 后续阶段：局域网多人</a>
-<a href="#s7" class="">七、AI DM系统设计</a>
+<a href="#s8" class="">七、AI DM系统设计</a>
 <a href="#s7-1" class="sub">7.1 AI DM职责</a>
 <a href="#s7-2" class="sub">7.2 Prompt架构设计</a>
 <a href="#s7-3" class="sub">7.3 自由度边界控制（核心设计）</a>
@@ -212,26 +213,30 @@ footer {
 <a href="#s7-6" class="sub">7.6 多玩家冲突处理（已决策）</a>
 <a href="#s7-7" class="sub">7.7 Prompt注入防御方案</a>
 <a href="#s7-8" class="sub">7.8 剩余规则边界（默认方案）</a>
-<a href="#s8" class="">八、角色创建系统</a>
+<a href="#s9" class="">八、角色创建系统</a>
 <a href="#s8-1" class="sub">8.1 推荐职业（《雾中消逝》适配）</a>
 <a href="#s8-2" class="sub">8.2 创建流程</a>
-<a href="#s9" class="">九、技术架构</a>
+<a href="#s10" class="">九、技术架构</a>
 <a href="#s9-1" class="sub">9.1 当前技术栈（Vite + React）</a>
 <a href="#s9-2" class="sub">9.2 AI API接入</a>
 <a href="#s9-3" class="sub">9.3 局域网多人技术栈（后续）</a>
 <a href="#s9-4" class="sub">9.4 文件结构</a>
-<a href="#s10" class="">十、开发计划</a>
-<a href="#s10-phase-1" class="sub">Phase 1：MVP（本地多人，React/Vite）</a>
-<a href="#s10-phase-2" class="sub">Phase 2：局域网多人</a>
-<a href="#s10-phase-3" class="sub">Phase 3：内容扩展</a>
-<a href="#s11" class="">十一、待确认事项</a>
+<a href="#s11" class="">十、开发计划</a>
+<a href="#s11-phase-1" class="sub">Phase 1：MVP（本地多人，React/Vite）</a>
+<a href="#s11-phase-2" class="sub">Phase 2：局域网多人</a>
+<a href="#s11-phase-3" class="sub">Phase 3：内容扩展</a>
+<a href="#s12" class="">十一、待确认事项</a>
 </nav>
 <main>
   <div class="content">
 <header class="doc-header"><h1>《雾中消逝》AI跑团 游戏设计文档 (GDD)</h1><p class="doc-subtitle">Full GDD mirror - Source: docs/GDD.md - Updated 2026-05-29</p></header>
 <blockquote><p>设计版本：v0.8 | 原始基线：2026-05-15</p><p>实现对齐补充：2026-09-09</p><p>规则体系：COC 第7版 | 首发模组：《雾中消逝》| 作者：舒爾茲上尉</p></blockquote>
+<h2 id="s0">安卓版实现补充（2026-09-09）</h2>
+<p>新增独立安装的 Android APK。保持当前网页版本及既有角色、剧本、COC 规则和美术风格，复用游戏核心；不把游戏重做成 Unity 玩法。默认单人，也兼顾 2 人和 4 人轮流行动。</p>
+<p>安卓版使用手机横屏布局：正文与行动区按屏幕分配空间，建议横向滑动，菜单适应短屏，键盘出现时保留输入/提交；小横屏骰子将检定信息和确认按钮放到美术旁边，仅显示一个结果等级。背景音乐和音效、独立开关及本机记忆一并保留。</p>
+<p>首次进入主游戏由玩家填写 AI DM API 配置，之后在菜单中修改；APK 不内置开发者密钥。游戏素材随包提供，AI 行动需要联网。API、手动存档和自动续玩使用本机加密存储；进程结束后可继续待重试行动，已掷出骰点保持原值并等待确认。交付与构建约定见 <a href="ANDROID.md">ANDROID.md</a>。</p>
 <hr>
-<h2 id="s0">0. 当前实现状态（2026-09-09 对齐补充）</h2>
+<h2 id="s1">0. 当前实现状态（2026-09-09 对齐补充）</h2>
 <blockquote><p>本文是完整 GDD，包含当前已实现内容、未开发模块、后续设计目标和细节规则。</p><p>当前可运行产品的产品范围见 <code>docs/PRD.md</code>，技术契约见 <code>docs/SPEC.md</code>。未实现模块不删除，统一按 backlog / 待开发处理。</p></blockquote>
 <h3 id="s0-1">0.1 当前已实现</h3>
 <div class="table-wrap"><table>
@@ -268,7 +273,7 @@ footer {
 <li>后续开发应优先在本 GDD 中保留设计细节，并用状态标记补充实现进度，而不是删除未开发模块。</li>
 </ul>
 <hr>
-<h2 id="s1">一、核心定位</h2>
+<h2 id="s2">一、核心定位</h2>
 <div class="table-wrap"><table>
 <thead><tr><th>项目</th><th>内容</th></tr></thead>
 <tbody>
@@ -284,7 +289,7 @@ footer {
 <h3 id="h-1">核心体验宣言</h3>
 <blockquote><p>你不需要一个KP朋友，AI就是你的KP。</p><p>带上队友和角色卡，1920年的伦敦雾夜等着你们。</p></blockquote>
 <hr>
-<h2 id="s2">二、玩家流程总览</h2>
+<h2 id="s3">二、玩家流程总览</h2>
 <pre><code>当前 MVP：选择 1-4 名预设调查员 → 进入游戏
 后续目标：自定义角色 → 组队（2-5人）→ 进入游戏
     ↓
@@ -302,7 +307,7 @@ footer {
 ├── 结局B：深潜者逃脱（Bad End，可能被捕）
 └── 结局C：交涉成功，和平解决（SAN+1d6，奖励100英镑）</code></pre>
 <hr>
-<h2 id="s3">三、COC规则引擎</h2>
+<h2 id="s4">三、COC规则引擎</h2>
 <h3 id="s3-1">3.1 角色属性（COC 第7版）</h3>
 <p><strong>基础属性（投掷生成或固定分配）</strong></p>
 <div class="table-wrap"><table>
@@ -420,7 +425,7 @@ AI DM解析：
 <li>完整规则目标：SAN = 0 → 永久疯狂；当前 MVP 先按 7.8 处理为短期失控/剧情代价</li>
 </ul>
 <hr>
-<h2 id="s4">四、剧本模组：《雾中消逝》</h2>
+<h2 id="s5">四、剧本模组：《雾中消逝》</h2>
 <p>本章只保留产品设计摘要。模组的场景、NPC、事实、线索、节点、事件、规则、结局与奖励均以 <code>scenarios/wuzhongxiaoshi/*.yaml</code> 为唯一人工维护事实源。</p>
 <ul>
 <li>完整 KP 手册、剧情图、线索依赖图和规则矩阵：<a href="scenarios/wuzhongxiaoshi.md">《雾中消逝》生成手册</a></li>
@@ -430,7 +435,7 @@ AI DM解析：
 </ul>
 <p>产品层固定原则为“硬主线、软过程”：AI 可自由回应节点内行动，但权威地点、人物、线索、事实、剧情结果和奖励只能由已校验的模组事件产生。普通回合与移动推进统一世界时间；必经节点在连续 3 回合无进展时提示，在 6 回合无进展时执行作者定义的失败推进。</p>
 <hr>
-<h2 id="s5">五、展示层设计</h2>
+<h2 id="s6">五、展示层设计</h2>
 <h3 id="s5-1">5.1 界面布局</h3>
 <pre><code>┌─────────────────────────────────────────────────────────┐
 │  [场景图 · 全宽横幅 960×360px]                           │
@@ -523,7 +528,7 @@ AI DM解析：
 <li>三首 Kevin MacLeod 配乐（CC BY 4.0）与 Kenney 音效（CC0），游戏内保留鸣谢。环境纹理与检定提示音由项目合成。处理后的 12 个 MP3 共约 2.82 MiB，详见 <code>assets/audio/README.md</code>。</li>
 </ul>
 <hr>
-<h2 id="s6">六、多人系统设计</h2>
+<h2 id="s7">六、多人系统设计</h2>
 <h3 id="s6-1">6.1 MVP阶段：本地同屏多人</h3>
 <p><strong>实现方式</strong></p>
 <ul>
@@ -568,7 +573,7 @@ AI DM解析：
 <li>聊天/行动日志</li>
 </ul>
 <hr>
-<h2 id="s7">七、AI DM系统设计</h2>
+<h2 id="s8">七、AI DM系统设计</h2>
 <h3 id="s7-1">7.1 AI DM职责</h3>
 <div class="table-wrap"><table>
 <thead><tr><th>职责</th><th>说明</th></tr></thead>
@@ -757,7 +762,7 @@ AI DM输出结构（JSON）
 <li>扶桑花号倒计时从 S05 明确进入追逐/战斗后开始计数，以“轮”为单位；交涉路线不使用 6-7 轮逃脱倒计时，但可以用雾、船员催促和敌方警觉制造压力。</li>
 </ul>
 <hr>
-<h2 id="s8">八、角色创建系统</h2>
+<h2 id="s9">八、角色创建系统</h2>
 <blockquote><p>当前 MVP 使用 1-4 名预设调查员开局；本章为后续 5 步自定义角色创建设计，不代表当前已实现。</p></blockquote>
 <h3 id="s8-1">8.1 推荐职业（《雾中消逝》适配）</h3>
 <div class="table-wrap"><table>
@@ -785,7 +790,7 @@ AI DM输出结构（JSON）
     ↓
 角色卡生成（可导出JSON）</code></pre>
 <hr>
-<h2 id="s9">九、技术架构</h2>
+<h2 id="s10">九、技术架构</h2>
 <h3 id="s9-1">9.1 当前技术栈（Vite + React）</h3>
 <pre><code>前端：Vite + React 18 + TypeScript
 AI接入：OpenAI Responses / MiMo / OpenAI-compatible Chat Completions
@@ -831,8 +836,8 @@ AI代理：服务端统一调用（隐藏密钥）
 │   └── types/              ← 领域类型
 └── TabletopRPG/            ← 项目 Wiki</code></pre>
 <hr>
-<h2 id="s10">十、开发计划</h2>
-<h3 id="s10-phase-1">Phase 1：MVP（本地多人，React/Vite）</h3>
+<h2 id="s11">十、开发计划</h2>
+<h3 id="s11-phase-1">Phase 1：MVP（本地多人，React/Vite）</h3>
 <div class="table-wrap"><table>
 <thead><tr><th>优先级</th><th>项目</th><th>当前状态</th><th>说明</th></tr></thead>
 <tbody>
@@ -847,7 +852,7 @@ AI代理：服务端统一调用（隐藏密钥）
 <tr><td>P2</td><td>完整战斗轮序 / 伤害 / SAN 疯狂</td><td>Backlog</td><td>规则保留，当前 MVP 未自动化</td></tr>
 <tr><td>P3</td><td>骰子动画 / 音效 / BGM</td><td>已实现</td><td>正式骰子美术、统一字体、唯一结果与手动确认；分场景配乐、音效和独立声音设置</td></tr>
 </tbody></table></div>
-<h3 id="s10-phase-2">Phase 2：局域网多人</h3>
+<h3 id="s11-phase-2">Phase 2：局域网多人</h3>
 <div class="table-wrap"><table>
 <thead><tr><th>任务</th><th>说明</th></tr></thead>
 <tbody>
@@ -856,7 +861,7 @@ AI代理：服务端统一调用（隐藏密钥）
 <tr><td>实时同步</td><td>状态/骰子/叙述</td></tr>
 <tr><td>AI调用迁移</td><td>前端→服务端代理</td></tr>
 </tbody></table></div>
-<h3 id="s10-phase-3">Phase 3：内容扩展</h3>
+<h3 id="s11-phase-3">Phase 3：内容扩展</h3>
 <div class="table-wrap"><table>
 <thead><tr><th>任务</th><th>说明</th></tr></thead>
 <tbody>
@@ -865,7 +870,7 @@ AI代理：服务端统一调用（隐藏密钥）
 <tr><td>模组编辑器</td><td>可视化剧本制作</td></tr>
 </tbody></table></div>
 <hr>
-<h2 id="s11">十一、待确认事项</h2>
+<h2 id="s12">十一、待确认事项</h2>
 <ol>
 <li><strong>立绘状态变体扩展</strong>——四名玩家调查员的正式基础立绘已接入；受伤、低 SAN 与剧情状态变体，以及 NPC 状态变体仍待制作。</li>
 <li><strong>场景图升级路线</strong>——<code>scene_main_fog_london.gif</code> 作为高表现力主视觉保留；其余场景最终美术制作方式待定。</li>
