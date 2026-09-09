@@ -124,6 +124,7 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
           if (event.detail === 0) onOpen();
         }}
         title="资料（可拖拽）"
+        data-sound="paper"
       >
         <GripVertical size={12} className="drawer-grip" />
         <BookOpen size={16} />

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AudioDirector } from '../audio/AudioDirector';
 import { ApiConfigModal } from '../components/shared/ApiConfigModal';
 import { CharacterSetup } from '../components/setup/CharacterSetup';
 import { TitleScreen } from '../components/setup/TitleScreen';
@@ -21,9 +22,10 @@ export function App() {
     if (game.loadLatest()) setScreen('game');
   }
 
-  if (screen === 'title') {
-    return (
-      <>
+  return (
+    <>
+      <AudioDirector screen={screen} state={game.state} roll={game.diceRoll} />
+      {screen === 'title' ? <>
         <TitleScreen
           hasSaves={game.saves.length > 0}
           latestSave={game.saves[0]}
@@ -33,19 +35,11 @@ export function App() {
         />
         <ApiConfigModal open={game.apiOpen} onClose={() => game.setApiOpen(false)} onSave={game.saveApi} />
         {game.toast ? <div className="toast" role="status">{game.toast}</div> : null}
-      </>
-    );
-  }
-
-  if (screen === 'setup') {
-    return <CharacterSetup onBack={() => setScreen('title')} onStart={startGame} />;
-  }
-
-  return (
-    <GameScreen
-      controller={game}
-      onHome={() => setScreen('title')}
-      onRestart={() => setScreen('setup')}
-    />
+      </> : screen === 'setup' ? <CharacterSetup onBack={() => setScreen('title')} onStart={startGame} /> : <GameScreen
+        controller={game}
+        onHome={() => setScreen('title')}
+        onRestart={() => setScreen('setup')}
+      />}
+    </>
   );
 }

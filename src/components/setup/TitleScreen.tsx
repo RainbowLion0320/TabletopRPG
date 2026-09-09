@@ -2,6 +2,7 @@ import { Play, Settings } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import type { SaveSlot } from '../../types/game';
 import fogVideo from '../../../assets/scenes/scene_main_fog_london.webm';
+import { AudioSettingsButton } from '../shared/AudioSettingsButton';
 
 interface TitleScreenProps {
   hasSaves: boolean;
@@ -51,6 +52,7 @@ export function TitleScreen({ hasSaves, latestSave, onLoadLatest, onNewGame, onO
             <Settings size={16} />
             AI 设置
           </button>
+          <AudioSettingsButton className="ghost-btn subtle" />
         </div>
         {latestSave ? (
           <p className="title-save-hint">最近存档：{latestSave.players} · {latestSave.savedAt}</p>

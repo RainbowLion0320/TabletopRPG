@@ -347,6 +347,18 @@ Story data also includes 5 NPC entries and 8 item entries. Assets are imported d
 
 ## 11. Known Technical Limits
 
+### Audio presentation
+
+- `src/audio/AudioDirector.tsx` observes the visible screen/scene, settled ending and dice presentation; it does not dispatch game actions, inspect secret flags, or determine results.
+- `AudioEngine.ts` lazily creates Web Audio on trusted interaction. Separate music/effects gain buses support immediate mute. Music/ambience loops crossfade over 1.8 seconds, dice roll sound stops at reveal. Same-track scenes keep playback; delayed obsolete loads and transient effects are discarded.
+- Visibility/page lifecycle listeners suspend hidden playback and resume the current loops. Teardown/HMR releases sources, gain nodes, decoded buffers and the context. Missing audio or unsupported Web Audio does not block gameplay.
+- `trpg-audio-v1` stores independent enabled flags and volumes, with type validation, 0–1 clamping and storage failure tolerance. Defaults: music 0.30, effects 0.55; environment gain additionally 0.45. Saves and AI requests never include these settings.
+- `AudioSettingsButton` opens a portal dialog with focus containment, Escape/return focus, accessible switches/sliders, a dice preview and visible CC BY 4.0/CC0 credits. It is available on title, setup and the game menu.
+- `assets/audio/` contains 12 locally bundled MP3 files (2.82 MiB); 60-second music and 20-second environment loops are decoded on demand. `scripts/build-audio.py` regenerates them from the documented sources; no runtime CDN or audio library dependency.
+- Audio tests cover muted/late downloads, A→B→A scene races, autoplay recovery, background suspension, disposal, independent persistent settings, real-browser decoding/levels/seams, narrow screens and 1/2/4-investigator navigation.
+
+### Remaining limits
+
 - AI calls happen in the browser, so user-entered API keys remain local but are exposed to the browser runtime.
 - Automated coverage includes Vitest unit/regression tests, architecture boundary tests, and Playwright smoke tests for core browser flows.
 - No server-side state, multiplayer synchronization, or API proxy exists.

@@ -1,0 +1,27 @@
+.audio-settings-backdrop { z-index: 400; padding: 16px 0; }
+.audio-settings { max-height: calc(100dvh - 32px); overflow-y: auto; }
+.audio-settings header, .audio-channel-heading, .audio-channel-heading > span,
+.audio-channel-heading > button { display: flex; align-items: center; gap: 10px; }
+.audio-settings header, .audio-channel-heading { justify-content: space-between; }
+.audio-settings header h2 { margin: 0; }
+.audio-close { display: grid; place-items: center; width: 40px; height: 40px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.audio-settings .audio-intro { margin: 8px 0 24px; font-size: 14px; }
+.audio-channel { border-top: 1px solid var(--line); padding: 18px 0; }
+.audio-channel-heading > span { color: var(--gold); font-size: 16px; }
+.audio-channel-heading > button { color: var(--text); font: inherit; border: 0; padding: 6px 0 6px 10px; background: none; cursor: pointer; }
+.audio-switch-track { width: 36px; height: 20px; padding: 3px; background: #504b3e; border-radius: 20px; }
+.audio-switch-track i { display: block; width: 14px; height: 14px; border-radius: 50%; background: #f3e9d0; transition: transform 160ms; }
+[aria-checked="true"] .audio-switch-track { background: #a58943; }
+[aria-checked="true"] .audio-switch-track i { transform: translateX(16px); }
+.audio-channel p { margin: 8px 0 0; font-size: 12px; }
+.audio-settings .audio-channel label { display: grid; grid-template-columns: 1fr auto; margin-top: 14px; gap: 6px; }
+.audio-settings .audio-channel input[type="range"] { grid-column: 1 / -1; width: 100%; height: 28px; padding: 0; margin: 0; accent-color: #c7a656; border: 0; cursor: pointer; }
+.audio-settings input:disabled { opacity: 0.35; cursor: default; }
+.audio-settings .audio-preview { margin-top: 14px; padding: 7px 12px; font-size: 12px; }
+.audio-settings .audio-note { font-size: 12px; margin: 0 0 16px; }
+.audio-credits { border-top: 1px solid var(--line); padding-top: 14px; font-size: 12px; color: var(--muted); }
+.audio-credits summary { cursor: pointer; }
+.audio-credits a { color: var(--gold); text-decoration: underline; }
+.setup-sound-control { display: flex; justify-content: flex-end; margin: -8px 0 18px; }
+@media (max-width: 480px) { .audio-settings { padding: 20px; } }
+@media (prefers-reduced-motion: reduce) { .audio-switch-track i { transition: none; } }

@@ -1,0 +1,86 @@
+[
+  {
+    "file": "music/fog-theme.mp3",
+    "source": "darkest-child.mp3",
+    "seconds": 60.0,
+    "bytes": 721053,
+    "sha256": "f11703ebfeb6f7f346dc00064e889c7803f918adebddbaf53a63592eb8b96bad"
+  },
+  {
+    "file": "music/quiet-investigation.mp3",
+    "source": "comfortable-mystery.mp3",
+    "seconds": 60.0,
+    "bytes": 721053,
+    "sha256": "c0e54dd6be8347300b7d31d0dd68b668b7e1122ab2e45833e0ef75950d5ec5d6"
+  },
+  {
+    "file": "music/approaching-darkness.mp3",
+    "source": "long-note-one.mp3",
+    "seconds": 60.0,
+    "bytes": 721053,
+    "sha256": "ce9ad722976d2f1e172b05b2de0dd3abfea04dfcf7ee463911eafb0dc3c8b04c"
+  },
+  {
+    "file": "sfx/interface-click.mp3",
+    "source": "interface/Audio/click_001.ogg",
+    "seconds": 0.115,
+    "bytes": 2637,
+    "sha256": "657e1d72098a50396ce9990baac967285448bc7e28149b01c633b2a3e00b4bdd"
+  },
+  {
+    "file": "sfx/paper-open.mp3",
+    "source": "rpg/Audio/bookFlip2.ogg",
+    "seconds": 0.449,
+    "bytes": 6525,
+    "sha256": "10fbc33b2aac5e54c51e6c1bf5b6a8cadfd8d66e396c1f4924f24d0c4d678d3c"
+  },
+  {
+    "file": "sfx/dice-shake.mp3",
+    "source": "casino/Audio/dice-shake-1.ogg",
+    "seconds": 1.488,
+    "bytes": 19053,
+    "sha256": "c3fc8bdab675600fc317dd870b3c6f558fb2b3e3fb7be28dff9f5e5d4101a0fb"
+  },
+  {
+    "file": "sfx/dice-land.mp3",
+    "source": "casino/Audio/dice-throw-1.ogg",
+    "seconds": 0.652,
+    "bytes": 9117,
+    "sha256": "b93cc34a769e674a7004c14f1efeea8380393348a72e837912227d16499aaf24"
+  },
+  {
+    "file": "ambience/rain-window.mp3",
+    "source": "Project synthesis (this script)",
+    "seconds": 20.0,
+    "bytes": 241101,
+    "sha256": "26ba36e77aac2a95f815a612cfd165c0698ba256e75b40d15695659d36e39cde"
+  },
+  {
+    "file": "ambience/old-room.mp3",
+    "source": "Project synthesis (this script)",
+    "seconds": 20.0,
+    "bytes": 241101,
+    "sha256": "5cad09d4f599f5d6c0d1739c7e3347a804d5a9641b49beb2d57b97b3ff5c513e"
+  },
+  {
+    "file": "ambience/harbor-water.mp3",
+    "source": "Project synthesis (this script)",
+    "seconds": 20.0,
+    "bytes": 241101,
+    "sha256": "615fcece9b296d7834f9c490f3516cb6299848cd9fc9cc8864cba1406afe3827"
+  },
+  {
+    "file": "sfx/check-success.mp3",
+    "source": "Project synthesis (this script)",
+    "seconds": 1.25,
+    "bytes": 16029,
+    "sha256": "08bcf311789675ba7930f52a982063da87f52587960a80d1bb88e8f8cde6a295"
+  },
+  {
+    "file": "sfx/check-failure.mp3",
+    "source": "Project synthesis (this script)",
+    "seconds": 1.25,
+    "bytes": 16029,
+    "sha256": "f15bb21baa6b55ccfed9c9c040edd891a24a631ca53189f1b51ce277ba41807c"
+  }
+]

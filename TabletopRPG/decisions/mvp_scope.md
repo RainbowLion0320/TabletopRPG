@@ -4,7 +4,7 @@ title: MVP 功能范围
 tags: [decision, mvp, scope, aligned]
 sources: [project_plan.md, ../../docs/PRD.md]
 created: 2026-05-18
-updated: 2026-07-11
+updated: 2026-09-09
 ---
 
 # 决策：MVP 功能范围
@@ -54,6 +54,7 @@ updated: 2026-07-11
 
 ### 质量护栏
 - Playwright smoke tests。
+- 音乐与音效已按 2026-09-09 用户要求纳入 MVP：分场景播放、独立开关与音量记忆，见 [[concepts/audio_system]]。
 - 覆盖标题页 -> 选角 -> 主界面、无 API Key 防崩溃、保存 -> 首页继续、非法存档过滤、D100 大失败优先规则。
 
 ### 剧本内容
@@ -68,7 +69,6 @@ updated: 2026-07-11
 - 存档导入/导出。
 - 完整战斗系统。
 - SAN 疯狂系统。
-- 背景音乐/音效系统。
 - 多剧本切换。
 - 多客户端同步。
 - 后端服务器和账号系统。
@@ -80,7 +80,6 @@ updated: 2026-07-11
 | P1 | 自定义角色创建 |
 | P1 | 提示词外部化到 `/prompts` |
 | P2 | 战斗/SAN 自动化 |
-| P2 | 音效/BGM |
 | P3 | 多人同步/后端代理 |
 
 ## 被引用于

@@ -4,7 +4,7 @@ title: 项目全局综述
 tags: [overview, project, aligned]
 sources: [project_plan.md, ../../docs/PRD.md, ../../docs/SPEC.md, ../../docs/GDD.md]
 created: 2026-05-14
-updated: 2026-09-07
+updated: 2026-09-09
 ---
 
 # AI 跑团游戏 · 项目全局综述
@@ -32,6 +32,7 @@ updated: 2026-09-07
 - AI DM 支持 OpenAI Responses、MiMo 和自定义 OpenAI-compatible Chat Completions endpoint。
 - AI DM 响应进入游戏前执行 JSON 契约校验，格式无效时进行有上限的自动恢复；失败回合可保存、载入并重试。
 - D100 技能检定系统，骰子由前端执行。
+- 分场景背景音乐、环境声与界面/骰子音效；音乐和音效独立开关、音量记忆与后台暂停，详见 [[concepts/audio_system]]。
 - 1-4 名调查员逐人声明、整队结算；所有成员始终共享同一场景并同步移动。
 - AI 推荐行动建议。
 - 对话富文本阅读层：人物稳定配色，地点/物证/技能/状态分类高亮，安全详情导航，以及可选的 Narrator 临时语义关键词。
@@ -45,7 +46,6 @@ updated: 2026-09-07
 
 - 自定义 5 步角色创建 UI。
 - 完整战斗轮序、伤害骰、弹药、SAN 疯狂自动化。
-- 音效/BGM。
 - 局域网/在线多人。
 - 多剧本导入或模组编辑器。
 - 后端 API 代理、账号系统。

@@ -1,7 +1,7 @@
 import { useEffect, useRef, type RefObject } from 'react';
 
 const dialogs: HTMLElement[] = [];
-const focusableSelector = 'button:not(:disabled), a[href], input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
+const focusableSelector = 'button:not(:disabled), a[href], input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), summary, [tabindex]:not([tabindex="-1"])';
 
 /** Keep keyboard actions in the topmost dialog and restore its opener on close. */
 export function useDialogFocus(open: boolean, ref: RefObject<HTMLElement>, onClose: () => void, returnFocusRef?: RefObject<HTMLElement>) {
@@ -15,6 +15,10 @@ export function useDialogFocus(open: boolean, ref: RefObject<HTMLElement>, onClo
     dialogs.push(dialog);
     const controls = () => Array.from(dialog.querySelectorAll<HTMLElement>(focusableSelector))
       .filter((element) => element.tabIndex >= 0 && !element.hidden && !element.closest('[inert], [aria-hidden="true"]'))
+      .filter((element) => {
+        const collapsed = element.closest('details:not([open])');
+        return !collapsed || collapsed.querySelector('summary') === element;
+      })
       .sort((left, right) => left.compareDocumentPosition(right) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
     (dialog.querySelector<HTMLElement>('[aria-label^="关闭"]') ?? controls()[0] ?? dialog).focus();
     function handleKeyDown(event: KeyboardEvent) {

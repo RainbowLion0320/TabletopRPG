@@ -32,6 +32,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 - DM event summaries and internal event IDs stay out of player-facing conversations and logs, including older saves. Players retain narrative, dice results, actual stat changes, endings and actionable error feedback.
 - Network and provider failures show their actual category (connection, authentication, permissions, rate limit or service error) and retain the current round for manual retry; they do not enter JSON repair retries.
 - D100 skill check flow handled by the frontend, using the supplied bronze dice panel, transparent roll animation and Zihun Yunque Song throughout the dice interface.
+- Scene-aware background music, subtle environment loops, interface/paper/dice/result sounds; separate music/effects switches and volume sliders in title/setup/game menus. Preferences persist independently of saves. Audio starts after user interaction, pauses in hidden tabs, and never gates gameplay.
 - YAML-authored hard mainline with structured beats, objectives, facts, events, fail-forward, world time, clocks, encounters, and three executable endings.
 - Player-visible objectives, clue progress, visible clocks, active act/scene, and ending-locked action area.
 - State updates for HP, SAN, flags, scene change, clues, active NPC, and suggested actions.
@@ -44,7 +45,6 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 - Custom investigator creation UI.
 - Online or LAN multiplayer.
 - Full combat initiative, weapon damage, ammunition, or SAN madness automation.
-- Audio/BGM/SFX.
 - Backend API proxy or account system.
 - Multi-module import/editing.
 

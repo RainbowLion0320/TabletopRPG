@@ -593,13 +593,16 @@ test('pending check plays the dice ritual before revealing its result', async ({
   await expect(page.getByText(/检定结果：/)).toHaveCount(0);
 });
 
-for (const mode of ['animated', 'reduced motion', 'missing animation'] as const) {
+for (const mode of ['animated', 'reduced motion', 'missing animation', 'missing audio'] as const) {
 test(`dice art remains readable and confirms once with ${mode}`, async ({ page }) => {
+  const audioRequests: string[] = [];
+  page.on('request', request => { if (request.url().includes('/assets/audio/')) audioRequests.push(request.url()); });
   await page.setViewportSize({ width: 320, height: 568 });
   await page.emulateMedia({ reducedMotion: mode === 'reduced motion' ? 'reduce' : 'no-preference' });
   if (mode === 'missing animation') {
     await page.route('**/ui_dice_roll.webp', route => route.abort());
   }
+  if (mode === 'missing audio') await page.route('**/assets/audio/**', route => route.abort());
   await page.addInitScript(() => { Math.random = () => 0.999; });
   await gotoWithSave(page, createPendingCheckSave());
   await page.getByRole('button', { name: '继续游戏' }).click();
@@ -610,7 +613,7 @@ test(`dice art remains readable and confirms once with ${mode}`, async ({ page }
   await expect(dialog).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveClass(/rolling/);
-  if (mode === 'animated') {
+  if (mode === 'animated' || mode === 'missing audio') {
     await expect(dialog.locator('.dice-roll-sprite')).toHaveClass(/ready/);
     await expect(dialog.locator('.dice-roll-idle')).toBeHidden();
   } else {
@@ -622,6 +625,11 @@ test(`dice art remains readable and confirms once with ${mode}`, async ({ page }
   await expect(dialog.locator('.dice-face.tens-die')).toHaveText('00');
   await expect(dialog.locator('.dice-face.ones-die')).toHaveText('0');
   await expect(dialog.getByRole('heading', { name: '大失败' })).toBeVisible();
+  if (mode === 'animated') {
+    for (const sound of ['dice-shake', 'dice-land', 'check-failure']) {
+      await expect.poll(() => audioRequests.some(url => url.includes(sound))).toBe(true);
+    }
+  }
   const confirm = dialog.getByRole('button', { name: '确认结果' });
   await expect(confirm).toBeFocused();
   await page.keyboard.press('Shift+Tab');

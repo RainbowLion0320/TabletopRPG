@@ -3,6 +3,7 @@ import { ArrowLeft, Check, ChevronDown } from 'lucide-react';
 import { deriveInvestigatorStats } from '../../data/gameRules';
 import { createInvestigatorFromPreset, presets } from '../../data/presets';
 import type { Investigator } from '../../types/game';
+import { AudioSettingsButton } from '../shared/AudioSettingsButton';
 
 interface CharacterSetupProps {
   onBack: () => void;
@@ -72,6 +73,8 @@ export function CharacterSetup({ onBack, onStart }: CharacterSetupProps) {
           进入游戏
         </button>
       </header>
+
+      <div className="setup-sound-control"><AudioSettingsButton className="icon-text-btn" /></div>
 
       <div className="preset-grid-modern">
         {presets.map((preset) => {
