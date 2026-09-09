@@ -158,13 +158,18 @@ button {
 }
 
 .setup-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   justify-content: space-between;
   gap: 24px;
   max-width: 1320px;
   margin: 0 auto 32px;
 }
+
+.setup-header > .icon-text-btn { justify-self: start; }
+.setup-heading { text-align: center; }
+.setup-header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
 
 .setup-header h1 {
   color: var(--gold);
@@ -2756,7 +2761,8 @@ button.case-board-node:hover {
 }
 
 @media (max-width: 760px) {
-  .setup-header { flex-direction: column; align-items: stretch; }
+  .setup-header { display: flex; flex-direction: column; align-items: stretch; }
+  .setup-header-actions > .primary-btn { flex: 1; }
   .preset-card-modern { grid-template-columns: 1fr; }
   .preset-portrait-frame {
     border-right: 0;

@@ -33,7 +33,7 @@ updated: 2026-09-09
 | [核心玩法循环](concepts/core_loop.md) | 行动、检定队列与汇总结算；骰子统一字体、单一结果等级和手动确认 | ✅ 已实现 |
 | [提示词工程](concepts/prompt_engineering.md) | 三层事实边界、分级语义复核、当前内嵌提示词结构与外部化计划 | ✅ |
 | [技术选型](concepts/tech_stack.md) | React/Vite/TypeScript、多 Provider、localStorage、数值规则配置 | ✅ |
-| [音乐与音效系统](concepts/audio_system.md) | 分场景配乐、环境与骰子音效、独立开关/音量记忆、素材授权 | ✅ 已实现 |
+| [音乐与音效系统](concepts/audio_system.md) | 分场景配乐、环境与骰子音效、选角顶栏图标、独立开关/音量记忆、素材授权 | ✅ 已实现 |
 | [动态案件板与调查台](concepts/case_board.md) | v7 核心关系、实体档案、审核规则、自动布局与 v6 迁移 | ✅ 已实现 |
 | [模组规范与剧情推进引擎](concepts/scenario_engine.md) | YAML 唯一事实源、Condition/Effect、节点推进、v8 迁移 | ✅ 已实现 |
 

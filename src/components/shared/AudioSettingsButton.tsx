@@ -5,15 +5,16 @@ import { gameAudio } from '../../audio/audio';
 import { useDialogFocus } from './useDialogFocus';
 import './audio-settings.css';
 
-export function AudioSettingsButton({ className }: { className?: string }) {
+export function AudioSettingsButton({ className, iconOnly = false }: { className?: string; iconOnly?: boolean }) {
   const [open, setOpen] = useState(false);
   const settings = useSyncExternalStore(gameAudio.subscribe, gameAudio.getSnapshot);
   const dialogRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLButtonElement>(null);
   useDialogFocus(open, dialogRef, () => setOpen(false), openerRef);
   return <>
-    <button ref={openerRef} type="button" className={className} onClick={() => setOpen(true)}>
-      <Volume2 size={16} />声音设置
+    <button ref={openerRef} type="button" className={className} aria-label="声音设置"
+      title={iconOnly ? '声音设置' : undefined} onClick={() => setOpen(true)}>
+      <Volume2 size={iconOnly ? 18 : 16} aria-hidden="true" />{!iconOnly && '声音设置'}
     </button>
     {open && createPortal(
       <div className="modal-backdrop audio-settings-backdrop" onClick={(event) => {

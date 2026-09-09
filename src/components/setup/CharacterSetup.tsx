@@ -64,17 +64,18 @@ export function CharacterSetup({ onBack, onStart }: CharacterSetupProps) {
           <ArrowLeft size={18} />
           返回
         </button>
-        <div>
+        <div className="setup-heading">
           <p className="eyebrow">INVESTIGATORS</p>
           <h1>选择调查员</h1>
         </div>
-        <button className="primary-btn" disabled={!selectedPlayers.length} onClick={() => onStart(selectedPlayers)}>
-          <Check size={18} />
-          进入游戏
-        </button>
+        <div className="setup-header-actions">
+          <AudioSettingsButton className="icon-text-btn audio-icon-button" iconOnly />
+          <button className="primary-btn" disabled={!selectedPlayers.length} onClick={() => onStart(selectedPlayers)}>
+            <Check size={18} />
+            进入游戏
+          </button>
+        </div>
       </header>
-
-      <div className="setup-sound-control"><AudioSettingsButton className="icon-text-btn" /></div>
 
       <div className="preset-grid-modern">
         {presets.map((preset) => {
