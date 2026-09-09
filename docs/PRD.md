@@ -1,7 +1,7 @@
 # TabletopRPG PRD
 
 > Version: v0.9
-> Updated: 2026-09-07
+> Updated: 2026-09-09
 > Product baseline: Vite + React + TypeScript MVP
 
 ## 1. Product Positioning
@@ -29,7 +29,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 - Party movement: any valid scene transition moves every investigator and synchronizes the chapter, backdrop, resident NPC, and AI context.
 - AI DM integration through OpenAI Responses, MiMo, or a custom OpenAI-compatible Chat Completions endpoint.
 - Strict JSON-oriented AI response contract with fallback parsing.
-- D100 skill check flow handled by the frontend.
+- D100 skill check flow handled by the frontend, using the supplied bronze dice panel, transparent roll animation and Zihun Yunque Song throughout the dice interface.
 - YAML-authored hard mainline with structured beats, objectives, facts, events, fail-forward, world time, clocks, encounters, and three executable endings.
 - Player-visible objectives, clue progress, visible clocks, active act/scene, and ending-locked action area.
 - State updates for HP, SAN, flags, scene change, clues, active NPC, and suggested actions.
@@ -101,6 +101,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 | Saves | v7 persists case-board insights and stable keys; v6 boards migrate deterministically without a model call |
 | Dice | 96-100 is treated as fumble before success levels |
 | Dice | SAN uses current sanity; attribute checks use actual attributes; mixed party outcomes are resolved independently |
+| Dice UI | One click locks the result, plays the 2.5-second art sequence, and waits for explicit confirmation. Total and percentile faces agree (100 = 00 + 0); reduced motion, missing animation assets and narrow screens remain usable; all dice text uses the supplied font |
 | Long sessions | Summary compaction preserves turn numbers and visited scenes; stale summaries cannot overwrite newer history |
 | Recovery | Storage errors are visible; unconfirmed dice results cannot be saved; settings do not reload an unsaved game |
 | Rules config | HP/MP/SAN, skill bases, difficulty thresholds, unknown skill fallback, and fumble range come from a centralized rules config |

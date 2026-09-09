@@ -1,0 +1,252 @@
+/* Artist-supplied D100 panel and 30-frame, 12 fps transparent sprite atlas. */
+@font-face {
+  font-family: "Zihun Yunque";
+  src: url("../../assets/fonts/zihun-yunquesong.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+.dice-roll-overlay {
+  --dice-accent: #c6ae77;
+  font-family: "Zihun Yunque", "Noto Serif SC", "Songti SC", serif;
+  position: fixed;
+  inset: 0;
+  z-index: 10020;
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  overflow: auto;
+  isolation: isolate;
+  background: rgb(0 0 0 / 40%);
+  backdrop-filter: blur(4px);
+  outline: none;
+  animation: dice-overlay-enter 180ms ease-out both;
+}
+
+.dice-roll-card {
+  width: min(540px, calc(100vw - 16px), calc((100dvh - 124px) * 639 / 890));
+  position: relative;
+  text-align: center;
+}
+
+.dice-roll-card > header {
+  position: relative;
+  z-index: 1;
+  color: #e8ddcb;
+  text-shadow: 0 2px 5px #000, 0 0 12px #000;
+}
+.dice-roll-card > header p {
+  margin: 0 0 5px;
+  font-size: 15px;
+  line-height: 1.4;
+}
+.dice-roll-target {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #cfc1a5;
+}
+
+.dice-roll-panel {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 639 / 890;
+  container-type: inline-size;
+}
+.dice-roll-panel-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+.dice-roll-total-label {
+  position: absolute;
+  left: 23%;
+  top: 18%;
+  width: 54%;
+  margin: 0;
+  color: #b5a172;
+  font-size: 8cqw;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.07em;
+}
+.dice-roll-readout {
+  position: absolute;
+  top: 26%;
+  left: 22%;
+  width: 56%;
+  height: 12%;
+  display: grid;
+  place-items: center;
+}
+.dice-roll-total {
+  color: #efe9d9;
+  font-family: inherit;
+  font-size: 17cqw;
+  font-weight: 400;
+  line-height: 1;
+  text-shadow: 0 2px 6px #17130d;
+}
+.dice-roll-unsettled {
+  color: #a3916a;
+  font-size: 10cqw;
+  letter-spacing: 0.12em;
+}
+
+.dice-roll-stage {
+  position: absolute;
+  left: 17.0579%;
+  top: 41.6854%;
+  width: 66.6667%;
+  height: 27.6404%;
+  pointer-events: none;
+}
+.dice-roll-idle {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.rolling .dice-roll-idle.animation-ready { visibility: hidden; }
+.dice-roll-sprite {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
+.dice-roll-sprite.ready { visibility: visible; }
+.dice-roll-sprite img {
+  display: block;
+  width: 100%;
+  height: 3000%;
+  animation: dice-art-roll var(--dice-roll-duration) steps(30, jump-none) both;
+}
+.dice-face,
+.dice-face-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+.dice-face {
+  top: 36%;
+  font-family: inherit;
+  font-size: 7.5cqw;
+  font-weight: 400;
+  line-height: 1;
+  color: #493225;
+  text-shadow: 0 1px 0 #f4eee0;
+}
+.tens-die { left: 26.06%; }
+.ones-die { left: 72.54%; }
+.dice-face-label {
+  top: 77%;
+  color: #f0e6d6;
+  font-size: max(10px, 2.3cqw);
+  letter-spacing: 0.12em;
+  text-shadow: 0 1px 2px #17100a, 0 0 3px #17100a;
+}
+.dice-roll-hint {
+  position: absolute;
+  top: 69%;
+  left: 16%;
+  width: 68%;
+  margin: 0;
+  color: #cbb98c;
+  font-size: max(11px, 2.8cqw);
+  line-height: 1.4;
+}
+.dice-roll-outcome {
+  position: absolute;
+  top: 74.5%;
+  left: 21.6%;
+  width: 56.5%;
+  height: 13%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.dice-roll-outcome img {
+  display: block;
+  width: 48%;
+  height: auto;
+  max-height: 65%;
+  object-fit: contain;
+}
+.dice-roll-outcome h3 {
+  margin: 0;
+  color: var(--dice-accent);
+  font-size: max(11px, 2.5cqw);
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0.1em;
+}
+.dice-roll-outcome > span {
+  color: #b1a184;
+  font-size: max(11px, 2.8cqw);
+  letter-spacing: 0.08em;
+}
+.result-fail { --dice-accent: #c0bfba; }
+.result-fumble { --dice-accent: #e9a092; }
+
+.dice-roll-card > footer {
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+}
+.dice-roll-confirm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 154px;
+  min-height: 44px;
+  padding: 8px 24px;
+  border: 1px solid #a88d59;
+  border-radius: 4px;
+  background: #282016;
+  color: #ebd6a4;
+  box-shadow: 0 4px 18px #0008;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+.dice-roll-confirm:hover {
+  background: #3b2f1f;
+  border-color: #e0c489;
+}
+.dice-roll-confirm:focus-visible {
+  outline: 2px solid #e0c489;
+  outline-offset: 3px;
+}
+.dice-roll-accessible {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes dice-overlay-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes dice-art-roll {
+  from { transform: translateY(0); }
+  to { transform: translateY(-96.666667%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dice-roll-overlay, .dice-roll-confirm { animation: none; transition: none; }
+  .dice-roll-sprite { display: none; }
+  .dice-roll-sprite img { animation: none; }
+  .rolling .dice-roll-idle.animation-ready { visibility: visible; }
+}

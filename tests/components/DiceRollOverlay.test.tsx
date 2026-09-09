@@ -51,4 +51,44 @@ describe('DiceRollOverlay', () => {
     expect(screen.getByText('100')).toHaveClass('dice-roll-total');
     expect(screen.getByRole('heading', { name: '大失败' })).toBeInTheDocument();
   });
+
+  it.each<[number, string, string]>([
+    [1, '00', '1'], [10, '10', '0'], [99, '90', '9'], [100, '00', '0']
+  ])('keeps percentile faces consistent with the locked total %i', (value, tens, ones) => {
+    const { container } = render(<DiceRollOverlay roll={{
+      ...rolling, phase: 'revealed', result: { ...rolling.result, roll: value }
+    }} onConfirm={vi.fn()} />);
+    expect(container.querySelector('.dice-face.tens-die')).toHaveTextContent(String(tens));
+    expect(container.querySelector('.dice-face.ones-die')).toHaveTextContent(String(ones));
+    expect(container.querySelector('.dice-roll-total')).toHaveTextContent(String(value));
+  });
+
+  it('contains keyboard focus, ignores premature confirmation and restores the opener', () => {
+    const onConfirm = vi.fn();
+    function View({ roll }: { roll: DiceRollPresentation | null }) {
+      return <><button>外部操作</button><DiceRollOverlay roll={roll} onConfirm={onConfirm} /></>;
+    }
+    const { rerender } = render(<View roll={null} />);
+    const opener = screen.getByRole('button', { name: '外部操作' });
+    opener.focus();
+    rerender(<View roll={rolling} />);
+    const dialog = screen.getByRole('dialog', { name: '命运检定' });
+    fireEvent.keyDown(dialog, { key: 'Tab' });
+    expect(dialog).toHaveFocus();
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(onConfirm).not.toHaveBeenCalled();
+    rerender(<View roll={{ ...rolling, phase: 'revealed' }} />);
+    const confirm = screen.getByRole('button', { name: '确认结果' });
+    fireEvent.keyDown(confirm, { key: 'Tab', shiftKey: true });
+    expect(confirm).toHaveFocus();
+    fireEvent.keyDown(confirm, { key: 'Escape' });
+    expect(onConfirm).toHaveBeenCalledOnce();
+    rerender(<View roll={null} />);
+    expect(opener).toHaveFocus();
+  });
+
+  it('shows the current check index in a multiplayer queue', () => {
+    render(<DiceRollOverlay roll={{ ...rolling, check: { ...rolling.check, batchIndex: 2, batchTotal: 4 } }} onConfirm={vi.fn()} />);
+    expect(screen.getByText('第 2/4 项')).toBeInTheDocument();
+  });
 });

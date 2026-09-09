@@ -1,7 +1,7 @@
 # TabletopRPG Technical Spec
 
 > Version: v0.7
-> Updated: 2026-09-07
+> Updated: 2026-09-09
 > Scope: current React/Vite implementation
 
 ## 1. Runtime Stack
@@ -200,6 +200,13 @@ Checks and state changes are not fields in Narrator JSON. Narrator proposes them
 - Every mark opens `EntityDetailModal`. The resolver may show only public authored information, already unlocked secrets, current investigator values, rule explanations, or the original sentence for an LLM hint. It never exposes locked secret contents or counts from narrative navigation.
 - DM messages may use their stored keyword hints. Player and system messages run deterministic markup only. Old saves without keywords still receive deterministic markup after hydration.
 - The modal uses dialog semantics, supports Escape, and restores focus to the invoking control.
+
+### Dice Presentation
+
+- `DiceRollOverlay` uses the supplied art in `assets/ui/dice/`; `src/styles/dice.css` contains its isolated layout, 40% black backdrop and 4px blur. All live text uses the full `assets/fonts/zihun-yunquesong.woff2`; success/failure lettering comes from the same font in the delivered PSD. Original font license metadata is retained in the WOFF2 and documented in `assets/fonts/README.md`.
+- `handleRoll()` locks one frontend D100 result immediately. A 30-frame transparent WebP atlas plays at 12 fps using CSS; `DICE_ROLL_DURATION_MS = 2500` controls both the animation and the existing wall-clock reveal deadline. No presentation randomness or media callback can reroll or settle the result.
+- Reduced motion uses static blank dice. A pending or failed atlas download keeps the static fallback visible; neither asset loading nor animation completion blocks reveal. Once revealed, total and faces derive directly from the locked result (100 = `00 + 0`).
+- Results remain visible until confirmation. The shared dialog focus guard traps Tab, ignores Escape while rolling, and permits Escape to confirm only after reveal. Each multiplayer check shows its queue index; the final confirmation continues the existing aggregated AI settlement.
 
 ### Foreground And Background Lifecycle
 

@@ -593,6 +593,59 @@ test('pending check plays the dice ritual before revealing its result', async ({
   await expect(page.getByText(/检定结果：/)).toHaveCount(0);
 });
 
+for (const mode of ['animated', 'reduced motion', 'missing animation'] as const) {
+test(`dice art remains readable and confirms once with ${mode}`, async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.emulateMedia({ reducedMotion: mode === 'reduced motion' ? 'reduce' : 'no-preference' });
+  if (mode === 'missing animation') {
+    await page.route('**/ui_dice_roll.webp', route => route.abort());
+  }
+  await page.addInitScript(() => { Math.random = () => 0.999; });
+  await gotoWithSave(page, createPendingCheckSave());
+  await page.getByRole('button', { name: '继续游戏' }).click();
+  await page.getByRole('button', { name: '掷骰', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: '命运检定' });
+  await expect(dialog).toHaveClass(/rolling/);
+  await page.keyboard.press('Tab');
+  await expect(dialog).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveClass(/rolling/);
+  if (mode === 'animated') {
+    await expect(dialog.locator('.dice-roll-sprite')).toHaveClass(/ready/);
+    await expect(dialog.locator('.dice-roll-idle')).toBeHidden();
+  } else {
+    await expect(dialog.locator('.dice-roll-sprite')).toBeHidden();
+    await expect(dialog.locator('.dice-roll-idle')).toBeVisible();
+  }
+  await expect(dialog).toHaveClass(/revealed/, { timeout: 5_000 });
+  await expect(dialog.locator('.dice-roll-total')).toHaveText('100');
+  await expect(dialog.locator('.dice-face.tens-die')).toHaveText('00');
+  await expect(dialog.locator('.dice-face.ones-die')).toHaveText('0');
+  await expect(dialog.getByRole('heading', { name: '大失败' })).toBeVisible();
+  const confirm = dialog.getByRole('button', { name: '确认结果' });
+  await expect(confirm).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(confirm).toBeFocused();
+  const appearance = await dialog.evaluate(async element => {
+    await document.fonts.ready;
+    const card = element.querySelector('.dice-roll-card')!.getBoundingClientRect();
+    const controls = element.querySelectorAll('header p, .dice-roll-target span, .dice-roll-total-label, .dice-roll-total, .dice-face, .dice-roll-hint, h3, button');
+    return {
+      fontLoaded: document.fonts.check('16px "Zihun Yunque"', '总点数确认结果亨利侦查'),
+      allUseFont: Array.from(controls).every(control => getComputedStyle(control).fontFamily.startsWith('"Zihun Yunque"')),
+      fits: card.left >= 0 && card.right <= innerWidth && card.top >= 0 && card.bottom <= innerHeight,
+      backdrop: getComputedStyle(element).backdropFilter,
+      panelLoaded: (element.querySelector('.dice-roll-panel-art') as HTMLImageElement).naturalWidth === 639
+    };
+  });
+  expect(appearance).toEqual({ fontLoaded: true, allUseFont: true, fits: true, backdrop: 'blur(4px)', panelLoaded: true });
+  await page.screenshot({ path: `test-results/dice-${mode.replaceAll(' ', '-')}.png` });
+  await confirm.click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator('.story-message.system').filter({ hasText: '检定结果：大失败（100）' })).toHaveCount(1);
+});
+}
+
 test('authored negotiation checks chain and settle the ending without another AI call', async ({ page }) => {
   await page.addInitScript(() => {
     Math.random = () => 0.01;

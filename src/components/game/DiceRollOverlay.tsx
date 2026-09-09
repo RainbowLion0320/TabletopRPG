@@ -1,7 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Check } from 'lucide-react';
 import type { DiceResult } from '../../types/game';
-import type { DiceRollPresentation } from '../../app/diceRollAnimation';
+import { DICE_ROLL_DURATION_MS, type DiceRollPresentation } from '../../app/diceRollAnimation';
+import { useDialogFocus } from '../shared/useDialogFocus';
+import panelArt from '../../../assets/ui/dice/ui_dice_panel.webp';
+import idleArt from '../../../assets/ui/dice/ui_dice_idle.webp';
+import rollArt from '../../../assets/ui/dice/ui_dice_roll.webp';
+import successArt from '../../../assets/ui/dice/ui_dice_success.webp';
+import failureArt from '../../../assets/ui/dice/ui_dice_failure.webp';
 
 interface DiceRollOverlayProps {
   onConfirm: () => void;
@@ -16,10 +22,6 @@ const RESULT_TITLES: Record<DiceResult['level'], string> = {
   fumble: '大失败'
 };
 
-function randomD100() {
-  return Math.floor(Math.random() * 100) + 1;
-}
-
 function percentileFaces(value: number) {
   if (value === 100) return { tens: '00', ones: '0' };
   return {
@@ -28,107 +30,106 @@ function percentileFaces(value: number) {
   };
 }
 
-function prefersReducedMotion() {
-  return typeof window !== 'undefined'
-    && typeof window.matchMedia === 'function'
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function RollingDice() {
+  const [ready, setReady] = useState(false);
+  return (
+    <>
+      <img className={`dice-roll-idle${ready ? ' animation-ready' : ''}`} src={idleArt} alt="" draggable={false} />
+      <div className={`dice-roll-sprite${ready ? ' ready' : ''}`}>
+        <img src={rollArt} alt="" draggable={false} onLoad={() => setReady(true)} onError={() => setReady(false)} />
+      </div>
+    </>
+  );
 }
 
 export function DiceRollOverlay({ onConfirm, roll }: DiceRollOverlayProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
-  const [displayValue, setDisplayValue] = useState(() => randomD100());
+  const revealed = roll?.phase === 'revealed';
+  useDialogFocus(Boolean(roll), dialogRef, () => {
+    if (revealed) onConfirm();
+  });
 
   useEffect(() => {
-    if (!roll) return;
-    if (roll.phase === 'revealed') confirmRef.current?.focus();
-    else dialogRef.current?.focus();
-  }, [roll]);
-
-  useEffect(() => {
-    if (!roll) return;
-    if (roll.phase === 'revealed') {
-      setDisplayValue(roll.result.roll);
-      return;
-    }
-    if (prefersReducedMotion()) return;
-    setDisplayValue(randomD100());
-    const intervalId = window.setInterval(() => setDisplayValue(randomD100()), 64);
-    return () => window.clearInterval(intervalId);
-  }, [roll]);
+    if (revealed) confirmRef.current?.focus();
+  }, [revealed]);
 
   if (!roll) return null;
 
-  const revealed = roll.phase === 'revealed';
-  // The settled faces are derived directly from the authoritative result so
-  // React can never paint a one-frame mismatch between the dice and the total.
-  const faces = percentileFaces(revealed ? roll.result.roll : displayValue);
-  const resultTitle = RESULT_TITLES[roll.result.level];
+  // Only the authoritative result supplies settled digits. The animation has
+  // blank faces and consumes no randomness or media playback callbacks.
+  const faces = percentileFaces(roll.result.roll);
+  const failed = roll.result.level === 'fail' || roll.result.level === 'fumble';
 
   return (
     <div
       aria-labelledby="dice-roll-title"
+      aria-describedby="dice-roll-context"
       aria-modal="true"
       aria-busy={!revealed}
       className={`dice-roll-overlay ${revealed ? `revealed result-${roll.result.level}` : 'rolling'}`}
-      onKeyDown={(event) => {
-        if (revealed && event.key === 'Escape') onConfirm();
-      }}
       ref={dialogRef}
       role="dialog"
       tabIndex={-1}
+      style={{ '--dice-roll-duration': `${DICE_ROLL_DURATION_MS}ms` } as CSSProperties}
     >
-      <div className="dice-roll-atmosphere" aria-hidden="true">
-        <i /><i /><i />
-      </div>
       <section className="dice-roll-card">
-        <header>
-          <p>D100 · PERCENTILE CHECK</p>
-          <h2 id="dice-roll-title">命运检定</h2>
-          <span>{roll.check.player} · {roll.check.skill}</span>
-        </header>
-
-        <div className="dice-roll-stage" aria-hidden="true">
-          <div className="dice-sigil"><i /><i /></div>
-          <div className="percentile-die-group tens-die">
-            <div className="percentile-die"><span>{faces.tens}</span></div>
-            <small>十位骰</small>
-          </div>
-          <div className="percentile-die-group ones-die">
-            <div className="percentile-die"><span>{faces.ones}</span></div>
-            <small>个位骰</small>
-          </div>
-        </div>
-
-        <div className="dice-roll-readout" aria-live="assertive">
-          {revealed ? (
-            <>
-              <strong className="dice-roll-total">{roll.result.roll}</strong>
-              <div>
-                <h3>{resultTitle}</h3>
-                <p>结果已锁定，确认后继续结算</p>
-              </div>
-            </>
-          ) : (
-            <div className="dice-roll-pending">
-              <span>骰面翻滚中</span>
-              <i /><i /><i />
-            </div>
-          )}
-        </div>
-
-        <footer className={revealed ? 'with-confirm' : undefined}>
+        <header id="dice-roll-context">
+          <h2 id="dice-roll-title" className="dice-roll-accessible">命运检定</h2>
+          <p>{roll.check.player} · {roll.check.skill}</p>
           <div className="dice-roll-target">
             <span>难度：{roll.check.difficulty}</span>
-            <i />
             <span>目标值 {roll.check.threshold ?? '-'}</span>
+            {(roll.check.batchTotal ?? 0) > 1 && (
+              <span>第 {roll.check.batchIndex ?? 1}/{roll.check.batchTotal} 项</span>
+            )}
           </div>
-          {revealed ? (
+        </header>
+
+        <div className="dice-roll-panel">
+          <img className="dice-roll-panel-art" src={panelArt} alt="" draggable={false} />
+          <p className="dice-roll-total-label">总点数</p>
+          <div className="dice-roll-readout" aria-live="polite" aria-atomic="true">
+            {revealed ? (
+              <>
+                <strong className="dice-roll-total">{roll.result.roll}</strong>
+                <span className="dice-roll-accessible">{RESULT_TITLES[roll.result.level]}</span>
+              </>
+            ) : <span className="dice-roll-unsettled" aria-hidden="true">···</span>}
+          </div>
+
+          <div className="dice-roll-stage" aria-hidden="true">
+            {revealed ? <img className="dice-roll-idle" src={idleArt} alt="" draggable={false} /> : <RollingDice />}
+            {revealed && (
+              <>
+                <span className="dice-face tens-die">{faces.tens}</span>
+                <span className="dice-face ones-die">{faces.ones}</span>
+                <span className="dice-face-label tens-die">十位</span>
+                <span className="dice-face-label ones-die">个位</span>
+              </>
+            )}
+          </div>
+
+          <p className="dice-roll-hint">
+            {revealed ? '结果已锁定，确认后继续结算' : <span className="dice-roll-pending">骰面翻滚中</span>}
+          </p>
+          <div className="dice-roll-outcome">
+            {revealed ? (
+              <>
+                <img src={failed ? failureArt : successArt} alt="" draggable={false} />
+                <h3>{RESULT_TITLES[roll.result.level]}</h3>
+              </>
+            ) : <span>D100 · 百分骰检定</span>}
+          </div>
+        </div>
+
+        <footer>
+          {revealed && (
             <button className="dice-roll-confirm" onClick={onConfirm} ref={confirmRef} type="button">
               <Check aria-hidden="true" size={16} />
               确认结果
             </button>
-          ) : null}
+          )}
         </footer>
       </section>
     </div>
