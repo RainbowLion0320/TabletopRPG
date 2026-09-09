@@ -1,23 +1,50 @@
-import { AiResponseFormatError } from './errors';
+import { AiConnectionError, AiHttpError, AiResponseFormatError } from './errors';
+
+export async function requestJsonResponse<T extends object>(
+  url: string,
+  init: RequestInit,
+  label: string
+): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(url, init);
+  } catch (error) {
+    throwConnectionError(error, init.signal);
+  }
+  return readJsonResponse<T>(response, label, init.signal);
+}
+
+function throwConnectionError(error: unknown, signal?: AbortSignal | null): never {
+  if (signal?.aborted || (typeof error === 'object' && error !== null
+    && 'name' in error && error.name === 'AbortError')) throw error;
+  throw new AiConnectionError(error);
+}
 
 export async function readJsonResponse<T extends object>(
   response: Response,
-  label: string
+  label: string,
+  signal?: AbortSignal | null
 ): Promise<T> {
-  const text = await response.text();
+  let text: string;
+  try {
+    text = await response.text();
+  } catch (error) {
+    throwConnectionError(error, signal);
+  }
   let data: T & { error?: { message?: string } };
   try {
     data = text ? JSON.parse(text) as T & { error?: { message?: string } } : {} as T;
   } catch {
-    if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.slice(0, 120)}`);
+    if (!response.ok) throw new AiHttpError(response.status);
     throw new AiResponseFormatError(`${label} response is not JSON: ${text.slice(0, 120)}`);
   }
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!response.ok) throw new AiHttpError(response.status);
     throw new AiResponseFormatError(`${label} response must be a JSON object`);
   }
   if (!response.ok || data.error) {
-    throw new Error(data.error?.message ?? `HTTP ${response.status}`);
+    const detail = typeof data.error?.message === 'string' ? data.error.message : undefined;
+    throw new AiHttpError(response.status, detail);
   }
   return data;
 }

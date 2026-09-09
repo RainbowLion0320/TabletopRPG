@@ -1,6 +1,6 @@
 import type { ResolvedApiConfig } from '../../config/aiConfig';
-import { AiProtocolError } from './errors';
-import { collectTextContent, parseFunctionArguments, readJsonResponse } from './http';
+import { AiHttpError, AiProtocolError } from './errors';
+import { collectTextContent, parseFunctionArguments, requestJsonResponse } from './http';
 import type {
   LlmFunctionCallItem,
   LlmFunctionOutputItem,
@@ -50,7 +50,7 @@ export async function requestChatCompletionsJson(
 
   let data: ChatCompletionJson;
   try {
-    const response = await fetch(`${config.endpoint.replace(/\/+$/, '')}/chat/completions`, {
+    data = await requestJsonResponse<ChatCompletionJson>(`${config.endpoint.replace(/\/+$/, '')}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -58,11 +58,11 @@ export async function requestChatCompletionsJson(
       },
       body: JSON.stringify(body),
       signal: request.signal
-    });
-    data = await readJsonResponse<ChatCompletionJson>(response, request.label);
+    }, request.label);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (request.useTools !== false && request.tools?.length && /tool|function/i.test(message)) {
+    if (error instanceof AiHttpError && [400, 422].includes(error.status)
+      && request.useTools !== false && request.tools?.length && /tool|function/i.test(message)) {
       throw new AiProtocolError(
         `当前协议/模型不支持工具调用：请切换 Responses，或使用支持 tools 的 chat-compatible endpoint。原始错误：${message}`
       );

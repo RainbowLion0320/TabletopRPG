@@ -19,7 +19,7 @@ import type { DmContext } from './contextBuilder';
 import { DM_TOOLS, parseResponseToolCalls } from './tools';
 import type { DmToolCall, DmToolName } from './types';
 import { generateJson } from './llm/client';
-import { isAiProviderRuntimeError } from './llm/errors';
+import { AiResponseFormatError } from './llm/errors';
 import type {
   LlmFunctionOutputItem,
   LlmInputItem,
@@ -826,7 +826,9 @@ export async function callNarrator(
       }
     } catch (err) {
       if (input.signal?.aborted) throw err;
-      if (isAiProviderRuntimeError(err)) throw err;
+      // Only invalid output can be repaired by generating again. Connection,
+      // HTTP, cancellation and unexpected errors must retain their real cause.
+      if (!(err instanceof NarratorError) && !(err instanceof AiResponseFormatError)) throw err;
       if (import.meta.env.DEV) {
         // eslint-disable-next-line no-console
         console.warn(

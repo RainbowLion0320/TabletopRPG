@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { callNarrator } from '../../src/dm/narrator';
+import { AiConnectionError, AiHttpError } from '../../src/dm/llm/errors';
 import type { DmContext } from '../../src/dm/contextBuilder';
 import type { ApiConfig } from '../../src/types/game';
 
@@ -110,6 +111,56 @@ afterEach(() => {
 });
 
 describe('callNarrator retry repair', () => {
+  for (const protocol of ['responses', 'chat-completions'] as const) {
+    it(`${protocol}: preserves a failed connection without format repair retries`, async () => {
+      const networkError = new TypeError('Failed to fetch');
+      const fetchMock = vi.fn().mockRejectedValue(networkError);
+      vi.stubGlobal('fetch', fetchMock);
+
+      await expect(callNarrator({ ...config, protocol }, {
+        ctx, actions: [{ player: '亨利', action: '询问失踪经过。' }], history: []
+      })).rejects.toMatchObject({ name: AiConnectionError.name, cause: networkError });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([401, 403, 429, 503])(`${protocol}: preserves HTTP %i without format repair retries`, async (status) => {
+      const fetchMock = vi.fn(async () => new Response(
+        JSON.stringify({ error: { message: 'Provider request failed' } }), { status }
+      ));
+      vi.stubGlobal('fetch', fetchMock);
+
+      await expect(callNarrator({ ...config, protocol }, {
+        ctx, actions: [{ player: '亨利', action: '询问失踪经过。' }], history: []
+      })).rejects.toMatchObject({ name: AiHttpError.name, status, message: expect.stringContaining(`HTTP ${status}`) });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it(`${protocol}: preserves cancellation without a format retry`, async () => {
+      const aborted = new DOMException('The operation was aborted.', 'AbortError');
+      const fetchMock = vi.fn().mockRejectedValue(aborted);
+      vi.stubGlobal('fetch', fetchMock);
+
+      await expect(callNarrator({ ...config, protocol }, {
+        ctx, actions: [{ player: '亨利', action: '询问失踪经过。' }], history: []
+      })).rejects.toBe(aborted);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+  }
+
+  it('does not disguise unexpected validator errors as malformed model output', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse(JSON.stringify({
+      narrative: '伊莎贝拉打开门。', activeNpc: null, nextPrompt: '继续？', playerChoices: {}
+    })));
+    vi.stubGlobal('fetch', fetchMock);
+    const unexpected = new Error('Unexpected validation failure');
+
+    await expect(callNarrator(config, {
+      ctx, actions: [{ player: '亨利', action: '询问失踪经过。' }], history: [],
+      validateOutput: () => { throw unexpected; }
+    })).rejects.toBe(unexpected);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('uses a later valid narrator JSON object when the response contains an earlier non-final object', async () => {
     const content = [
       '中间草稿：{"note":"not final"}',

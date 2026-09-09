@@ -1,6 +1,6 @@
 import type { ResolvedApiConfig } from '../../config/aiConfig';
 import { toResponsesTools } from '../tools';
-import { collectTextContent, parseFunctionArguments, readJsonResponse } from './http';
+import { collectTextContent, parseFunctionArguments, requestJsonResponse } from './http';
 import type {
   LlmFunctionCallItem,
   LlmInputItem,
@@ -50,7 +50,7 @@ export async function requestResponsesJson(
     body.tool_choice = 'auto';
   }
 
-  const response = await fetch(`${config.endpoint.replace(/\/+$/, '')}/responses`, {
+  const data = await requestJsonResponse<ResponsesJson>(`${config.endpoint.replace(/\/+$/, '')}/responses`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -58,8 +58,7 @@ export async function requestResponsesJson(
     },
     body: JSON.stringify(body),
     signal: request.signal
-  });
-  const data = await readJsonResponse<ResponsesJson>(response, request.label);
+  }, request.label);
   const rawFunctionItems = responseFunctionItems(data);
   return {
     rawText: extractResponsesText(data),

@@ -76,6 +76,61 @@ function chatBody(content: string) {
   };
 }
 
+for (const scenario of [
+  { partySize: 1, protocol: 'responses', status: null, diagnostic: '未能取得模型服务响应' },
+  { partySize: 2, protocol: 'chat-completions', status: 401, diagnostic: '认证失败' },
+  { partySize: 4, protocol: 'chat-completions', status: 429, diagnostic: '请求受限' }
+] as const) {
+  test(`AI DM preserves ${scenario.partySize}-player actions after ${scenario.status ?? 'network'} failure and retries once on request`, async ({ page }) => {
+    let recovered = false;
+    const narratorBodies: string[] = [];
+    await page.route('https://unit.test/v1/**', async (route) => {
+      const postData = route.request().postData() ?? '';
+      const narrator = postData.includes('COC 第七版 AI DM Agent');
+      if (narrator) narratorBodies.push(postData);
+      if (narrator && !recovered) {
+        if (scenario.status === null) await route.abort('failed');
+        else await route.fulfill({
+          status: scenario.status, contentType: 'application/json',
+          body: JSON.stringify({ error: { message: 'Provider request failed' } })
+        });
+        return;
+      }
+      const content = JSON.stringify(narrator ? {
+        narrative: '连接恢复，伊莎贝拉继续说明失踪经过。', activeNpc: '伊莎贝拉·摩勒',
+        nextPrompt: '继续调查。', playerChoices: {}
+      } : { facts: [], nodes: [], edges: [] });
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify(scenario.protocol === 'responses' ? responseBody(content) : chatBody(content))
+      });
+    });
+    await startGameWithApi(page, {
+      provider: 'custom', protocol: scenario.protocol, endpoint: 'https://unit.test/v1',
+      apiKey: 'test-key', model: 'test-model'
+    }, scenario.partySize);
+    for (let index = 0; index < scenario.partySize; index++) {
+      await page.getByPlaceholder(`${investigatorNames[index]} 想要做什么...`).fill(`询问失踪经过，记录${index + 1}。`);
+      await page.getByRole('button', { name: index === scenario.partySize - 1 ? '提交' : '下一位', exact: true }).click();
+    }
+    await expect(page.getByRole('button', { name: '重试本轮' })).toBeVisible();
+    await expect(page.getByText(`AI DM 连接失败：`, { exact: false })).toContainText(scenario.diagnostic);
+    await expect(page.getByText(/AI DM 返回格式无效/)).toHaveCount(0);
+    expect(narratorBodies).toHaveLength(1);
+    await expect(page.locator('.story-message.player')).toHaveCount(scenario.partySize);
+
+    recovered = true;
+    await page.getByRole('button', { name: '重试本轮', exact: true }).click();
+    await expect(page.getByText('连接恢复，伊莎贝拉继续说明失踪经过。')).toBeVisible();
+    await expect(page.getByRole('button', { name: '重试本轮' })).toHaveCount(0);
+    await expect(page.locator('.story-message.player')).toHaveCount(scenario.partySize);
+    expect(narratorBodies).toHaveLength(2);
+    for (let index = 0; index < scenario.partySize; index++) {
+      expect(narratorBodies[1]).toContain(`询问失踪经过，记录${index + 1}。`);
+    }
+  });
+}
+
 test('AI DM retries malformed model output instead of returning raw text as narrative', async ({ page }) => {
   const malformed = '```json\n{\n  "narrative": "raw malformed output",\n  "stateUpdate": {\n```';
   const repaired = JSON.stringify({

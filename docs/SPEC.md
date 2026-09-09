@@ -189,6 +189,7 @@ Checks and state changes are not fields in Narrator JSON. Narrator proposes them
 3. Syntax failures are passed through the deterministic `jsonrepair` parser locally. Locally repaired output is accepted only when all Narrator contract fields are present, so truncated JSON cannot be promoted into player-visible narrative.
 4. If local repair cannot produce a complete contract, the frontend sends one repair prompt to the same provider with the invalid output and diagnostic message.
 5. The retry response goes through the same strict/local pipeline. A format failure permits one final fresh pipeline attempt with `narratorAttempts: 1` (at most three normal Narrator attempts overall, excluding tool lookups or protocol capability negotiation). Persistent failure retains the round and offers manual retry. Raw malformed JSON/Markdown must never be appended as player-visible DM narrative.
+6. Only Narrator contract/semantic errors and `AiResponseFormatError` enter this repair loop. Failed fetches and interrupted response bodies become `AiConnectionError`; provider HTTP failures retain their status in `AiHttpError`, including non-JSON gateway errors. Authentication, permission, rate-limit and service failures receive distinct hints. Transport/HTTP/configuration/protocol errors and cancellation never trigger format repair or disable tools. The original declarations and confirmed dice remain available for manual retry.
 
 ### Narrative Markup And Safe Details
 
