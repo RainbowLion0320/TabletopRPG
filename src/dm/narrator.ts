@@ -283,6 +283,9 @@ export function buildNarratorSystemPrompt(ctx: DmContext): string {
   ).join('；') || '（无）'}
 当前节点 DM 事实：${scenarioState.dmFacts.join('；') || '（无）'}
 玩家已知事实：${scenarioState.knownFacts.join('；') || '（无）'}
+已结算事件（仅供 DM 续写参考，不得照抄为提示、摘要或事件清单；可感知的结果通过叙事自然交代）：${(scenarioState.settledEvents ?? []).map((item) =>
+    `${item.id} ${item.title}｜${item.narrativeCue}`
+  ).join('；') || '（无）'}
 玩家目标：${scenarioState.objectives.map((item) => `${item.id}[${item.status}] ${item.text}`).join('；') || '（无）'}
 可触发剧情事件：${scenarioState.allowedEvents.map((item) =>
     `${item.id} ${item.title}｜叙事锚点：${item.narrativeCue}`

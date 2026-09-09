@@ -10,6 +10,19 @@ function renderDrawer(state = makeState({ activeNpcName: '伊莎贝拉·摩勒' 
 }
 
 describe('InfoDrawer v7 investigation workspace', () => {
+  it('hides internal event IDs from the player log while retaining ordinary records', () => {
+    const state = makeState();
+    state.actionLog = [
+      { time: '17:35', text: '剧情事件：EV_ACCEPT_COMMISSION' },
+      { time: '17:35', text: '伊莎贝拉开始讲述父亲失踪的经过。' }
+    ];
+    renderDrawer(state);
+    fireEvent.click(screen.getByRole('button', { name: '日志', exact: true }));
+    expect(screen.queryByText(/EV_ACCEPT_COMMISSION/)).not.toBeInTheDocument();
+    expect(screen.getByText('伊莎贝拉开始讲述父亲失踪的经过。')).toBeInTheDocument();
+    expect(state.actionLog[0].text).toContain('EV_ACCEPT_COMMISSION');
+  });
+
   it('supports keyboard/accessibility activation without loading the closed board', () => {
     const onOpen = vi.fn();
     const { container } = render(<InfoDrawer open={false} onClose={vi.fn()} onOpen={onOpen} state={makeState()} />);

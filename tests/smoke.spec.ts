@@ -681,6 +681,10 @@ test('loading a bypassed finale persuasion restores the authored listen check', 
 
 test('legacy internal progression prompts stay hidden after loading a save', async ({ page }) => {
   const state = createDynamicCaseBoardSave();
+  const cue = '伊莎贝拉确认委托，并提供父亲失踪日期、警方无进展以及老赫特酒吧这一生活线索。';
+  state.messages.push({ id: 'legacy-event-cue', type: 'system', text: cue });
+  state.messages.push({ id: 'dice-feedback', type: 'system', text: '检定结果：普通成功（42）' });
+  state.actionLog.push({ time: '17:35', text: '剧情事件：EV_ACCEPT_COMMISSION' });
   state.messages.push({
     id: 'legacy-progression-prompt',
     type: 'system',
@@ -690,7 +694,12 @@ test('legacy internal progression prompts stay hidden after loading a save', asy
   await page.getByRole('button', { name: '继续游戏' }).click();
 
   await expect(page.getByText(/推进提示：/)).toHaveCount(0);
+  await expect(page.locator('.story-message.system').filter({ hasText: cue })).toHaveCount(0);
+  await expect(page.locator('.story-message.system').filter({ hasText: '检定结果：普通成功（42）' })).toBeVisible();
   await expect(page.getByText('浓雾压在摩勒住宅的窗外。')).toBeVisible();
+  await page.getByRole('button', { name: '资料', exact: true }).click();
+  await page.getByRole('button', { name: '日志', exact: true }).click();
+  await expect(page.getByText(/剧情事件：EV_ACCEPT_COMMISSION/)).toHaveCount(0);
 });
 
 test('second-act scene loads its authored backdrop and NPC portrait together', async ({ page }) => {

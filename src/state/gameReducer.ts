@@ -10,6 +10,7 @@ import {
   processScenarioTurn
 } from '../scenario/engine';
 import { normalizeNarrativeKeywordHints } from '../services/narrativeKeywords';
+import { isPlayerVisibleMessage } from '../services/narrativeVisibility';
 import { advanceCheckQueue, enqueueCheck, prepareCheck } from '../services/dice';
 import { countCompletedGameTurns } from '../services/turns';
 import {
@@ -349,7 +350,7 @@ function normalizeMessages(value: unknown, history: GameState['conversationHisto
       const text = typeof item.text === 'string' ? item.text : '';
       if (!text) return [];
       const type: NarrativeMessage['type'] = item.type === 'player' || item.type === 'system' ? item.type : 'dm';
-      if (type === 'system' && /^推进提示[：:]/.test(text.trim())) return [];
+      if (!isPlayerVisibleMessage({ type, text })) return [];
       const keywords = type === 'dm'
         ? normalizeNarrativeKeywordHints(item.keywords, text)
         : [];
@@ -1519,8 +1520,7 @@ function appendNewClues(clues: StoryItem[], ids: string[] | undefined) {
 function applyScenarioTransition(
   state: GameState,
   transition: ReturnType<typeof processScenarioTurn>,
-  actorName?: string,
-  narratorText = ''
+  actorName?: string
 ): GameState {
   const discoveredIds = Object.entries(transition.progress.clueStates)
     .filter(([, status]) => status === 'discovered' || status === 'analyzed')
@@ -1568,10 +1568,21 @@ function applyScenarioTransition(
         : state.pendingCheck;
     })()
   };
-  const normalizedNarratorText = narratorText.replace(/\s/g, '');
-  for (const cue of transition.narrativeCues) {
-    if (normalizedNarratorText.includes(cue.replace(/\s/g, ''))) continue;
-    next = addMessage(next, { type: 'system', text: cue });
+  // Event cues guide the DM; player feedback comes from actual settled values.
+  for (const [index, player] of players.entries()) {
+    const before = state.players[index];
+    const changes = [
+      { stat: 'HP', previous: before.currentHp, current: player.currentHp, max: player.hp },
+      { stat: 'SAN', previous: before.currentSan, current: player.currentSan, max: player.san }
+    ].filter((change) => change.current !== change.previous).map((change) => {
+      const delta = change.current - change.previous;
+      return `${change.stat} ${delta > 0 ? '+' : ''}${delta}（${change.current}/${change.max}）`;
+    });
+    if (changes.length) next = addMessage(next, { type: 'system', text: `${player.name}：${changes.join('；')}` });
+  }
+  if (transition.progress.endingId && transition.progress.endingId !== state.scenarioProgress?.endingId) {
+    const ending = scenarioDefinition.progression.endings.find((item) => item.id === transition.progress.endingId);
+    if (ending) next = addMessage(next, { type: 'system', text: `${ending.title}：${ending.summary}` });
   }
   for (const eventId of transition.firedEventIds) next = addLog(next, `剧情事件：${eventId}`);
   return next;
@@ -1712,8 +1723,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       nextState = applyScenarioTransition(
         nextState,
         scenarioTransition,
-        action.actorName ?? state.players[state.currentActorIndex]?.name,
-        response.narrative
+        action.actorName ?? state.players[state.currentActorIndex]?.name
       );
       const settledEnding = !getScenarioProgressForState(state).endingId
         && nextState.scenarioProgress?.endingId

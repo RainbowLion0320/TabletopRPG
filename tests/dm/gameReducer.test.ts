@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { gameReducer, hydrateGameState } from '../../src/state/gameReducer';
-import { createScenarioProgress } from '../../src/scenario/engine';
+import { createScenarioProgress, getScenarioDefinition } from '../../src/scenario/engine';
 import { isAffirmativeCombatAction } from '../../src/services/actionIntent';
 import type { AiResponse, AtomicFact, EpisodicMemoryRecord, PersistedDMEvent, ProspectiveIntent } from '../../src/types/game';
 import { makeInvestigator, makeState } from './fixtures';
@@ -34,6 +34,20 @@ describe('gameReducer start opening message', () => {
 });
 
 describe('gameReducer applyAiResponse pendingConsequences merge', () => {
+  it.each([1, 2, 4])('keeps event cues out of %i-player narration while settling the event', (partySize) => {
+    const players = Array.from({ length: partySize }, (_, index) => makeInvestigator({ id: `p${index}`, name: `调查员${index}` }));
+    const state = gameReducer(makeState(), { type: 'start', players });
+    const next = gameReducer(state, {
+      type: 'applyAiResponse', actorName: players[0].name, raw: '{}',
+      response: { narrative: '伊莎贝拉请你们坐下，开始讲述父亲失踪的经过。', stateUpdate: { storyEventIds: ['EV_ACCEPT_COMMISSION'] } }
+    });
+
+    expect(next.scenarioProgress.firedEventIds).toContain('EV_ACCEPT_COMMISSION');
+    expect(next.scenarioProgress.variables.commissionAccepted).toBe(true);
+    expect(next.messages.filter((message) => message.type === 'system')).toEqual([]);
+    expect(next.messages.at(-1)?.text).toBe('伊莎贝拉请你们坐下，开始讲述父亲失踪的经过。');
+  });
+
   it('keeps authored soft escalation internal instead of adding a player-visible prompt', () => {
     const state = makeState({ players: [makeInvestigator({ name: '亨利' })] });
     state.messages = [];
@@ -218,7 +232,7 @@ describe('gameReducer applyAiResponse pendingConsequences merge', () => {
 
     expect(next.players.find((player) => player.name === '亨利')?.currentHp).toBe(12);
     expect(next.players.find((player) => player.name === '艾达')?.currentHp).toBe(9);
-    expect(next.messages.some((message) => message.text.includes('受到1点伤害'))).toBe(true);
+    expect(next.messages.map((message) => message.text)).toContain('艾达：HP -1（9/11）');
     expect(next.actionLog.some((entry) => entry.text.includes('EV_COMBAT_FUMBLE'))).toBe(true);
   });
 
@@ -517,7 +531,7 @@ describe('gameReducer applyAiResponse pendingConsequences merge', () => {
       difficulty: '极难',
       threshold: 12
     }));
-    expect(next.messages.some((message) => message.text.includes('难度提高为极难'))).toBe(true);
+    expect(next.messages.some((message) => message.text.includes('难度提高为极难'))).toBe(false);
   });
 
   it('uses one canonical scene when the party moves', () => {
@@ -943,15 +957,20 @@ describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
   });
 
   it('drops legacy player-visible progression prompts from saved messages', () => {
+    const cue = getScenarioDefinition().progression.storyEvents.find((event) => event.id === 'EV_ACCEPT_COMMISSION')!.narrativeCue;
     const hydrated = hydrateGameState({
       players: [makeInvestigator({ id: 'p1', name: '亨利' })],
       messages: [
         { id: 'internal-hint', type: 'system', text: '推进提示：检查书桌抽屉。' },
+        { id: 'internal-cue', type: 'system', text: cue },
+        { id: 'narration', type: 'dm', text: cue },
         { id: 'dice-result', type: 'system', text: '检定结果：普通成功（42）' }
       ]
     });
 
     expect(hydrated.messages.some((message) => message.text.startsWith('推进提示'))).toBe(false);
+    expect(hydrated.messages.map((message) => message.id)).not.toContain('internal-cue');
+    expect(hydrated.messages.map((message) => message.id)).toContain('narration');
     expect(hydrated.messages.some((message) => message.text.startsWith('检定结果'))).toBe(true);
   });
 
@@ -1036,7 +1055,7 @@ describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
     });
 
     expect(hydrated.clues.map((clue) => clue.id)).toContain('I07');
-    expect(hydrated.messages.map((message) => message.id)).toContain('map');
+    expect(hydrated.messages.map((message) => message.id)).not.toContain('map');
     expect(hydrated.suggestions.some((suggestion) => /深潜者|敌人/.test(suggestion))).toBe(true);
     expect(hydrated.suggestions.some((suggestion) => suggestion.includes('后厅油布包'))).toBe(false);
     expect(hydrated.longTermMemorySummary).toBe('调查员已经抵达扶桑花号并选择战斗。');

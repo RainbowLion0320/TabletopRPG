@@ -8,6 +8,8 @@
 
 ## 文件命名规范
 
+2026-09-09 内嵌 Narrator 接入调整：`contextBuilder` 将最近六项已结算事件提供给 DM 续写，提示词明确这些摘要不得照抄为玩家提示或事件清单；玩家能感知的结果通过正式叙事交代。对应规则见 `docs/SPEC.md` 的 Narrative Markup And Safe Details。
+
 ```
 {角色/功能}_{版本}.md
 ```

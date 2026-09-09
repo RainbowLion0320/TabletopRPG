@@ -29,6 +29,7 @@ TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired
 - Party movement: any valid scene transition moves every investigator and synchronizes the chapter, backdrop, resident NPC, and AI context.
 - AI DM integration through OpenAI Responses, MiMo, or a custom OpenAI-compatible Chat Completions endpoint.
 - Strict JSON-oriented AI response contract with fallback parsing.
+- DM event summaries and internal event IDs stay out of player-facing conversations and logs, including older saves. Players retain narrative, dice results, actual stat changes, endings and actionable error feedback.
 - Network and provider failures show their actual category (connection, authentication, permissions, rate limit or service error) and retain the current round for manual retry; they do not enter JSON repair retries.
 - D100 skill check flow handled by the frontend, using the supplied bronze dice panel, transparent roll animation and Zihun Yunque Song throughout the dice interface.
 - YAML-authored hard mainline with structured beats, objectives, facts, events, fail-forward, world time, clocks, encounters, and three executable endings.

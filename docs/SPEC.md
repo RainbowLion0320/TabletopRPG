@@ -193,6 +193,8 @@ Checks and state changes are not fields in Narrator JSON. Narrator proposes them
 
 ### Narrative Markup And Safe Details
 
+Authored story-event `narrativeCue` text is DM guidance, not a standalone transcript message. Reducer settlement retains authoritative event IDs and state effects without appending these summaries. The DM receives the last six settled event cues as continuation context, with an explicit instruction to narrate perceptible outcomes naturally rather than copying internal summaries. Actual HP/SAN deltas, dice results, endings and operational errors remain player-visible. A shared visibility filter removes legacy system-message cues both on hydration and in an already-running transcript; player and DM narration is preserved even when its text matches a cue. The player log hides internal event IDs and progression instructions while retaining the underlying records.
+
 `src/services/narrativeMarkup.ts` builds immutable text segments; React renders those segments directly and never uses Markdown, model HTML, or `dangerouslySetInnerHTML`.
 
 - Deterministic terms come from investigators, public NPC aliases, public scene aliases, authored items, visible dynamic case-board titles, skills, check difficulty/results, HP/SAN, and curated states.

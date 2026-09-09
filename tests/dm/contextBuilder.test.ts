@@ -2,13 +2,24 @@ import { describe, expect, it } from 'vitest';
 import { buildDmContext } from '../../src/dm/contextBuilder';
 import { buildNarratorSystemPrompt } from '../../src/dm/narrator';
 import { wuzhongxiaoshi } from '../../src/data/scenarios/wuzhongxiaoshi';
-import { createScenarioProgress } from '../../src/scenario/engine';
+import { createScenarioProgress, processScenarioTurn } from '../../src/scenario/engine';
 import type { ConversationTurn } from '../../src/types/game';
 import { makeInvestigator, makeState } from './fixtures';
 
 const kb = wuzhongxiaoshi;
 
 describe('contextBuilder', () => {
+  it('keeps settled event cues available to the DM without including unfired events', () => {
+    const state = makeState();
+    state.scenarioProgress = processScenarioTurn(createScenarioProgress(), {
+      currentScene: 'S01', turn: 1, completeTurn: true, storyEventIds: ['EV_ACCEPT_COMMISSION']
+    }).progress;
+    const ctx = buildDmContext(state, kb);
+    expect(ctx.dynamic.scenario.settledEvents?.map((event) => event.id)).toEqual(['EV_ACCEPT_COMMISSION']);
+    expect(ctx.dynamic.scenario.settledEvents?.[0].narrativeCue).toContain('确认委托');
+    expect(buildNarratorSystemPrompt(ctx)).toContain('仅供 DM 续写参考，不得照抄为提示、摘要或事件清单');
+  });
+
   it('puts the spotlight on the checkPlayer with full skill view', () => {
     const henry = makeInvestigator(
       { name: '亨利' },

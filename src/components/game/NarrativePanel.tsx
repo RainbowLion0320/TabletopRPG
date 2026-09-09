@@ -8,6 +8,7 @@ import {
   type NarrativeMarkTarget
 } from '../../services/narrativeMarkup';
 import { ThinkingIndicator } from './ThinkingIndicator';
+import { isPlayerVisibleMessage } from '../../services/narrativeVisibility';
 
 interface NarrativePanelProps {
   state: GameState;
@@ -66,9 +67,7 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
   const ref = useRef<HTMLDivElement>(null);
   const latestMessageRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
-  const visibleMessages = state.messages.filter((message) =>
-    !(message.type === 'system' && /^推进提示[：:]/.test(message.text.trim()))
-  );
+  const visibleMessages = state.messages.filter(isPlayerVisibleMessage);
 
   useEffect(() => {
     const panel = ref.current;

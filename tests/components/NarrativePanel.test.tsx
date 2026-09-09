@@ -2,8 +2,26 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { NarrativePanel } from '../../src/components/game/NarrativePanel';
 import { makeState } from '../dm/fixtures';
+import { getScenarioDefinition } from '../../src/scenario/engine';
 
 describe('NarrativePanel', () => {
+  it('hides existing event cues without hiding DM narration, dice or connection feedback', () => {
+    const state = makeState();
+    const cues = getScenarioDefinition().progression.storyEvents.map((event) => event.narrativeCue);
+    state.messages = [
+      ...cues.map((text, index) => ({ id: `cue-${index}`, type: 'system' as const, text })),
+      { id: 'dm', type: 'dm', text: cues[0] },
+      { id: 'dice', type: 'system', text: '检定结果：大失败（100）' },
+      { id: 'error', type: 'system', text: 'AI DM 连接失败：请检查网络。' }
+    ];
+    const { container } = render(<NarrativePanel state={state} />);
+
+    expect(container.querySelectorAll('.story-message.system')).toHaveLength(2);
+    expect(container.querySelector('.story-message.dm p')?.textContent).toBe(cues[0]);
+    expect(container.textContent).toContain('检定结果：大失败（100）');
+    expect(container.textContent).toContain('AI DM 连接失败：请检查网络。');
+  });
+
   beforeAll(() => {
     HTMLElement.prototype.scrollTo = vi.fn();
   });

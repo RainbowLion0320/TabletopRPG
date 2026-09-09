@@ -114,6 +114,7 @@ export interface DmContextDynamic {
     knownFacts: string[];
     objectives: Array<{ id: string; text: string; status: string }>;
     allowedEvents: Array<{ id: string; title: string; narrativeCue: string }>;
+    settledEvents?: Array<{ id: string; title: string; narrativeCue: string }>;
     softEscalation: string | null;
   };
 }
@@ -387,6 +388,10 @@ export function buildDmContext(
           title: event.title,
           narrativeCue: event.narrativeCue
         })),
+        settledEvents: scenarioProgress.firedEventIds.slice(-6).flatMap((id) => {
+          const event = scenarioDefinition.progression.storyEvents.find((item) => item.id === id);
+          return event ? [{ id, title: event.title, narrativeCue: event.narrativeCue }] : [];
+        }),
         softEscalation: activeBeat && scenarioProgress.idleTurns >= activeBeat.softEscalationAfter
           ? activeBeat.softPrompt
           : null
