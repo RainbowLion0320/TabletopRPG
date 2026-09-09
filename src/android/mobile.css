@@ -24,6 +24,8 @@ html.android-app, .android-app body, .android-app #root { width: 100%; height: 1
 
 /* Stable navigation, independently scrolling investigators. */
 .android-app .title-screen { height: var(--mobile-height); min-height: 0; overflow-y: auto; padding: var(--mobile-top) var(--mobile-right) var(--mobile-bottom) var(--mobile-left); }
+.android-app .title-backdrop { overflow: hidden; }
+.android-app .title-backdrop video { display: block; }
 .android-app .title-content { width: min(660px, 100%); padding: 12px 0; }
 .android-app .title-kicker { font-size: 10px; letter-spacing: 3px; margin-bottom: 12px; }
 .android-app .title-content h1 { font-size: clamp(32px, 12dvh, 64px); letter-spacing: .18em; padding-left: .18em; line-height: 1.2; }

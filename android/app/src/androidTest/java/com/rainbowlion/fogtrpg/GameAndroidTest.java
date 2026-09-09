@@ -122,6 +122,7 @@ public class GameAndroidTest {
                 viewport(size[0], size[1]);
                 String prefix = "layout-" + size[0] + "x" + size[1];
                 reachable(".title-actions .primary-btn");
+                assertEquals("Home video does not create a page scrollbar", "true", js("document.querySelector('.title-screen').scrollHeight<=document.querySelector('.title-screen').clientHeight+1"));
                 click("AI 设置");
                 until("document.querySelector('.api-config-fields')");
                 for (int i = 1; i <= 5; i++) reachable(".api-config-fields label:nth-child(" + i + ") > :is(input,select)");
