@@ -15,7 +15,7 @@ updated: 2026-09-09
 
 ## 当前状态
 
-- **Android 独立版本**：新增 [[concepts/android_app]]，离线资源随 APK 打包，AI 配置由玩家填写；独立入口、手机布局、原生网络、加密存储与自动续玩。原网页目录及主分支保持不变。
+- **Android 独立版本**：[[concepts/android_app]] 当前为 0.3.0 竖屏版：上方 NPC、中部剧情、底部操作，选角与弹窗全部按竖屏排列。离线资源随 APK 打包，AI 配置由玩家填写；独立入口、原生网络、加密存储与自动续玩。原网页目录及主分支保持不变。
 
 - **阶段**：MVP 核心闭环已可运行，正在进行文档/规格/代码对齐与稳定化。
 - **仓库**：[TabletopRPG](https://github.com/RainbowLion0320/TabletopRPG)（本地目录由各开发环境指定）
@@ -29,7 +29,7 @@ updated: 2026-09-09
 ## 已实现功能
 
 - React/Vite/TypeScript 前端架构。
-- 标题页、预设调查员选择页、横屏游戏主界面。
+- 标题页、预设调查员选择页、网页横屏主界面与 APK 竖屏主界面。
 - 4 个预设调查员，可选择 1-4 名进入游戏。
 - AI DM 支持 OpenAI Responses、MiMo 和自定义 OpenAI-compatible Chat Completions endpoint。
 - AI DM 响应进入游戏前执行 JSON 契约校验，格式无效时进行有上限的自动恢复；失败回合可保存、载入并重试。

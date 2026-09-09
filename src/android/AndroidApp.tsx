@@ -77,7 +77,7 @@ export function AndroidApp() {
       <TitleScreen hasSaves={Boolean(session) || game.saves.length > 0} latestSave={session ? sessionSaveSlot(session) : game.saves[0]}
         onLoadLatest={resume} onNewGame={() => setScreen('setup')} onOpenApi={game.openApiSettings} />
       <ApiConfigModal open={game.apiOpen} onClose={() => game.setApiOpen(false)} onSave={game.saveApi} />
-    </> : screen === 'setup' ? <CharacterSetup onBack={() => setScreen('title')} onStart={start} /> :
+    </> : screen === 'setup' ? <CharacterSetup portrait onBack={() => setScreen('title')} onStart={start} /> :
       <GameScreen controller={game} autoFocusInput={false} onHome={() => setScreen('title')} onRestart={() => setScreen('setup')} />}
     {notice && <div className="android-notice" role="alert"><span>{notice}</span><button onClick={() => setNotice('')}>知道了</button></div>}
     {screen !== 'game' && game.toast && <div className="toast" role="status">{game.toast}</div>}

@@ -6,6 +6,7 @@ import type { Investigator } from '../../types/game';
 import { AudioSettingsButton } from '../shared/AudioSettingsButton';
 
 interface CharacterSetupProps {
+  portrait?: boolean;
   onBack: () => void;
   onStart: (players: Investigator[]) => void;
 }
@@ -24,7 +25,7 @@ const attrRows = [
 
 const otherAttrRows = attrRows.filter(([key]) => key !== 'Luck');
 
-export function CharacterSetup({ onBack, onStart }: CharacterSetupProps) {
+export function CharacterSetup({ onBack, onStart, portrait = false }: CharacterSetupProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>(() => presets.slice(0, 1).map((item) => item.id));
   const [expandedAttrIds, setExpandedAttrIds] = useState<string[]>([]);
   const selectedPlayers = useMemo(
@@ -70,10 +71,10 @@ export function CharacterSetup({ onBack, onStart }: CharacterSetupProps) {
         </div>
         <div className="setup-header-actions">
           <AudioSettingsButton className="icon-text-btn audio-icon-button" iconOnly />
-          <button className="primary-btn" disabled={!selectedPlayers.length} onClick={() => onStart(selectedPlayers)}>
+          {!portrait && <button className="primary-btn" disabled={!selectedPlayers.length} onClick={() => onStart(selectedPlayers)}>
             <Check size={18} />
             进入游戏
-          </button>
+          </button>}
         </div>
       </header>
 
@@ -153,6 +154,12 @@ export function CharacterSetup({ onBack, onStart }: CharacterSetupProps) {
           );
         })}
       </div>
+      {portrait && <footer className="setup-footer">
+        <span aria-live="polite">已选择 <strong>{selectedPlayers.length}</strong> 名调查员</span>
+        <button className="primary-btn" disabled={!selectedPlayers.length} onClick={() => onStart(selectedPlayers)}>
+          <Check size={18} />进入游戏
+        </button>
+      </footer>}
     </section>
   );
 }

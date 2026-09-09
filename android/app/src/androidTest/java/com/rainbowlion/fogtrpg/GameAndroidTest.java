@@ -114,13 +114,14 @@ public class GameAndroidTest {
         click(label);
     }
 
-    @Test public void landscapeDialogsAndReadingStayWithinPhoneViewport() throws Exception {
-        // Run on a dedicated emulator at least 1688 x 780 physical pixels at density 320.
-        for (int[] size : new int[][] {{560,280}, {640,288}, {740,320}, {844,390}}) {
+    @Test public void portraitDialogsAndReadingStayWithinPhoneViewport() throws Exception {
+        // Run on a dedicated emulator at least 860 x 1864 physical pixels at density 320.
+        for (int[] size : new int[][] {{320,568}, {360,640}, {390,844}, {430,932}}) {
             fresh();
             try {
                 viewport(size[0], size[1]);
-                String prefix = "layout-" + size[0] + "x" + size[1];
+                activity.onActivity(a -> assertEquals(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, a.getRequestedOrientation()));
+                String prefix = "portrait-" + size[0] + "x" + size[1];
                 reachable(".title-actions .primary-btn");
                 assertEquals("Home video does not create a page scrollbar", "true", js("document.querySelector('.title-screen').scrollHeight<=document.querySelector('.title-screen').clientHeight+1"));
                 click("AI 设置");
@@ -130,23 +131,34 @@ public class GameAndroidTest {
                 // No real API credentials or network dependency in layout probes.
                 configure("http://127.0.0.1:1/v1", "responses");
                 click("开始游戏");
-                if (size[0] == 640) for (int i = 1; i < 4; i++) js("document.querySelectorAll('.preset-card-modern strong')[" + i + "].click()");
-                reachable(".setup-header-actions .primary-btn"); screenshot(prefix + "-setup");
+                int partySize = size[0] == 360 ? 4 : size[0] == 390 ? 2 : 1;
+                for (int i = 1; i < partySize; i++) js("document.querySelectorAll('.preset-card-modern strong')[" + i + "].click()");
+                reachable(".setup-footer .primary-btn"); screenshot(prefix + "-setup");
                 js("document.querySelector('.preset-attrs-toggle').click()");
                 until("document.querySelector('.preset-other-panel:not([hidden])')");
                 js("document.querySelector('.preset-other-panel:not([hidden])').scrollIntoView({block:'end'})");
-                reachable(".setup-header-actions .primary-btn");
+                reachable(".setup-footer .primary-btn");
                 assertEquals("Expanded stats do not widen the card", "true", js("Array.from(document.querySelectorAll('.preset-card-content')).every(e=>e.scrollWidth<=e.clientWidth+1)"));
                 click("进入游戏"); reachable(".dock-input");
-                if (size[0] == 640) {
+                if (size[0] == 360) {
                     // Wait for the non-interactive save notification to fade before testing the HUD.
                     until("!document.querySelector('.toast')");
                     reachable(".party-compact:last-child");
                     assertEquals("All four status cards fit without horizontal scrolling", "true", js("document.querySelector('.party-strip-compact').scrollWidth<=document.querySelector('.party-strip-compact').clientWidth+1"));
+                    viewport(320, 568);
+                    assertEquals("Smallest four-player HUD keeps every value inside its card", "true", js("Array.from(document.querySelectorAll('.party-compact,.party-strip-compact')).every(e=>e.scrollWidth<=e.clientWidth+1)"));
+                    assertEquals("Smallest four-player reading area remains usable", "true", js("document.querySelector('.narrative-panel').clientHeight>=180"));
+                    screenshot("portrait-320x568-four-game");
+                    viewport(size[0], size[1]);
                 }
-                assertEquals("Reading area keeps at least 90 CSS pixels", "true", js("document.querySelector('.narrative-panel').clientHeight>=90"));
+                assertEquals("Reading area keeps at least 180 CSS pixels", "true", js("document.querySelector('.narrative-panel').clientHeight>=180"));
+                until("document.querySelector('.scene-npc').complete && document.querySelector('.scene-npc').naturalWidth>0");
+                assertEquals("NPC has its own visible stage above both panels", "true", js("(()=>{const n=document.querySelector('.scene-npc').getBoundingClientRect(),p=document.querySelector('.narrative-panel').getBoundingClientRect(),d=document.querySelector('.action-dock').getBoundingClientRect();return n.width>innerWidth*.9&&n.height>=110&&n.left>=0&&n.top>=44&&n.bottom<=p.top+.5&&d.top>=p.bottom-.5&&d.left===p.left&&d.right===p.right&&d.bottom<=innerHeight-8})()"));
+                // Scenes without a portrait reclaim the reserved stage, then restore this scene.
+                assertEquals("No empty stage when an NPC is absent", "true", js("(()=>{const n=document.querySelector('.scene-npc'),parent=n.parentNode;n.remove();try{return document.querySelector('.narrative-panel').getBoundingClientRect().top<80}finally{parent.appendChild(n)}})()"));
                 screenshot(prefix + "-game");
                 js("document.querySelector('.narrative-toggle-btn').click()"); reachable(".narrative-toggle-btn");
+                assertEquals("Expanded reading reclaims the stage and keeps the dock aligned", "true", js("(()=>{const p=document.querySelector('.narrative-panel').getBoundingClientRect(),d=document.querySelector('.action-dock').getBoundingClientRect();return p.top<10&&p.width>innerWidth*.9&&p.left===d.left&&p.right===d.right})()"));
                 js("document.querySelector('.narrative-toggle-btn').click();document.querySelector('.npc-nameplate').click()");
                 reachable(".entity-detail-close"); screenshot(prefix + "-entity");
                 // Long unlocked descriptions scroll without moving the close control.
@@ -156,6 +168,8 @@ public class GameAndroidTest {
                 until("document.querySelector('.case-board-mobile-card')"); reachable("[aria-label='关闭资料']");
                 reachable(".case-board-mobile-card"); screenshot(prefix + "-board");
                 js("document.querySelector('.case-board-mobile-card').click()"); reachable("[aria-label='关闭资料详情']");
+                until("document.querySelector('.case-board-inspector').contains(document.activeElement)");
+                screenshot(prefix + "-inspector");
                 InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
                 until("!document.querySelector('.case-board-inspector') && document.querySelector('.info-drawer-react.open')"); click("进度");
                 reachable("[aria-label='关闭资料']"); click("日志"); reachable("[aria-label='关闭资料']");
@@ -169,10 +183,11 @@ public class GameAndroidTest {
                 js("document.querySelector('.save-list').scrollTop=99999");
                 reachable(".save-slot-card:last-child .danger"); screenshot(prefix + "-saves"); click("关闭");
                 menu("KP 笔记"); reachable(".dm-journal-card footer button"); click("关闭");
-                viewport(size[0], 180); fill(".dock-input", "输入法占位后仍可完成输入。");
+                viewport(size[0], 300); fill(".dock-input", "输入法占位后仍可完成输入。");
+                assertEquals("Keyboard space prioritizes reading and input", "true", js("document.querySelector('.narrative-panel').getBoundingClientRect().width>innerWidth*.9 && getComputedStyle(document.querySelector('.scene-npc')).visibility==='hidden'"));
                 reachable(".dock-input"); reachable(".dock-submit"); screenshot(prefix + "-keyboard");
                 // The API form must also keep the focused field and Save usable above an IME.
-                viewport(size[0], size[1]); menu("AI 设置"); viewport(size[0], 180);
+                viewport(size[0], size[1]); menu("AI 设置"); viewport(size[0], 300);
                 js("document.querySelector('.api-config-fields input[type=password]').focus()");
                 reachable(".api-config-fields input[type=password]"); reachable(".api-config-card footer .primary-btn");
                 screenshot(prefix + "-api-keyboard");
