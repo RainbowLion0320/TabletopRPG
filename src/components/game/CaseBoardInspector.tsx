@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
+import { useDialogFocus } from '../shared/useDialogFocus';
 import { storyData } from '../../data/storyData';
 import { getClueDetail, getNpcDetail } from '../../dm/entityDetail';
 import type { GameState } from '../../types/game';
@@ -89,8 +90,8 @@ function useMobileInspector() {
 
 export function CaseBoardInspector({ model, node, onClose, state }: CaseBoardInspectorProps) {
   const mobile = useMobileInspector();
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const dialogRef = useRef<HTMLElement>(null);
+  useDialogFocus(mobile, dialogRef, onClose);
   const base = nodeBaseInfo(node, state);
   const relations = model.edges.filter((edge) => edge.from === node.id || edge.to === node.id);
   const insights = model.insights
@@ -102,18 +103,12 @@ export function CaseBoardInspector({ model, node, onClose, state }: CaseBoardIns
     ...insights.flatMap((insight) => sourceLines(insight, state))
   ])];
 
-  useEffect(() => {
-    if (!mobile) return;
-    returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    closeRef.current?.focus();
-    return () => returnFocusRef.current?.focus();
-  }, [mobile]);
-
   return (
     <aside
       aria-label={`${node.title}详情`}
       aria-modal={mobile ? 'true' : undefined}
       className="case-board-inspector"
+      ref={dialogRef}
       role={mobile ? 'dialog' : undefined}
     >
       <header>
@@ -121,7 +116,7 @@ export function CaseBoardInspector({ model, node, onClose, state }: CaseBoardIns
           <span>{base.role}</span>
           <h4>{node.title}</h4>
         </div>
-        <button aria-label="关闭资料详情" onClick={onClose} ref={closeRef} title="关闭" type="button"><X size={17} /></button>
+        <button aria-label="关闭资料详情" onClick={onClose} title="关闭" type="button"><X size={17} /></button>
       </header>
       <div className="case-board-inspector-scroll">
         <section>

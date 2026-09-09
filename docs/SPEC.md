@@ -14,6 +14,8 @@
 
 The mobile stylesheet adapts viewport allocation, keyboard resizing, touch targets, menus and dice layout. Native lifecycle events pause audio and flush storage; system back handles the active modal, drawer, menu or title exit. Android-only build optimization converts PNG art to bounded WebP without editing original assets. Android Vite builds disable `.env` loading and blank all `VITE_AI_*` defaults. Release signing uses persistent keys outside Git; see [ANDROID.md](ANDROID.md) for setup, build and native test commands.
 
+The Android entry applies `html.android-app` before rendering. Every mobile override uses this scope so shared component CSS loaded lazily cannot restore desktop sizing, including body portals. Safe-area variables and `100dvh` bound the app and dialogs; explicit `minmax(0,1fr)` / `min-height:0` allow reading and content regions to shrink. Setup has a fixed navigation row and scrolling two-column cards with inline expanded attributes. API, audio, journal and entity bodies have separate scroll containers while action/close controls stay outside. API uses two rows in landscape; audio and entity details use side-by-side layouts. The archive uses a two-column list up to 900 CSS pixels, and a bounded graph workspace above that. Mobile archive details join the existing dialog focus stack so Android Back closes the detail before the archive. No global zoom or physical-resolution scaling is applied.
+
 ## 1. Runtime Stack
 
 | Layer | Choice |

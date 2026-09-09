@@ -45,6 +45,7 @@ export function EntityDetailModal({ detail, onClose }: EntityDetailModalProps) {
           </div>
         ) : null}
 
+        <div className="entity-detail-body">
         {/* 名称 + 身份 */}
         <div className="entity-detail-header">
           <h3 id={titleId}>{detail.name}</h3>
@@ -74,6 +75,7 @@ export function EntityDetailModal({ detail, onClose }: EntityDetailModalProps) {
             </div>
           </div>
         ) : null}
+        </div>
       </div>
     </div>
   );

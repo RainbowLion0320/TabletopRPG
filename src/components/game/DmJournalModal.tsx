@@ -40,6 +40,7 @@ export function DmJournalModal({ onClose, open, state }: DmJournalModalProps) {
         <h2 id="dm-journal-title">KP 笔记</h2>
         <p>由 DM 引擎自动维护的剧情总结、后果队列与事件时间线。仅作 KP 视角参考。</p>
 
+        <div className="dm-journal-body">
         <section className="dm-journal-section">
           <h3>剧情总结</h3>
           {summary ? (
@@ -82,6 +83,7 @@ export function DmJournalModal({ onClose, open, state }: DmJournalModalProps) {
           )}
         </section>
 
+        </div>
         <footer>
           <button className="ghost-btn" onClick={onClose}>关闭</button>
         </footer>

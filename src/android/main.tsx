@@ -4,6 +4,8 @@ import { initializeAndroidPlatform } from './native';
 import '../styles/app.css';
 import './mobile.css';
 
+// Scope phone layout overrides above shared/lazy component styles, including portals.
+document.documentElement.classList.add('android-app');
 const root = ReactDOM.createRoot(document.getElementById('root')!);
 async function start() {
   try {

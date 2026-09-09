@@ -1,89 +1,261 @@
-:root { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-html, body, #root { width: 100%; height: 100%; overscroll-behavior: none; }
-body { min-width: 320px; }
-.android-start-error { display: grid; place-content: center; min-height: 100%; padding: 24px; text-align: center; }
-.android-start-error h1 { color: var(--gold); font-size: 24px; }
-.android-notice { position: fixed; left: max(16px, env(safe-area-inset-left)); right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); z-index: 12000; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px; border: 1px solid var(--gold); background: #211b12; }
-.android-notice button { color: var(--gold); border: 0; background: transparent; min-height: 44px; flex-shrink: 0; }
-.modal-backdrop { padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
-.modal-card { max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; }
-.modal-card input, .modal-card select { min-height: 44px; font-size: 16px; }
-.action-row input { font-size: 16px; min-height: 44px; }
-.menu-button, .drawer-tab, .info-drawer-tabs button { min-height: 44px; min-width: 44px; }
-.dm-debug-fab, .dm-debug-drawer { display: none; }
-.game-screen { height: 100dvh; display: grid; grid-template-rows: clamp(72px, 22dvh, 150px) minmax(0, 1fr) auto; padding: 0 max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
-.scene-stage { height: 100%; }
-.scene-npc { top: 0; bottom: auto; left: auto; right: 18%; height: 46dvh; transform: none; opacity: .85; }
-.narrative-panel { position: relative; grid-row: 2; inset: auto; min-height: 0; max-height: none; height: 100%; padding: 0 16px 12px; }
-.narrative-panel.expanded { position: relative; grid-row: 1 / 3; inset: auto; max-height: none; z-index: 24; }
-.narrative-toggle-btn { width: 44px; height: 44px; }
-.narrative-header { padding: 2px 0; }
-.story-message { font-size: 16px; line-height: 1.75; }
-.action-dock { position: relative; grid-row: 3; inset: auto; max-height: min(48dvh, 200px); padding: 6px 10px; }
-.dock-input-row { flex-wrap: nowrap; }
-.dock-input { font-size: 16px; min-height: 44px; }
-.dock-submit { min-height: 44px !important; font-size: 14px !important; }
-.suggestion-row { flex-wrap: nowrap; overflow-x: auto; margin-bottom: 4px; }
-.suggestion-row button { flex-shrink: 0; min-height: 40px; font-size: 13px; }
-.party-strip-compact { padding-top: 4px; margin-top: 4px; }
-.party-compact strong, .party-compact-bars .bar-value { font-size: 11px; }
-.game-menu { top: 60px; right: max(12px, env(safe-area-inset-right)); max-height: calc(100dvh - 72px); overflow-y: auto; }
-.menu-list button { min-height: 44px; }
-.info-drawer-react { max-height: 100dvh; padding-top: max(16px, env(safe-area-inset-top)); }
-@media (max-height: 400px) {
-  .game-screen { grid-template-rows: 60px minmax(0, 1fr) auto; }
-  .brand-block { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; max-width: calc(100% - 60px); }
-  .brand-scene { margin-top: 0; }
-  .world-time { margin-left: 0; }
-  .action-dock { max-height: 46dvh; }
-  .dock-actor-label > span { display: none; }
-  .check-card { padding: 6px; margin-bottom: 4px; }
-  .check-card span { font-size: 12px; }
+/* Android only. Root specificity covers portals and lazily loaded styles.
+   Use available CSS viewport space, never physical device pixels or page zoom. */
+html.android-app {
+  --mobile-left: max(10px, env(safe-area-inset-left, 0px));
+  --mobile-right: max(10px, env(safe-area-inset-right, 0px));
+  --mobile-top: max(6px, env(safe-area-inset-top, 0px));
+  --mobile-bottom: max(6px, env(safe-area-inset-bottom, 0px));
+  --mobile-height: 100dvh;
+  --mobile-dialog-height: calc(var(--mobile-height) - var(--mobile-top) - var(--mobile-bottom));
+  font-size: 14px; -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
 }
-@media (max-height: 260px) {
-  .game-screen { grid-template-rows: 0 minmax(0, 1fr) auto; }
-  .game-top, .party-strip-compact, .suggestion-row, .drawer-tab { display: none; }
-  .action-dock { max-height: 65dvh; }
+html.android-app, .android-app body, .android-app #root { width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; overscroll-behavior: none; }
+.android-app button, .android-app input, .android-app select { font-size: inherit; }
+.android-app button { touch-action: manipulation; }
+.android-app input, .android-app select { min-width: 0; max-width: 100%; }
+.android-app .primary-btn, .android-app .ghost-btn, .android-app .icon-text-btn, .android-app .primary-action, .android-app .secondary-action { min-height: 44px; padding: 0 14px; gap: 6px; font-size: 13px; }
+.android-app .dm-debug-fab, .android-app .dm-debug-drawer { display: none; }
+.android-app .android-start-error { display: grid; place-content: center; height: 100%; overflow: auto; padding: 16px; text-align: center; }
+.android-app .android-start-error h1 { color: var(--gold); font-size: 20px; }
+.android-app .android-notice { position: fixed; left: var(--mobile-left); right: var(--mobile-right); bottom: var(--mobile-bottom); z-index: 12000; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; max-height: var(--mobile-dialog-height); overflow: auto; border: 1px solid var(--gold); background: #211b12; }
+.android-app .android-notice button { color: var(--gold); border: 0; background: transparent; min-height: 44px; flex-shrink: 0; }
+.android-app .toast { position: fixed; max-width: calc(100% - 32px); width: max-content; padding: 8px 14px; font-size: 12px; overflow-wrap: anywhere; text-align: center; pointer-events: none; }
+
+/* Stable navigation, independently scrolling investigators. */
+.android-app .title-screen { height: var(--mobile-height); min-height: 0; overflow-y: auto; padding: var(--mobile-top) var(--mobile-right) var(--mobile-bottom) var(--mobile-left); }
+.android-app .title-content { width: min(660px, 100%); padding: 12px 0; }
+.android-app .title-kicker { font-size: 10px; letter-spacing: 3px; margin-bottom: 12px; }
+.android-app .title-content h1 { font-size: clamp(32px, 12dvh, 64px); letter-spacing: .18em; padding-left: .18em; line-height: 1.2; }
+.android-app .title-subtitle { font-size: 13px; line-height: 1.6; margin: 14px 0 22px; }
+.android-app .title-actions { gap: 8px; }
+.android-app .title-save-hint { font-size: 11px; line-height: 1.5; margin: 12px 0 0; overflow-wrap: anywhere; }
+.android-app .setup-screen { height: var(--mobile-height); min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: var(--mobile-top) var(--mobile-right) var(--mobile-bottom) var(--mobile-left); }
+.android-app .setup-header { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); flex: 0 0 auto; gap: 10px; margin: 0 auto 8px; min-height: 44px; }
+.android-app .setup-header h1 { font-size: 20px; letter-spacing: 2px; }
+.android-app .setup-header .eyebrow { display: none; }
+.android-app .setup-header-actions { gap: 6px; min-width: 0; }
+.android-app .setup-header-actions > .primary-btn { flex: 0 0 auto; padding: 0 10px; white-space: nowrap; }
+.android-app .preset-grid-modern { width: 100%; min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-content: start; align-items: start; padding: 2px 2px 12px; scroll-padding: 4px; }
+.android-app .preset-card-modern { min-width: 0; grid-template-columns: clamp(72px, 12vw, 140px) minmax(0, 1fr); transform: none; }
+.android-app .preset-portrait-frame { border-right: 1px solid var(--line-soft); border-bottom: 0; aspect-ratio: 3 / 5; }
+.android-app .preset-select-mark { left: 5px; right: auto; top: 5px; padding: 3px 7px; font-size: 10px; }
+.android-app .preset-card-content { min-width: 0; grid-template-columns: minmax(0, 1fr); grid-template-areas: 'name' 'meta' 'desc' 'vitals' 'notes' 'toggle' 'details'; gap: 5px; padding: 10px; overflow-wrap: anywhere; }
+.android-app .preset-card-content > strong { font-size: 16px; line-height: 1.3; }
+.android-app .preset-card-content > small { font-size: 11px; line-height: 1.4; }
+.android-app .preset-card-content > p { font-size: 12px; line-height: 1.5; }
+.android-app .preset-vitals { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 2px 0; gap: 4px; }
+.android-app .preset-vitals span, .android-app .preset-attrs span { padding: 4px 2px; }
+.android-app .preset-vitals em, .android-app .preset-attrs em { font-size: 13px; margin-top: 2px; }
+.android-app .preset-background-notes { font-size: 11px; line-height: 1.4; gap: 3px; }
+.android-app .preset-background-notes span { padding-left: 5px; }
+.android-app .preset-attrs-toggle { min-height: 36px; margin: 0; padding: 0 10px; font-size: 11px; color: var(--muted); }
+.android-app .preset-other-panel { position: static; grid-area: details; min-width: 0; max-height: none; overflow: visible; padding: 6px; box-shadow: none; margin-top: 2px; }
+.android-app .preset-other-panel[hidden] { display: none; }
+.android-app .preset-attrs { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.android-app .preset-skill-list { gap: 4px; }
+.android-app .preset-skill-list span { flex-shrink: 1; font-size: 11px; padding: 3px 5px; }
+
+/* Reserve real space for reading and the action controls. */
+.android-app .game-screen { height: var(--mobile-height); min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: calc(44px + var(--mobile-top)) minmax(0, 1fr) auto; padding: 0 var(--mobile-right) var(--mobile-bottom) var(--mobile-left); }
+.android-app .scene-stage { height: 100%; }
+.android-app .scene-npc { top: 0; bottom: auto; left: auto; right: 20%; height: 48dvh; transform: none; opacity: .7; }
+.android-app .game-top { padding: var(--mobile-top) var(--mobile-right) 0 var(--mobile-left); align-items: center; }
+.android-app .brand-block { display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px 10px; max-width: calc(100% - 102px); }
+.android-app .brand-title { font-size: 15px; line-height: 1.3; }
+.android-app .brand-scene { font-size: 12px; margin: 0; }
+.android-app .brand-scene::before, .android-app .brand-scene::after { display: none; }
+.android-app .world-time { font-size: 10px; margin: 0; }
+.android-app .menu-button { width: 44px; height: 44px; flex: 0 0 44px; }
+.android-app .drawer-tab { top: var(--mobile-top) !important; right: calc(var(--mobile-right) + 50px); width: 44px; height: 44px; min-height: 44px; padding: 0; display: grid; place-items: center; border-radius: 8px; border: 1px solid var(--line-soft); }
+.android-app .drawer-tab span, .android-app .drawer-tab .drawer-grip { display: none; }
+.android-app .narrative-panel { position: relative; grid-column: 1; grid-row: 2; inset: auto; min-width: 0; min-height: 0; max-height: none; height: 100%; padding: 0 10px 8px; overflow-x: hidden; overscroll-behavior: contain; scroll-padding-top: 40px; }
+.android-app .narrative-panel.expanded { position: relative; grid-row: 1 / 3; inset: auto; max-height: none; z-index: 24; padding-top: var(--mobile-top); }
+.android-app .narrative-header { padding: 0; min-height: 36px; }
+.android-app .narrative-toggle-btn { width: 44px; height: 36px; flex-shrink: 0; }
+.android-app .narrative-panel .npc-nameplate { min-height: 36px; padding: 0 8px; font-size: 11px; background: transparent; border: 0; text-align: left; }
+.android-app .story-message { font-size: 14px; margin-bottom: 8px; padding: 6px 10px; overflow-wrap: anywhere; }
+.android-app .story-message p { line-height: 1.7; }
+.android-app .story-message.player { padding: 6px 10px; max-width: 92%; }
+.android-app .story-message.player .player-message-line { flex-wrap: wrap; }
+.android-app .message-label { font-size: 11px; margin-bottom: 3px; }
+.android-app .player-inline-name, .android-app .player-inline-separator { font-size: 12px; }
+.android-app .action-dock { position: relative; grid-column: 1; grid-row: 3; inset: auto; min-width: 0; max-height: 48dvh; padding: 4px 8px; }
+.android-app .dock-input-row { flex-wrap: nowrap; gap: 6px; }
+.android-app .dock-actor-label > span { display: none; }
+.android-app .dock-actor-avatar { width: 28px; height: 32px; }
+.android-app .dock-input { min-height: 44px; font-size: 14px; padding: 0 9px; }
+.android-app .dock-submit { min-height: 44px !important; font-size: 13px !important; padding: 0 12px !important; }
+.android-app .suggestion-row { flex-wrap: nowrap; overflow-x: auto; gap: 6px; margin-bottom: 3px; }
+.android-app .suggestion-row button { flex-shrink: 0; min-height: 36px; padding: 0 10px; font-size: 12px; white-space: nowrap; }
+.android-app .party-strip-compact { gap: 5px; padding-top: 3px; margin-top: 3px; }
+.android-app .party-compact { padding: 3px 6px; gap: 6px; }
+.android-app .party-compact strong, .android-app .party-compact-bars .bar-value { font-size: 10px; }
+.android-app .party-compact-bars { gap: 3px; }
+.android-app .party-compact-bars .mini-bar { width: 24px; }
+/* Keep every investigator visible in 3/4-player parties without shrinking text. */
+.android-app .party-strip-compact:has(.party-compact:nth-child(3)) { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); overflow-x: hidden; }
+.android-app .party-strip-compact:has(.party-compact:nth-child(3)) .party-compact { min-width: 0; flex-direction: column; align-items: flex-start; gap: 1px; }
+.android-app .party-strip-compact:has(.party-compact:nth-child(3)) .mini-bar { display: none; }
+.android-app .check-card { align-items: center; padding: 3px 7px; gap: 10px; margin-bottom: 3px; }
+.android-app .check-card > div { min-width: 0; gap: 2px; }
+.android-app .check-card strong { font-size: 13px; }
+.android-app .check-card span { font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
+.android-app .check-card > button { flex-shrink: 0; min-height: 44px; padding: 0 12px; }
+.android-app .action-dock:has(.check-card) .dock-input-row { display: none; }
+.android-app .ending-dock { gap: 10px; padding: 8px; font-size: 13px; line-height: 1.5; }
+.android-app .ending-dock > svg { flex-shrink: 0; }
+.android-app .game-menu { top: calc(var(--mobile-top) + 48px); right: var(--mobile-right); width: min(360px, calc(100% - var(--mobile-left) - var(--mobile-right))); max-height: calc(var(--mobile-dialog-height) - 48px); padding: 8px; overflow-y: auto; }
+.android-app .menu-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 6px; }
+.android-app .menu-list button { min-height: 44px; padding: 6px 8px; font-size: 13px; }
+
+/* Fixed dialog controls, scrolling bodies and compact landscape forms. */
+.android-app .modal-backdrop, .android-app .entity-detail-overlay, .android-app .dice-roll-overlay { padding: var(--mobile-top) var(--mobile-right) var(--mobile-bottom) var(--mobile-left); }
+.android-app .modal-card { width: min(680px, 100%); min-width: 0; max-height: var(--mobile-dialog-height); padding: 12px 16px; overflow-y: auto; overscroll-behavior: contain; font-size: 13px; }
+.android-app .modal-card h2 { flex-shrink: 0; font-size: 19px; line-height: 1.3; margin: 0 0 4px; }
+.android-app .modal-card > p { flex-shrink: 0; margin: 2px 0 8px; font-size: 12px; line-height: 1.5; }
+.android-app .modal-card footer { flex-shrink: 0; margin-top: 8px; gap: 8px; }
+.android-app .modal-card label { min-width: 0; font-size: 12px; line-height: 1.3; margin: 0; gap: 4px; }
+.android-app .modal-card input:not([type='range']), .android-app .modal-card select { min-height: 40px; width: 100%; padding: 6px 9px; font-size: 14px; color: var(--text); background: #171410; border: 1px solid var(--line); border-radius: 5px; }
+.android-app .api-config-card, .android-app .audio-settings, .android-app .save-manager-card, .android-app .dm-journal-card { display: flex; flex-direction: column; overflow: hidden; }
+.android-app .api-config-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; min-height: 0; overflow-y: auto; padding: 1px 3px 3px; }
+.android-app .api-config-fields > label:nth-child(3) { grid-column: 1 / -1; }
+.android-app .api-config-fields .modal-error { grid-column: 1 / -1; margin: 0; font-size: 12px; }
+.android-app .audio-settings { width: min(680px, 100%); }
+.android-app .audio-settings > header { flex-shrink: 0; min-height: 44px; }
+.android-app .audio-close { width: 44px; height: 44px; }
+.android-app .audio-settings-body { min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 20px; }
+.android-app .audio-settings .audio-intro { grid-column: 1 / -1; margin: 0; font-size: 12px; }
+.android-app .audio-channel { min-width: 0; padding: 8px 0 0; }
+.android-app .audio-channel-heading { gap: 6px; }
+.android-app .audio-channel-heading > span { font-size: 14px; gap: 6px; }
+.android-app .audio-channel-heading > button { min-height: 44px; padding: 0; gap: 6px; font-size: 12px; }
+.android-app .audio-settings .audio-channel label { margin-top: 6px; gap: 0; }
+.android-app .audio-settings .audio-channel input[type='range'] { min-height: 36px; height: 36px; }
+.android-app .audio-channel p { margin-top: 2px; font-size: 11px; }
+.android-app .audio-settings .audio-preview { min-height: 36px; margin-top: 4px; padding: 0 10px; }
+.android-app .audio-settings .audio-note { grid-column: 1 / -1; font-size: 11px; margin: 0; }
+.android-app .audio-credits { grid-column: 1 / -1; padding-top: 0; }
+.android-app .audio-credits summary { min-height: 36px; padding: 10px 0; font-size: 11px; }
+.android-app .audio-credits p { overflow-wrap: anywhere; font-size: 11px; margin: 6px 0; }
+.android-app .save-list { min-height: 0; max-height: none; margin: 0; gap: 8px; padding-right: 3px; }
+.android-app .save-slot-card { min-width: 0; padding: 8px 10px; gap: 10px; }
+.android-app .save-slot-card > div { min-width: 0; overflow-wrap: anywhere; }
+.android-app .save-slot-card strong { font-size: 14px; }
+.android-app .save-slot-card span, .android-app .save-slot-card small { margin-top: 3px; font-size: 11px; line-height: 1.4; }
+.android-app .save-slot-actions { gap: 6px; }
+.android-app .save-slot-actions button { padding: 0 10px; white-space: nowrap; }
+.android-app .dm-journal-body { min-height: 0; overflow-y: auto; }
+.android-app .dm-journal-section { margin-top: 8px; }
+.android-app .dm-journal-section h3 { margin-bottom: 6px; padding-bottom: 4px; font-size: 13px; }
+.android-app .dm-journal-section p { margin: 6px 0; font-size: 12px; }
+.android-app .dm-journal-events { max-height: none; overflow: visible; }
+.android-app .dm-journal-events li { grid-template-columns: 90px minmax(0, 1fr); gap: 8px; }
+.android-app .dm-journal-pending li { padding: 6px 8px; }
+.android-app .entity-detail-card { width: min(720px, 100%); max-width: 100%; height: min(360px, var(--mobile-dialog-height)); max-height: var(--mobile-dialog-height); padding: 12px; display: grid; grid-template-columns: minmax(0, 1fr); overflow: hidden; border-radius: 8px; }
+.android-app .entity-detail-card:has(.entity-detail-portrait-wrap) { grid-template-columns: minmax(90px, 25%) minmax(0, 1fr); gap: 14px; }
+.android-app .entity-detail-close { top: 4px; right: 4px; width: 44px; height: 44px; }
+.android-app .entity-detail-portrait-wrap { margin: 0; min-height: 0; align-items: center; }
+.android-app .entity-detail-portrait { width: 100%; height: 100%; max-height: 100%; object-fit: contain; }
+.android-app .entity-detail-body { min-height: 0; min-width: 0; overflow-y: auto; padding-right: 4px; }
+.android-app .entity-detail-header { min-height: 36px; padding: 0 44px 8px 0; margin-bottom: 10px; flex-wrap: wrap; gap: 4px 10px; }
+.android-app .entity-detail-header h3 { font-size: 16px; letter-spacing: 0; }
+.android-app .entity-detail-header span { font-size: 11px; }
+.android-app .entity-detail-section { margin-bottom: 10px; }
+.android-app .entity-detail-section h4 { font-size: 11px; margin-bottom: 6px; }
+.android-app .entity-detail-known, .android-app .entity-detail-unknown { padding: 7px 10px; }
+.android-app .entity-detail-known p { font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
+
+/* Shallow archive header; lists and inspector take the remaining height. */
+.android-app .info-drawer-react { position: fixed; width: 100%; height: var(--mobile-height); max-height: var(--mobile-height); display: flex; flex-direction: column; overflow: hidden; padding: var(--mobile-top) var(--mobile-right) var(--mobile-bottom) var(--mobile-left); }
+.android-app .info-drawer-react > header { flex: 0 0 auto; flex-wrap: nowrap; gap: 12px; padding-bottom: 4px; margin-bottom: 6px; }
+.android-app .info-drawer-title { width: auto; }
+.android-app .info-drawer-title h2 { font-size: 18px; }
+.android-app .info-drawer-title > span { display: none; }
+.android-app .info-drawer-tabs { order: 0; width: auto; min-width: 0; flex: 1; display: flex; gap: 6px; }
+.android-app .info-drawer-tabs button { min-height: 44px; min-width: 64px; padding: 0 12px; font-size: 13px; }
+.android-app .info-drawer-react > header > button { order: 0; width: 44px; height: 44px; flex: 0 0 44px; }
+.android-app .info-drawer-react > section { min-height: 0; flex: 1; overflow-y: auto; margin-top: 0; padding: 0 2px 8px; overscroll-behavior: contain; }
+.android-app .drawer-section h3 { font-size: 14px; margin: 10px 0; }
+.android-app .objective-row { padding: 7px 0; gap: 8px; font-size: 13px; }
+.android-app .progress-stat, .android-app .clock-row { font-size: 12px; }
+.android-app .log-list-modern p { font-size: 12px; line-height: 1.6; margin: 6px 0; overflow-wrap: anywhere; }
+.android-app .case-board-view { display: flex; flex-direction: column; gap: 6px; }
+.android-app .case-board-heading { flex: 0 0 auto; flex-direction: row; align-items: center; gap: 8px; }
+.android-app .case-board-heading h3 { display: none; }
+.android-app .case-board-heading p { font-size: 11px; margin: 0; }
+.android-app .case-board-heading > span { padding: 0; border: 0; font-size: 10px; white-space: normal; text-align: right; }
+.android-app .case-board-toolbar { flex: 0 0 auto; flex-wrap: nowrap; gap: 8px; }
+.android-app .case-board-search { width: auto; flex: 1; min-width: 0; min-height: 40px; }
+.android-app .case-board-search input { font-size: 13px; min-height: 40px; }
+.android-app .case-board-toolbar select, .android-app .case-board-toolbar > button { flex: 0 0 auto; min-height: 40px; font-size: 12px; padding: 0 8px; }
+.android-app .case-board-workspace, .android-app .case-board-workspace.has-inspector { min-height: 0; height: auto; flex: 1; overflow: auto; }
+.android-app .case-board-inspector[role='dialog'] { position: fixed; inset: 0; z-index: 220; height: var(--mobile-height); display: flex; flex-direction: column; background: #100e0c; padding: var(--mobile-top) var(--mobile-right) var(--mobile-bottom) var(--mobile-left); }
+.android-app .case-board-inspector > header { flex: 0 0 auto; flex-wrap: nowrap; gap: 8px; padding: 0 0 6px; margin: 0; }
+.android-app .case-board-inspector header button { width: 44px; height: 44px; flex: 0 0 44px; }
+.android-app .case-board-inspector-scroll { min-height: 0; height: auto; flex: 1; padding: 0 8px 8px; }
+.android-app .case-board-inspector section { padding: 10px 0; }
+.android-app .case-board-inspector h4 { font-size: 16px; }
+.android-app .case-board-inspector p, .android-app .case-board-inspector li { font-size: 13px; overflow-wrap: anywhere; }
+@media (max-width: 900px) {
+  .android-app .case-board-workspace, .android-app .case-board-workspace.has-inspector { display: block; }
+  .android-app .case-board-mobile-list { display: grid; gap: 12px; padding: 6px 0 12px; }
+  .android-app .case-board-mobile-list > section { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-items: start; }
+  .android-app .case-board-mobile-list h4 { grid-column: 1 / -1; font-size: 11px; }
+  .android-app .case-board-mobile-card { padding: 8px 10px; font-size: 12px; overflow-wrap: anywhere; }
 }
-@media (orientation: landscape) and (max-height: 600px) {
-  .info-drawer-react > header { flex-wrap: nowrap; gap: 12px; padding-bottom: 8px; margin-bottom: 8px; }
-  .info-drawer-title { width: auto; }
-  .info-drawer-title h2 { font-size: 20px; }
-  .info-drawer-title > span { display: none; }
-  .info-drawer-tabs { order: 0; width: auto; flex: 1; display: flex; }
-  .info-drawer-react header > button { order: 0; min-width: 44px; min-height: 44px; }
-  .case-board-heading { flex-direction: row; align-items: center; gap: 8px; }
-  .case-board-heading h3 { display: none; }
-  .case-board-heading p { font-size: 12px; }
-  .case-board-toolbar { flex-wrap: nowrap; }
-  .case-board-search { width: auto; flex: 1; min-width: 0; min-height: 44px; }
-  .case-board-toolbar select, .case-board-toolbar > button { flex: 0 1 auto; min-height: 44px; max-width: 170px; }
-  .dice-roll-card { width: min(560px, calc(100vw - 40px)); display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, .8fr); grid-template-rows: 1fr 1fr; align-items: center; gap: 16px; }
-  .dice-roll-panel { grid-column: 1; grid-row: 1 / 3; width: min(100%, calc((100dvh - 24px) * 639 / 890)); justify-self: center; }
-  .dice-roll-card > header { grid-column: 2; grid-row: 1; align-self: end; }
-  .dice-roll-card > footer { grid-column: 2; grid-row: 2; align-self: start; }
-  .dice-roll-hint { display: none; }
-  .setup-screen { padding: 16px max(20px, env(safe-area-inset-right)) 20px max(20px, env(safe-area-inset-left)); }
-  .setup-header { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); gap: 12px; margin-bottom: 16px; }
-  .setup-header h1 { font-size: 24px; letter-spacing: 2px; }
-  .setup-header .eyebrow { margin: 0 0 5px; font-size: 9px; }
-  .setup-header-actions { gap: 8px; }
-  .setup-header-actions > .primary-btn { flex: initial; padding: 0 12px; white-space: nowrap; }
-  .preset-grid-modern { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .preset-card-modern { grid-template-columns: minmax(80px, 30%) 1fr; }
-  .preset-portrait-frame { border-right: 1px solid var(--line-soft); border-bottom: 0; }
-  .preset-card-content { padding: 14px 10px; }
-  .preset-card-content > strong { font-size: 20px; }
-  .preset-vitals { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
-  .preset-background-notes { font-size: 11px; }
-  .game-top { padding: 8px max(14px, env(safe-area-inset-right)) 8px max(14px, env(safe-area-inset-left)); }
-  .brand-title { font-size: 15px; }
-  .brand-scene { font-size: 13px; }
-  .world-time { font-size: 10px; }
-  .modal-card { padding: 18px; width: min(620px, calc(100vw - 48px)); }
-  .audio-settings { width: min(520px, calc(100vw - 48px)); }
+@media (min-width: 901px) {
+  .android-app .case-board-workspace { grid-template-columns: 130px minmax(0, 1fr); }
+  .android-app .case-board-workspace.has-inspector { grid-template-columns: 120px minmax(0, 1fr) 260px; }
+  .android-app .case-board-inspector { display: flex; flex-direction: column; }
+  .android-app .case-board-threads { padding: 8px 6px 8px 0; }
+}
+
+/* Preserve the art aspect ratio, put dice labels and confirmation beside it. */
+@media (orientation: landscape) {
+  .android-app .api-config-fields { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .android-app .api-config-fields > label { grid-column: span 2; }
+  .android-app .api-config-fields > label:nth-child(-n+2) { grid-column: span 3; }
+  .android-app .api-config-fields > label:nth-child(3) { grid-column: span 2; }
+  .android-app .dice-roll-card { width: min(620px, 100%); max-height: var(--mobile-dialog-height); display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, .8fr); grid-template-rows: 1fr 1fr; align-items: center; gap: 12px; }
+  .android-app .dice-roll-panel { grid-column: 1; grid-row: 1 / 3; width: min(100%, calc(var(--mobile-dialog-height) * 639 / 890)); justify-self: center; }
+  .android-app .dice-roll-card > header { grid-column: 2; grid-row: 1; align-self: end; }
+  .android-app .dice-roll-card > header p { font-size: 14px; }
+  .android-app .dice-roll-card > footer { grid-column: 2; grid-row: 2; align-self: start; }
+  .android-app .dice-roll-hint { display: none; }
+}
+/* Keyboard and larger Android display scaling reduce usable height. */
+@media (max-height: 300px) {
+  .android-app .modal-card { padding: 8px 12px; }
+  .android-app .api-config-card > p { display: none; }
+  .android-app .title-content { padding: 6px 0; }
+  .android-app .title-subtitle { margin: 8px 0 12px; }
+  .android-app .preset-card-content { padding: 8px; }
+  .android-app .action-dock { max-height: 52dvh; }
+}
+@media (max-height: 240px) {
+  .android-app .game-screen { grid-template-rows: 0 minmax(0, 1fr) auto; }
+  .android-app .game-top, .android-app .drawer-tab, .android-app .suggestion-row, .android-app .party-strip-compact { display: none; }
+  .android-app .action-dock { max-height: 55dvh; }
+  .android-app .narrative-header { min-height: 32px; }
+  .android-app .narrative-toggle-btn, .android-app .narrative-panel .npc-nameplate { height: 32px; min-height: 32px; }
+  .android-app .case-board-heading { display: none; }
+}
+@media (max-width: 600px) {
+  .android-app .setup-header { grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; }
+  .android-app .setup-header h1 { font-size: 17px; letter-spacing: 0; }
+  .android-app .setup-header > .icon-text-btn { padding: 0 8px; }
+  .android-app .preset-card-modern { grid-template-columns: 64px minmax(0, 1fr); }
+  .android-app .preset-card-content { padding: 7px; }
+  .android-app .preset-card-content > strong { font-size: 15px; }
+  .android-app .save-slot-actions { flex-direction: column; gap: 4px; }
+  .android-app .case-board-toolbar { gap: 5px; }
+  .android-app .case-board-toolbar > button { padding: 0 6px; }
 }
 @media (orientation: portrait) {
-  .title-content { padding: 24px; }
-  .setup-screen { padding: max(20px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom)); }
+  .android-app .preset-grid-modern { grid-template-columns: minmax(0, 1fr); }
+  .android-app .preset-card-modern { grid-template-columns: 100px minmax(0, 1fr); }
+  .android-app .setup-header h1 { font-size: 16px; }
+  .android-app .audio-settings-body { grid-template-columns: minmax(0, 1fr); }
+  .android-app .entity-detail-card:has(.entity-detail-portrait-wrap) { grid-template-columns: 80px minmax(0, 1fr); }
 }

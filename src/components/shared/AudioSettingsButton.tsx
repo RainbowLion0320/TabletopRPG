@@ -25,6 +25,7 @@ export function AudioSettingsButton({ className, iconOnly = false }: { className
             <h2 id="audio-settings-title">声音设置</h2>
             <button className="audio-close" aria-label="关闭声音设置" onClick={() => setOpen(false)}><X size={20} /></button>
           </header>
+          <div className="audio-settings-body">
           <p className="audio-intro">让声音陪伴调查，也可以安静地阅读。</p>
           <section className="audio-channel" aria-label="背景音乐设置">
             <div className="audio-channel-heading">
@@ -63,6 +64,7 @@ export function AudioSettingsButton({ className, iconOnly = false }: { className
             <p>骰子、界面、翻书音效 — <a href="https://kenney.nl/assets" target="_blank" rel="noreferrer">Kenney</a>，
               <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noreferrer">CC0</a>。环境音与检定提示音由项目合成。</p>
           </details>
+          </div>
         </div>
       </div>, document.body)}
   </>;

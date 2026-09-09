@@ -10,6 +10,8 @@
 
 The Android edition is a separate, installable APK that preserves the existing web release. It reuses the same investigation, rules, art, audio and 1–4-player hot-seat game. The Android entry adds a touch-friendly landscape layout, system-back behavior, encrypted local settings/saves and automatic session recovery. On first entering the game, players supply their own AI DM API configuration; build-time developer keys are never bundled. Local assets work without a desktop server; AI turns still require a configured online service. Release packaging and acceptance checks are defined in [ANDROID.md](ANDROID.md).
 
+Android 0.2.1 treats short landscape viewports as the primary UI target. At 560×280 through 960×432 CSS pixels, navigation and dialog close/save controls must remain reachable; long cards, archives and descriptions scroll in their own content areas. The action input and submit control remain reachable with 180 CSS pixels of keyboard-reduced height. Investigators default to one, with explicit 2/4-player coverage. Layout acceptance includes screenshots and clipping/touch-occlusion checks in the actual APK; desktop tests alone are insufficient.
+
 TabletopRPG is a local web TRPG experience where an AI DM hosts the COC-inspired investigation module "雾中消逝". The current product targets a single browser session with local hot-seat play, fast preset investigator selection, AI-driven narration, D100 checks, and local save/load.
 
 ## 2. Target Users

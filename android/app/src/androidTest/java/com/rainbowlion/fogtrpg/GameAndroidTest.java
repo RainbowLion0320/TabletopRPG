@@ -86,6 +86,99 @@ public class GameAndroidTest {
         click("保存"); until("!document.querySelector('#api-config-modal-title')");
     }
 
+    private void viewport(int width, int height) throws Exception {
+        double scale = Double.parseDouble(js("devicePixelRatio"));
+        activity.onActivity(a -> {
+            WebView web = a.getBridge().getWebView();
+            ViewGroup.LayoutParams params = web.getLayoutParams();
+            params.width = (int) Math.round(width * scale);
+            params.height = (int) Math.round(height * scale);
+            web.setLayoutParams(params);
+        });
+        until("Math.abs(innerWidth-" + width + ")<2 && Math.abs(innerHeight-" + height + ")<2");
+    }
+
+    /** Check actual visible bounds, ancestor clipping, and touch occlusion after transitions. */
+    private void reachable(String selector) throws Exception {
+        until("(()=>{const e=document.querySelector(" + JSONObject.quote(selector) + ");if(!e)return false;"
+            + "const r=e.getBoundingClientRect();if(r.width<1||r.height<1||r.left<0||r.top<0||r.right>innerWidth+.5||r.bottom>innerHeight+.5)return false;"
+            + "for(let p=e.parentElement;p;p=p.parentElement){const s=getComputedStyle(p),b=p.getBoundingClientRect();"
+            + "if(/hidden|auto|scroll/.test(s.overflowY)&&(r.top<b.top-.5||r.bottom>b.bottom+.5))return false;"
+            + "if(/hidden|auto|scroll/.test(s.overflowX)&&(r.left<b.left-.5||r.right>b.right+.5))return false;if(s.position==='fixed')break;}"
+            + "return e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})()");
+    }
+
+    private void menu(String label) throws Exception {
+        if (!"true".equals(js("Boolean(document.querySelector('.game-menu.open'))")))
+            js("document.querySelector('.menu-button').click()");
+        click(label);
+    }
+
+    @Test public void landscapeDialogsAndReadingStayWithinPhoneViewport() throws Exception {
+        // Run on a dedicated emulator at least 1688 x 780 physical pixels at density 320.
+        for (int[] size : new int[][] {{560,280}, {640,288}, {740,320}, {844,390}}) {
+            fresh();
+            try {
+                viewport(size[0], size[1]);
+                String prefix = "layout-" + size[0] + "x" + size[1];
+                reachable(".title-actions .primary-btn");
+                click("AI 设置");
+                until("document.querySelector('.api-config-fields')");
+                for (int i = 1; i <= 5; i++) reachable(".api-config-fields label:nth-child(" + i + ") > :is(input,select)");
+                reachable(".api-config-card footer .primary-btn"); screenshot(prefix + "-api");
+                // No real API credentials or network dependency in layout probes.
+                configure("http://127.0.0.1:1/v1", "responses");
+                click("开始游戏");
+                if (size[0] == 640) for (int i = 1; i < 4; i++) js("document.querySelectorAll('.preset-card-modern strong')[" + i + "].click()");
+                reachable(".setup-header-actions .primary-btn"); screenshot(prefix + "-setup");
+                js("document.querySelector('.preset-attrs-toggle').click()");
+                until("document.querySelector('.preset-other-panel:not([hidden])')");
+                js("document.querySelector('.preset-other-panel:not([hidden])').scrollIntoView({block:'end'})");
+                reachable(".setup-header-actions .primary-btn");
+                assertEquals("Expanded stats do not widen the card", "true", js("Array.from(document.querySelectorAll('.preset-card-content')).every(e=>e.scrollWidth<=e.clientWidth+1)"));
+                click("进入游戏"); reachable(".dock-input");
+                if (size[0] == 640) {
+                    // Wait for the non-interactive save notification to fade before testing the HUD.
+                    until("!document.querySelector('.toast')");
+                    reachable(".party-compact:last-child");
+                    assertEquals("All four status cards fit without horizontal scrolling", "true", js("document.querySelector('.party-strip-compact').scrollWidth<=document.querySelector('.party-strip-compact').clientWidth+1"));
+                }
+                assertEquals("Reading area keeps at least 90 CSS pixels", "true", js("document.querySelector('.narrative-panel').clientHeight>=90"));
+                screenshot(prefix + "-game");
+                js("document.querySelector('.narrative-toggle-btn').click()"); reachable(".narrative-toggle-btn");
+                js("document.querySelector('.narrative-toggle-btn').click();document.querySelector('.npc-nameplate').click()");
+                reachable(".entity-detail-close"); screenshot(prefix + "-entity");
+                // Long unlocked descriptions scroll without moving the close control.
+                js("document.querySelector('.entity-detail-known p').textContent='长篇调查记录。'.repeat(150);document.querySelector('.entity-detail-body').scrollTop=99999");
+                reachable(".entity-detail-close"); js("document.querySelector('.entity-detail-close').click()");
+                js("document.querySelector('.drawer-tab').click()");
+                until("document.querySelector('.case-board-mobile-card')"); reachable("[aria-label='关闭资料']");
+                reachable(".case-board-mobile-card"); screenshot(prefix + "-board");
+                js("document.querySelector('.case-board-mobile-card').click()"); reachable("[aria-label='关闭资料详情']");
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                until("!document.querySelector('.case-board-inspector') && document.querySelector('.info-drawer-react.open')"); click("进度");
+                reachable("[aria-label='关闭资料']"); click("日志"); reachable("[aria-label='关闭资料']");
+                js("document.querySelector('[aria-label=关闭资料]').click()");
+                menu("声音设置"); reachable("[role='switch'][aria-label='背景音乐']"); reachable("[role='switch'][aria-label='游戏音效']");
+                screenshot(prefix + "-audio");
+                js("document.querySelector('.audio-credits').open=true;document.querySelector('.audio-settings-body').scrollTop=99999");
+                reachable(".audio-close"); js("document.querySelector('.audio-close').click()");
+                for (int i = 0; i < 4; i++) { menu("保存游戏"); SystemClock.sleep(100); }
+                menu("存档管理"); reachable(".save-manager-card footer button");
+                js("document.querySelector('.save-list').scrollTop=99999");
+                reachable(".save-slot-card:last-child .danger"); screenshot(prefix + "-saves"); click("关闭");
+                menu("KP 笔记"); reachable(".dm-journal-card footer button"); click("关闭");
+                viewport(size[0], 180); fill(".dock-input", "输入法占位后仍可完成输入。");
+                reachable(".dock-input"); reachable(".dock-submit"); screenshot(prefix + "-keyboard");
+                // The API form must also keep the focused field and Save usable above an IME.
+                viewport(size[0], size[1]); menu("AI 设置"); viewport(size[0], 180);
+                js("document.querySelector('.api-config-fields input[type=password]').focus()");
+                reachable(".api-config-fields input[type=password]"); reachable(".api-config-card footer .primary-btn");
+                screenshot(prefix + "-api-keyboard");
+            } finally { activity.close(); }
+        }
+    }
+
     @Test public void partyFlowUsesNativeNetworkAndEncryptedRecovery() throws Exception {
         for (int party : new int[] { 1, 2, 4 }) {
             AtomicInteger narratorCalls = new AtomicInteger();

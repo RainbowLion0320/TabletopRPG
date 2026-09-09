@@ -67,9 +67,10 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
 
   return (
     <div className="modal-backdrop">
-      <div ref={dialogRef} tabIndex={-1} className="modal-card" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <div ref={dialogRef} tabIndex={-1} className="modal-card api-config-card" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <h2 id={titleId}>AI DM 配置</h2>
         <p>{usingNativeStorage() ? '设置加密保存在本机，下次打开自动生效。' : '设置保存在当前浏览器，下次打开自动生效。'}</p>
+        <div className="api-config-fields">
         <label>
           Provider
           <select
@@ -120,6 +121,7 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
           />
         </label>
         {error ? <p className="modal-error">{error}</p> : null}
+        </div>
         <footer>
           <button className="ghost-btn" disabled={saving} onClick={onClose}>取消</button>
           <button className="primary-btn" disabled={saving} onClick={() => void save()}>{saving ? '保存中…' : '保存'}</button>
