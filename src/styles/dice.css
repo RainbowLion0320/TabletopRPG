@@ -126,12 +126,9 @@
   height: 3000%;
   animation: dice-art-roll var(--dice-roll-duration) steps(30, jump-none) both;
 }
-.dice-face,
-.dice-face-label {
+.dice-face {
   position: absolute;
   transform: translate(-50%, -50%);
-}
-.dice-face {
   top: 36%;
   font-family: inherit;
   font-size: 7.5cqw;
@@ -142,13 +139,6 @@
 }
 .tens-die { left: 26.06%; }
 .ones-die { left: 72.54%; }
-.dice-face-label {
-  top: 77%;
-  color: #f0e6d6;
-  font-size: max(10px, 2.3cqw);
-  letter-spacing: 0.12em;
-  text-shadow: 0 1px 2px #17100a, 0 0 3px #17100a;
-}
 .dice-roll-hint {
   position: absolute;
   top: 69%;
@@ -166,25 +156,18 @@
   width: 56.5%;
   height: 13%;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-}
-.dice-roll-outcome img {
-  display: block;
-  width: 48%;
-  height: auto;
-  max-height: 65%;
-  object-fit: contain;
 }
 .dice-roll-outcome h3 {
   margin: 0;
   color: var(--dice-accent);
-  font-size: max(11px, 2.5cqw);
+  font-size: 9cqw;
   font-weight: 400;
-  line-height: 1.4;
-  letter-spacing: 0.1em;
+  line-height: 1.2;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  text-shadow: 0 2px 2px #090705;
 }
 .dice-roll-outcome > span {
   color: #b1a184;

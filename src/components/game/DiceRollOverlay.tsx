@@ -6,8 +6,6 @@ import { useDialogFocus } from '../shared/useDialogFocus';
 import panelArt from '../../../assets/ui/dice/ui_dice_panel.webp';
 import idleArt from '../../../assets/ui/dice/ui_dice_idle.webp';
 import rollArt from '../../../assets/ui/dice/ui_dice_roll.webp';
-import successArt from '../../../assets/ui/dice/ui_dice_success.webp';
-import failureArt from '../../../assets/ui/dice/ui_dice_failure.webp';
 
 interface DiceRollOverlayProps {
   onConfirm: () => void;
@@ -59,7 +57,6 @@ export function DiceRollOverlay({ onConfirm, roll }: DiceRollOverlayProps) {
   // Only the authoritative result supplies settled digits. The animation has
   // blank faces and consumes no randomness or media playback callbacks.
   const faces = percentileFaces(roll.result.roll);
-  const failed = roll.result.level === 'fail' || roll.result.level === 'fumble';
 
   return (
     <div
@@ -104,8 +101,6 @@ export function DiceRollOverlay({ onConfirm, roll }: DiceRollOverlayProps) {
               <>
                 <span className="dice-face tens-die">{faces.tens}</span>
                 <span className="dice-face ones-die">{faces.ones}</span>
-                <span className="dice-face-label tens-die">十位</span>
-                <span className="dice-face-label ones-die">个位</span>
               </>
             )}
           </div>
@@ -114,12 +109,7 @@ export function DiceRollOverlay({ onConfirm, roll }: DiceRollOverlayProps) {
             {revealed ? '结果已锁定，确认后继续结算' : <span className="dice-roll-pending">骰面翻滚中</span>}
           </p>
           <div className="dice-roll-outcome">
-            {revealed ? (
-              <>
-                <img src={failed ? failureArt : successArt} alt="" draggable={false} />
-                <h3>{RESULT_TITLES[roll.result.level]}</h3>
-              </>
-            ) : <span>D100 · 百分骰检定</span>}
+            {revealed ? <h3>{RESULT_TITLES[roll.result.level]}</h3> : <span>D100 · 百分骰检定</span>}
           </div>
         </div>
 

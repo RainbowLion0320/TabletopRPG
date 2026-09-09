@@ -30,7 +30,7 @@ updated: 2026-09-09
 
 | 页面 | 简介 | 状态 |
 |------|------|------|
-| [核心玩法循环](concepts/core_loop.md) | 行动、检定队列与汇总结算；正式骰子美术、统一字体和手动确认 | ✅ 已实现 |
+| [核心玩法循环](concepts/core_loop.md) | 行动、检定队列与汇总结算；骰子统一字体、单一结果等级和手动确认 | ✅ 已实现 |
 | [提示词工程](concepts/prompt_engineering.md) | 三层事实边界、分级语义复核、当前内嵌提示词结构与外部化计划 | ✅ |
 | [技术选型](concepts/tech_stack.md) | React/Vite/TypeScript、多 Provider、localStorage、数值规则配置 | ✅ |
 | [动态案件板与调查台](concepts/case_board.md) | v7 核心关系、实体档案、审核规则、自动布局与 v6 迁移 | ✅ 已实现 |
