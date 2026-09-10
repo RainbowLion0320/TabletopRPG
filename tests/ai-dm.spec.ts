@@ -131,6 +131,64 @@ for (const scenario of [
   });
 }
 
+test('free-action narration opens real dice when the model omits its check tool', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  let attempts = 0;
+  await page.route('https://api.openai.com/v1/responses', async (route) => {
+    const body = JSON.parse(route.request().postData() ?? '{}') as { instructions?: string };
+    const narrator = body.instructions?.includes('COC 第七版 AI DM Agent');
+    if (narrator) attempts++;
+    const content = narrator ? JSON.stringify({
+      narrative: '亨利需要进行潜行检定，判定能否避过对方目光。', activeNpc: null,
+      nextPrompt: '请进行潜行检定。', playerChoices: {}
+    }) : JSON.stringify({ facts: [], nodes: [], edges: [] });
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(responseBody(content)) });
+  });
+  await startGameWithApi(page, undefined, 1);
+  await page.locator('.dock-input').fill('伸手拿走纸条，不引起灰风衣男人注意。');
+  await page.getByRole('button', { name: '提交' }).click();
+  await expect(page.getByRole('button', { name: '掷骰', exact: true })).toBeVisible();
+  await expect(page.locator('.check-card strong')).toContainText('亨利·格雷 · 潜行');
+  expect(attempts).toBe(1);
+  await expect(page.getByRole('button', { name: '重试本轮' })).toHaveCount(0);
+  await page.getByRole('button', { name: '掷骰', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: /检定/ })).toBeVisible();
+});
+
+test('repeated semantic failures retain correction and show one safe retry notice', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  let attempts = 0;
+  const requests: string[] = [];
+  await page.route('https://api.openai.com/v1/responses', async (route) => {
+    const raw = route.request().postData() ?? '{}';
+    const body = JSON.parse(raw) as { instructions?: string };
+    const narrator = body.instructions?.includes('COC 第七版 AI DM Agent');
+    if (narrator) { attempts++; requests.push(raw); }
+    const content = narrator ? JSON.stringify({
+      narrative: attempts <= 6 ? '纸片写着贝尔街14号，那就是藏身地址。' : '男人移开视线，你有机会决定接下来的行动。',
+      activeNpc: null, nextPrompt: '', playerChoices: {}
+    }) : JSON.stringify({ facts: [], nodes: [], edges: [] });
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(responseBody(content)) });
+  });
+  await startGameWithApi(page, undefined, 1);
+  await page.locator('.dock-input').fill('伸手拿走纸条，不引起灰风衣男人注意。');
+  await page.getByRole('button', { name: '提交' }).click();
+  for (const expected of [3, 6]) {
+    await expect(page.getByRole('button', { name: '重试本轮' })).toBeVisible();
+    expect(attempts).toBe(expected);
+    expect(requests[expected - 1]).toContain('上一版响应需要修正');
+    await expect(page.locator('.action-dock [role="status"]')).toHaveCount(1);
+    await expect(page.locator('.action-dock [role="status"]')).toContainText('行动和已确认的骰点都已保留');
+    await expect(page.locator('.game-screen')).not.toContainText('贝尔街');
+    await expect(page.locator('.game-screen')).not.toContainText('request_check');
+    await expect(page.locator('.story-message.system')).toHaveCount(0);
+    await page.getByRole('button', { name: '重试本轮' }).click();
+  }
+  await expect(page.getByText('男人移开视线，你有机会决定接下来的行动。')).toBeVisible();
+  await expect(page.locator('.action-dock [role="status"]')).toHaveCount(0);
+  await expect(page.locator('.story-message.player')).toHaveCount(1);
+});
+
 test('AI DM retries malformed model output instead of returning raw text as narrative', async ({ page }) => {
   const malformed = '```json\n{\n  "narrative": "raw malformed output",\n  "stateUpdate": {\n```';
   const repaired = JSON.stringify({

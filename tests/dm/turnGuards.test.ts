@@ -21,6 +21,38 @@ import { makeInvestigator, makeState } from './fixtures';
 const kb = getActiveKnowledgeBase();
 
 describe('turnGuards', () => {
+  it('permits local improvised evidence without author events or state unlocks', () => {
+    const state = makeState();
+    const output = { narrative: '你发现一张路人遗落的纸条，上面只有潦草的购物清单。', nextPrompt: '', playerChoices: {} };
+    expect(reviewNarratorSemantics(output, [], state, kb)?.severity).toBe('warning');
+  });
+
+  it('does not block an explicit statement that a mundane action needs no check', () => {
+    expect(reviewNarratorSemantics({ narrative: '艾达轻轻收起桌上的纸片，不需要进行潜行检定。', nextPrompt: '', playerChoices: {} }, [], makeState(), kb)?.severity).not.toBe('blocking');
+  });
+
+  it('allows a player guess about a location without confirming or unlocking it', () => {
+    const state = makeState();
+    const output = { narrative: '你提出贝尔街14号的猜测，伊莎贝拉摇头表示没有印象。', nextPrompt: '', playerChoices: {} };
+    expect(reviewNarratorSemantics(output, [], state, kb, [{ player: '亨利', action: '会不会在贝尔街14号？' }])?.severity).not.toBe('blocking');
+    expect(state.scenarioProgress?.visitedSceneIds ?? []).not.toContain('S04');
+  });
+
+  it('preserves accepted narrative continuity but never treats an old error as knowledge', () => {
+    const state = makeState();
+    const output = { narrative: '你回顾刚才提过的贝尔街14号。', nextPrompt: '', playerChoices: {} };
+    state.messages = [{ id: 'old', type: 'dm', text: '路人提到了贝尔街14号，消息尚未核实。' }];
+    expect(reviewNarratorSemantics(output, [], state, kb)?.severity).not.toBe('blocking');
+    state.messages = [{ id: 'old', type: 'system', text: 'AI DM 返回格式无效：正文不得提前泄露未解锁地点：贝尔街14号' }];
+    expect(reviewNarratorSemantics(output, [], state, kb)?.severity).toBe('blocking');
+  });
+
+  it('still blocks a new hidden lead and a dice demand without an unambiguous tool', () => {
+    for (const narrative of ['纸片写着贝尔街14号，那就是藏身地址。', '需要检定才能知道是否被发现。']) {
+      expect(reviewNarratorSemantics({ narrative, nextPrompt: '', playerChoices: {} }, [], makeState(), kb)?.severity).toBe('blocking');
+    }
+  });
+
   it('classifies invented local color as a warning instead of a blocking rule', () => {
     const state = makeState({ currentScene: 'S04', activeNpcName: null });
     state.scenarioProgress = createScenarioProgress();

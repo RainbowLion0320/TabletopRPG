@@ -261,6 +261,40 @@ public class GameAndroidTest {
         }
     }
 
+    @Test public void semanticRecoveryKeepsDiagnosticsPrivateAndConnectsFreeActionDice() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        AtomicInteger retainedCorrections = new AtomicInteger();
+        try (MockWebServer server = new MockWebServer()) {
+            server.setDispatcher(new Dispatcher() {
+                @Override public MockResponse dispatch(RecordedRequest request) {
+                    String body = request.getBody().readUtf8();
+                    boolean narrator = body.contains("COC 第七版 AI DM Agent");
+                    int count = narrator ? calls.incrementAndGet() : 0;
+                    if (narrator && count % 3 == 0 && body.contains("上一版响应需要修正")) retainedCorrections.incrementAndGet();
+                    String text = count <= 6 ? "纸片写着贝尔街14号，那就是藏身地址。" : "亨利需要进行潜行检定，判定能否避过对方目光。";
+                    String content = narrator ? "{\"narrative\":" + JSONObject.quote(text) + ",\"activeNpc\":null,\"nextPrompt\":\"\",\"playerChoices\":{}}" : "{\"facts\":[],\"nodes\":[],\"edges\":[]}";
+                    return new MockResponse().setHeader("Content-Type", "application/json").setBody("{\"output_text\":" + JSONObject.quote(content) + ",\"output\":[]}");
+                }
+            });
+            server.start(); fresh(); viewport(390, 844);
+            click("开始游戏"); click("进入游戏"); configure(server.url("/v1").toString(), "responses");
+            fill(".dock-input", "伸手拿走纸条，不引起灰风衣男人注意。"); click("提交");
+            for (int expected : new int[] {3, 6}) {
+                until("document.querySelector('.action-dock [role=status]')");
+                assertEquals(expected, calls.get());
+                assertEquals("One recovery notice", "1", js("document.querySelectorAll('.action-dock [role=status]').length"));
+                assertEquals("No leaked rules or hidden scene names", "false", js("/贝尔街|request_check|返回格式无效/.test(document.body.innerText)"));
+                assertEquals("No error history spam", "0", js("document.querySelectorAll('.story-message.system').length"));
+                reachable(".action-dock .secondary-action"); screenshot("semantic-retry-" + expected);
+                click("重试本轮");
+            }
+            until("document.querySelector('.check-card strong')?.textContent.includes('潜行')");
+            assertEquals(7, calls.get()); assertEquals(2, retainedCorrections.get());
+            assertEquals("Original declaration appears once", "1", js("document.querySelectorAll('.story-message.player').length"));
+            click("掷骰"); until("document.querySelector('.dice-roll-overlay')"); screenshot("free-action-dice");
+        } finally { if (activity != null) activity.close(); }
+    }
+
     @Test public void partyFlowUsesNativeNetworkAndEncryptedRecovery() throws Exception {
         for (int party : new int[] { 1, 2, 4 }) {
             AtomicInteger narratorCalls = new AtomicInteger();

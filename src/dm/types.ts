@@ -186,6 +186,8 @@ export interface DmTurnInput {
   actions: import('../types/game').CheckContinuationAction[];
   /** Optional final recovery pass; default Narrator gets one repair retry. */
   narratorAttempts?: 1 | 2;
+  /** Last semantic repair hint, retained for the bounded final recovery attempt. */
+  retryCorrection?: string;
   /** Cancels all foreground and background model calls belonging to this DM turn. */
   signal?: AbortSignal;
 }

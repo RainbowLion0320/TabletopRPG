@@ -71,6 +71,20 @@ afterEach(() => {
 });
 
 describe('runDmTurn error classification', () => {
+  it('recovers an explicit free-action check without regenerating or resolving its dice', async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse(JSON.stringify({
+      narrative: '艾达需要进行潜行检定，判定能否在对方转头前拿走纸片。',
+      activeNpc: null, nextPrompt: '请进行潜行检定。', playerChoices: {}
+    }))));
+    vi.stubGlobal('fetch', fetchMock);
+    const state = makeState({ players: [makeInvestigator({ name: '艾达' }, { 潜行: 40 })] });
+    const result = await runDmTurn(config, { state, actions: [{ player: '艾达', action: '伸手拿走纸条，不引起灰风衣男人注意。' }] });
+    expect(result.legacyResponse.check).toEqual(expect.objectContaining({ player: '艾达', skill: '潜行', difficulty: '普通' }));
+    expect(countNarratorRequests(fetchMock)).toBe(1);
+    expect(state.pendingCheck).toBeNull();
+    expect(result.legacyResponse.stateUpdate?.newItems ?? []).toEqual([]);
+  });
+
   it('queues every independent investigator check in one round', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);

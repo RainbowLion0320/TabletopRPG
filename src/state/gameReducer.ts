@@ -10,7 +10,7 @@ import {
   processScenarioTurn
 } from '../scenario/engine';
 import { normalizeNarrativeKeywordHints } from '../services/narrativeKeywords';
-import { isPlayerVisibleMessage } from '../services/narrativeVisibility';
+import { isDmFailureMessage, isPlayerVisibleMessage } from '../services/narrativeVisibility';
 import { advanceCheckQueue, enqueueCheck, prepareCheck } from '../services/dice';
 import { countCompletedGameTurns } from '../services/turns';
 import {
@@ -1487,7 +1487,10 @@ export function hydrateGameState(value: unknown): GameState {
 }
 
 function addMessage(state: GameState, message: Omit<NarrativeMessage, 'id'>): GameState {
-  return { ...state, messages: [...state.messages, { ...message, id: id() }] };
+  const messages = isDmFailureMessage(message) || message.type === 'dm'
+    ? state.messages.filter((previous) => !isDmFailureMessage(previous))
+    : state.messages;
+  return { ...state, messages: [...messages, { ...message, id: id() }] };
 }
 
 function addLog(state: GameState, text: string): GameState {

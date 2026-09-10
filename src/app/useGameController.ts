@@ -243,7 +243,8 @@ export function useGameController() {
       } catch (error) {
         if (!(error instanceof AiResponseFormatError) || !coordinator.isCurrent(task)) throw error;
         turnResult = await coordinator.waitFor(task, runDmTurn(config, {
-          state: turnState, actions, signal: task.controller.signal, narratorAttempts: 1
+          state: turnState, actions, signal: task.controller.signal, narratorAttempts: 1,
+          retryCorrection: error.retryCorrection
         }));
       }
       const {
@@ -329,9 +330,12 @@ export function useGameController() {
         return;
       }
       const prefix = error instanceof AiResponseFormatError ? 'AI DM 返回格式无效' : 'AI DM 连接失败';
+      if (import.meta.env.DEV) console.warn('[AI DM] turn recovery exhausted:', error);
       dispatch({
         type: 'appendMessage',
-        message: { type: 'system', text: `${prefix}：${error instanceof Error ? error.message : String(error)}` }
+        message: { type: 'system', text: error instanceof AiResponseFormatError
+          ? `${prefix}：DM 暂时未能完成本轮回应，请重试。`
+          : `${prefix}：${error instanceof Error ? error.message : String(error)}` }
       });
     } finally {
       if (foregroundTaskRef.current === task) foregroundTaskRef.current = null;

@@ -17,6 +17,7 @@ import {
   processScenarioTurn
 } from '../scenario/engine';
 import { resolveActiveNpcForScene } from '../state/sceneFocus';
+import { demandedCheckClauses } from './narratedChecks';
 
 const DICE_RESULT_RE = /【检定结果】|结果[：:]\s*(?:失败|大失败|成功|困难成功|极难成功|大成功)/;
 const COMBAT_ROUTE_SELECTION_RE = /(?:选择|决定|明确)(?:以|使用|采取)?[^，。；！？\n]{0,8}武力[^，。；！？\n]{0,16}(?:阻止|拦截|对抗)[^，。；！？\n]{0,16}(?:深潜者|扶桑花号)|(?:以|使用|采取)武力[^，。；！？\n]{0,16}(?:阻止|拦截|对抗)[^，。；！？\n]{0,16}(?:深潜者|扶桑花号)/;
@@ -1001,12 +1002,26 @@ function publicScenarioCorpus(kb: KnowledgeBase): string {
   return [...scenes, ...npcs, ...items].join('\n');
 }
 
+function acknowledgesPlayerGuess(text: string, term: string, actions: PlayerAction[]): boolean {
+  if (!actions.some((action) => action.action.includes(term))) return false;
+  const mentions = text.split(/[。；！？\n]/).filter((sentence) => sentence.includes(term));
+  return mentions.length > 0 && mentions.every((sentence) =>
+    /(?:猜测|假设|猜想|尚未证实|未经证实|没有证据|无法确认|不能确认|不确定|没有印象)/.test(sentence)
+    && !/(?:证实|确认|指出|写着|记载|标明|透露)[^。；！？\n]{0,20}(?:就在|位于|藏在|前往|地址|线索)/.test(sentence)
+  );
+}
+
+function acceptedNarration(state: GameState): string {
+  return state.messages.filter((message) => message.type === 'dm').map((message) => message.text).join('\n');
+}
+
 function lockedSceneReference(
   text: string,
   authority: string,
   state: GameState,
   kb: KnowledgeBase,
-  proposedEvents: ReturnType<typeof getAvailableStoryEvents>
+  proposedEvents: ReturnType<typeof getAvailableStoryEvents>,
+  actions: PlayerAction[] = []
 ): string | null {
   const progress = getScenarioProgressForState(state);
   const projected = processScenarioTurn(progress, {
@@ -1020,6 +1035,7 @@ function lockedSceneReference(
     ...projected.visitedSceneIds,
     ...getAvailableSceneExits(projected, state.currentScene).map((exit) => exit.sceneId)
   ]);
+  const established = acceptedNarration(state);
 
   for (const [sceneId, entry] of Object.entries(kb.scenes) as Array<[SceneId, KnowledgeBase['scenes'][SceneId]]>) {
     if (visibleSceneIds.has(sceneId)) continue;
@@ -1029,7 +1045,12 @@ function lockedSceneReference(
         const length = term.replace(/[^\u4e00-\u9fffA-Za-z0-9]/g, '').length;
         return length >= 4 || (length >= 3 && term.endsWith('区'));
       });
-    const leaked = distinctiveTerms.find((term) => text.includes(term) && !authority.includes(term));
+    // A name already spoken in accepted DM narration is continuity, not a new unlock.
+    // Player guesses may be acknowledged, but cannot establish a lead or change scenes.
+    const leaked = distinctiveTerms.find((term) => {
+      if (!text.includes(term) || authority.includes(term) || established.includes(term)) return false;
+      return !acknowledgesPlayerGuess(text, term, actions);
+    });
     if (leaked) return leaked;
   }
   return null;
@@ -1467,9 +1488,7 @@ export function validateNarratorSemantics(
       return `正文不得把${action.player}本轮明确使用的灯光替换成未声明使用的急救装备`;
     }
   }
-  const demandsPendingCheck = /(?:需要|必须|务必|须得)[^。；！？\n]{0,24}检定|请[^。；！？\n]{0,12}(?:掷骰|进行)[^。；！？\n]{0,12}检定/.test(
-    `${output.narrative}\n${output.nextPrompt}`
-  );
+  const demandsPendingCheck = demandedCheckClauses(`${output.narrative}\n${output.nextPrompt}`).length > 0;
   const hasAuthorizedCheck = toolCalls.some((call) => call.name === 'request_check')
     || proposedEvents.some((event) => event.effects.some((effect) => 'requestCheck' in effect));
   if (demandsPendingCheck && !hasAuthorizedCheck) {
@@ -1518,6 +1537,8 @@ export function validateNarratorSemantics(
     state.currentScene === 'S03'
     && !progress.knownFactIds.includes('F08')
     && !bartenderLeadProposed
+    && !/老鼠[^。；！？\n]{0,40}贝尔街|贝尔街[^。；！？\n]{0,40}老鼠/.test(acceptedNarration(state))
+    && !acknowledgesPlayerGuess(allText, '贝尔街', actions)
     && /老鼠[^。；！？\n]{0,40}贝尔街|贝尔街[^。；！？\n]{0,40}老鼠/.test(allText)
   ) {
     return '酒保的“老鼠”与贝尔街线索必须通过 EV_BARTENDER_RAT 结算后才能透露';
@@ -1799,6 +1820,8 @@ export function validateNarratorSemantics(
   );
   if (plotClaimIssue) return plotClaimIssue;
   const bellStreetAuthorized = narrativeAuthority.includes('贝尔街')
+    || acceptedNarration(state).includes('贝尔街')
+    || acknowledgesPlayerGuess(allText, '贝尔街', actions)
     || state.currentScene === 'S04'
     || progress.visitedSceneIds.includes('S04');
   if (/贝尔街/.test(allText) && !bellStreetAuthorized) {
@@ -1842,7 +1865,7 @@ export function validateNarratorSemantics(
       return `叙事把${entry.public.name}写成当前环境，但没有对应的合法场景切换`;
     }
   }
-  const lockedScene = lockedSceneReference(allText, narrativeAuthority, state, kb, proposedEvents);
+  const lockedScene = lockedSceneReference(allText, narrativeAuthority, state, kb, proposedEvents, actions);
   if (lockedScene) {
     return `不得在作者事件或可达性解锁前提及锁定地点：${lockedScene}`;
   }
@@ -1884,6 +1907,11 @@ export function validateAuthoritativeNarratorSemantics(
     return event ? [event] : [];
   });
   const authority = authoredNarrativeCorpus(state, proposedEvents);
+  if (demandedCheckClauses(`${output.narrative}\n${output.nextPrompt}`).length
+    && !toolCalls.some((call) => call.name === 'request_check')
+    && !proposedEvents.some((event) => event.effects.some((effect) => 'requestCheck' in effect))) {
+    return '正文要求当前玩家检定但缺少 request_check；请调用工具并明确玩家全名、技能和难度。无需检定的行动直接叙述结果。';
+  }
 
   const failedCheck = actions.some((action) =>
     /【检定结果】[\s\S]*结果[：:]\s*(?:失败|大失败)/.test(action.action)
@@ -2000,7 +2028,7 @@ export function validateAuthoritativeNarratorSemantics(
     return '正文不得越过结构化遭遇的剩余敌人数量';
   }
 
-  const lockedScene = lockedSceneReference(allText, authority, state, kb, proposedEvents);
+  const lockedScene = lockedSceneReference(allText, authority, state, kb, proposedEvents, actions);
   if (lockedScene) return `正文不得提前泄露未解锁地点：${lockedScene}`;
 
   if (/注射[^。；\n]{0,12}活性炭|浓盐水[^。；\n]{0,12}催吐|试喝|尝一口/.test(allText)) {
@@ -2010,14 +2038,17 @@ export function validateAuthoritativeNarratorSemantics(
 }
 
 function classifyNarratorDiagnostic(message: string): NarratorSemanticSeverity {
+  // Diagnostic wording must not turn every mention of “剧情事件” into a hard gate.
+  // Local clues/props/character habits are improvisation, not authoritative unlocks.
+  if (/^本轮没有作者剧情事件/.test(message)) return 'warning';
+  if (/必须在正文中说明|必须使用作者地址|activeNpc|活动 NPC|权威人物外貌/.test(message)) {
+    return 'advisory';
+  }
   if (/成功.*局面收益|高度重复/.test(message)) return 'advisory';
   if (
     /request_check|propose_state_update|负 HP|实际伤害|检定失败|检定结果|剧情事件|剧情结果|正式发现线索|结构化遭遇|战斗路线|交涉条件|人物获救|结局|合法场景切换|场景切换已|未解锁地点|提前透露|危险的现实医疗|时代错误|没有被记录的枪械|装备转移/.test(message)
   ) {
     return 'blocking';
-  }
-  if (/必须在正文中说明|必须使用作者地址|activeNpc|活动 NPC|权威人物外貌/.test(message)) {
-    return 'advisory';
   }
   return 'warning';
 }

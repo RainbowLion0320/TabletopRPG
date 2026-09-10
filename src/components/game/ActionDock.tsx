@@ -1,6 +1,7 @@
 import { Dice5, Flag, Send } from 'lucide-react';
 import type { GameState } from '../../types/game';
 import { getScenarioDefinition, getScenarioProgressForState } from '../../scenario/engine';
+import { pendingDmFailureText } from '../../services/narrativeVisibility';
 
 interface ActionDockProps {
   autoFocusInput?: boolean;
@@ -51,7 +52,7 @@ export function ActionDock({
     <section className="action-dock">
       {hasPendingTurn && !state.isThinking && !state.pendingCheck ? (
         <div className="check-card" role="status">
-          <div><strong>本轮行动已保留</strong><span>继续获取 DM 响应，已确认的骰点无需重掷。</span></div>
+          <div><strong>本轮行动已保留</strong><span>{pendingDmFailureText(state.messages) ?? '继续获取 DM 响应，已确认的骰点无需重掷。'}</span></div>
           <button className="secondary-action" onClick={onRetry}>重试本轮</button>
         </div>
       ) : null}

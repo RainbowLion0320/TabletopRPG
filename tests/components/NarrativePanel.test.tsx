@@ -1,11 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { NarrativePanel } from '../../src/components/game/NarrativePanel';
+import { ActionDock } from '../../src/components/game/ActionDock';
 import { makeState } from '../dm/fixtures';
 import { getScenarioDefinition } from '../../src/scenario/engine';
 
 describe('NarrativePanel', () => {
-  it('hides existing event cues without hiding DM narration, dice or connection feedback', () => {
+  it('keeps story and dice in the narrative and moves connection feedback to the retry dock', () => {
     const state = makeState();
     const cues = getScenarioDefinition().progression.storyEvents.map((event) => event.narrativeCue);
     state.messages = [
@@ -16,10 +17,14 @@ describe('NarrativePanel', () => {
     ];
     const { container } = render(<NarrativePanel state={state} />);
 
-    expect(container.querySelectorAll('.story-message.system')).toHaveLength(2);
+    expect(container.querySelectorAll('.story-message.system')).toHaveLength(1);
     expect(container.querySelector('.story-message.dm p')?.textContent).toBe(cues[0]);
     expect(container.textContent).toContain('检定结果：大失败（100）');
-    expect(container.textContent).toContain('AI DM 连接失败：请检查网络。');
+    expect(container.textContent).not.toContain('AI DM 连接失败：请检查网络。');
+    state.pendingDmActions = [{ player: state.players[0].name, action: '继续谈话' }];
+    render(<ActionDock state={state} isDiceRolling={false} onDeclarationChange={vi.fn()} onSubmit={vi.fn()}
+      onRoll={vi.fn()} onSuggestion={vi.fn()} onInspectPlayer={vi.fn()} onRetry={vi.fn()} />);
+    expect(screen.getByRole('status').textContent).toContain('AI DM 连接失败：请检查网络。');
   });
 
   beforeAll(() => {

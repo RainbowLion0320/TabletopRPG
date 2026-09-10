@@ -34,7 +34,8 @@ import {
   getNpcSnapshot,
   getSceneSnapshot
 } from './knowledgeBase';
-import { callNarrator, NarratorError } from './narrator';
+import { callNarrator, NarratorError, NarratorSemanticError } from './narrator';
+import { recoverNarratedChecks } from './narratedChecks';
 import { allowedTools, validateToolCalls } from './director';
 import { resolveDmTurn } from './stateResolver';
 import { maybeConsolidateMemory, SUMMARIZE_TRIGGER_PAIRS } from './summarizer';
@@ -707,8 +708,12 @@ export async function runDmTurn(
       ))
     )
   ];
-  const reviewCandidateCalls = (modelCalls: DmToolCall[]) =>
-    validateToolCalls(buildCandidateCalls(modelCalls), directorCtx, allowed);
+  const reviewCandidateCalls = (modelCalls: DmToolCall[], output: { narrative: string; nextPrompt: string }) => {
+    const candidates = buildCandidateCalls(modelCalls);
+    return validateToolCalls([
+      ...candidates, ...recoverNarratedChecks(output, candidates, input.state, input.actions)
+    ], directorCtx, allowed);
+  };
   const revealCtx = deriveRevealContext(input.state);
   const revealedSet = computeRevealedSecretIds(kb, revealCtx);
 
@@ -763,6 +768,7 @@ export async function runDmTurn(
   try {
     narrator = await callNarrator(config, {
       maxAttempts: input.narratorAttempts,
+      retryCorrection: input.retryCorrection,
       ctx,
       actions: input.actions,
       history,
@@ -770,7 +776,7 @@ export async function runDmTurn(
       lookupResolver,
       validateOutput: (output, toolCalls) => reviewNarratorSemantics(
         output,
-        reviewCandidateCalls(toolCalls).accepted,
+        reviewCandidateCalls(toolCalls, output).accepted,
         input.state,
         kb,
         input.actions
@@ -778,7 +784,9 @@ export async function runDmTurn(
       signal: input.signal
     });
   } catch (err) {
-    if (err instanceof NarratorError) throw new AiResponseFormatError(err.message);
+    if (err instanceof NarratorError) {
+      throw new AiResponseFormatError(err.message, err instanceof NarratorSemanticError ? err.message : undefined);
+    }
     throw err;
   }
   timings.narrator = elapsedMs(narratorStart);
@@ -788,7 +796,7 @@ export async function runDmTurn(
   }
 
   // 4) 出口护栏：逐个语义校验工具调用，同时检查是否越出 allowed 集
-  const directorResult = reviewCandidateCalls(narrator.toolCalls);
+  const directorResult = reviewCandidateCalls(narrator.toolCalls, narrator);
 
   if (import.meta.env.DEV && directorResult.rejected.length) {
     // eslint-disable-next-line no-console

@@ -1,10 +1,14 @@
 # TabletopRPG Technical Spec
 
 > Version: v0.7
-> Updated: 2026-09-09
+> Updated: 2026-09-10
 > Scope: current React/Vite implementation
 
 ## Android edition (2026-09-09)
+
+In 0.4.5, `narratedChecks.ts` bridges explicit present-tense check requests to `request_check` only when actor and an existing skill are unambiguous. It ignores negative/conditional/past phrasing, preserves model tool calls, skips settled dice actions, and passes recovered calls through Director before both semantic review and resolution. Location-name continuity uses accepted DM messages only; system errors and player assertions never become authoritative scene unlocks. Unconfirmed player guesses can be acknowledged. Local-detail diagnostics mentioning “剧情事件” are warnings, and wording/coverage advisories are classified before hard conflicts. Actual unresolved dice demands remain blocking.
+
+`AiResponseFormatError.retryCorrection` carries the semantic hint into the final automatic recovery request (two Narrator attempts plus one final attempt, same timeout/state/actions). UI feedback sanitizes formatting/semantic diagnostics, places the latest failure in the action dock and filters old error records from story/log display. Repeated errors replace their predecessor; accepted DM narration clears them. No save-schema change is required.
 
 In 0.4.4, portrait investigator selection stays single-column at every width. The former 600px two-column override is removed; setup navigation, the scrolling list and the fixed footer share a centered 720px maximum width. Breakpoint regression covers 599/600/601 CSS pixels, expanded attributes and preserved 1/2/4-player selection.
 

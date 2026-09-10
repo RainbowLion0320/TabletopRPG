@@ -4,7 +4,7 @@ title: 提示词工程
 tags: [prompt, ai, methodology]
 sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-18
-updated: 2026-08-18
+updated: 2026-09-10
 ---
 
 # 提示词工程
@@ -14,6 +14,8 @@ updated: 2026-08-18
 当前运行版提示词以内嵌常量形式分布在 `src/dm/` 管线中，主要包括 `src/dm/narrator.ts`、`src/dm/summarizer.ts`、`src/dm/memory/factExtractor.ts` 和 `src/dm/memory/system2Synthesizer.ts`。`/prompts` 目录保留为后续版本化提示词资产目录，尚未被运行时代码直接读取。
 
 ## 当前系统提示词结构
+
+0.4.5 明确将正式知识库事实与临时路人、道具及环境分开；无风险动作可以直接成功，DM 当前需要检定时提供角色、技能和难度。允许回应玩家地点猜测，并保留其未证实性质；已接受叙事的连续性不会自动提升为正式线索或场景权限。修复了含“剧情事件”的一般诊断被误升为硬拦截的问题；见 [[entities/ai_dm]]。
 
 Narrator 提示词负责玩家可见叙事、检定请求、场景推进和严格 JSON 输出；Summarizer 与 Memory 提示词只服务 DM 内部记录，不直接展示给玩家。
 

@@ -4,12 +4,14 @@ title: AI DM 系统
 tags: [ai, core, implemented]
 sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-14
-updated: 2026-09-09
+updated: 2026-09-10
 ---
 
 # AI DM 系统
 
 ## 角色定位
+
+0.4.5 放宽自由叙事：临时道具、痕迹和生活习惯不必绑定作者事件；已接受叙事中的地点可以保持连续，玩家猜测可以被明确作为未证实信息讨论。系统错误不能充当已知事实，提及地点不等于解锁/切场。检定文案识别否定、将来和回顾；明确的角色/技能要求可本地补接获准的骰子工具，不猜测技能、不替换已有工具、不重掷已确认骰果。最后一次自动恢复带上纠错原因，内部诊断不向玩家展示。见 [自由行动修复](../../docs/reviews/2026-09-10-roleplay-freedom.md)。
 
 AI 担任完整的 TRPG 游戏主持人（DM/KP），负责场景描述、NPC 扮演、行动裁判、检定请求和剧情推进。骰子权威属于前端，AI 只能提出是否需要检定。
 
@@ -197,6 +199,8 @@ Narrator 语义复核采用三级结果，不再由本地固定文案接管叙�
 - AI 不接受单独移动某名调查员或让成员停留在不同场景的状态提议。
 
 ## 被引用于
+- [[concepts/prompt_engineering]]
+- [[concepts/android_app]]
 - [[overview]]
 - [[decisions/ai_role_decision]]
 - [[concepts/core_loop]]

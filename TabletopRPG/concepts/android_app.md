@@ -4,7 +4,7 @@ title: Android 游戏客户端
 tags: [android, apk, capacitor, storage, release]
 sources: [../../docs/ANDROID.md, ../../docs/SPEC.md, ../../docs/PRD.md]
 created: 2026-09-09
-updated: 2026-09-09
+updated: 2026-09-10
 ---
 
 # Android 游戏客户端
@@ -12,6 +12,8 @@ updated: 2026-09-09
 安卓版用独立入口与构建配置复用当前 React/TypeScript 游戏。原网页版本保持原目录和主分支；当前 Android 工程在 `codex/android-apk`。使用 Capacitor 原生 Android 容器，复用游戏规则、剧情、资料、音乐、骰子和美术，不重做 Unity 游戏逻辑。
 
 ## 运行行为
+
+0.4.5 减少自由行动误拦：临时道具与痕迹允许即兴；检定否定/假设文案不触发强制掷骰，明确要求但漏工具时接上实际骰子。已讲过的地点可保持连续，玩家猜测仍保持未证实。失败只在底部显示一条简洁重试通知，内部规则与隐藏地点不泄露到剧情。见 [[entities/ai_dm]] 与 [自由行动验收](../../docs/reviews/2026-09-10-roleplay-freedom.md)。
 
 0.4.4 将所有竖屏选角统一为单列，取消 600px 起的双列规则；立绘与资料并排，列表及上下操作栏居中、最大宽度 720px。卡片纵向滚动，人数和进入按钮常驻。见 [选角验收](../../docs/reviews/2026-09-09-portrait-selection.md)。
 

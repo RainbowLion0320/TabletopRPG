@@ -1,12 +1,14 @@
 # TabletopRPG PRD
 
 > Version: v0.9
-> Updated: 2026-09-09
+> Updated: 2026-09-10
 > Product baseline: Vite + React + TypeScript MVP
 
 ## 1. Product Positioning
 
 ### Android companion build — 2026-09-09
+
+Version 0.4.5 reduces false rejection of free roleplay. Local improvised props, traces and habits no longer require an authored story event. Accepted narrative continuity and explicitly unconfirmed player guesses can mention locations without unlocking or entering them. Negative, future and retrospective check wording does not demand a roll; an unambiguous current DM instruction can recover a missing check tool through the usual Director validation. Bounded automatic recovery retains its last correction, and failures appear once in the action dock without exposing rule diagnostics or hidden names. Dice, numeric state, formal clues and mainline outcomes remain authoritative.
 
 Version 0.4.4 keeps one investigator per row throughout portrait selection, including phones reporting 600 or more CSS pixels and portrait tablets. Each card keeps artwork beside readable information; wide lists are centered and capped at 720px. Selection count and start remain fixed below the scrolling list, and expanding attributes preserves the selected party.
 
