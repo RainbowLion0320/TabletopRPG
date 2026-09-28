@@ -1,7 +1,7 @@
 # TabletopRPG PRD
 
 > Version: v0.9
-> Updated: 2026-09-10
+> Updated: 2026-09-28
 > Product baseline: Vite + React + TypeScript MVP
 
 ## 1. Product Positioning
@@ -20,7 +20,7 @@ Version 0.4.1 applies the artist-supplied game icon to Android launchers, system
 
 Version 0.4.0 adds a complete investigation-themed interaction system shared by the APK and new web build. Aged brass plates, dark leather surfaces and file tabs replace generic rounded controls. Primary/secondary actions, icons, suggestions, cards, forms, toggles, faders and dialogs share explicit selected, pressed, disabled and keyboard-focus states. APK and web viewports up to 700 CSS pixels share the portrait structure; wider web layouts retain their space with the same visual system. Art must not obscure text or reduce access to actions. See [UI_SYSTEM.md](UI_SYSTEM.md).
 
-The Android edition is a separate, installable APK that preserves the existing web release. It reuses the same investigation, rules, art, audio and 1–4-player hot-seat game. The Android entry adds a touch-friendly portrait layout, system-back behavior, encrypted local settings/saves and automatic session recovery. On first entering the game, players supply their own AI DM API configuration; build-time developer keys are never bundled. Local assets work without a desktop server; AI turns still require a configured online service. Release packaging and acceptance checks are defined in [ANDROID.md](ANDROID.md).
+As of 2026-09-28, the Android edition through 0.4.5 and shared web improvements are integrated into `main` with user approval. Web and APK retain separate build entries; the earlier web release is preserved in Git at `118cf49`. The installable APK reuses the same investigation, rules, art, audio and 1–4-player hot-seat game. The Android entry adds a touch-friendly portrait layout, system-back behavior, encrypted local settings/saves and automatic session recovery. On first entering the game, players supply their own AI DM API configuration; build-time developer keys are never bundled. Local assets work without a desktop server; AI turns still require a configured online service. Release packaging and acceptance checks are defined in [ANDROID.md](ANDROID.md).
 
 Android 0.2.1 treats short landscape viewports as the primary UI target. At 560×280 through 960×432 CSS pixels, navigation and dialog close/save controls must remain reachable; long cards, archives and descriptions scroll in their own content areas. The action input and submit control remain reachable with 180 CSS pixels of keyboard-reduced height. Investigators default to one, with explicit 2/4-player coverage. Layout acceptance includes screenshots and clipping/touch-occlusion checks in the actual APK; desktop tests alone are insufficient.
 

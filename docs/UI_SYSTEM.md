@@ -43,4 +43,4 @@
 
 断点变化同时更新布局和选角底部操作，不重置队伍或输入草稿。宽网页保留宽屏结构。手机网页输入/选择器为 16px，避免输入时自动放大；viewport 开启安全区覆盖与 `interactive-widget=resizes-content`，让支持该选项的 Android Chrome 随键盘缩小内容窗口，依据 [Chrome 官方说明](https://developer.chrome.com/blog/viewport-resize-behavior/)。
 
-Native HTTP、API 配置、加密存储、骰点和游戏规则不变。原网页工作目录及 main 留存旧发布版；新版网页与 APK 在 `codex/android-apk` 一同维护。验收见 [0.4.0 UI 检查记录](reviews/2026-09-09-ui-system.md)。
+Native HTTP、API 配置、加密存储、骰点和游戏规则不变。2026-09-28 经用户确认，共享网页与 APK 改进合入 `main`，旧网页版本保留在 Git 提交 `118cf49`。验收见 [0.4.0 UI 检查记录](reviews/2026-09-09-ui-system.md)。

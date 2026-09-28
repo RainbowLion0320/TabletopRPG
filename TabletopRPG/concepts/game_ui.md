@@ -4,7 +4,7 @@ title: 共享交互 UI
 tags: [ui, art, mobile, android, web, accessibility]
 sources: [../../docs/UI_SYSTEM.md, ../../assets/ui/chrome/README.md, ../../src/styles/game-ui.css]
 created: 2026-09-09
-updated: 2026-09-09
+updated: 2026-09-28
 ---
 
 # 共享交互 UI
@@ -13,7 +13,7 @@ updated: 2026-09-09
 
 手机优先：主输入/提交 44px、首页主要操作 52px、菜单 48px，建议和展开等紧凑操作 40px。选角列表滚动、底部操作常驻；游戏保留上方完整场景、中部剧情和底部操作。活动、聚焦、按下和禁用都有明确反馈，图标保留可访问名称。
 
-`game-ui.css` 管主题，`portrait.css` 管共享布局。APK 总是启用 `portrait-ui`，本分支新版网页不超过 700 CSS px 时启用相同布局，切换尺寸保留角色和输入草稿。宽网页采用独立顶栏和 NPC 区。原网页工作目录及 main 留存旧发布版。
+`game-ui.css` 管主题，`portrait.css` 管共享布局。APK 总是启用 `portrait-ui`，网页不超过 700 CSS px 时启用相同布局，切换尺寸保留角色和输入草稿。宽网页采用独立顶栏和 NPC 区。2026-09-28 经用户确认，共享 UI 及 Android 0.4.5 合入 `main`；旧网页版本保留在 Git 提交 `118cf49`。
 
 规范见 [UI_SYSTEM.md](../../docs/UI_SYSTEM.md)，新增运行时材质、生成提示和转换步骤见 [UI 资源](../../assets/ui/chrome/README.md)，验证见 [0.4.0 检查记录](../../docs/reviews/2026-09-09-ui-system.md)。客户端与音频机制见 [[concepts/android_app]]、[[concepts/audio_system]]。
 

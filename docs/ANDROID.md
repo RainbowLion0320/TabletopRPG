@@ -21,11 +21,11 @@
 - 音乐和音效分别开关、调音量，设置自动记住；进入后台停止声音。首次真实触摸后开始播放。
 - 系统返回键依次关闭弹窗/资料、切换游戏菜单、返回首页；首页退出前确认。
 
-## 当前工程隔离
+## 当前工程与分支
 
-本轮安卓版在独立 worktree `G:\TabletopRPG-android`、分支 `codex/android-apk` 开发。原网页目录 `G:\TabletopRPG` 与 `main` 未改动。
+安卓版此前在独立 worktree `G:\TabletopRPG-android`、分支 `codex/android-apk` 开发。2026-09-28 经用户确认，0.4.5 及此前的 Android、共享 UI 和 AI DM 修复合入 `main`；`G:\TabletopRPG` 现在是包含网页与 Android 入口的主工程。旧网页版本保留在 Git 历史提交 `118cf49`。
 
-`src/main.tsx` / `src/app/App.tsx` 和原网页构建入口继续保留。安卓版入口为 `mobile/index.html` → `src/android/main.tsx` → `AndroidApp.tsx`；`vite.android.config.ts` 单独产生 `dist-android/`。0.4.0 按用户的新要求，让该分支的网页入口与 APK 共用 `src/styles/game-ui.css` 视觉和 `src/styles/portrait.css` 手机布局，Android 的 `mobile.css` 仅作导入桥。`html.fog-ui` 标记共享主题；APK 总是启用 `html.portrait-ui`，新版网页宽度不超过 700 CSS px 时启用。原网页工作目录及 main 仍留存此前发布版。共享层新增的存储/请求适配接口在网页上默认仍使用 `localStorage` / `fetch`。
+`src/main.tsx` / `src/app/App.tsx` 和网页构建入口继续保留。安卓版入口为 `mobile/index.html` → `src/android/main.tsx` → `AndroidApp.tsx`；`vite.android.config.ts` 单独产生 `dist-android/`。网页入口与 APK 共用 `src/styles/game-ui.css` 视觉和 `src/styles/portrait.css` 手机布局，Android 的 `mobile.css` 仅作导入桥。`html.fog-ui` 标记共享主题；APK 总是启用 `html.portrait-ui`，网页宽度不超过 700 CSS px 时启用。共享层的存储/请求适配接口在网页上默认仍使用 `localStorage` / `fetch`。
 
 ## Windows 一键构建
 
