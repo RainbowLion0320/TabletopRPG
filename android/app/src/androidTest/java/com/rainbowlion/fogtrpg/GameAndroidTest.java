@@ -244,7 +244,7 @@ public class GameAndroidTest {
                 menu("存档管理"); reachable(".save-manager-card footer button");
                 js("document.querySelector('.save-list').scrollTop=99999");
                 reachable(".save-slot-card:last-child .danger"); screenshot(prefix + "-saves"); click("关闭");
-                menu("KP 笔记"); reachable(".dm-journal-card footer button"); click("关闭");
+                assertEquals("KP notes are not in the player menu", "false", js("document.querySelector('.game-menu').innerText.includes('KP 笔记')"));
                 viewport(size[0], 300); fill(".dock-input", "输入法占位后仍可完成输入。");
                 assertEquals("Keyboard space prioritizes reading and input", "true", js("document.querySelector('.narrative-panel').getBoundingClientRect().width>innerWidth*.9 && getComputedStyle(document.querySelector('.scene-stage')).visibility==='hidden' && document.querySelector('.scene-stage').getBoundingClientRect().height===0"));
                 reachable(".dock-input"); reachable(".dock-submit"); screenshot(prefix + "-keyboard");
@@ -292,6 +292,53 @@ public class GameAndroidTest {
             assertEquals(7, calls.get()); assertEquals(2, retainedCorrections.get());
             assertEquals("Original declaration appears once", "1", js("document.querySelectorAll('.story-message.player').length"));
             click("掷骰"); until("document.querySelector('.dice-roll-overlay')"); screenshot("free-action-dice");
+        } finally { if (activity != null) activity.close(); }
+    }
+
+    @Test public void negativeInstructionsAndPartialPartyChecksStayPlayable() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        String[] names = { "亨利·格雷", "艾达·华莱士", "托马斯·贝尔", "罗伯特·肖" };
+        try (MockWebServer server = new MockWebServer()) {
+            server.setDispatcher(new Dispatcher() {
+                @Override public MockResponse dispatch(RecordedRequest request) {
+                    String body = request.getBody().readUtf8();
+                    boolean narrator = body.contains("COC 第七版 AI DM Agent");
+                    int count = narrator ? calls.incrementAndGet() : 0;
+                    String text = "需要注意，这里无需进行潜行检定，直接拿起即可。";
+                    if (count > 1) {
+                        text = "";
+                        for (String name : names) text += name + (count == 2 ? "需要进行潜行检定。" : "的潜行检定没有通过。");
+                        if (count > 2) text += "你们停下脚步，另想办法。";
+                    }
+                    String content = narrator ? "{\"narrative\":" + JSONObject.quote(text) + ",\"activeNpc\":null,\"nextPrompt\":\"\",\"playerChoices\":{}}" : "{\"facts\":[],\"nodes\":[],\"edges\":[]}";
+                    String args = "{\"player\":\"亨利·格雷\",\"skill\":\"潜行\",\"difficulty\":\"困难\"}";
+                    String tools = count == 2 ? "[{\"type\":\"function_call\",\"call_id\":\"first-check\",\"name\":\"request_check\",\"arguments\":" + JSONObject.quote(args) + "}]" : "[]";
+                    return new MockResponse().setHeader("Content-Type", "application/json").setBody("{\"output_text\":" + JSONObject.quote(content) + ",\"output\":" + tools + "}");
+                }
+            });
+            server.start(); fresh(); viewport(390, 844);
+            click("开始游戏");
+            for (int i = 1; i < 4; i++) js("document.querySelectorAll('.preset-card-modern strong')[" + i + "].click()");
+            click("进入游戏"); configure(server.url("/v1").toString(), "responses");
+            for (int round = 0; round < 2; round++) {
+                for (int i = 0; i < 4; i++) { fill(".dock-input", "原地思考"); click(i == 3 ? "提交" : "下一位"); }
+                if (round == 0) {
+                    until("document.querySelector('.dock-input') && !document.querySelector('.dock-input').disabled");
+                    assertEquals(1, calls.get());
+                    assertEquals("Negated request does not create dice", "false", js("Boolean(document.querySelector('.check-card'))"));
+                }
+            }
+            js("Math.random = () => .899");
+            for (int i = 0; i < 4; i++) {
+                until("document.querySelector('.check-card') && document.querySelector('.check-card').textContent.includes(" + JSONObject.quote(names[i] + " · 潜行") + ")");
+                assertEquals("Complete batch", "true", js("document.querySelector('.check-card').textContent.includes('" + (i + 1) + "/4')"));
+                click("掷骰"); until("document.querySelector('.dice-roll-overlay.revealed')"); click("确认结果");
+            }
+            until("document.body.innerText.includes('你们停下脚步，另想办法。') && !document.querySelector('.dock-input').disabled");
+            assertEquals("No false failure retry", 3, calls.get());
+            assertEquals("No duplicate declarations", "8", js("document.querySelectorAll('.story-message.player').length"));
+            assertEquals("No internal diagnostics or retry required", "false", js("/request_check|返回格式无效|重试本轮/.test(document.body.innerText)"));
+            reachable(".dock-input"); screenshot("smooth-four-player");
         } finally { if (activity != null) activity.close(); }
     }
 

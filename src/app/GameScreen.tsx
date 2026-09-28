@@ -58,7 +58,6 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
         onLoad={controller.loadCurrentLatest}
         onManageSaves={controller.openSaveManager}
         onOpenApi={controller.openApiSettings}
-        onOpenJournal={controller.openJournal}
         onRestart={handleRestart}
         onSave={controller.saveCurrentGame}
       />
@@ -70,11 +69,11 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
         onDelete={controller.deleteSaveSlot}
         onLoad={(save) => controller.loadSaveSlot(save.gameState)}
       />
-      <DmJournalModal
+      {import.meta.env.DEV && <DmJournalModal
         open={controller.journalOpen}
         state={state}
         onClose={controller.closeJournal}
-      />
+      />}
       <InfoDrawer
         open={controller.drawerOpen}
         state={state}
@@ -98,7 +97,7 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
       <EntityDetailModal detail={narrativeDetail} onClose={() => setNarrativeDetail(null)} />
       {inspectedPlayerId && <InvestigatorSheet players={state.players} selectedId={inspectedPlayerId} onSelect={setInspectedPlayerId} onClose={() => setInspectedPlayerId(null)} />}
       {controller.toast ? <div className="toast">{controller.toast}</div> : null}
-      <DmDebugDrawer />
+      <DmDebugDrawer onOpenJournal={controller.openJournal} />
     </main>
   );
 }

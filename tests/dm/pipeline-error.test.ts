@@ -114,7 +114,7 @@ describe('runDmTurn error classification', () => {
     expect(output.legacyResponse.check?.resolution?.kind).toBe('freeform');
   });
 
-  it('asks the AI to improve a no-progress success once without replacing its final narration', async () => {
+  it('keeps a quality diagnostic internal without another foreground generation', async () => {
     const content = JSON.stringify({
       narrative: '伊莎贝拉没有提供更多可核实的信息。你们仍在摩勒住宅，只能依据已经确认的线索继续调查。',
       activeNpc: '伊莎贝拉·摩勒',
@@ -138,7 +138,7 @@ describe('runDmTurn error classification', () => {
       ]
     });
 
-    expect(countNarratorRequests(fetchMock)).toBe(2);
+    expect(countNarratorRequests(fetchMock)).toBe(1);
     expect(output.legacyResponse.narrative).toBe(
       '伊莎贝拉没有提供更多可核实的信息。你们仍在摩勒住宅，只能依据已经确认的线索继续调查。'
     );
@@ -897,7 +897,7 @@ describe('runDmTurn error classification', () => {
     expect(next.scenarioProgress?.beatStates.B02).toBe('active');
   });
 
-  it('asks the AI to rewrite narration that disagrees with an authored failure event', async () => {
+  it('corrects an invalid success tool locally without a rewrite solely to repeat another clue', async () => {
     const invalidNarrative = JSON.stringify({
       narrative: '尽管亨利没能判断便签上笔触是否异常，他仍看清了桌面上那张写有“别来找我”的字条。',
       activeNpc: '伊莎贝拉·摩勒',
@@ -931,7 +931,7 @@ describe('runDmTurn error classification', () => {
       ]
     });
 
-    expect(countNarratorRequests(fetchMock)).toBe(2);
+    expect(countNarratorRequests(fetchMock)).toBe(1);
     expect(output.legacyResponse.stateUpdate?.storyEventIds).toContain('EV_FAIL_I01');
     expect(output.legacyResponse.stateUpdate?.storyEventIds).not.toContain('EV_FIND_I01');
     expect(output.legacyResponse.narrative).toContain('别来找我');

@@ -28,12 +28,16 @@ export class AiConnectionError extends Error {
 
 export class AiHttpError extends Error {
   constructor(readonly status: number, detail?: string) {
-    const hint = status === 401 ? '认证失败，请检查 API Key。'
+    const hint = aiHttpHint(status);
+    super(`HTTP ${status}：${hint}${detail ? ` ${detail.slice(0, 240)}` : ''}`);
+    this.name = 'AiHttpError';
+  }
+}
+
+export function aiHttpHint(status: number): string {
+  return status === 401 ? '认证失败，请检查 API Key。'
       : status === 403 ? '访问被拒绝，请检查账号和模型权限。'
       : status === 429 ? '请求受限，请检查服务额度或稍后重试。'
       : status >= 500 ? '模型服务暂时异常，请稍后重试。'
       : '模型服务拒绝了请求，请检查 AI 设置。';
-    super(`HTTP ${status}：${hint}${detail ? ` ${detail.slice(0, 240)}` : ''}`);
-    this.name = 'AiHttpError';
-  }
 }

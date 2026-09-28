@@ -19,6 +19,7 @@ import type { DmBackgroundUpdate } from '../dm/types';
 import { DmTurnCoordinator } from './dmTurnCoordinator';
 import type { DmSessionTask } from './dmTurnCoordinator';
 import { getApiConfigValidationError } from '../config/aiConfig';
+import { dmConnectionFailureText } from '../services/narrativeVisibility';
 import {
   DICE_ROLL_DURATION_MS,
   type DiceRollPresentation
@@ -216,7 +217,6 @@ export function useGameController() {
     const config = readApiConfig();
     const validation = config ? getApiConfigValidationError(config) : '请先在菜单中配置 AI API Key。';
     if (validation) {
-      dispatch({ type: 'appendMessage', message: { type: 'system', text: config ? `请补全 AI DM 配置：${validation}` : validation } });
       setApiOpen(true);
       return null;
     }
@@ -320,13 +320,8 @@ export function useGameController() {
       coordinator.finish(task);
       dispatch({ type: 'setThinking', value: false });
       if (error instanceof AiProviderConfigError) {
-        const message = error.message;
         setMenuOpen(false);
         setApiOpen(true);
-        dispatch({
-          type: 'appendMessage',
-          message: { type: 'system', text: `请补全 AI DM 配置：${message}` }
-        });
         return;
       }
       const prefix = error instanceof AiResponseFormatError ? 'AI DM 返回格式无效' : 'AI DM 连接失败';
@@ -335,7 +330,7 @@ export function useGameController() {
         type: 'appendMessage',
         message: { type: 'system', text: error instanceof AiResponseFormatError
           ? `${prefix}：DM 暂时未能完成本轮回应，请重试。`
-          : `${prefix}：${error instanceof Error ? error.message : String(error)}` }
+          : `${prefix}：${dmConnectionFailureText(error)}` }
       });
     } finally {
       if (foregroundTaskRef.current === task) foregroundTaskRef.current = null;

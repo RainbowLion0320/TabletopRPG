@@ -761,7 +761,7 @@ test('pending check plays the dice ritual before revealing its result', async ({
   await expect(ritual.getByText('目标值 60')).toBeVisible();
   await expect(ritual.getByText('骰面翻滚中')).toBeVisible();
   await expect(page.getByRole('button', { name: '掷骰中' })).toBeDisabled();
-  await expect(page.getByText(/检定结果：/)).toHaveCount(0);
+  await expect(page.locator('.story-message.system').filter({ hasText: /艾达·华莱士 · 侦查：/ })).toHaveCount(0);
 });
 
 for (const mode of ['animated', 'reduced motion', 'missing animation', 'missing audio'] as const) {
@@ -821,7 +821,7 @@ test(`dice art remains readable and confirms once with ${mode}`, async ({ page }
   await page.screenshot({ path: `test-results/dice-${mode.replaceAll(' ', '-')}.png` });
   await confirm.click();
   await expect(dialog).toHaveCount(0);
-  await expect(page.locator('.story-message.system').filter({ hasText: '检定结果：大失败（100）' })).toHaveCount(1);
+  await expect(page.locator('.story-message.system').filter({ hasText: '艾达·华莱士 · 侦查：大失败（100）' })).toHaveCount(1);
 });
 }
 
@@ -941,7 +941,7 @@ test('submitting an action without an API key opens AI settings instead of crash
   await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('检查书房桌面。');
   await page.getByRole('button', { name: '提交' }).click();
 
-  await expect(page.getByText('请先在菜单中配置 AI API Key。')).toBeVisible();
+  await expect(page.getByRole('dialog').getByText('请输入 API Key。')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'AI DM 配置' })).toBeVisible();
 });
 

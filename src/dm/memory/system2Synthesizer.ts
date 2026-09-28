@@ -20,6 +20,7 @@ import type {
   ProspectiveIntent
 } from '../../types/game';
 import { generateJson } from '../llm/client';
+import { rosterSchema } from '../llm/schema';
 
 // ---------- 输入 / 输出 ----------
 
@@ -92,7 +93,7 @@ const SYNTHESIZER_SYSTEM_PROMPT = `你是 KP（守密人）的「认知合成器
 # 规则
 - npcMindModels 仅为「在场或近期出现的 NPC」更新；不要凭空创造未在事实/在场名单出现的角色。
 - coreMotivation / currentStance 必须用一句话中文；不要空字符串。
-- playerExceptions 仅在 NPC 对某玩家明显不同时填写；多数情况留空对象 {} 或省略字段。
+- npcMindModels 按候选 NPC 姓名填写，无需更新的 NPC 填 null；playerExceptions 按玩家姓名填写，无特殊立场的玩家填 null。
 - prospectiveIntents 最多 5 条，应基于 fact + 现有心智合理推断；不要重复已经发生的事。
 - 不要 Markdown，不要注释，不要前后缀文本。`;
 
@@ -133,26 +134,22 @@ function buildSynthesizerUserMessage(input: System2Input): string {
   return lines.join('\n');
 }
 
-const SYSTEM2_RESPONSE_SCHEMA = {
+const system2ResponseSchema = (input: System2Input) => ({
   type: 'object',
   additionalProperties: false,
   properties: {
-    npcMindModels: {
-      type: 'object',
-      additionalProperties: {
+    npcMindModels: rosterSchema(input.npcCandidates, {
+      anyOf: [{ type: 'null' }, {
         type: 'object',
         additionalProperties: false,
         properties: {
           coreMotivation: { type: 'string' },
           currentStance: { type: 'string' },
-          playerExceptions: {
-            type: 'object',
-            additionalProperties: { type: 'string' }
-          }
+          playerExceptions: rosterSchema(input.playerNames, { anyOf: [{ type: 'string' }, { type: 'null' }] })
         },
         required: ['coreMotivation', 'currentStance', 'playerExceptions']
-      }
-    },
+      }]
+    }),
     prospectiveIntents: {
       type: 'array',
       items: {
@@ -168,7 +165,7 @@ const SYSTEM2_RESPONSE_SCHEMA = {
     }
   },
   required: ['npcMindModels', 'prospectiveIntents']
-} satisfies Record<string, unknown>;
+} satisfies Record<string, unknown>);
 
 async function callSynthesizerLLM(
   config: ApiConfig,
@@ -182,7 +179,7 @@ async function callSynthesizerLLM(
     input: [{ role: 'user', content: userMessage }],
     maxOutputTokens: 1024,
     schemaName: 'system2_memory',
-    schema: SYSTEM2_RESPONSE_SCHEMA,
+    schema: system2ResponseSchema(input),
     useTools: false,
     signal: input.signal
   });

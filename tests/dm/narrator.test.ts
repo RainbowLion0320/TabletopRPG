@@ -429,7 +429,7 @@ describe('callNarrator retry repair', () => {
     expect(output.semanticWarnings).toEqual(['非权威氛围细节']);
   });
 
-  it('revises an advisory issue once and still preserves the AI final response', async () => {
+  it('records an advisory without delaying the response for a prose rewrite', async () => {
     const first = JSON.stringify({
       narrative: '第一次回答。', activeNpc: null, nextPrompt: '继续？', playerChoices: { 亨利: ['继续'] }
     });
@@ -448,8 +448,8 @@ describe('callNarrator retry repair', () => {
       validateOutput: () => ({ severity: 'advisory', message: '可以给出更具体的局面变化' })
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(output.narrative).toBe('第二次回答仍由 AI 作出。');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(output.narrative).toBe('第一次回答。');
     expect(output.semanticWarnings).toEqual(['可以给出更具体的局面变化']);
   });
 

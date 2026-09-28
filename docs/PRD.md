@@ -8,6 +8,8 @@
 
 ### Android companion build — 2026-09-09
 
+Version 0.4.6 fixes strict API schema compatibility and false checks caused by negated or future instructions. A partially supplied multiplayer check batch now retains every explicitly requested player/skill. Truthful failed-roll narration is accepted without retry; prose-quality suggestions stay in developer diagnostics rather than causing another foreground generation. KP notes are removed from the player menu, provider errors become short actionable hints, and dice records identify the investigator and skill without repeating the roll number.
+
 Version 0.4.5 reduces false rejection of free roleplay. Local improvised props, traces and habits no longer require an authored story event. Accepted narrative continuity and explicitly unconfirmed player guesses can mention locations without unlocking or entering them. Negative, future and retrospective check wording does not demand a roll; an unambiguous current DM instruction can recover a missing check tool through the usual Director validation. Bounded automatic recovery retains its last correction, and failures appear once in the action dock without exposing rule diagnostics or hidden names. Dice, numeric state, formal clues and mainline outcomes remain authoritative.
 
 Version 0.4.4 keeps one investigator per row throughout portrait selection, including phones reporting 600 or more CSS pixels and portrait tablets. Each card keeps artwork beside readable information; wide lists are centered and capped at 720px. Selection count and start remain fixed below the scrolling list, and expanding attributes preserves the selected party.

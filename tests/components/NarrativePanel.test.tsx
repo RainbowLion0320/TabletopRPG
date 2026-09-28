@@ -24,7 +24,7 @@ describe('NarrativePanel', () => {
     state.pendingDmActions = [{ player: state.players[0].name, action: '继续谈话' }];
     render(<ActionDock state={state} isDiceRolling={false} onDeclarationChange={vi.fn()} onSubmit={vi.fn()}
       onRoll={vi.fn()} onSuggestion={vi.fn()} onInspectPlayer={vi.fn()} onRetry={vi.fn()} />);
-    expect(screen.getByRole('status').textContent).toContain('AI DM 连接失败：请检查网络。');
+    expect(screen.getByRole('status').textContent).toContain('检查网络或 AI 设置');
   });
 
   beforeAll(() => {

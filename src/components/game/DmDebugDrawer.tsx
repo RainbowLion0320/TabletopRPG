@@ -19,7 +19,7 @@ import {
 
 type Tab = 'ctx' | 'narrator' | 'tools' | 'memory';
 
-export function DmDebugDrawer() {
+export function DmDebugDrawer({ onOpenJournal }: { onOpenJournal?: () => void }) {
   const [open, setOpen] = useState(false);
   const [traces, setTraces] = useState<readonly DmTrace[]>(() => getTraces());
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -56,6 +56,7 @@ export function DmDebugDrawer() {
     <div className="dm-debug-drawer">
       <header className="dm-debug-header">
         <strong className="dm-debug-title">DM Debug · {traces.length} 轮</strong>
+        {onOpenJournal && <button type="button" className="dm-debug-btn" onClick={onOpenJournal}>KP 笔记</button>}
         <button type="button" className="dm-debug-btn" onClick={() => clearTraces()}>清空</button>
         <button type="button" className="dm-debug-btn" onClick={() => setOpen(false)}>关闭</button>
       </header>

@@ -19,6 +19,7 @@ import type { DmContext } from './contextBuilder';
 import { DM_TOOLS, parseResponseToolCalls } from './tools';
 import type { DmToolCall, DmToolName } from './types';
 import { generateJson } from './llm/client';
+import { rosterSchema } from './llm/schema';
 import { AiResponseFormatError } from './llm/errors';
 import type {
   LlmFunctionOutputItem,
@@ -572,7 +573,7 @@ interface RawNarratorPayload {
   outputItems: LlmInputItem[];
 }
 
-const NARRATOR_RESPONSE_SCHEMA = {
+const narratorResponseSchema = (playerNames: string[]) => ({
   type: 'object',
   additionalProperties: false,
   properties: {
@@ -581,13 +582,7 @@ const NARRATOR_RESPONSE_SCHEMA = {
       anyOf: [{ type: 'string' }, { type: 'null' }]
     },
     nextPrompt: { type: 'string' },
-    playerChoices: {
-      type: 'object',
-      additionalProperties: {
-        type: 'array',
-        items: { type: 'string' }
-      }
-    },
+    playerChoices: rosterSchema(playerNames, { type: 'array', items: { type: 'string' } }),
     keywords: {
       type: 'array',
       maxItems: 6,
@@ -603,7 +598,7 @@ const NARRATOR_RESPONSE_SCHEMA = {
     }
   },
   required: ['narrative', 'activeNpc', 'nextPrompt', 'playerChoices', 'keywords']
-} satisfies Record<string, unknown>;
+} satisfies Record<string, unknown>);
 
 const MAX_REPAIR_CONTEXT_CHARS = 3000;
 
@@ -634,6 +629,7 @@ async function requestNarrator(
   config: ApiConfig,
   systemPrompt: string,
   inputItems: LlmInputItem[],
+  playerNames: string[],
   options: NarratorRequestOptions,
   retryOnAbort: boolean,
   signal?: AbortSignal
@@ -644,7 +640,7 @@ async function requestNarrator(
     input: inputItems,
     maxOutputTokens: 2048, // P2: 实际输出约 500-800 tokens，2048 有充裕余量
     schemaName: 'narrator_response',
-    schema: NARRATOR_RESPONSE_SCHEMA,
+    schema: narratorResponseSchema(playerNames),
     tools: options.tools ?? DM_TOOLS,
     useTools: options.useFunctionCalling !== false,
     retryOnAbort,
@@ -780,7 +776,7 @@ export async function callNarrator(
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
       while (true) {
-        const payload = await requestNarrator(config, systemPrompt, messages, {
+        const payload = await requestNarrator(config, systemPrompt, messages, playerNames, {
           useFunctionCalling: useFnCall,
           tools
         }, retryOnAbort, input.signal);
@@ -812,8 +808,8 @@ export async function callNarrator(
         const semanticIssue = normalizeValidationIssue(
           input.validateOutput?.(shaped, finalCalls) ?? null
         );
-        const acceptsWithWarning = semanticIssue?.severity === 'warning'
-          || (semanticIssue?.severity === 'advisory' && attempt === maxAttempts - 1);
+        // Prose-quality suggestions are diagnostics, not another player wait.
+        const acceptsWithWarning = semanticIssue && semanticIssue.severity !== 'blocking';
         if (semanticIssue && !acceptsWithWarning) {
           semanticCorrection = semanticIssue.message;
           const retrySeverity = semanticIssue.severity === 'advisory' ? 'advisory' : 'blocking';
@@ -860,7 +856,7 @@ export async function callNarrator(
       if (semanticCorrection) {
         messages.push({
           role: 'user',
-          content: `上一版响应违反规则：${semanticCorrection}。请重新裁决本轮，保持玩家行动不变，返回完整 JSON，并使用必要的状态或场景工具。`
+          content: `本轮需要修正：${semanticCorrection}。保留玩家行动与已确认骰果，仅修正冲突，返回完整 JSON 和所需工具调用。`
         });
       } else if (err instanceof NarratorError && lastMalformedRaw.trim()) {
         messages.push(buildJsonRepairMessage(lastMalformedRaw, err.message));

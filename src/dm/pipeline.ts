@@ -605,7 +605,7 @@ export async function runDmTurn(
     const checkLead = checkEvent?.narrativeCue ? `${checkEvent.narrativeCue} ` : '';
     const narrative = checkEvent && checksForRound.length === 1 && !movementPrefix
       ? checkEvent.narrativeCue
-      : `${movementPrefix}${checkLead}本轮有${checksForRound.length}项独立行动需要检定：${checkSummary}。检定将依次结算，所有结果都会共同影响本轮叙事。`;
+      : `${movementPrefix}${checkLead}请进行检定：${checkSummary}。`;
     const activeNpc = targetSceneId
       ? null
       : checkEvent

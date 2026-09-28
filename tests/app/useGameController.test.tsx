@@ -144,6 +144,6 @@ describe('game controller round recovery', () => {
     act(() => result.current.retryPendingTurn());
     await waitFor(() => expect(result.current.state.pendingDmActions).toBeUndefined());
     expect(dm.mock.calls[1][1].actions).toEqual(pending);
-    expect(result.current.state.messages.filter((message) => message.text.startsWith('检定结果：'))).toHaveLength(1);
+    expect(result.current.state.messages.filter((message) => message.type === 'system' && message.text.startsWith('亨利 · 侦查：'))).toHaveLength(1);
   });
 });

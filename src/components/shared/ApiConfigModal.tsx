@@ -28,8 +28,9 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
     if (open) {
       // Prefer saved config, otherwise pre-fill from VITE_AI_* env vars so the user
       // can see what defaults will be applied without re-entering them every time.
-      setConfig(readApiConfig() ?? getEnvDefaultApiConfig());
-      setError('');
+      const initial = readApiConfig() ?? getEnvDefaultApiConfig();
+      setConfig(initial);
+      setError(getApiConfigValidationError(initial) ?? '');
     }
   }, [open]);
 

@@ -17,7 +17,8 @@ import {
   processScenarioTurn
 } from '../scenario/engine';
 import { resolveActiveNpcForScene } from '../state/sceneFocus';
-import { demandedCheckClauses } from './narratedChecks';
+import { demandedCheckClauses, recoverNarratedChecks } from './narratedChecks';
+import { contradictsSettledCheck } from './checkOutcome';
 
 const DICE_RESULT_RE = /【检定结果】|结果[：:]\s*(?:失败|大失败|成功|困难成功|极难成功|大成功)/;
 const COMBAT_ROUTE_SELECTION_RE = /(?:选择|决定|明确)(?:以|使用|采取)?[^，。；！？\n]{0,8}武力[^，。；！？\n]{0,16}(?:阻止|拦截|对抗)[^，。；！？\n]{0,16}(?:深潜者|扶桑花号)|(?:以|使用|采取)武力[^，。；！？\n]{0,16}(?:阻止|拦截|对抗)[^，。；！？\n]{0,16}(?:深潜者|扶桑花号)/;
@@ -1908,51 +1909,14 @@ export function validateAuthoritativeNarratorSemantics(
   });
   const authority = authoredNarrativeCorpus(state, proposedEvents);
   if (demandedCheckClauses(`${output.narrative}\n${output.nextPrompt}`).length
-    && !toolCalls.some((call) => call.name === 'request_check')
-    && !proposedEvents.some((event) => event.effects.some((effect) => 'requestCheck' in effect))) {
+    && ((!toolCalls.some((call) => call.name === 'request_check')
+      && !proposedEvents.some((event) => event.effects.some((effect) => 'requestCheck' in effect)))
+      || recoverNarratedChecks(output, toolCalls, state, actions).length > 0)) {
     return '正文要求当前玩家检定但缺少 request_check；请调用工具并明确玩家全名、技能和难度。无需检定的行动直接叙述结果。';
   }
 
-  const failedCheck = actions.some((action) =>
-    /【检定结果】[\s\S]*结果[：:]\s*(?:失败|大失败)/.test(action.action)
-  );
-  const successfulCheck = actions.some((action) =>
-    /【检定结果】[\s\S]*结果[：:]\s*(?:成功|普通成功|困难成功|极难成功|大成功)/.test(action.action)
-  );
-  if (failedCheck && successfulCheck) {
-    // A mixed batch can truthfully contain both words. Only reject a sentence
-    // when its named investigator/skill unambiguously identifies the result.
-    for (const sentence of output.narrative.split(/[。；！？\n]/)) {
-      const named = actions.filter((action) => DICE_RESULT_RE.test(action.action) && sentence.includes(action.player));
-      const outcomes = named.filter((action) => {
-        const skill = action.checkResult?.skill ?? /的\s*(.+?)\s*检定/.exec(action.action)?.[1];
-        return named.length === 1 || Boolean(skill && sentence.includes(skill));
-      });
-      if (!outcomes.length) continue;
-      const failed = actionIsFailedCheck(outcomes);
-      const succeeded = outcomes.some((action) => /结果[：:]\s*(?:成功|普通成功|困难成功|极难成功|大成功)/.test(action.action));
-      if (failed && !succeeded && /(?:检定|掷骰)[^，]{0,20}(?:成功|通过)/.test(sentence)) {
-        return '正文不得把前端已经结算的失败检定改写为成功';
-      }
-      if (succeeded && !failed && /(?:检定|掷骰)[^，]{0,20}(?:失败|未通过)/.test(sentence)) {
-        return '正文不得把前端已经结算的成功检定改写为失败';
-      }
-    }
-  }
-  if (
-    failedCheck
-    && !successfulCheck
-    && /(?:检定|掷骰)[^。；！？\n]{0,20}(?:成功|通过)|成功通过[^。；！？\n]{0,12}(?:检定|掷骰)/.test(output.narrative)
-  ) {
-    return '正文不得把前端已经结算的失败检定改写为成功';
-  }
-  if (
-    successfulCheck
-    && !failedCheck
-    && /(?:检定|掷骰)[^。；！？\n]{0,20}(?:失败|未通过)|未能通过[^。；！？\n]{0,12}(?:检定|掷骰)/.test(output.narrative)
-  ) {
-    return '正文不得把前端已经结算的成功检定改写为失败';
-  }
+  const outcomeConflict = contradictsSettledCheck(output.narrative, actions);
+  if (outcomeConflict) return outcomeConflict;
 
   const acceptedScene = toolCalls.find((call) => call.name === 'propose_scene_change');
   const targetId = acceptedScene ? String(acceptedScene.arguments.targetSceneId ?? '') as SceneId : null;
@@ -2054,8 +2018,8 @@ function classifyNarratorDiagnostic(message: string): NarratorSemanticSeverity {
 }
 
 /**
- * 生产管线使用的分级复核。硬边界会重试并最终报错；叙事质量问题只要求
- * AI 重写一次；其余历史规则只作为可观测警告，不再接管 AI DM 的回答。
+ * 生产管线使用的分级复核。硬边界会有限重试；叙事质量与历史规则的
+ * 非阻断诊断保留在开发侧，不延迟玩家收到回应。
  */
 export function reviewNarratorSemantics(
   output: { narrative: string; activeNpc?: string | null; nextPrompt: string; playerChoices: Record<string, string[]> },

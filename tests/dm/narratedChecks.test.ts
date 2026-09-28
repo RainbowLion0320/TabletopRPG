@@ -11,7 +11,9 @@ describe('narrated check recovery', () => {
   it.each([
     '这次不需要进行潜行检定。', '你不必检定，直接拿起即可。',
     '如果你继续冒险，需要进行潜行检定。', '刚才需要进行的潜行检定已经结束。',
-    '你可以选择之后再掷骰。', '你无需进行检定。', '接下来可能需要潜行检定。', '这未必需要潜行检定。'
+    '你可以选择之后再掷骰。', '你无需进行检定。', '接下来可能需要潜行检定。', '这未必需要潜行检定。',
+    '需要注意，这里无需进行潜行检定，直接拿起即可。', '请不要进行潜行检定，直接拿起即可。',
+    '你需要先征求同意，之后再进行潜行检定。', '请稍后进行潜行检定。', '需要等他回来再进行潜行检定。'
   ])('does not demand a die for %s', (text) => {
     expect(demandedCheckClauses(text)).toEqual([]);
   });
@@ -38,6 +40,15 @@ describe('narrated check recovery', () => {
     expect(recoverNarratedChecks({ narrative: '需要进行潜行检定。', nextPrompt: '' }, [], state,
       [...actions, { player: henry.name, action: '跟在后面' }]
     )).toEqual([]);
+  });
+
+  it('completes a partially supplied batch without replacing explicit difficulty or duplicating dice', () => {
+    const output = { narrative: '艾达需要进行聆听检定，亨利需要进行困难侦查检定。', nextPrompt: '亨利需要进行困难侦查检定。' };
+    expect(recoverNarratedChecks(output, [{ name: 'request_check', arguments: {
+      player: ada.name, skill: '聆听', difficulty: '极难'
+    } }], state, [...actions, { player: henry.name, action: '留意街角' }])).toEqual([
+      { name: 'request_check', arguments: { player: henry.name, skill: '侦查', difficulty: '困难', reason: expect.any(String) } }
+    ]);
   });
 
   it('never duplicates an existing tool or re-rolls a settled action', () => {

@@ -1627,9 +1627,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const pendingCheck = state.pendingCheck
         ? advanceCheckQueue(state.pendingCheck, action.resultAction, state.players)
         : null;
-      let next = addMessage(addLog({ ...state, pendingCheck }, `检定结果：${action.result.roll} · ${action.result.label}`), {
+      const resultText = `${state.pendingCheck.player} · ${state.pendingCheck.skill}：${action.result.label}`;
+      let next = addMessage(addLog({ ...state, pendingCheck }, resultText), {
         type: 'system',
-        text: `检定结果：${action.result.label}`
+        text: resultText
       });
       if (state.pendingCheck?.scenarioCheckId) {
         next = applyScenarioTransition(next, processScenarioTurn(getScenarioProgressForState(state), {

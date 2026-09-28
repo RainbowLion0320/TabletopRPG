@@ -76,8 +76,50 @@ function chatBody(content: string) {
   };
 }
 
+test('portrait four-player dice completes a partially supplied batch without false outcome retries', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  let narratorCalls = 0;
+  await page.route('https://unit.test/v1/**', async (route) => {
+    const body = route.request().postDataJSON();
+    const narrator = body.text?.format?.name === 'narrator_response';
+    if (narrator) narratorCalls++;
+    const narrative = narratorCalls === 1
+      ? investigatorNames.map((name) => `${name}需要进行潜行检定。`).join('')
+      : investigatorNames.map((name) => `${name}的潜行检定没有通过。`).join('') + '你们停下脚步，另想办法。';
+    const content = JSON.stringify(narrator ? { narrative, activeNpc: null, nextPrompt: '', playerChoices: {}, keywords: [] } : { facts: [], nodes: [], edges: [] });
+    const response = narrator && narratorCalls === 1
+      ? responseBodyWithToolCall(content, 'request_check', { player: investigatorNames[0], skill: '潜行', difficulty: '困难' })
+      : responseBody(content);
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(response) });
+  });
+  await startGameWithApi(page, { provider: 'custom', protocol: 'responses', endpoint: 'https://unit.test/v1', apiKey: 'test-key', model: 'test-model' }, 4);
+  for (let i = 0; i < 4; i++) {
+    await page.getByPlaceholder(`${investigatorNames[i]} 想要做什么...`).fill('原地思考');
+    await page.getByRole('button', { name: i === 3 ? '提交' : '下一位', exact: true }).click();
+  }
+  await page.evaluate(() => { Math.random = () => .899; });
+  for (let i = 0; i < 4; i++) {
+    await expect(page.locator('.check-card')).toContainText(`${investigatorNames[i]} · 潜行`);
+    await expect(page.locator('.check-card')).toContainText(`${i + 1}/4`);
+    await page.getByRole('button', { name: '掷骰', exact: true }).click();
+    await page.getByRole('button', { name: '确认结果', exact: true }).click();
+  }
+  await expect(page.locator('.story-message.dm').last()).toContainText('你们停下脚步，另想办法。');
+  expect(narratorCalls).toBe(2);
+  await expect(page.locator('.story-message.player')).toHaveCount(4);
+  for (const name of investigatorNames) {
+    await expect(page.locator('.story-message.system', { hasText: `${name} · 潜行：失败（90）` })).toHaveCount(1);
+  }
+  await expect(page.locator('.dock-input')).toBeEnabled();
+  await expect(page.getByRole('button', { name: '重试本轮' })).toHaveCount(0);
+  await page.getByRole('button', { name: /菜单/ }).click();
+  await expect(page.locator('.game-menu')).not.toContainText('KP 笔记');
+  await page.screenshot({ path: 'output/playwright/fix-four-player-portrait.png' });
+});
+
 for (const scenario of [
-  { partySize: 1, protocol: 'responses', status: null, diagnostic: '未能取得模型服务响应' },
+  { partySize: 1, protocol: 'responses', status: null, diagnostic: '检查网络' },
   { partySize: 2, protocol: 'chat-completions', status: 401, diagnostic: '认证失败' },
   { partySize: 4, protocol: 'chat-completions', status: 429, diagnostic: '请求受限' }
 ] as const) {
@@ -114,7 +156,8 @@ for (const scenario of [
       await page.getByRole('button', { name: index === scenario.partySize - 1 ? '提交' : '下一位', exact: true }).click();
     }
     await expect(page.getByRole('button', { name: '重试本轮' })).toBeVisible();
-    await expect(page.getByText(`AI DM 连接失败：`, { exact: false })).toContainText(scenario.diagnostic);
+    await expect(page.locator('.action-dock [role="status"]')).toContainText(scenario.diagnostic);
+    await expect(page.locator('.action-dock')).not.toContainText('Provider request failed');
     await expect(page.getByText(/AI DM 返回格式无效/)).toHaveCount(0);
     expect(narratorBodies).toHaveLength(1);
     await expect(page.locator('.story-message.player')).toHaveCount(scenario.partySize);
@@ -178,7 +221,7 @@ test('repeated semantic failures retain correction and show one safe retry notic
     expect(attempts).toBe(expected);
     expect(requests[expected - 1]).toContain('上一版响应需要修正');
     await expect(page.locator('.action-dock [role="status"]')).toHaveCount(1);
-    await expect(page.locator('.action-dock [role="status"]')).toContainText('行动和已确认的骰点都已保留');
+    await expect(page.locator('.action-dock [role="status"]')).toContainText('已确认的骰点无需重掷');
     await expect(page.locator('.game-screen')).not.toContainText('贝尔街');
     await expect(page.locator('.game-screen')).not.toContainText('request_check');
     await expect(page.locator('.story-message.system')).toHaveCount(0);
@@ -788,8 +831,8 @@ test('AI DM opens settings when a chat-compatible provider is missing its endpoi
   const configDialog = page.getByRole('dialog', { name: 'AI DM 配置' });
   await expect(configDialog).toBeVisible();
   await expect(configDialog.getByLabel('Endpoint')).toBeVisible();
-  await expect(page.getByText(/请补全 AI DM 配置/)).toBeVisible();
-  await expect(page.getByText(/MiMo\/custom provider 必须配置 endpoint/)).toBeVisible();
+  await expect(configDialog.getByText(/MiMo\/custom provider 必须配置 endpoint/)).toBeVisible();
+  await expect(page.locator('.narrative-panel')).not.toContainText('请补全 AI DM 配置');
 });
 
 test('AI DM thinking state shows an inline animated indicator while the turn is running', async ({ page }) => {
