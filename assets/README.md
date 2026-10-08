@@ -6,7 +6,7 @@
 
 | 类型 | 命名格式 | 示例 |
 |------|----------|------|
-| 场景背景 | `scene_描述.(png/svg/gif)` | `scene_s02.svg` |
+| 场景背景 | `描述.png` | `客厅.png` |
 | 调查员立绘 | `角色名拼音.png` | `henry_gray.png` |
 | 后续 NPC 专属立绘 | `npc_名称.png` | `npc_bartender.png` |
 | UI 元素 | `ui_描述.png` | `ui_dialog_bg.png` |
@@ -37,7 +37,7 @@ assets/
 ## 注意事项
 
 - 优先使用 `.png` 格式（支持透明通道）
-- 大图压缩后再提交。`scene_main_fog_london.gif` 属于高表现力主视觉资源，不按单纯体积冗余处理；替换时应以美术表现和加载体验共同评估。
+- 大图压缩后再提交。主视觉使用保留原画面/时长的 WebM 和同画面静态封面，旧 GIF 及占位 SVG 已从当前工作区清理，原件可从 Git 历史恢复。
 - 原始设计稿（PSD/AI）不需要提交到仓库
 
 ## 骰子弹窗的运行时资源
@@ -52,10 +52,11 @@ assets/
 
 ## 标题动画的运行时版本
 
-标题页播放 `scenes/scene_main_fog_london.webm`，保留原 GIF 的画面与时长；原 GIF 作为美术源文件保留，不再随网页构建发布。页面隐藏或用户选择减少动态效果时暂停播放。
+标题页播放 `scenes/scene_main_fog_london.webm`，保留原 GIF 的画面与时长，`scenes/scene_main_fog_london.webp` 是 29KB 的同画面封面，用于视频开始前、暂停动画和介绍页静态展示。页面隐藏或用户选择减少动态效果时暂停播放。原 GIF 不再常驻当前工作区，重编码时从 Git 历史恢复到忽略的 `output/`。
 
 使用 FFmpeg 可复现编码：
 
 ```sh
-ffmpeg -i assets/scenes/scene_main_fog_london.gif -an -c:v libvpx-vp9 -b:v 0 -crf 32 -deadline good -cpu-used 3 -row-mt 1 -threads 4 -pix_fmt yuv420p assets/scenes/scene_main_fog_london.webm
+ffmpeg -i output/scene_main_fog_london.gif -an -c:v libvpx-vp9 -b:v 0 -crf 32 -deadline good -cpu-used 3 -row-mt 1 -threads 4 -pix_fmt yuv420p assets/scenes/scene_main_fog_london.webm
+ffmpeg -i assets/scenes/scene_main_fog_london.webm -frames:v 1 -vf scale=1280:-2 -quality 86 assets/scenes/scene_main_fog_london.webp
 ```

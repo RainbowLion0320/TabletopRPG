@@ -94,5 +94,8 @@ $stream = [IO.File]::OpenRead($apk)
 $hasher = [Security.Cryptography.SHA256]::Create()
 try { $hash = [BitConverter]::ToString($hasher.ComputeHash($stream)).Replace('-', '').ToLowerInvariant() } finally { $stream.Dispose(); $hasher.Dispose() }
 [IO.File]::WriteAllText("$apk.sha256", "$hash  $([IO.Path]::GetFileName($apk))`n", (New-Object Text.UTF8Encoding($false)))
+. (Join-Path $PSScriptRoot 'artifact-retention.ps1')
+$pruned = Remove-ObsoleteApkArtifacts -ArtifactDirectory $artifactDir -KeepApk $apk
+Write-Output "Removed $($pruned.RemovedFiles) obsolete delivery files ($($pruned.RemovedBytes) bytes); kept the two latest releases."
 Write-Output "APK: $apk"
 Write-Output "SHA256: $hash"

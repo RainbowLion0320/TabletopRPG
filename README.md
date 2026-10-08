@@ -185,4 +185,6 @@ TabletopRPG/
 
 ## 资源说明
 
-当前首屏使用 `assets/scenes/scene_main_fog_london.gif` 作为高表现力场景资源。后续美术可替换为同等横屏规格的场景图，建议主视觉按 16:9 准备，目标展示尺寸以 1920x1080 为基准。
+当前首屏使用 `assets/scenes/scene_main_fog_london.webm`，搭配 29KB 的同画面 WebP 静态封面；暂停动画或视频尚未开始时仍有完整场景。场景已接入正式 PNG，美术规格建议以 1920×1080 为基准。旧 GIF 和场景占位 SVG 已由现有素材替换并从工作区移除，需要原件时可从 Git 历史恢复。
+
+正式 APK 成功签名及校验后，打包流程自动保留最新和上一版 APK/校验文件，清理更早版本与临时签名/对齐文件。`npm run clean:generated` 可再清理已完成音频制作的下载原包和中间 WAV；运行 MP3、授权文件、原始设计资料和其他交付文件保留。见 [Android 交付约定](docs/ANDROID.md)。

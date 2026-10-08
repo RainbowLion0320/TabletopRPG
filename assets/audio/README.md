@@ -43,6 +43,7 @@
 2. 下载 Kenney 三个音效包，分别解压到该目录的 `interface/`、`rpg/`、`casino/`。
 3. 安装 Python、numpy 和 ffmpeg，执行 `python scripts/build-audio.py`。
 4. `manifest.json` 记录生成文件的来源、时长、字节数和 SHA-256。播放时不依赖 Python/ffmpeg。
+5. 完成音轨制作后运行 `npm run clean:generated`，清理下载原包及中间 WAV；运行 MP3、manifest 与 licenses 保留，后续重制作时按本页链接重新下载。
 
 不提交 ZIP、原始音轨或中间 WAV。替换音轨时同时更新本页和玩家可见的鸣谢。
 音频属于表现层；文件损坏、下载失败、静音、后台暂停均不能改变骰子结果或阻塞 AI 回合。

@@ -30,7 +30,8 @@
     "android:sync": "npm run build:android:web && cap sync android",
     "android:debug": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android.ps1 -DebugBuild",
     "android:apk": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android.ps1",
-    "android:test": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android.ps1 -NativeTests"
+    "android:test": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android.ps1 -NativeTests",
+    "clean:generated": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clean-generated.ps1 -AudioSourceCache"
   },
   "dependencies": {
     "@capacitor/android": "8.5.1",
