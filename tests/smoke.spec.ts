@@ -308,6 +308,46 @@ for (const size of [{ width: 320, height: 568 }, { width: 1440, height: 900 }]) 
   });
 }
 
+test('a 200-entry four-player history keeps all prose and marks while typing, inspecting and changing actor', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const state = createDynamicCaseBoardSave();
+  state.players.push(makeInvestigator({ id: 'reporter', name: '托马斯·贝尔' }), makeInvestigator({ id: 'officer', name: '罗伯特·肖' }));
+  state.scenarioProgress = createSmokeScenarioProgress();
+  const text = '伊莎贝拉·摩勒与亨利·格雷站在摩勒住宅，艾达·华莱士查看求助信。托马斯·贝尔记录谈话，罗伯特·肖留意窗台，调查员决定进行心理学检定。\n\n';
+  state.messages = Array.from({ length: 200 }, (_, index) => ({ id: `history-${index}`, type: 'dm' as const, text: `${text}记录 ${index + 1}。`, keywords: [{ text: '求助信', kind: 'clue' as const }] }));
+  let modelCalls = 0;
+  page.on('request', request => { if (request.url().startsWith('https://ui-dm.test/')) modelCalls++; });
+  await gotoWithSave(page, state, { provider: 'custom', protocol: 'responses', endpoint: 'https://ui-dm.test/v1', apiKey: 'ui-qa-only-token', model: 'test-model' });
+  await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+  await page.getByRole('button', { name: '展开剧情', exact: true }).click();
+  const scroll = page.getByRole('region', { name: '剧情记录', exact: true });
+  await expect(scroll.locator('.story-message.dm')).toHaveCount(200);
+  const original = await scroll.locator('.story-message.dm p').allTextContents();
+  expect(original).toEqual(state.messages.map(message => message.text));
+  const colors = await scroll.locator('.story-message.dm').first().locator('.narrative-mark-person').evaluateAll(elements => elements.map(e => ({ name: e.textContent, color: (e as HTMLElement).style.getPropertyValue('--person-color') })));
+  expect(colors).toHaveLength(5); expect(new Set(colors.map(person => person.color)).size).toBe(5);
+  await scroll.evaluate(element => element.scrollTo({ top: 100, behavior: 'instant' }));
+  const input = page.locator('.dock-input');
+  await input.fill('把信中的日期记下来。'); await input.press('Enter'); await input.pressSequentially('随后检查门廊。');
+  await expect(input).toHaveValue('把信中的日期记下来。\n随后检查门廊。');
+  await expect(scroll).toHaveJSProperty('scrollTop', 100);
+  expect(await scroll.locator('.story-message.dm p').allTextContents()).toEqual(original);
+  expect(await scroll.locator('.story-message.dm').first().locator('.narrative-mark-person').evaluateAll(elements => elements.map(e => ({ name: e.textContent, color: (e as HTMLElement).style.getPropertyValue('--person-color') })))).toEqual(colors);
+  await page.locator('.npc-nameplate').click();
+  const npc = page.getByRole('dialog', { name: '伊莎贝拉·摩勒' }); await expect(npc).toBeVisible();
+  await npc.getByRole('button', { name: '关闭详情', exact: true }).click();
+  await expect(scroll).toHaveJSProperty('scrollTop', 100);
+  await expect(input).toHaveValue('把信中的日期记下来。\n随后检查门廊。');
+  await page.getByRole('button', { name: '下一位', exact: true }).click();
+  await expect(input).toHaveAttribute('placeholder', '艾达·华莱士 想要做什么...');
+  await expect(input).toBeFocused(); await expect(scroll).toHaveJSProperty('scrollTop', 100);
+  await expect(scroll.locator('.story-message.player')).toHaveCount(1);
+  expect(await scroll.locator('.story-message.dm p').allTextContents()).toEqual(original);
+  await expect(page.getByRole('button', { name: '查看新剧情', exact: true })).toBeVisible();
+  expect(modelCalls).toBe(0);
+  await page.screenshot({ path: testInfo.outputPath('long-history-input.png') });
+});
+
 function createV8EndingSave(): GameState {
   const state = createDynamicCaseBoardSave();
   const progress = createSmokeScenarioProgress();

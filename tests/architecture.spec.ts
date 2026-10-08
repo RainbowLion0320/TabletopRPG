@@ -98,7 +98,10 @@ test('narrative rich text stays in the safe markup pipeline', async () => {
 
   expect(narrator).toContain('normalizeNarrativeKeywordHints');
   expect(reducer).toContain('keywords: response.keywords?.length');
-  expect(panel).toContain('markNarrativeText');
+  expect(panel).toContain('createNarrativeMarkup(state)');
+  expect(panel).toContain('markup.markText(');
+  expect(markup).toContain('normalizeNarrativeKeywordHints(keywords, text)');
+  expect(markup).toContain('markTextWithDefinitions');
   expect(combined).not.toContain('dangerouslySetInnerHTML');
   expect(combined).not.toContain('marked(');
   expect(combined).not.toContain('ReactMarkdown');

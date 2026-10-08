@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildPersonColorMap,
+  createNarrativeMarkup,
   markNarrativeText,
   type NarrativeMarkTarget
 } from '../../src/services/narrativeMarkup';
@@ -8,6 +9,38 @@ import { getNarrativeMarkDetail } from '../../src/dm/entityDetail';
 import { makeInvestigator, makeState } from '../dm/fixtures';
 
 describe('narrative markup', () => {
+  it('keeps message hints local while sharing the known-term index', () => {
+    const markup = createNarrativeMarkup(makeState());
+    const text = '水里的东西靠近伊莎贝拉·摩勒，建议进行心理学检定。';
+    const hints = [{ text: '水里的东西', kind: 'clue' as const }];
+    const hinted = markup.markText(text, hints);
+    expect(hinted.map(segment => segment.text).join('')).toBe(text);
+    expect(hinted.find(segment => segment.text === '水里的东西')?.mark?.source).toBe('llm');
+    expect(hinted.find(segment => segment.text === '伊莎贝拉·摩勒')?.mark?.source).toBe('deterministic');
+    for (const unhinted of [markup.markText(text), markup.markText(text, hints, false)]) {
+      expect(unhinted.filter(segment => segment.mark?.source === 'llm')).toEqual([]);
+      expect(unhinted.map(segment => segment.text).join('')).toBe(text);
+      expect(unhinted.find(segment => segment.text === '心理学')?.mark?.kind).toBe('skill');
+    }
+    expect(markup.markText('')).toEqual([{ text: '' }]);
+  });
+
+  it('prepares newly visible scenes, found items and people from the complete current state', () => {
+    const state = makeState({ currentScene: 'S03', activeNpcName: '老赫特之家酒保' });
+    const text = '码头旁的小册子可能属于蒙特利尔局长。';
+    const before = createNarrativeMarkup(state).markText(text);
+    expect(before.filter(segment => segment.mark)).toEqual([]);
+    state.messages.push({ id: 'mentioned', type: 'dm', text: '洛夫·蒙特利尔说明警方目前的调查进展。' });
+    expect(createNarrativeMarkup(state).markText(text).filter(segment => segment.mark)).toEqual([]);
+    state.currentScene = 'S05';
+    state.clues.push({ id: 'I04', name: '小册子', scene: 'S05', desc: '', found: true });
+    state.clues.push({ id: 'I02', name: '合影照片', scene: 'S01', desc: '', found: true });
+    const after = createNarrativeMarkup(state).markText(text);
+    expect(after.filter(segment => segment.mark).map(segment => [segment.text, segment.mark?.kind]))
+      .toEqual([['码头', 'location'], ['小册子', 'item'], ['蒙特利尔局长', 'person']]);
+    expect(after.map(segment => segment.text).join('')).toBe(text);
+  });
+
   it('attaches a public scene image only after the location has been visited', () => {
     const state = makeState();
     const target: NarrativeMarkTarget = { kind: 'location', id: 'S01', label: '摩勒住宅', source: 'deterministic' };

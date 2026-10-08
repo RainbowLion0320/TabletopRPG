@@ -3,8 +3,8 @@ import { ChevronDown, Expand, Shrink } from 'lucide-react';
 import type { GameState, NarrativeMessage } from '../../types/game';
 import { storyData } from '../../data/storyData';
 import {
-  getPersonColor,
-  markNarrativeText,
+  createNarrativeMarkup,
+  type NarrativeMarkup,
   type NarrativeMarkTarget
 } from '../../services/narrativeMarkup';
 import { ThinkingIndicator } from './ThinkingIndicator';
@@ -18,14 +18,14 @@ interface NarrativePanelProps {
 
 interface RichNarrativeTextProps {
   message: NarrativeMessage;
-  state: GameState;
+  markup: NarrativeMarkup;
   onMarkOpen?: NarrativePanelProps['onMarkOpen'];
 }
 
-function markStyle(target: NarrativeMarkTarget, state: GameState): CSSProperties | undefined {
+function markStyle(target: NarrativeMarkTarget, markup: NarrativeMarkup): CSSProperties | undefined {
   if (target.kind !== 'person') return undefined;
   return {
-    '--person-color': getPersonColor(state, target.canonicalName ?? target.label)
+    '--person-color': markup.personColor(target.canonicalName ?? target.label)
   } as CSSProperties;
 }
 
@@ -36,10 +36,9 @@ function markIsInteractive(target: NarrativeMarkTarget): boolean {
     || target.kind === 'clue';
 }
 
-function RichNarrativeText({ message, onMarkOpen, state }: RichNarrativeTextProps) {
-  const segments = markNarrativeText(
+function RichNarrativeText({ message, onMarkOpen, markup }: RichNarrativeTextProps) {
+  const segments = markup.markText(
     message.text,
-    state,
     message.type === 'dm' ? message.keywords : undefined,
     message.type === 'dm'
   );
@@ -55,7 +54,7 @@ function RichNarrativeText({ message, onMarkOpen, state }: RichNarrativeTextProp
         className={className}
         key={`${index}-${segment.mark.id}`}
         onClick={() => onMarkOpen?.(segment.mark!, message.text)}
-        style={markStyle(segment.mark, state)}
+        style={markStyle(segment.mark, markup)}
         type="button"
       >
         {segment.text}
@@ -74,6 +73,7 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
   const [hasNewContent, setHasNewContent] = useState(false);
   const visibleMessages = state.messages.filter(isPlayerVisibleMessage);
   const latestId = visibleMessages[visibleMessages.length - 1]?.id;
+  const markup = createNarrativeMarkup(state);
 
   useLayoutEffect(() => {
     const panel = ref.current;
@@ -129,7 +129,7 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
               source: 'deterministic',
               canonicalName: state.activeNpcName!
             }, state.activeNpcName!)}
-            style={{ '--person-color': getPersonColor(state, state.activeNpcName!) } as CSSProperties}
+            style={{ '--person-color': markup.personColor(state.activeNpcName!) } as CSSProperties}
             title={`${state.activeNpcName} · ${activeNpc.role}`}
             type="button"
           >
@@ -174,16 +174,16 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
                       kind: 'person', id: player.id, label: player.name, source: 'deterministic', canonicalName: player.name
                     }, message.text);
                   }}
-                  style={{ '--person-color': getPersonColor(state, message.playerName ?? '玩家') } as CSSProperties}
+                  style={{ '--person-color': markup.personColor(message.playerName ?? '玩家') } as CSSProperties}
                   type="button"
                 >
                   {message.playerName ?? '玩家'}
                 </button>
                 <span className="player-inline-separator">：</span>
-                <span className="player-message-text"><RichNarrativeText message={message} onMarkOpen={onMarkOpen} state={state} /></span>
+                <span className="player-message-text"><RichNarrativeText message={message} onMarkOpen={onMarkOpen} markup={markup} /></span>
               </p>
             ) : (
-              <p><RichNarrativeText message={message} onMarkOpen={onMarkOpen} state={state} /></p>
+              <p><RichNarrativeText message={message} onMarkOpen={onMarkOpen} markup={markup} /></p>
             )}
           </div>
         ))}

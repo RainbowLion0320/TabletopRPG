@@ -566,6 +566,27 @@ public class GameAndroidTest {
                     screenshot("caseboard");
                     js("document.querySelector('[aria-label=关闭资料]').click()");
                 }
+                if (party == 4) {
+                    viewport(390, 844); menu("返回首页");
+                    // Long-history fixture goes through the production encrypted session port.
+                    js("window.qaHistoryReady=false;Capacitor.Plugins.GameStorage.readAll().then(async ({values})=>{"
+                        + "const record=JSON.parse(values['trpg-android-session-v1']);"
+                        + "const text='伊莎贝拉·摩勒与亨利·格雷站在摩勒住宅，艾达·华莱士查看求助信。托马斯·贝尔记录谈话，罗伯特·肖留意窗台，调查员决定进行心理学检定。';"
+                        + "record.state.messages=Array.from({length:200},(_,i)=>({id:'long-'+i,type:'dm',text:text+'记录 '+(i+1)+'。',keywords:[{text:'求助信',kind:'clue'}]}));"
+                        + "await Capacitor.Plugins.GameStorage.write({key:'trpg-android-session-v1',value:JSON.stringify(record)});window.qaHistoryReady=true;})");
+                    until("window.qaHistoryReady"); activity.recreate(); until("document.querySelector('.title-resume-preview')"); viewport(390, 844);
+                    click("继续游戏"); until("document.querySelectorAll('.story-message.dm').length===200");
+                    nativeTap(".narrative-toggle-btn");
+                    js("window.qaHistoryText=JSON.stringify(Array.from(document.querySelectorAll('.story-message.dm p'),e=>e.textContent));window.qaHistoryColors=JSON.stringify(Array.from(document.querySelector('.story-message.dm').querySelectorAll('.narrative-mark-person'),e=>e.style.getPropertyValue('--person-color')));document.querySelector('.narrative-scroll').scrollTop=100");
+                    fill(".dock-input", "记下求助信日期\n然后检查门廊");
+                    assertEquals("Long history input keeps all prose, colors and reading position", "true", js("JSON.stringify(Array.from(document.querySelectorAll('.story-message.dm p'),e=>e.textContent))===window.qaHistoryText&&JSON.stringify(Array.from(document.querySelector('.story-message.dm').querySelectorAll('.narrative-mark-person'),e=>e.style.getPropertyValue('--person-color')))===window.qaHistoryColors&&document.querySelector('.narrative-scroll').scrollTop===100"));
+                    nativeTap(".npc-nameplate"); until("document.querySelector('.entity-detail-card')");
+                    nativeTap(".entity-detail-close"); until("!document.querySelector('.entity-detail-card')");
+                    assertEquals("Known NPC return retains multiline action and reading", "true", js("document.querySelector('.dock-input').value==='记下求助信日期'+String.fromCharCode(10)+'然后检查门廊'&&document.querySelector('.narrative-scroll').scrollTop===100"));
+                    nativeTap(".dock-submit"); until("document.querySelector('.dock-input').placeholder.includes('艾达·华莱士')");
+                    assertEquals("Changing actor retains the entire long history without calling the model", "true", js("document.querySelectorAll('.story-message.dm').length===200&&document.querySelectorAll('.story-message.player').length===1&&document.querySelector('.narrative-scroll').scrollTop===100&&!!document.querySelector('.narrative-new-content')"));
+                    assertEquals(1, narratorCalls.get()); screenshot("long-history-input");
+                }
             } finally { if (activity != null) activity.close(); }
         }
     }
@@ -637,7 +658,7 @@ public class GameAndroidTest {
                     + "await Capacitor.Plugins.GameStorage.write({key:'trpg-android-session-v1',value:JSON.stringify(record)});window.qaEndingReady=true;})");
                 until("window.qaEndingReady");
                 String vitals = js("window.qaEndingVitals");
-                activity.recreate(); until("document.querySelector('.title-resume-preview')");
+                activity.recreate(); until("document.querySelector('.title-resume-preview')"); viewport(size[0], size[1]);
                 assertEquals("Completed records offer a review", "true", js("document.querySelector('.title-resume-preview').textContent.includes('已结案')&&document.querySelector('.title-actions button:first-child').textContent==='回顾调查'"));
                 click("回顾调查"); until("document.querySelector('.ending-dock')");
                 assertEquals("The ending stays read-only with the original party", "true", js("!document.querySelector('.dock-input')&&!document.querySelector('.party-action-status')&&!document.querySelector('.scene-npc')&&document.querySelectorAll('.ending-dock .party-compact').length===" + size[2]));

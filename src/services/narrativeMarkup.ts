@@ -29,6 +29,11 @@ export interface NarrativeTextSegment {
   mark?: NarrativeMarkTarget;
 }
 
+export interface NarrativeMarkup {
+  markText(text: string, keywords?: NarrativeKeywordHint[], includeLlmKeywords?: boolean): NarrativeTextSegment[];
+  personColor(canonicalName: string): string;
+}
+
 interface TermDefinition {
   text: string;
   target: NarrativeMarkTarget;
@@ -121,7 +126,11 @@ export function buildPersonColorMap(state: GameState): Map<string, string> {
 }
 
 export function getPersonColor(state: GameState, canonicalName: string): string {
-  return buildPersonColorMap(state).get(canonicalName)
+  return personColor(buildPersonColorMap(state), canonicalName);
+}
+
+function personColor(colors: ReadonlyMap<string, string>, canonicalName: string): string {
+  return colors.get(canonicalName)
     ?? PERSON_COLORS[hashText(canonicalName) % PERSON_COLORS.length];
 }
 
@@ -234,7 +243,7 @@ function llmTerms(text: string, keywords: unknown): TermDefinition[] {
   }));
 }
 
-function collectCandidates(text: string, definitions: TermDefinition[]): Candidate[] {
+function collectCandidates(text: string, definitions: readonly TermDefinition[]): Candidate[] {
   const candidates: Candidate[] = [];
   definitions.forEach((definition) => {
     let from = 0;
@@ -259,8 +268,31 @@ export function markNarrativeText(
   includeLlmKeywords = true
 ): NarrativeTextSegment[] {
   if (!text) return [{ text: '' }];
+  return markTextWithDefinitions(text, deterministicTerms(state), keywords, includeLlmKeywords);
+}
+
+/** Prepare once per panel render; all knowledge is re-read on the next render. */
+export function createNarrativeMarkup(state: GameState): NarrativeMarkup {
   const definitions = deterministicTerms(state);
-  if (includeLlmKeywords) definitions.push(...llmTerms(text, keywords));
+  const colors = buildPersonColorMap(state);
+  return {
+    markText: (text, keywords, includeLlmKeywords = true) =>
+      markTextWithDefinitions(text, definitions, keywords, includeLlmKeywords),
+    personColor: (canonicalName) => personColor(colors, canonicalName)
+  };
+}
+
+function markTextWithDefinitions(
+  text: string,
+  deterministicDefinitions: readonly TermDefinition[],
+  keywords: NarrativeKeywordHint[] | undefined,
+  includeLlmKeywords: boolean
+): NarrativeTextSegment[] {
+  if (!text) return [{ text: '' }];
+  // Hints belong to this message, never to the shared deterministic index.
+  const definitions = includeLlmKeywords
+    ? [...deterministicDefinitions, ...llmTerms(text, keywords)]
+    : deterministicDefinitions;
 
   const selected: Candidate[] = [];
   const ranked = collectCandidates(text, definitions).sort((left, right) =>

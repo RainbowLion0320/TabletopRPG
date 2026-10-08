@@ -8,6 +8,8 @@
 
 ## 1. Product Positioning
 
+Version 0.4.23 reduces repeated work when typing alongside a long story. Each panel render prepares its known terms and person colors once for the entire visible history, then rebuilds them from the full current state on the next render. Complete prose, colors, per-message AI hints, known-information boundaries, detail actions and reading position remain intact. No history truncation, additional narrative restrictions or new player-facing settings are introduced.
+
 Version 0.4.22 makes the story header's NPC dossier, reading toggle and temporary new-content action 44px illustrated controls. NPC names use at least 14px type; a narrow phone with new content prioritizes the name and actions over the repeated role tag. Opening a known NPC record returns to the same header and reading position. The header stays outside the story scroll without adding a toolbar row, artwork or narrative behavior.
 
 Version 0.4.21 gives sound controls the existing illustrated dossier and brass surfaces. Close, switches, faders, preview and credit links have 44px targets, with 15px channel and credit text. Only the channel/credit body scrolls, so the close action remains available on phones, desktop and short windows. Independent live volume/mute preferences, source attribution and original music/effects remain unchanged; returning from nested sound settings keeps the current action draft. A newly arriving reply also respects an already changed reading position before the browser's scroll event is delivered.

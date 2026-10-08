@@ -4,8 +4,39 @@ import { NarrativePanel } from '../../src/components/game/NarrativePanel';
 import { ActionDock } from '../../src/components/game/ActionDock';
 import { makeState } from '../dm/fixtures';
 import { getScenarioDefinition } from '../../src/scenario/engine';
+import { getPersonColor } from '../../src/services/narrativeMarkup';
 
 describe('NarrativePanel', () => {
+  it('keeps hints and identity colors separate across messages and refreshes known places while preserving draft renders', () => {
+    const state = makeState({ currentScene: 'S03', activeNpcName: '老赫特之家酒保' });
+    const text = '亨利查看码头附近的水里的东西，进行侦查。';
+    state.messages = [
+      { id: 'hinted', type: 'dm', text, keywords: [{ text: '水里的东西', kind: 'clue' }] },
+      { id: 'unhinted', type: 'dm', text },
+      { id: 'player', type: 'player', text, playerName: '亨利', keywords: [{ text: '水里的东西', kind: 'clue' }] }
+    ];
+    const firstOpen = vi.fn(), nextOpen = vi.fn();
+    const { container, rerender } = render(<NarrativePanel state={state} onMarkOpen={firstOpen} />);
+    const story = container.querySelector('.narrative-scroll')!;
+    expect(story.querySelectorAll('.narrative-mark-inferred')).toHaveLength(1);
+    expect(story.querySelectorAll('.narrative-mark-location')).toHaveLength(0);
+    for (const person of story.querySelectorAll<HTMLElement>('.narrative-mark-person')) {
+      expect(person.style.getPropertyValue('--person-color')).toBe(getPersonColor(state, '亨利'));
+    }
+    const before = story.innerHTML;
+    rerender(<NarrativePanel state={{ ...state, declarations: { [state.players[0].id]: '写下第二行行动。' } }} onMarkOpen={nextOpen} />);
+    expect(story.innerHTML).toBe(before);
+    fireEvent.click(story.querySelector('.narrative-mark-person')!);
+    expect(firstOpen).not.toHaveBeenCalled();
+    expect(nextOpen).toHaveBeenCalledWith(expect.objectContaining({ canonicalName: '亨利' }), text);
+    // A preparation is scoped to a render, not a global cache keyed by object identity.
+    state.currentScene = 'S05';
+    rerender(<NarrativePanel state={state} onMarkOpen={nextOpen} />);
+    expect(story.querySelectorAll('.narrative-mark-location')).toHaveLength(3);
+    expect(story.querySelectorAll('.narrative-mark-inferred')).toHaveLength(1);
+    expect(story.querySelector('[data-message-id="unhinted"] p')?.textContent).toBe(text);
+  });
+
   it('keeps story and dice in the narrative and moves connection feedback to the retry dock', () => {
     const state = makeState();
     const cues = getScenarioDefinition().progression.storyEvents.map((event) => event.narrativeCue);
