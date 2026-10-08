@@ -4,10 +4,12 @@ title: 技术选型
 tags: [tech, architecture, decision, react, vite]
 sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-14
-updated: 2026-09-09
+updated: 2026-10-09
 ---
 
 # 技术选型
+
+基础案件档案在主界面包中，但只在资料页打开时整理模型；桌面 React Flow/ELK 保持分包。局部图错误边界转到同模型的照片列表，避免下载失败导致整局消失。AI DM 管线保持原加载方式，见 [[case_board]] 和 [[game_ui]]。
 
 ## 选型总览
 

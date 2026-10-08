@@ -5,6 +5,7 @@ import { runDmTurn } from '../../src/dm/pipeline';
 import { AiResponseFormatError } from '../../src/services/aiDm';
 import { readSaves, saveGameState } from '../../src/services/storage';
 import { createInitialGameState } from '../../src/state/gameReducer';
+import { DICE_ROLL_DURATION_MS } from '../../src/app/diceRollAnimation';
 import { makeInvestigator } from '../dm/fixtures';
 
 vi.mock('../../src/dm/pipeline', () => ({ runDmTurn: vi.fn() }));
@@ -154,11 +155,16 @@ describe('game controller round recovery', () => {
     saveGameState(state);
     const { result } = renderHook(useGameController);
     act(() => { result.current.loadLatest(); });
+    vi.useFakeTimers();
     act(() => result.current.handleRoll());
     act(() => result.current.saveCurrentGame());
     expect(readSaves()).toHaveLength(1);
     expect(result.current.toast).toContain('确认本次掷骰');
-    await waitFor(() => expect(result.current.diceRoll?.phase).toBe('revealed'), { timeout: 3000 });
+    act(() => { vi.advanceTimersByTime(DICE_ROLL_DURATION_MS - 1); });
+    expect(result.current.diceRoll?.phase).toBe('rolling');
+    act(() => { vi.advanceTimersByTime(1); });
+    expect(result.current.diceRoll?.phase).toBe('revealed');
+    vi.useRealTimers();
     act(() => { result.current.confirmDiceResult(); result.current.confirmDiceResult(); });
     await waitFor(() => expect(result.current.state.isThinking).toBe(false));
     const pending = result.current.state.pendingDmActions;

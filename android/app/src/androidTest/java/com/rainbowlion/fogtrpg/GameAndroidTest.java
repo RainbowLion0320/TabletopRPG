@@ -85,6 +85,12 @@ public class GameAndroidTest {
         nativeTap(selector, 0);
     }
     private void nativeTap(String selector, int driftCssY) throws Exception {
+        reachable(selector);
+        CountDownLatch painted = new CountDownLatch(1);
+        activity.onActivity(a -> a.getBridge().getWebView().postVisualStateCallback(SystemClock.uptimeMillis(), new WebView.VisualStateCallback() {
+            @Override public void onComplete(long requestId) { painted.countDown(); }
+        }));
+        assertTrue("The target DOM has been drawn before sending real touch", painted.await(10, TimeUnit.SECONDS));
         org.json.JSONArray point = new org.json.JSONArray(js("(()=>{const r=document.querySelector(" + JSONObject.quote(selector) + ").getBoundingClientRect();return [(r.x+r.width/2)*devicePixelRatio,(r.y+r.height/2)*devicePixelRatio,devicePixelRatio]})()"));
         long now = SystemClock.uptimeMillis();
         MotionEvent down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, (float) point.getDouble(0), (float) point.getDouble(1), 0);
@@ -172,6 +178,12 @@ public class GameAndroidTest {
             js("document.querySelector('.api-config-close').click()");
             click("开始游戏"); click("进入游戏"); until("document.querySelector('.action-dock')");
             assertEquals("First-time player starts directly without an API prompt", "false", js("Boolean(document.querySelector('#api-config-modal-title'))"));
+            nativeTap(".drawer-tab"); until("document.querySelector('.case-board-mobile-list')");
+            nativeTap(".case-board-mobile-card[aria-label='人物 伊莎贝拉·摩勒']"); until("document.querySelector('.case-board-inspector')");
+            assertEquals("Bundled known dossiers open offline and retain the chosen NPC", "true", js("document.querySelector('.case-board-inspector h4').textContent==='伊莎贝拉·摩勒'&&!document.querySelector('.react-flow')"));
+            nativeTap(".case-board-inspector button[aria-label='关闭资料详情']"); until("!document.querySelector('.case-board-inspector')");
+            nativeTap(".info-drawer-react button[aria-label='关闭资料']"); until("!document.querySelector('.info-drawer-react.open')");
+            assertEquals("Phone dossiers never load the desktop graph or layout worker", "0", js("performance.getEntriesByType('resource').filter(e=>/CaseBoardFlow-|caseBoardLayout-|elk-worker/.test(e.name)).length"));
             // Explicit delivery probe only; ordinary instrumentation stays offline.
             if ("true".equals(InstrumentationRegistry.getArguments().getString("liveMiMo"))) {
                 fill(".dock-input", "温和询问伊莎贝拉，她父亲平时有哪些习惯，以及最近心情是否有变化。");

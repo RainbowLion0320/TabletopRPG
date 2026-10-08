@@ -8,6 +8,8 @@
 
 ## 1. Product Positioning
 
+Version 0.4.30 keeps known case records available with the base interface, while only the desktop graph and layout worker load on demand. A failed desktop graph switches to the existing photo dossiers instead of unmounting the game. Search, type and hypothesis filters, visible sources, relation navigation, focus return, drafts and the party remain usable. Closed archives still do not build the case model; no narrative, visibility or gameplay rules change.
+
 Version 0.4.29 keeps action restoration and window changes free of recursive resize errors. Changes in the input wrapping width are refitted once after observation delivery; typing and viewport height changes retain their existing immediate fitting and size limits. Drafts, turn order, retry requests and input focus remain unchanged.
 
 Version 0.4.28 gives party resources the existing illustrated dossier frame. Names use 14px type, HP/SAN values 13px and labels/action status 12px, with at least 44px targets. Submitted investigators remain fully readable and open the same live dossier without changing the acting player or draft. HP and SAN wrap as complete label/value groups; phone teams use two columns, with four only on wider native portrait windows. Narrow multiline declarations retain every party card and the existing minimum reading area.

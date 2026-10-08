@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Eye, EyeOff, Search, X } from 'lucide-react';
 import type { GameState } from '../../types/game';
 import { CaseBoardInspector } from './CaseBoardInspector';
@@ -18,6 +18,16 @@ interface CaseBoardProps {
 
 const DesktopBoard = lazy(() => import('./CaseBoardFlow').then((module) => ({ default: module.CaseBoardFlow })));
 
+class GraphLoadBoundary extends Component<{ children: ReactNode; onFailure: () => void }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(error: Error) {
+    if (import.meta.env.DEV) console.warn('[CaseBoard] using dossiers after graph failure:', error);
+    this.props.onFailure();
+  }
+  render() { return this.state.failed ? null : this.props.children; }
+}
+
 const TYPE_OPTIONS: Array<{ value: 'all' | CaseBoardDisplayNodeType; label: string }> = [
   { value: 'all', label: '全部类型' },
   { value: 'npc', label: '人物' },
@@ -28,7 +38,8 @@ const TYPE_OPTIONS: Array<{ value: 'all' | CaseBoardDisplayNodeType; label: stri
 ];
 
 export function CaseBoard({ state }: CaseBoardProps) {
-  const archive = useCaseBoardListLayout();
+  const [flowFailed, setFlowFailed] = useState(false);
+  const archive = useCaseBoardListLayout() || flowFailed;
   const model = useMemo(() => buildCaseBoardGraphModel(state), [state]);
   const [query, setQuery] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
@@ -112,7 +123,7 @@ export function CaseBoard({ state }: CaseBoardProps) {
             ))}
           </nav>}
 
-          {!archive && <Suspense fallback={<div className="case-board-flow-wrap"><p className="empty-note">正在整理关系图...</p></div>}><DesktopBoard model={filtered} selectedId={selectedId} onSelect={(id) => { const node = model.nodes.find((item) => item.id === id); if (node) selectNode(node); }} /></Suspense>}
+          {!archive && <GraphLoadBoundary onFailure={() => setFlowFailed(true)}><Suspense fallback={<div className="case-board-flow-wrap"><p className="empty-note">正在整理关系图...</p></div>}><DesktopBoard model={filtered} selectedId={selectedId} onSelect={(id) => { const node = model.nodes.find((item) => item.id === id); if (node) selectNode(node); }} /></Suspense></GraphLoadBoundary>}
 
           {archive && <div className="case-board-mobile-list" aria-label="案件资料列表">
             {model.threads.map((thread) => {
@@ -133,7 +144,7 @@ export function CaseBoard({ state }: CaseBoardProps) {
             {!filtered.nodes.length ? <p className="empty-note">当前筛选条件下没有匹配资料。</p> : null}
           </div>}
 
-          {selectedNode ? <CaseBoardInspector model={model} node={selectedNode} onClose={() => setSelection([])} state={state}
+          {selectedNode ? <CaseBoardInspector model={model} node={selectedNode} onClose={() => setSelection([])} state={state} archive={archive}
             onSelect={followRelation} onBack={selection.length > 1 ? () => setSelection((current) => current.slice(0, -1)) : undefined} returnFocusRef={returnFocusRef} /> : null}
         </div>
       ) : <p className="empty-note">案件板还没有足够资料，先调查现场或询问 NPC。</p>}

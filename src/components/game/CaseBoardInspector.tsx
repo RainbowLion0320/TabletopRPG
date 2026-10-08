@@ -11,6 +11,7 @@ import { RecordDetailMedia } from './RecordDetailMedia';
 import './record-detail.css';
 
 interface CaseBoardInspectorProps {
+  archive?: boolean;
   model: CaseBoardGraphModel;
   node: CaseBoardDisplayNode;
   state: GameState;
@@ -77,8 +78,8 @@ const INSIGHT_LABEL = {
   status: '状态'
 } as const;
 
-export function CaseBoardInspector({ model, node, onClose, onSelect, onBack, returnFocusRef, state }: CaseBoardInspectorProps) {
-  const mobile = useCaseBoardListLayout();
+export function CaseBoardInspector({ model, node, onClose, onSelect, onBack, returnFocusRef, state, archive = false }: CaseBoardInspectorProps) {
+  const mobile = useCaseBoardListLayout() || archive;
   const dialogRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);

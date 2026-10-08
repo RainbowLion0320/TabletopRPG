@@ -1538,6 +1538,76 @@ test('reference panel uses the compact case board without horizontal overflow at
   expect(overflow.drawer).toBeLessThanOrEqual(1);
 });
 
+test('phone case records stay available without a separate archive download', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await gotoWithSave(page, createDynamicCaseBoardSave());
+  await page.getByRole('button', { name: '继续游戏' }).click();
+  await page.locator('.dock-input').fill('查看案件资料\n然后继续调查');
+  let archiveDownloads = 0;
+  await page.route(/\/src\/components\/game\/CaseBoard\.tsx(?:\?|$)/, async route => { archiveDownloads++; await route.abort(); });
+  await page.getByRole('button', { name: '资料', exact: true }).click();
+  const drawer = page.getByRole('dialog', { name: '资料', exact: true });
+  await expect(drawer.getByRole('button', { name: '推测 可能有内应协助', exact: true })).toBeVisible();
+  await drawer.getByRole('button', { name: '推测 可能有内应协助', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: '可能有内应协助详情' })).toBeVisible();
+  await page.getByRole('button', { name: '关闭资料详情', exact: true }).click();
+  await drawer.getByRole('tab', { name: '进度', exact: true }).click();
+  await expect(drawer.locator('.investigation-progress')).toBeVisible();
+  await drawer.getByRole('button', { name: '关闭资料', exact: true }).click();
+  await expect(page.locator('.dock-input')).toHaveValue('查看案件资料\n然后继续调查');
+  await expect(page.locator('.party-compact')).toHaveCount(2);
+  expect(archiveDownloads).toBe(0);
+});
+
+test('a failed desktop graph download falls back to usable known dossiers without losing the game', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await gotoWithSave(page, createDynamicCaseBoardSave());
+  await page.getByRole('button', { name: '继续游戏' }).click();
+  await page.locator('.dock-input').fill('查看案件资料\n然后继续调查');
+  let graphDownloads = 0;
+  await page.route(/\/src\/components\/game\/CaseBoardFlow\.tsx(?:\?|$)/, async route => { graphDownloads++; await route.abort(); });
+  await page.getByRole('button', { name: '资料', exact: true }).click();
+  const drawer = page.getByRole('dialog', { name: '资料', exact: true });
+  await expect(drawer.locator('.case-board-view.archive-layout')).toBeVisible();
+  await expect(drawer.getByRole('button', { name: '事件 药店后门被撬', exact: true })).toBeVisible();
+  const theory = drawer.getByRole('button', { name: '推测 可能有内应协助', exact: true });
+  await expect(theory).toBeVisible();
+  await drawer.getByRole('button', { name: '显示推测', exact: true }).click();
+  await expect(theory).toHaveCount(0);
+  await drawer.getByRole('button', { name: '显示推测', exact: true }).click();
+  await drawer.getByRole('combobox', { name: '资料类型', exact: true }).selectOption('theory');
+  const search = drawer.getByRole('searchbox', { name: '搜索案件资料' });
+  await search.fill('可能有内应协助');
+  await expect(drawer.locator('.case-board-mobile-card')).toHaveCount(1);
+  await theory.click();
+  const detail = page.getByRole('dialog', { name: '可能有内应协助详情' });
+  await expect(detail).toHaveAttribute('aria-modal', 'true');
+  await expect(detail.getByText('第 1 回合：玩家发现药店后门有被撬痕迹')).toBeHidden();
+  await detail.locator('.case-record-sources summary').click();
+  await expect(detail.getByText('第 1 回合：玩家发现药店后门有被撬痕迹')).toBeVisible();
+  await detail.getByRole('button', { name: '查看药店后门被撬资料', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: '药店后门被撬详情' })).toBeVisible();
+  await page.getByRole('button', { name: '返回上一份资料', exact: true }).click();
+  await expect(detail).toBeVisible();
+  await detail.getByRole('button', { name: '关闭资料详情', exact: true }).click();
+  await expect(theory).toBeFocused(); await expect(search).toHaveValue('可能有内应协助');
+  await drawer.getByRole('button', { name: '清除案件搜索', exact: true }).click();
+  await drawer.getByRole('combobox', { name: '资料类型', exact: true }).selectOption('npc');
+  await drawer.getByRole('button', { name: '人物 伊莎贝拉·摩勒', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: '伊莎贝拉·摩勒详情' })).toBeVisible();
+  await page.getByRole('button', { name: '关闭资料详情', exact: true }).click();
+  await expect(drawer.locator('.case-board-mobile-card.npc')).not.toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath('case-graph-fallback.png') });
+  await drawer.getByRole('tab', { name: '日志', exact: true }).click();
+  await expect(drawer.getByRole('searchbox', { name: '搜索行动日志' })).toBeVisible();
+  await drawer.getByRole('button', { name: '关闭资料', exact: true }).click();
+  await expect(page.locator('.dock-input')).toHaveValue('查看案件资料\n然后继续调查');
+  await expect(page.locator('.party-compact')).toHaveCount(2);
+  await page.getByRole('button', { name: '资料', exact: true }).click();
+  await expect(drawer.locator('.case-board-mobile-list')).toBeVisible();
+  expect(graphDownloads).toBe(1);
+});
+
 for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 780, height: 1000 }]) {
   test(`case archive keeps photos, filters and nested return usable at ${size.width}px without loading graph code`, async ({ page }, testInfo) => {
     const requests: string[] = [];

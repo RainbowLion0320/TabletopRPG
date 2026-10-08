@@ -4,6 +4,8 @@
 > Updated: 2026-10-09
 > Scope: current React/Vite implementation
 
+In 0.4.30, InfoDrawer imports the lightweight CaseBoard with the base interface and mounts it only while the archive tab is open. The desktop graph remains lazy. A local GraphLoadBoundary isolates graph download/render errors and switches the same CaseBoard model to archive-layout; the inspector uses modal focus and relation return in that mode. This removes the phone archive download as a failure point and preserves known data, filters, drafts and party state when graph loading fails. It does not change AI pipeline loading or reducer/visibility contracts.
+
 In 0.4.20, `ActionDock` reuses one `PartyStatusStrip` in active and completed investigations. Ending records keep authored title/summary, fixed review/home actions and a read-only party; declaration status and action input remain absent. Component-owned ending CSS reserves the content's minimum height before the scene yields, preventing Grid/Flex intrinsic sizing from clipping the second party row; phone summaries clamp to two lines, with the full text in `InvestigationProgress`. Desktop ending layout uses scene/story/dock grid rows and supports expanding the story. `InfoDrawer.initialTab` selects progress for the ending action and board for the ordinary entry; closing restores the actual opener through the existing focus stack. `continuationPreview` reads the known ending to label automatic/current/manual completed records as a review; Android skips the model-configuration gate for those read-only records. No schema, endpoint, prompt, reducer reward or ending-definition changes.
 
 ## Android edition (2026-09-09)

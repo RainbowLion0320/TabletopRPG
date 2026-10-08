@@ -1,13 +1,13 @@
-import { lazy, Suspense, useId, useRef, useState, useEffect, useLayoutEffect, type KeyboardEvent, type PointerEvent } from 'react';
+import { useId, useRef, useState, useEffect, useLayoutEffect, type KeyboardEvent, type PointerEvent } from 'react';
 import { BookOpen, GripVertical, X } from 'lucide-react';
 import type { GameState } from '../../types/game';
 import { useDialogFocus } from '../shared/useDialogFocus';
 import { usePortraitLayout } from '../../platform/layout';
 import { storyData } from '../../data/storyData';
 import { ActionLogArchive, InvestigationProgress } from './InvestigationRecords';
+import { CaseBoard } from './CaseBoard';
 import './info-drawer.css';
 
-const CaseBoard = lazy(() => import('./CaseBoard').then((module) => ({ default: module.CaseBoard })));
 const drawerTabs = [['progress', '进度'], ['board', '案件板'], ['log', '日志']] as const;
 export type InfoDrawerTab = typeof drawerTabs[number][0];
 
@@ -147,9 +147,7 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
         {open && activeTab === 'progress' ? <InvestigationProgress state={state} /> : null}
 
         {open && activeTab === 'board' ? (
-          <Suspense fallback={<p className="empty-note">正在整理案件资料...</p>}>
-            <CaseBoard state={state} />
-          </Suspense>
+          <CaseBoard state={state} />
         ) : null}
 
         {open && activeTab === 'log' ? <ActionLogArchive entries={state.actionLog} query={logQuery}
