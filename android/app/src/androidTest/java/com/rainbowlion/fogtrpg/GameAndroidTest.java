@@ -666,17 +666,47 @@ public class GameAndroidTest {
     @Test public void audioStartsOnTouchAndSwitchesPersist() throws Exception {
         fresh();
         try {
-            js("window.AudioContext=class extends window.AudioContext { constructor(...args){super(...args);window.qaAudio=this;} decodeAudioData(...args){return super.decodeAudioData(...args).then(b=>{window.qaDecoded=(window.qaDecoded||0)+1;return b;})} }");
+            viewport(390, 844);
+            js("window.AudioContext=class extends window.AudioContext { constructor(...args){super(...args);window.qaAudio=this;} decodeAudioData(...args){return super.decodeAudioData(...args).then(b=>{window.qaDecoded=(window.qaDecoded||0)+1;return b;})} createBufferSource(){const s=super.createBufferSource(),start=s.start.bind(s);s.start=(...args)=>{if(s.loop)window.qaLoopStarts=(window.qaLoopStarts||0)+1;return start(...args)};return s;} }");
             nativeTap("button[aria-label='声音设置']");
             until("window.qaAudio && window.qaAudio.state === 'running'");
             until("window.qaDecoded > 0");
             until("document.querySelector('#audio-settings-title')");
+            until("window.qaLoopStarts === 2");
+            fill("input[aria-label='音乐音量']", "38"); fill("input[aria-label='音效音量']", "23");
+            until("document.querySelector('input[aria-label=音乐音量]').getAttribute('aria-valuetext')==='38%' && document.querySelector('input[aria-label=音效音量]').getAttribute('aria-valuetext')==='23%'");
+            assertEquals("Changing volumes keeps the two current loops running", "2", js("window.qaLoopStarts"));
             nativeTap("button[role='switch'][aria-label='背景音乐']");
             until("document.querySelector('[aria-label=背景音乐]').getAttribute('aria-checked') === 'false'");
+            assertEquals("Music mute leaves the effects channel enabled", "true", js("document.querySelector('[aria-label=游戏音效]').getAttribute('aria-checked')==='true'"));
+            for (int[] size : new int[][] { {320,568}, {390,844}, {430,932}, {562,1000} }) {
+                viewport(size[0], size[1]);
+                assertEquals("Channel artwork and volume text stay readable", "true", js("getComputedStyle(document.querySelector('.audio-channel')).borderImageSource.includes('dossier-mount')&&parseFloat(getComputedStyle(document.querySelector('.audio-channel label')).fontSize)>=15"));
+                js("document.querySelector('.audio-preview').scrollIntoView({block:'nearest'})"); reachable(".audio-preview");
+                assertEquals("Preview has a touch-sized drawn control", "true", js("document.querySelector('.audio-preview').getBoundingClientRect().height>=44&&getComputedStyle(document.querySelector('.audio-preview'),'::before').borderImageSource.includes('brass-frame')"));
+                nativeTap(".audio-preview");
+                fill("input[aria-label='音效音量']", "0"); until("document.querySelector('.audio-preview').disabled");
+                fill("input[aria-label='音效音量']", "23"); until("!document.querySelector('.audio-preview').disabled");
+                js("document.querySelector('.audio-credits summary').scrollIntoView({block:'nearest'})"); reachable(".audio-credits summary");
+                if (!"true".equals(js("document.querySelector('.audio-credits').open"))) nativeTap(".audio-credits summary");
+                until("document.querySelector('.audio-credits').open");
+                String closeY = js("document.querySelector('.audio-close').getBoundingClientRect().y");
+                js("document.querySelector('.audio-credit-links a[href*=zero]').scrollIntoView({block:'nearest'})"); reachable(".audio-credit-links a[href*=zero]");
+                assertEquals("License link keeps a full touch target", "true", js("(()=>{const r=document.querySelector('.audio-credit-links a[href*=zero]').getBoundingClientRect();return r.width>=44&&r.height>=44})()"));
+                assertEquals("Scrolling credits leaves close fixed", closeY, js("document.querySelector('.audio-close').getBoundingClientRect().y"));
+                viewport(size[0], 300); reachable(".audio-close");
+                js("document.querySelector('.audio-credit-links a[href*=zero]').scrollIntoView({block:'nearest'})"); reachable(".audio-credit-links a[href*=zero]");
+                assertEquals("Focus cannot scroll the fixed panel frame", "0", js("document.querySelector('.audio-settings').scrollTop"));
+                nativeTap(".audio-close"); until("!document.querySelector('.audio-settings')&&document.activeElement===document.querySelector('button[aria-label=声音设置]')");
+                viewport(size[0], size[1]); nativeTap("button[aria-label=声音设置]"); until("document.querySelector('.audio-settings')");
+                assertEquals("Reopen keeps settings and folds credits", "true", js("!document.querySelector('.audio-credits').open&&document.querySelector('input[aria-label=音乐音量]').value==='38'&&document.querySelector('input[aria-label=音效音量]').value==='23'"));
+            }
+            screenshot("audio-controls");
             SystemClock.sleep(300);
             activity.recreate(); until("document.querySelector('.title-screen')"); click("声音设置");
             until("document.querySelector('[aria-label=背景音乐]').getAttribute('aria-checked') === 'false'");
             assertEquals("Effects stay independently enabled", "\"true\"", js("document.querySelector('[aria-label=游戏音效]').getAttribute('aria-checked')"));
+            assertEquals("Both channel volumes persist through Android recreation", "true", js("document.querySelector('input[aria-label=音乐音量]').value==='38'&&document.querySelector('input[aria-label=音效音量]').value==='23'"));
         } finally { activity.close(); }
     }
 }

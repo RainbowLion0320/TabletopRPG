@@ -66,8 +66,8 @@ function RichNarrativeText({ message, onMarkOpen, state }: RichNarrativeTextProp
 export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
   const ref = useRef<HTMLDivElement>(null);
   const latestMessageRef = useRef<HTMLDivElement>(null);
-  const followLatestRef = useRef(true);
   const previousLatestId = useRef<string | undefined>(undefined);
+  const previousLatestStart = useRef(0);
   const scrollId = useId();
   const [expanded, setExpanded] = useState(false);
   const [hasNewContent, setHasNewContent] = useState(false);
@@ -77,13 +77,17 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
   useLayoutEffect(() => {
     const panel = ref.current;
     const latest = latestMessageRef.current;
-    if (!panel || !latest || previousLatestId.current === latestId) return;
+    if (!panel || !latest) return;
+    const previousId = previousLatestId.current;
     // Replacing the history (loading a save) starts reading its latest entry.
-    if (previousLatestId.current && !visibleMessages.some(message => message.id === previousLatestId.current)) {
-      followLatestRef.current = true;
-    }
+    const replaced = previousId !== undefined && !visibleMessages.some(message => message.id === previousId);
+    // Scroll events can arrive after a model reply. Read the actual position against
+    // the preceding entry's start before moving anything, rather than a stale flag.
+    const followLatest = previousId === undefined || replaced || panel.scrollTop >= previousLatestStart.current - 12;
+    previousLatestStart.current = Math.min(latest.offsetTop, Math.max(0, panel.scrollHeight - panel.clientHeight));
+    if (previousId === latestId) return;
     previousLatestId.current = latestId;
-    if (followLatestRef.current) {
+    if (followLatest) {
       panel.scrollTo({ top: latest.offsetTop, behavior: 'auto' });
       setHasNewContent(false);
     } else {
@@ -96,14 +100,13 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
     if (!panel || !latest) return;
     // A long latest reply is followed from its beginning, not its final line.
     const latestStart = Math.min(latest.offsetTop, Math.max(0, panel.scrollHeight - panel.clientHeight));
-    followLatestRef.current = panel.scrollTop >= latestStart - 12;
-    if (followLatestRef.current) setHasNewContent(false);
+    previousLatestStart.current = latestStart;
+    if (panel.scrollTop >= latestStart - 12) setHasNewContent(false);
   }
 
   function readNewContent() {
     const panel = ref.current, latest = latestMessageRef.current;
     if (!panel || !latest) return;
-    followLatestRef.current = true;
     panel.scrollTo({ top: latest.offsetTop, behavior: 'auto' });
     setHasNewContent(false);
     panel.focus({ preventScroll: true });

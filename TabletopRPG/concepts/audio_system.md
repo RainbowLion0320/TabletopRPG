@@ -4,10 +4,12 @@ title: 音乐与音效系统
 tags: [audio, presentation, accessibility]
 sources: [../../docs/PRD.md, ../../docs/SPEC.md, ../../docs/GDD.md, ../../assets/audio/README.md]
 created: 2026-09-09
-updated: 2026-09-09
+updated: 2026-10-08
 ---
 
 # 音乐与音效系统
+
+0.4.21 重排声音控件为绘制档案卡与黄铜开关/推子，主要文字 15px，所有操作与来源/许可链接至少 44px。固定标题/关闭，正文独立滚动，短窗口仍可退出；鸣谢默认折叠并保留原曲、作者、许可和改编说明。滑杆保持原生键盘行为，百分比可访问；即时音量/独立静音记忆及后台暂停沿用原音频引擎和加密偏好，查看不改行动草稿。无新素材或 AI/存档规则，见 [[concepts/game_ui]]。
 
 2026-09-09 按用户要求补齐，进入当前 MVP 范围。保持悬疑调查的低音量阅读氛围。
 
@@ -23,6 +25,7 @@ updated: 2026-09-09
 验证包含音频异步竞态、开关互不影响、后台暂停、真实解码/响度/循环端点、窄屏键盘交互和 1/2/4 人导航。
 
 ## 被引用于
+- [[concepts/game_ui]]
 - [[concepts/android_app]]
 - [[index]]
 - [[overview]]

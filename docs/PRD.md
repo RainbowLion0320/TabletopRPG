@@ -8,6 +8,8 @@
 
 ## 1. Product Positioning
 
+Version 0.4.21 gives sound controls the existing illustrated dossier and brass surfaces. Close, switches, faders, preview and credit links have 44px targets, with 15px channel and credit text. Only the channel/credit body scrolls, so the close action remains available on phones, desktop and short windows. Independent live volume/mute preferences, source attribution and original music/effects remain unchanged; returning from nested sound settings keeps the current action draft. A newly arriving reply also respects an already changed reading position before the browser's scroll event is delivered.
+
 ### Android companion build — 2026-09-09
 
 Version 0.4.19 brings the in-game investigator sheet into the illustrated dossier style without new images. Skill and background text use 15px body type; close, tabs, teammate choices and search clear have 44px targets. Clearing a skill search returns to the list start and keeps typing focus. Tabs retain their reading positions during the same visit; comparing another investigator preserves the query but starts the new record at the top. A keyboard-reduced phone layout keeps teammate switching available and leaves a usable skill body. Live statistics, difficulty thresholds, possessions, turn order and drafts are unchanged.

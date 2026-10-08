@@ -243,20 +243,6 @@
 :root.fog-ui .case-board-search input { background: transparent; color: var(--text); }
 :root.fog-ui .case-board-toolbar select { padding-inline: 10px; }
 
-/* Mechanical switches and faders remain real accessible controls. */
-:root.fog-ui .audio-channel { border-top-color: #5d492e; }
-:root.fog-ui .audio-switch-track { width: 40px; height: 22px; border-radius: 2px; border: 1px solid #857051; background: #11110e; padding: 3px; box-shadow: inset 0 1px 4px #000; }
-:root.fog-ui .audio-switch-track i { width: 14px; height: 14px; border-radius: 1px; background: #998b70; box-shadow: inset 0 0 0 1px #ddc9a4; }
-:root.fog-ui [aria-checked='true'] .audio-switch-track { background: #5e4826; border-color: #d9b675; }
-:root.fog-ui [aria-checked='true'] .audio-switch-track i { transform: translateX(18px); background: #e3c58a; }
-:root.fog-ui .audio-settings input[type='range'] { appearance: none; -webkit-appearance: none; background: transparent; border: 0; box-shadow: none; }
-:root.fog-ui .audio-settings input[type='range']::-webkit-slider-runnable-track { height: 6px; background: #090a08; border: 1px solid #79623f; border-radius: 1px; }
-:root.fog-ui .audio-settings input[type='range']::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 18px; height: 24px; margin-top: -10px; border: 1px solid #e3c48b; border-radius: 2px; background: #9f7c44; box-shadow: inset 0 0 0 3px #46351e, 0 2px 4px #000a; }
-:root.fog-ui .audio-settings input[type='range']::-moz-range-track { height: 6px; background: #090a08; border: 1px solid #79623f; border-radius: 1px; }
-:root.fog-ui .audio-settings input[type='range']::-moz-range-thumb { width: 18px; height: 24px; border: 1px solid #e3c48b; border-radius: 2px; background: #9f7c44; box-shadow: inset 0 0 0 3px #46351e; }
-:root.fog-ui .audio-settings input[type='range']:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: -2px; }
-:root.fog-ui .audio-settings input[type='range']:disabled { opacity: .5; }
-:root.fog-ui .audio-credits summary { color: #c8b28c; }
 :root.fog-ui .toast { border: 1px solid #a18752; border-radius: 2px; background: #292217; color: #eddbb2; box-shadow: inset 0 0 0 2px #0c0b09, 0 4px 18px #0009; }
 
 /* Art never increases the frame allocations proven on the smallest phones. */
@@ -269,7 +255,6 @@
 :root.fog-ui.portrait-ui .narrative-toggle-btn { height: 40px; }
 :root.fog-ui.portrait-ui .narrative-header { min-height: 40px; }
 :root.fog-ui.portrait-ui .narrative-panel .npc-nameplate { min-height: 40px; }
-:root.fog-ui.portrait-ui .audio-settings .audio-preview { min-height: 40px; }
 /* Browser form fields avoid automatic input zoom on mobile WebKit. */
 :root.fog-ui.portrait-ui:not(.android-app) :is(input, select, textarea) { font-size: 16px; }
 @media (prefers-reduced-motion: reduce) {

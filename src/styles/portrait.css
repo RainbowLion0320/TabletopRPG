@@ -96,24 +96,7 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 .portrait-ui .modal-card footer > button { flex: 1; }
 .portrait-ui .modal-card label { min-width: 0; font-size: 12px; line-height: 1.3; margin: 0; gap: 4px; }
 .portrait-ui .modal-card input:not([type='range']), .portrait-ui .modal-card select { min-height: 44px; width: 100%; padding: 8px 10px; font-size: 14px; color: var(--text); background: #171410; border: 1px solid var(--line); border-radius: 5px; }
-.portrait-ui .audio-settings, .portrait-ui .dm-journal-card { display: flex; flex-direction: column; overflow: hidden; }
-.portrait-ui .audio-settings { width: min(480px, 100%); }
-.portrait-ui .audio-settings > header { flex-shrink: 0; min-height: 44px; }
-.portrait-ui .audio-close { width: 44px; height: 44px; }
-.portrait-ui .audio-settings-body { min-height: 0; overflow-y: auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
-.portrait-ui .audio-settings .audio-intro { grid-column: 1 / -1; margin: 0; font-size: 12px; }
-.portrait-ui .audio-channel { min-width: 0; padding: 8px 0 0; }
-.portrait-ui .audio-channel-heading { gap: 6px; }
-.portrait-ui .audio-channel-heading > span { font-size: 14px; gap: 6px; }
-.portrait-ui .audio-channel-heading > button { min-height: 44px; padding: 0; gap: 6px; font-size: 12px; }
-.portrait-ui .audio-settings .audio-channel label { margin-top: 6px; gap: 0; }
-.portrait-ui .audio-settings .audio-channel input[type='range'] { min-height: 44px; height: 44px; }
-.portrait-ui .audio-channel p { margin-top: 2px; font-size: 11px; }
-.portrait-ui .audio-settings .audio-preview { min-height: 36px; margin-top: 4px; padding: 0 10px; }
-.portrait-ui .audio-settings .audio-note { grid-column: 1 / -1; font-size: 11px; margin: 0; }
-.portrait-ui .audio-credits { grid-column: 1 / -1; padding-top: 0; }
-.portrait-ui .audio-credits summary { min-height: 36px; padding: 10px 0; font-size: 11px; }
-.portrait-ui .audio-credits p { overflow-wrap: anywhere; font-size: 11px; margin: 6px 0; }
+.portrait-ui .dm-journal-card { display: flex; flex-direction: column; overflow: hidden; }
 .portrait-ui .dm-journal-body { min-height: 0; overflow-y: auto; }
 .portrait-ui .dm-journal-section { margin-top: 8px; }
 .portrait-ui .dm-journal-section h3 { margin-bottom: 6px; padding-bottom: 4px; font-size: 13px; }

@@ -131,6 +131,25 @@ describe('NarrativePanel', () => {
     expect(screen.queryByRole('button', { name: '查看新剧情' })).not.toBeInTheDocument();
   });
 
+  it('preserves the actual reading position when a reply arrives before the queued scroll event', () => {
+    const state = makeState();
+    state.messages = [{ id: 'old', type: 'dm', text: '此前的记录。' }, { id: 'current', type: 'dm', text: '当前的记录。' }];
+    const { rerender } = render(<NarrativePanel state={state} />);
+    const panel = screen.getByRole('region', { name: '剧情记录' });
+    Object.defineProperties(panel, { clientHeight: { configurable: true, value: 200 }, scrollHeight: { configurable: true, value: 1600 } });
+    Object.defineProperty(panel.querySelector('[data-message-id="current"]'), 'offsetTop', { configurable: true, value: 1000 });
+    rerender(<NarrativePanel state={{ ...state }} />);
+    const scrollTo = vi.mocked(panel.scrollTo); scrollTo.mockClear();
+    panel.scrollTop = 80; // The browser has moved, but onScroll has not run yet.
+    rerender(<NarrativePanel state={{ ...state, messages: [...state.messages, { id: 'new', type: 'dm', text: '刚到达的回复。' }] }} />);
+    expect(panel.scrollTop).toBe(80); expect(scrollTo).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: '查看新剧情' })).toBeVisible();
+    Object.defineProperty(panel.querySelector('[data-message-id="new"]'), 'offsetTop', { configurable: true, value: 1300 });
+    fireEvent.scroll(panel);
+    expect(panel.scrollTop).toBe(80); expect(scrollTo).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: '查看新剧情' })).toBeVisible();
+  });
+
   it('follows new entries when reading the latest reply, and resumes from a replacement save without an unread badge', () => {
     const state = makeState();
     state.messages = [{ id: 'old', type: 'dm', text: '以前。' }, { id: 'latest', type: 'dm', text: '当前。' }];
