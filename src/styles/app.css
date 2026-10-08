@@ -140,12 +140,6 @@ button {
   cursor: not-allowed;
 }
 
-.title-save-hint {
-  color: var(--quiet);
-  font-size: 12px;
-  margin-top: 20px;
-}
-
 .game-screen {
   position: relative;
   height: 100dvh;

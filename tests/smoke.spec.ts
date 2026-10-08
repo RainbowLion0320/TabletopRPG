@@ -1490,7 +1490,63 @@ test('phone AI configuration keeps core inputs concise and preserves explicit cu
   await expect(dialog.getByLabel('API Key', { exact: true })).toHaveAttribute('type', 'password');
 });
 
-test('saving a game enables continuing the latest save from the title screen', async ({ page }) => {
+for (const scenario of [
+  { width: 320, height: 568, partySize: 1 as const },
+  { width: 390, height: 844, partySize: 4 as const },
+  { width: 1440, height: 900, partySize: 2 as const }
+]) {
+  test(`current investigation resumes drafts and survives cancelled selection at ${scenario.width}px with ${scenario.partySize} players`, async ({ page }, testInfo) => {
+    await page.setViewportSize(scenario);
+    await startNewGame(page, scenario.partySize);
+    const names = ['亨利·格雷', '艾达·华莱士', '托马斯·贝尔', '罗伯特·肖'];
+    for (let i = 0; i < scenario.partySize - 1; i++) {
+      await page.getByRole('textbox', { name: `${names[i]}的行动` }).fill(`${names[i]}先记录门廊的痕迹。`);
+      await page.getByRole('button', { name: '下一位', exact: true }).click();
+    }
+    const actor = names[scenario.partySize - 1];
+    const input = page.getByRole('textbox', { name: `${actor}的行动` });
+    await input.fill('保存时的旧草稿。');
+    await page.getByRole('button', { name: '菜单', exact: true }).click();
+    await page.getByRole('button', { name: '保存游戏', exact: true }).click();
+    const savedLibrary = await page.evaluate(() => localStorage.getItem('trpg-saves-v2'));
+    const draft = '当前的草稿。\n先记下日期，再查看窗框。';
+    await input.fill(draft);
+    await page.getByRole('button', { name: '菜单', exact: true }).click();
+    await page.getByRole('button', { name: '返回首页', exact: true }).click();
+    const resume = page.getByRole('button', { name: '继续游戏', exact: true });
+    const preview = page.getByRole('region', { name: '继续调查摘要' });
+    await expect(preview).toContainText('当前调查'); await expect(preview).toContainText('摩勒住宅');
+    for (let i = 0; i < scenario.partySize; i++) await expect(preview).toContainText(names[i]);
+    await expect(resume).toHaveClass('primary-btn'); await expect(resume).toBeFocused();
+    expect(await page.locator('.title-actions > button').first().innerText()).toBe('继续游戏');
+    expect(await page.evaluate(() => localStorage.getItem('trpg-saves-v2'))).toBe(savedLibrary);
+    expect(await preview.evaluate(e => e.scrollWidth <= e.clientWidth + 1)).toBe(true);
+    await expect(resume).toBeInViewport(); await expect(page.getByRole('button', { name: '开始游戏', exact: true })).toBeInViewport();
+    await page.screenshot({ path: testInfo.outputPath('current-investigation-title.png') });
+    if (scenario.width < 700) {
+      await page.setViewportSize({ width: scenario.width, height: 300 });
+      await expect(resume).toBeInViewport();
+      expect(await page.locator('.title-content').evaluate(e => e.scrollWidth <= e.clientWidth + 1)).toBe(true);
+      await page.setViewportSize(scenario);
+    }
+    await resume.click(); await expect(input).toHaveValue(draft);
+    expect(await page.locator('.party-compact').count()).toBe(scenario.partySize);
+    await page.getByRole('button', { name: '菜单', exact: true }).click();
+    await page.getByRole('button', { name: '重新开始', exact: true }).click();
+    await page.getByRole('button', { name: '返回', exact: true }).click();
+    await resume.click(); await expect(input).toHaveValue(draft);
+    await expect(page.locator('.party-compact.active strong')).toHaveText(actor);
+    await expect(page.locator('.party-compact.acted')).toHaveCount(scenario.partySize - 1);
+    await page.getByRole('button', { name: '菜单', exact: true }).click();
+    await page.getByRole('button', { name: '重新开始', exact: true }).click();
+    await page.getByRole('button', { name: '进入游戏', exact: true }).click();
+    await expect(page.getByRole('textbox', { name: '亨利·格雷的行动' })).toHaveValue('');
+    await expect(page.locator('.party-compact')).toHaveCount(1);
+    expect(await page.evaluate(() => localStorage.getItem('trpg-saves-v2'))).toBe(savedLibrary);
+  });
+}
+
+test('saving a game enables continuing the latest save after reloading the title screen', async ({ page }) => {
   await startNewGame(page);
 
   await page.getByRole('button', { name: /菜单/ }).click();
@@ -1501,12 +1557,23 @@ test('saving a game enables continuing the latest save from the title screen', a
   await page.getByRole('button', { name: /返回首页/ }).click();
 
   await expect(page.getByRole('heading', { name: '雾中消逝' })).toBeVisible();
-  await expect(page.getByText(/最近存档：/)).toBeVisible();
+  await expect(page.getByRole('region', { name: '继续调查摘要' })).toContainText('当前调查');
   await expect(page.getByRole('button', { name: '继续游戏' })).toBeEnabled();
 
   await page.getByRole('button', { name: '继续游戏' }).click();
   await expect(page.locator('.game-screen')).toBeVisible();
   await expect(page.getByPlaceholder('亨利·格雷 想要做什么...')).toBeVisible();
+  await page.getByRole('button', { name: '菜单', exact: true }).click();
+  await page.getByRole('button', { name: '返回首页', exact: true }).click();
+  // Web navigation keeps a live checkpoint only for this page; a fresh page uses the explicit manual save.
+  const reopened = await page.context().newPage();
+  try {
+    // This page has no gotoClean init script that erases localStorage on navigation.
+    await reopened.goto('/');
+    await expect(reopened.getByRole('region', { name: '继续调查摘要' })).toContainText('最近存档');
+    await reopened.getByRole('button', { name: '继续游戏', exact: true }).click();
+    await expect(reopened.getByRole('textbox', { name: '亨利·格雷的行动' })).toBeVisible();
+  } finally { await reopened.close(); }
 });
 
 test('save manager can load and delete explicit save slots', async ({ page }) => {
@@ -1601,7 +1668,7 @@ test('invalid save payloads are ignored on the title screen', async ({ page }) =
 
   await expect(page.getByRole('heading', { name: '雾中消逝' })).toBeVisible();
   await expect(page.getByRole('button', { name: '继续游戏' })).toBeDisabled();
-  await expect(page.getByText(/最近存档：/)).toHaveCount(0);
+  await expect(page.getByRole('region', { name: '继续调查摘要' })).toHaveCount(0);
 });
 
 test('D100 fumble has priority over success thresholds', () => {

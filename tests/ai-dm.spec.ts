@@ -891,6 +891,47 @@ test('AI DM thinking state shows an inline animated indicator while the turn is 
   await expect(indicator).toHaveCount(0);
 });
 
+test('returning home during an AI turn preserves the declarations for explicit retry and discards the old response', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  let attempts = 0;
+  let releaseOld!: () => void;
+  const oldRequest = new Promise<void>(resolve => { releaseOld = resolve; });
+  const stale = 'This old response must never enter the resumed investigation.';
+  const resumed = 'Both declared actions remain part of this investigation.';
+  await page.route('https://api.openai.com/v1/responses', async route => {
+    const body = route.request().postDataJSON() as { instructions?: string };
+    const narrator = body.instructions?.includes('COC 第七版 AI DM Agent');
+    let narrative = resumed;
+    if (narrator) {
+      const attempt = ++attempts;
+      if (attempt === 1) { await oldRequest; narrative = stale; }
+    }
+    const content = JSON.stringify(narrator ? { narrative, activeNpc: null, nextPrompt: '', playerChoices: {} } : { facts: [], nodes: [], edges: [] });
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(responseBody(content)) }).catch(() => undefined);
+  });
+  try {
+    await startGameWithApi(page);
+    await page.getByRole('textbox', { name: '亨利·格雷的行动' }).fill('Inspect the study.');
+    await page.getByRole('button', { name: '下一位', exact: true }).click();
+    await page.getByRole('textbox', { name: '艾达·华莱士的行动' }).fill('Watch the street.');
+    await page.getByRole('button', { name: '提交', exact: true }).click();
+    await expect.poll(() => attempts).toBe(1);
+    await page.getByRole('button', { name: '菜单', exact: true }).click();
+    await page.getByRole('button', { name: '返回首页', exact: true }).click();
+    await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+    await expect(page.getByRole('button', { name: '重试本轮', exact: true })).toBeVisible();
+    expect(attempts).toBe(1);
+    await expect(page.locator('.story-message.player')).toHaveCount(2);
+    releaseOld();
+    await page.getByRole('button', { name: '重试本轮', exact: true }).click();
+    await expect(page.locator('.story-message.dm p', { hasText: resumed })).toBeVisible();
+    expect(attempts).toBe(2);
+    await expect(page.getByText(stale)).toHaveCount(0);
+    await expect(page.locator('.story-message.player')).toHaveCount(2);
+    await expect(page.getByRole('button', { name: '重试本轮', exact: true })).toHaveCount(0);
+  } finally { releaseOld(); }
+});
+
 test('an aborted narrator request cannot write into a restarted game session', async ({ page }) => {
   const staleNarrative = 'This response belongs to the abandoned game session.';
   let releaseNarrator!: () => void;

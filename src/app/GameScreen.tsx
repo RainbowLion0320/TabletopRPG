@@ -16,13 +16,14 @@ import type { EntityDetail } from '../dm/entityDetail';
 import { getNarrativeMarkDetail } from '../dm/entityDetail';
 import type { NarrativeMarkTarget } from '../services/narrativeMarkup';
 import type { GameController } from './useGameController';
+import { captureGameContinuation, type GameContinuation } from './gameContinuation';
 
 interface GameScreenProps {
   autoFocusInput?: boolean;
   portrait?: boolean;
   controller: GameController;
-  onHome: () => void;
-  onRestart: () => void;
+  onHome: (continuation: GameContinuation) => void;
+  onRestart: (continuation: GameContinuation) => void;
 }
 
 export function GameScreen({ controller, onHome, onRestart, autoFocusInput = true, portrait = false }: GameScreenProps) {
@@ -40,13 +41,15 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
   }, [state]);
 
   function handleHome() {
+    const continuation = captureGameContinuation(state, controller.diceRoll);
     controller.returnHome();
-    onHome();
+    onHome(continuation);
   }
 
   function handleRestart() {
+    const continuation = captureGameContinuation(state, controller.diceRoll);
     controller.restartSetup();
-    onRestart();
+    onRestart(continuation);
   }
 
   return (

@@ -344,6 +344,20 @@ public class GameAndroidTest {
                 reachable(".game-menu-close"); reachable(".game-menu footer button"); screenshot(prefix + "-menu");
                 InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
                 until("!document.querySelector('.game-menu') && document.activeElement===document.querySelector('.menu-button')");
+                String currentDraft = js("document.querySelector('.dock-input').value");
+                String currentActor = js("document.querySelector('.party-compact.active strong').textContent");
+                menu("返回首页"); until("document.querySelector('.title-resume-preview')");
+                assertEquals("Home offers the current investigation before starting over", "true", js("document.querySelector('.title-resume-preview').textContent.includes('当前调查')&&document.querySelector('.title-actions button:first-child').textContent==='继续游戏'&&document.activeElement===document.querySelector('.title-actions .primary-btn')"));
+                assertEquals("Party preview fits the phone without horizontal overflow", "true", js("document.querySelector('.title-resume-preview').scrollWidth<=document.querySelector('.title-resume-preview').clientWidth+1"));
+                reachable(".title-actions .primary-btn"); screenshot(prefix + "-resume");
+                viewport(size[0], 300); reachable(".title-actions .primary-btn"); viewport(size[0], size[1]);
+                click("继续游戏"); until("document.querySelector('.dock-input')");
+                assertEquals("Returning home preserves the action draft", currentDraft, js("document.querySelector('.dock-input').value"));
+                assertEquals("Returning home preserves the acting investigator", currentActor, js("document.querySelector('.party-compact.active strong').textContent"));
+                menu("重新开始"); until("document.querySelector('.setup-screen')"); click("返回");
+                until("document.querySelector('.title-resume-preview')"); click("继续游戏");
+                assertEquals("Cancelling character selection preserves the same investigation", currentDraft, js("document.querySelector('.dock-input').value"));
+                assertEquals("Cancelling character selection preserves the whole party", Integer.toString(partySize), js("document.querySelectorAll('.party-compact').length"));
                 for (int i = 0; i < 4; i++) { menu("保存游戏"); SystemClock.sleep(100); }
                 menu("存档管理"); reachable(".save-manager-card footer button");
                 js("document.querySelector('.save-list').scrollTop=99999");

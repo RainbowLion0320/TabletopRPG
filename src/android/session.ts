@@ -1,8 +1,7 @@
 import { gameStorage, flushGameStorage } from '../platform/storage';
 import { hydrateGameState } from '../state/gameReducer';
 import { evaluateD100 } from '../services/dice';
-import { storyData } from '../data/storyData';
-import type { GameState, SaveSlot } from '../types/game';
+import type { GameState } from '../types/game';
 import type { DiceRollPresentation } from '../app/diceRollAnimation';
 
 export const SESSION_KEY = 'trpg-android-session-v1';
@@ -33,9 +32,4 @@ export async function writeMobileSession(state: GameState, roll: DiceRollPresent
   gameStorage.setItem(SESSION_KEY, JSON.stringify(session));
   await flushGameStorage();
   return session;
-}
-export function sessionSaveSlot(session: MobileSession): SaveSlot {
-  return { id: session.savedAt, savedAt: new Date(session.savedAt).toLocaleString('zh-CN'),
-    scene: storyData.scenes[session.state.currentScene].name,
-    players: session.state.players.map(player => player.name).join('、'), gameState: session.state, version: 8 };
 }

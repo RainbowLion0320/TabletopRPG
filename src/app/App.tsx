@@ -7,21 +7,25 @@ import type { Investigator } from '../types/game';
 import { GameScreen } from './GameScreen';
 import { useGameController } from './useGameController';
 import { usePortraitLayout } from '../platform/layout';
+import { continuationPreview, type GameContinuation } from './gameContinuation';
 
 type Screen = 'title' | 'setup' | 'game';
 
 export function App() {
   const [screen, setScreen] = useState<Screen>('title');
+  const [continuation, setContinuation] = useState<GameContinuation | null>(null);
   const game = useGameController();
   const portrait = usePortraitLayout();
 
   function startGame(players: Investigator[]) {
     game.startGame(players);
+    setContinuation(null);
     setScreen('game');
   }
 
   function loadLatest() {
-    if (game.loadLatest()) setScreen('game');
+    if (continuation) { game.restoreSession(continuation.state, continuation.roll); setScreen('game'); }
+    else if (game.loadLatest()) setScreen('game');
   }
 
   return (
@@ -29,7 +33,8 @@ export function App() {
       <AudioDirector screen={screen} state={game.state} roll={game.diceRoll} />
       {screen === 'title' ? <>
         <TitleScreen
-          hasSaves={game.saves.length > 0}
+          hasSaves={Boolean(continuation) || game.saves.length > 0}
+          continuation={continuation ? continuationPreview(continuation.state) : undefined}
           latestSave={game.saves[0]}
           onLoadLatest={loadLatest}
           onNewGame={() => setScreen('setup')}
@@ -41,8 +46,8 @@ export function App() {
         autoFocusInput={!portrait}
         portrait={portrait}
         controller={game}
-        onHome={() => setScreen('title')}
-        onRestart={() => setScreen('setup')}
+        onHome={(snapshot) => { setContinuation(snapshot); setScreen('title'); }}
+        onRestart={(snapshot) => { setContinuation(snapshot); setScreen('setup'); }}
       />}
     </>
   );

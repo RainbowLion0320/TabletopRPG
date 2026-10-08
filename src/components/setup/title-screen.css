@@ -1,0 +1,7 @@
+/* A small continuation dossier beside the primary decision, using existing art. */
+.title-resume-preview { width: min(440px, 100%); margin: -12px auto 18px; padding: 5px 12px 7px; text-align: left; border: 8px solid transparent; border-image: url('../../../assets/ui/chrome/dossier-mount.webp') 64 fill / 8px / 0 stretch; background: #201b15; }
+.title-resume-preview > div { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; color: #bea579; font-size: 11px; line-height: 1.5; }
+.title-resume-preview > strong { display: block; margin-top: 4px; color: #e6ca94; font: 400 17px/1.4 var(--ui-font); }
+.title-resume-preview > p { margin: 3px 0 0; color: #d2c4aa; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.portrait-ui .title-resume-preview { width: min(320px, 100%); padding-inline: 8px; margin: -10px auto 14px; }
+@media (max-height: 420px) { .title-resume-preview { padding-block: 3px; margin: 0 auto 10px; } .title-resume-preview > div > span:last-child { display: none; } .title-resume-preview > strong { display: inline; margin: 0 0 0 8px; } .title-resume-preview > div { display: inline-flex; } .title-resume-preview > p { font-size: 12px; } }

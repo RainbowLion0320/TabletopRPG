@@ -32,7 +32,6 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 .portrait-ui .title-subtitle { font-size: 13px; line-height: 1.6; margin: 14px 0 22px; }
 .portrait-ui .title-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 320px; margin-inline: auto; }
 .portrait-ui .title-actions > :nth-child(-n+2) { grid-column: 1 / -1; min-height: 48px; }
-.portrait-ui .title-save-hint { font-size: 11px; line-height: 1.5; margin: 12px 0 0; overflow-wrap: anywhere; }
 /* All current scene paintings are 1896 × 1080. Reserve their own wide frame
    instead of cropping them to fill the portrait screen behind the reading UI. */
 /* Let the scene yield space before reading drops below 140px (plus the frame border). */

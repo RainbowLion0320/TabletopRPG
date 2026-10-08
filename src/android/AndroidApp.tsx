@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { App as NativeApp } from '@capacitor/app';
 import { AudioDirector } from '../audio/AudioDirector';
 import { gameAudio } from '../audio/audio';
@@ -11,7 +11,8 @@ import { useGameController } from '../app/useGameController';
 import { readApiConfig } from '../services/storage';
 import { flushGameStorage } from '../platform/storage';
 import { isNativeAndroid } from './native';
-import { readMobileSession, sessionSaveSlot, writeMobileSession, type MobileSession } from './session';
+import { readMobileSession, writeMobileSession, type MobileSession } from './session';
+import { continuationPreview, type GameContinuation } from '../app/gameContinuation';
 import type { Investigator } from '../types/game';
 
 type Screen = 'title' | 'setup' | 'game';
@@ -26,17 +27,23 @@ export function AndroidApp() {
   const backHandler = useRef(() => {});
   useDialogFocus(exitOpen, exitRef, () => setExitOpen(false));
 
+  const rememberSession = useCallback(({ state, roll }: GameContinuation) => {
+    // Keep the current investigation usable before disk I/O settles or fails.
+    setSession({ version: 1, savedAt: Date.now(), state, roll });
+    const write = writeMobileSession(state, roll);
+    lastSession.current = write;
+    void write.then(value => { if (lastSession.current === write) setSession(value); })
+      .catch(() => { if (lastSession.current === write) setNotice('自动保存失败，请检查设备存储空间。当前游戏仍可继续。'); });
+  }, []);
+
   useEffect(() => {
     try { setSession(readMobileSession()); }
     catch (error) { setNotice(error instanceof Error ? error.message : '无法读取自动续玩记录，请使用手动存档。'); }
   }, []);
   useEffect(() => {
     if (screen !== 'game' || !game.state.players.length) return;
-    const write = writeMobileSession(game.state, game.diceRoll);
-    lastSession.current = write;
-    void write.then(value => { if (lastSession.current === write) setSession(value); })
-      .catch(() => setNotice('自动保存失败，请检查设备存储空间。当前游戏仍可继续。'));
-  }, [screen, game.state, game.diceRoll]);
+    rememberSession({ state: game.state, roll: game.diceRoll });
+  }, [screen, game.state, game.diceRoll, rememberSession]);
 
   backHandler.current = () => {
     const dialogs = document.querySelectorAll('[role="dialog"][aria-modal="true"]');
@@ -74,11 +81,14 @@ export function AndroidApp() {
   return <>
     <AudioDirector screen={screen} state={game.state} roll={game.diceRoll} />
     {screen === 'title' ? <>
-      <TitleScreen hasSaves={Boolean(session) || game.saves.length > 0} latestSave={session ? sessionSaveSlot(session) : game.saves[0]}
+      <TitleScreen hasSaves={Boolean(session) || game.saves.length > 0} latestSave={game.saves[0]}
+        continuation={session ? continuationPreview(session.state) : undefined}
         onLoadLatest={resume} onNewGame={() => setScreen('setup')} onOpenApi={game.openApiSettings} />
       <ApiConfigModal open={game.apiOpen} onClose={() => game.setApiOpen(false)} onSave={game.saveApi} />
     </> : screen === 'setup' ? <CharacterSetup portrait onBack={() => setScreen('title')} onStart={start} /> :
-      <GameScreen controller={game} portrait autoFocusInput={false} onHome={() => setScreen('title')} onRestart={() => setScreen('setup')} />}
+      <GameScreen controller={game} portrait autoFocusInput={false}
+        onHome={(snapshot) => { rememberSession(snapshot); setScreen('title'); }}
+        onRestart={(snapshot) => { rememberSession(snapshot); setScreen('setup'); }} />}
     {notice && <div className="android-notice" role="alert"><span>{notice}</span><button onClick={() => setNotice('')}>知道了</button></div>}
     {screen !== 'game' && game.toast && <div className="toast" role="status">{game.toast}</div>}
     {exitOpen && <div className="modal-backdrop"><div ref={exitRef} className="modal-card" role="dialog" aria-modal="true" aria-labelledby="exit-title" tabIndex={-1}>
