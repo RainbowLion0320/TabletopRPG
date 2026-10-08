@@ -75,6 +75,11 @@ public class GameAndroidTest {
         down.recycle(); up.recycle();
     }
     private void configure(String endpoint, String protocol) throws Exception {
+        boolean openedMenu = false;
+        if (!"true".equals(js("Boolean(document.querySelector('#api-config-modal-title'))"))) {
+            if ("true".equals(js("Boolean(document.querySelector('.title-screen'))"))) click("AI 设置");
+            else { menu("AI 设置"); openedMenu = true; }
+        }
         until("document.querySelector('#api-config-modal-title')");
         fill("#api-provider", "custom");
         until("document.querySelector('#api-provider').value === 'custom' && document.querySelector('.api-connection').open");
@@ -83,6 +88,9 @@ public class GameAndroidTest {
         fill("#api-key", "android-qa-only-token");
         fill("#api-model", "android-qa-model");
         click("保存"); until("!document.querySelector('#api-config-modal-title')");
+        if (openedMenu && "true".equals(js("Boolean(document.querySelector('.game-menu'))"))) {
+            click("继续调查"); until("!document.querySelector('.game-menu')");
+        }
     }
 
     private void viewport(int width, int height) throws Exception {
@@ -111,6 +119,31 @@ public class GameAndroidTest {
         if (!"true".equals(js("Boolean(document.querySelector('.game-menu.open'))")))
             js("document.querySelector('.menu-button').click()");
         click(label);
+    }
+
+    @Test public void bundledDefaultsStartWithoutConfigurationAndKeepPlayerSettings() throws Exception {
+        fresh();
+        try {
+            viewport(390, 844); click("AI 设置"); until("document.querySelector('#api-key')");
+            assertEquals("APK ships the intended model and Token Plan service with a masked credential", "true", js("document.querySelector('#api-provider').value==='mimo'&&document.querySelector('#api-protocol').value==='responses'&&document.querySelector('#api-model').value==='mimo-v2.6-pro'&&document.querySelector('#api-endpoint').value==='https://token-plan-cn.xiaomimimo.com/v1'&&document.querySelector('#api-key').type==='password'&&document.querySelector('#api-key').value.length>0"));
+            js("document.querySelector('.api-config-close').click()");
+            click("开始游戏"); click("进入游戏"); until("document.querySelector('.action-dock')");
+            assertEquals("First-time player starts directly without an API prompt", "false", js("Boolean(document.querySelector('#api-config-modal-title'))"));
+            // Explicit delivery probe only; ordinary instrumentation stays offline.
+            if ("true".equals(InstrumentationRegistry.getArguments().getString("liveMiMo"))) {
+                fill(".dock-input", "温和询问伊莎贝拉，她父亲平时有哪些习惯，以及最近心情是否有变化。");
+                click("提交");
+                long deadline = SystemClock.elapsedRealtime() + 150000;
+                while (SystemClock.elapsedRealtime() < deadline && !"true".equals(js("Boolean(document.querySelectorAll('.story-message.dm').length>1 || document.querySelector('.action-dock [role=status]'))"))) SystemClock.sleep(500);
+                assertEquals("Bundled service completes a real first turn", "true", js("document.querySelectorAll('.story-message.dm').length>1&&!document.querySelector('.action-dock [role=status]')&&!/返回格式无效|request_check/.test(document.querySelector('.narrative-scroll').innerText)"));
+                screenshot("mimo-default-live-turn");
+            }
+            // Switch to an offline QA service before any turn submission.
+            configure("http://127.0.0.1:1/v1", "responses");
+            activity.close(); activity = ActivityScenario.launch(MainActivity.class); until("document.querySelector('.title-screen')");
+            click("AI 设置"); until("document.querySelector('#api-key')");
+            assertEquals("Player settings win after process restart", "true", js("document.querySelector('#api-provider').value==='custom'&&document.querySelector('#api-endpoint').value==='http://127.0.0.1:1/v1'&&document.querySelector('#api-key').value==='android-qa-only-token'&&document.querySelector('#api-model').value==='android-qa-model'"));
+        } finally { activity.close(); }
     }
 
     @Test public void portraitSelectionStaysSingleColumnOnWidePhones() throws Exception {
@@ -152,7 +185,7 @@ public class GameAndroidTest {
                 assertEquals("Home video does not create a page scrollbar", "true", js("document.querySelector('.title-screen').scrollHeight<=document.querySelector('.title-screen').clientHeight+1"));
                 click("AI 设置");
                 until("document.querySelector('.api-config-fields')");
-                assertEquals("Fresh API setup is quiet and folds the official connection", "true", js("!document.querySelector('.api-config-card [role=alert]')&&!document.querySelector('.api-connection').open"));
+                assertEquals("Bundled MiMo settings are quiet, masked and show the correct connection", "true", js("!document.querySelector('.api-config-card [role=alert]')&&document.querySelector('#api-provider').value==='mimo'&&document.querySelector('#api-model').value==='mimo-v2.6-pro'&&document.querySelector('#api-key').type==='password'&&document.querySelector('.api-connection').open"));
                 for (String field : new String[] {"#api-provider", "#api-key", "#api-model", ".api-connection summary"}) reachable(field);
                 reachable(".api-config-close");
                 reachable(".api-config-card footer .primary-btn"); screenshot(prefix + "-api");
@@ -199,6 +232,15 @@ public class GameAndroidTest {
                     js("document.querySelector('.investigator-party button:first-child').click()");
                 }
                 screenshot(prefix + "-attributes"); click("技能");
+                fill(".investigator-search input", "闪避");
+                assertEquals("Dodge uses half of percentile DEX", "true", js("Array.from(document.querySelectorAll('.investigator-skills tbody td')).map(e=>e.textContent).join(',')==='30,15,6'"));
+                if (partySize > 1) {
+                    js("document.querySelector('.investigator-party button:last-child').click()");
+                    assertEquals("Comparing teammates keeps the skill query", "true", js("document.querySelector('.investigator-search input').value==='闪避'"));
+                    String expectedDodge = partySize == 4 ? "50,25,10" : "35,17,7";
+                    assertEquals("Teammate skill uses its own corrected allocation", JSONObject.quote(expectedDodge), js("Array.from(document.querySelectorAll('.investigator-skills tbody td')).map(e=>e.textContent).join(',')"));
+                    js("document.querySelector('.investigator-party button:first-child').click()");
+                }
                 fill(".investigator-search input", "侦查");
                 assertEquals("Skill thresholds match the game rules", "true", js("Array.from(document.querySelectorAll('.investigator-skills tbody td')).map(e=>e.textContent).join(',')==='75,37,15'"));
                 fill(".investigator-search input", ""); js("document.querySelector('.investigator-body').scrollTop=99999");

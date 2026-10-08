@@ -4,6 +4,22 @@ import { InvestigatorSheet } from '../../src/components/game/InvestigatorSheet';
 import { makeInvestigator } from '../dm/fixtures';
 
 describe('InvestigatorSheet', () => {
+  it('keeps a skill search when comparing teammates and clears it after closing the sheet', () => {
+    const players = [makeInvestigator({ id: 'henry', name: '亨利' }, { 侦查: 75 }), makeInvestigator({ id: 'ada', name: '艾达' }, { 侦查: 50 })];
+    const select = vi.fn();
+    const { rerender, unmount } = render(<InvestigatorSheet players={players} selectedId="henry" onSelect={select} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('tab', { name: '技能' }));
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: '侦查' } });
+    fireEvent.click(screen.getByRole('button', { name: '艾达', exact: true }));
+    expect(select).toHaveBeenCalledWith('ada');
+    rerender(<InvestigatorSheet players={players} selectedId="ada" onSelect={select} onClose={vi.fn()} />);
+    expect(screen.getByRole('searchbox')).toHaveValue('侦查');
+    expect(screen.getAllByRole('cell').map(cell => cell.textContent)).toEqual(['50', '25', '10']);
+    unmount();
+    render(<InvestigatorSheet players={players} selectedId="ada" onSelect={select} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('tab', { name: '技能' }));
+    expect(screen.getByRole('searchbox')).toHaveValue('');
+  });
   it('shows live resources and uses the actual check thresholds, including current luck', () => {
     const player = makeInvestigator({ id: 'henry', name: '亨利', currentHp: 3, currentMp: 0, currentSan: 18 }, { 侦查: 67 });
     player.luck = 23;

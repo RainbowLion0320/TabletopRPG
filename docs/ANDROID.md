@@ -1,10 +1,10 @@
 # Android APK 开发与交付
 
-安卓版独立于网页入口，复用 React/TypeScript 游戏、COC 规则与剧情引擎，通过 Capacitor 原生 Android 容器安装运行。首页、选角、剧情、骰子、案件板、音乐和音效都随 APK 打包；AI DM 推进需要联网和玩家自己的 API 配置。没有内置开发者 API Key，也不依赖电脑启动网页服务。
+安卓版独立于网页入口，复用 React/TypeScript 游戏、COC 规则与剧情引擎，通过 Capacitor 原生 Android 容器安装运行。首页、选角、剧情、骰子、案件板、音乐和音效都随 APK 打包；AI DM 推进需要联网。按用户 2026-10-08 的授权，正式 APK 内置构建环境提供的 MiMo Token Plan 配置，无需新手填写 API，也不依赖电脑启动网页服务。
 
 ## 安装游玩
 
-安装 `output/apk/Fog-TRPG-0.4.9.apk`，打开《雾中消逝》，开始游戏并选择调查员（默认单人，可选 1–4 人）。首次进入主游戏会显示 **AI DM 配置**，选择服务商并填写 API Key / 模型后保存；MiMo、自定义服务或非默认连接需填写服务地址与协议，连接区自动展开。之后可以在游戏菜单的「AI 设置」中修改。已安装 0.2.0–0.4.8 的玩家直接覆盖安装，沿用原签名和本机数据。
+安装 `output/apk/Fog-TRPG-0.4.10.apk`，打开《雾中消逝》，开始游戏并选择调查员（默认单人，可选 1–4 人）。新安装可直接使用 `mimo-v2.6-pro`；Token Plan 中国区服务为 `https://token-plan-cn.xiaomimimo.com/v1`，使用 Responses 协议。已有玩家手动保存的连接优先，不自动覆盖；首页或游戏菜单的「AI 设置」仍可修改服务。密钥默认遮蔽。已安装 0.2.0–0.4.9 的玩家覆盖安装，沿用原签名和本机数据。
 
 - Android 7.0 / API 24 及以上，Android System WebView 110 及以上；过旧的 WebView 会显示更新指引。
 - 0.4.9 支持手机多行行动与回车换行，输入高度随内容变化并设上限；下一位接续输入，多人行动状态清楚，草稿换行正常恢复。回看剧情时保留位置，新回复通过临时「新内容」入口读取；内部消息不打断阅读。
@@ -47,6 +47,8 @@ npm run android:apk
 
 `android:apk` 完成剧本同步检查、TypeScript 检查、安卓版资源构建、Capacitor 同步、Gradle release、zipalign、正式签名及签名校验，输出 APK 与同名 `.sha256`。不是 debug 签名，也不加载远程网页。
 
+发布与原生测试构建要求 `APIKEY_MIMO`，按当前进程、Windows 用户、机器环境的顺序读取。只给资源构建子进程临时提供，之后恢复进程原值；不写 `.env` 或源码，不打印值。Android 构建只接受 Token Plan 密钥与官方区域地址，模型固定 `mimo-v2.6-pro`；可用 `MIMO_TOKEN_PLAN_ENDPOINT` 显式选择官网提供的新加坡或欧洲区域。直接运行 `build:android:web` 时需在当前进程提供 `APIKEY_MIMO`。开发预览始终清空默认连接，不暴露系统密钥。网页构建维持原来的独立配置。
+
 | 命令 | 用途 |
 | --- | --- |
 | `npm run android:dev` | 5275 端口预览手机布局，浏览器预览仍走浏览器存储/网络 |
@@ -73,7 +75,8 @@ npm run android:apk
 - `src/dm/llm/transport.ts`：协议适配器下方的 HTTP 端口；模型业务模块仍只能通过现有 `client.ts`，没有额外 endpoint 直调。
 - `AiTransportPlugin.java`：OkHttp 请求，不受浏览器 CORS 限制；支持取消、超时、响应大小上限，保留 HTTP 状态分类，禁止自动跨地址重定向。HTTPS 使用系统证书校验；允许玩家显式配置本地 HTTP 网关。
 - `src/android/session.ts`：自动续玩版本与检定一致性检查、已有剧本迁移链、确定性恢复骰点。
-- Android 构建不加载 `.env*`，也不采纳 `VITE_AI_*`。APK 不包含个人密钥、开发服务器地址、源映射或测试代码。
+- Android 构建不加载 `.env*`，也不采纳 `VITE_AI_*`；只在构建时按上述约定注入已授权的共享 Token Plan 配置。分发 APK 的密钥可被提取；Git 只提交读取/注入逻辑。APK 不包含开发服务器地址、源映射或测试代码。
+- MiMo 使用官方支持的 JSON 模式；有工具时保留 text 模式以支持真实调用，最终 JSON 阶段使用 json_object。schema 在指令中传递，现有游戏结构/语义校验与有限恢复仍生效；推理只在当前工具往返中保留，不展示给玩家。为推理预留有限输出额度。参见 [官方协议](https://mimo.mi.com/docs/en-US/api/chat/responses) 与 [结构化输出](https://mimo.mi.com/docs/en-US/quick-start/usage-guide/text-generation/structured-output)。
 - PNG 美术在 Android 构建时缩放并转换 WebP，缓存于忽略目录 `output/android-art/`。原网页素材、骰子美术、字体和音频源文件不改动；音乐/音效许可与游戏内鸣谢继续保留。
 
 ## 验证

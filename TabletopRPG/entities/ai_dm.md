@@ -4,12 +4,14 @@ title: AI DM 系统
 tags: [ai, core, implemented]
 sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-14
-updated: 2026-09-28
+updated: 2026-10-08
 ---
 
 # AI DM 系统
 
 ## 角色定位
+
+0.4.10 APK 按用户新授权默认连接 MiMo Token Plan / `mimo-v2.6-pro`；既有玩家连接优先，源码与网页不携带真实密钥。MiMo 的 Responses / Chat 适配改用受支持的正文格式，schema 作为正向格式契约；工具阶段保留普通输出，JSON-only 阶段使用 JSON 模式。推理随当前工具往返保留，始终不进入玩家正文。模型先回工具而没有正文时，提议暂存，再获取一次 JSON 正文，最后仍由 Director 审核，不提前掷骰或写入状态。见 [[concepts/android_app]] 与 [构建说明](../../docs/ANDROID.md)。
 
 0.4.6 修复结构化响应中的开放字典：按本轮玩家/NPC 名单声明字段，可选心智值使用 null，兼容严格 API。检定识别区分分句内否定与将来动作，部分多人工具按“角色 + 技能”补全；已确认骰果使用结构化等级并兼容旧文本，“未能成功”不会误当成功。质量提示不再额外生成，KP 笔记与原始接口诊断只留开发侧。见 [回合流畅性验收](../../docs/reviews/2026-09-28-turn-smoothness.md)。
 

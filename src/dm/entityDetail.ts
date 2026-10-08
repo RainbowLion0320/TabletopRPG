@@ -206,7 +206,7 @@ const SKILL_GROUP_NAMES = {
 function skillDetail(skillName: string, state: GameState): EntityDetail | null {
   const skill = allSkills.find((item) => item.name === skillName);
   if (!skill) return null;
-  const base = typeof skill.base === 'number' ? `${skill.base}%` : skill.base === 'EDU' ? '等于 EDU' : '等于 DEX×2';
+  const base = typeof skill.base === 'number' ? `${skill.base}%` : skill.base === 'EDU' ? '等于 EDU' : 'DEX÷2，向下取整';
   const values = state.players.map((player) => {
     const value = player.skills[skillName];
     const total = value ? value.base + value.added : typeof skill.base === 'number' ? skill.base : '按属性计算';

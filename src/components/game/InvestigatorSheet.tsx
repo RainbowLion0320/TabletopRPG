@@ -32,7 +32,6 @@ export function InvestigatorSheet({ players, selectedId, onSelect, onClose }: In
   if (!player) return null;
 
   function selectPlayer(playerId: string) {
-    setQuery('');
     onSelect(playerId);
   }
 

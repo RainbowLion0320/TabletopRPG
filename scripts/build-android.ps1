@@ -17,8 +17,14 @@ $env:ANDROID_SDK_ROOT = $sdk
 $env:GRADLE_USER_HOME = Join-Path $toolRoot 'gradle-cache'
 Set-Content -LiteralPath android/local.properties -Value ('sdk.dir=' + $sdk.Replace('\','/')) -Encoding ascii
 function Check-Exit([string]$step) { if ($LASTEXITCODE -ne 0) { throw "$step failed (exit $LASTEXITCODE)." } }
-& npm.cmd run build:android:web
-Check-Exit 'Android web build'
+$previousMimoKey = $env:APIKEY_MIMO
+try {
+    if (!$env:APIKEY_MIMO) { $env:APIKEY_MIMO = [Environment]::GetEnvironmentVariable('APIKEY_MIMO', 'User') }
+    if (!$env:APIKEY_MIMO) { $env:APIKEY_MIMO = [Environment]::GetEnvironmentVariable('APIKEY_MIMO', 'Machine') }
+    if (!$DebugBuild -and !$env:APIKEY_MIMO) { throw 'Release and native-test APK builds require APIKEY_MIMO in the process, user or machine environment.' }
+    & npm.cmd run build:android:web
+    Check-Exit 'Android web build'
+} finally { $env:APIKEY_MIMO = $previousMimoKey; $previousMimoKey = $null }
 & npx.cmd cap sync android
 Check-Exit 'Capacitor sync'
 

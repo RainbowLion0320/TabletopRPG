@@ -80,7 +80,7 @@ export interface PresetInvestigator {
 
 export interface SkillDefinition {
   name: string;
-  base: number | 'EDU' | 'DEX×2';
+  base: number | 'EDU' | 'DEX÷2';
   group: 'observe' | 'social' | 'know' | 'combat' | 'action' | 'special';
 }
 

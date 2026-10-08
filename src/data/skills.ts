@@ -59,7 +59,7 @@ export const allSkills: SkillDefinition[] = [
   { name: '考古学', base: 1, group: 'know' },
   { name: '母语', base: 'EDU', group: 'know' },
   { name: '格斗（拳）', base: 25, group: 'combat' },
-  { name: '闪避', base: 'DEX×2', group: 'combat' },
+  { name: '闪避', base: 'DEX÷2', group: 'combat' },
   { name: '射击（手枪）', base: 20, group: 'combat' },
   { name: '急救', base: 30, group: 'action' },
   { name: '潜行', base: 20, group: 'action' },

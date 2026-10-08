@@ -58,7 +58,7 @@ src/
 
 - 默认属性。
 - HP/MP/SAN/Luck 派生规则。
-- `EDU`、`DEX×2` 等技能基础值解析。
+- `EDU`、`DEX÷2` 等技能基础值解析；闪避按百分制敏捷一半向下取整。
 - 未知技能兜底值。
 - 普通/困难/极难难度阈值。
 - D100 大失败阈值。
@@ -79,7 +79,7 @@ AI Provider 配置由 `ApiConfig` 统一承载：`provider`、`protocol`、`endp
 
 ## 关键约束
 
-- API Key 由用户在 UI 中输入并保存在本地浏览器，不能硬编码进仓库。
+- 网页 API Key 由用户在 UI 中输入并保存在本地浏览器。0.4.10 APK 按用户授权从系统 `APIKEY_MIMO` 在构建时注入默认 MiMo 连接，玩家自行保存的配置仍优先。真实密钥不能硬编码进仓库、日志或网页产物；开发预览不读取系统密钥。见 [[concepts/android_app]]。
 - 游戏数值公式优先进入 `src/data/gameRules.ts`，避免 UI、服务和 reducer 各自硬编码。
 - AI Provider 不做失败后自动猜协议；协议由 provider 默认值或用户配置明确决定。
 - Provider 从 OpenAI 切换到 MiMo/custom 时清空 OpenAI endpoint/model，避免把兼容协议请求误发到官方端点。

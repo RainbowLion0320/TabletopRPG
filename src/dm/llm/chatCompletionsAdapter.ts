@@ -29,11 +29,13 @@ export async function requestChatCompletionsJson(
   config: ResolvedApiConfig,
   request: LlmJsonRequest
 ): Promise<LlmResult> {
+  const mimo = config.provider === 'mimo';
+  const hasTools = request.useTools !== false && Boolean(request.tools?.length);
   const body: Record<string, unknown> = {
     model: config.model,
-    messages: toChatMessages(request.instructions, request.input),
-    max_tokens: request.maxOutputTokens ?? 1024,
-    response_format: {
+    messages: toChatMessages(mimo ? `${request.instructions}\n返回正文时输出符合以下 schema 的 JSON 对象；需要工具时使用工具通道。\n${JSON.stringify(request.schema)}` : request.instructions, request.input),
+    [mimo ? 'max_completion_tokens' : 'max_tokens']: (request.maxOutputTokens ?? 1024) + (mimo ? 4096 : 0),
+    response_format: mimo ? { type: hasTools ? 'text' : 'json_object' } : {
       type: 'json_schema',
       json_schema: {
         name: request.schemaName,
@@ -75,7 +77,7 @@ export async function requestChatCompletionsJson(
   return {
     rawText: extractChatText(message?.content),
     toolCalls,
-    outputItems: toolCalls.map(toOutputItem),
+    outputItems: toolCalls.map(call => ({ ...toOutputItem(call), ...(typeof message?.reasoning_content === 'string' ? { reasoning: message.reasoning_content } : {}) })),
     finishReason: firstFinishReason(data)
   };
 }
@@ -96,15 +98,18 @@ function toChatMessages(
 ): Array<Record<string, unknown>> {
   const messages: Array<Record<string, unknown>> = [{ role: 'system', content: instructions }];
   let pendingToolCalls: Array<Record<string, unknown>> = [];
+  let pendingReasoning: string | undefined;
 
   const flushToolCalls = () => {
     if (!pendingToolCalls.length) return;
     messages.push({
       role: 'assistant',
       content: '',
-      tool_calls: pendingToolCalls
+      tool_calls: pendingToolCalls,
+      ...(pendingReasoning !== undefined ? { reasoning_content: pendingReasoning } : {})
     });
     pendingToolCalls = [];
+    pendingReasoning = undefined;
   };
 
   for (const item of input) {
@@ -115,8 +120,10 @@ function toChatMessages(
     }
     if (item.type === 'function_call') {
       pendingToolCalls.push(toChatToolCall(item));
+      if (item.reasoning !== undefined) pendingReasoning = item.reasoning;
       continue;
     }
+    if (item.type === 'reasoning') continue;
     flushToolCalls();
     messages.push(toChatToolOutput(item));
   }

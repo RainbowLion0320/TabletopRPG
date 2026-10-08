@@ -11,6 +11,8 @@ export interface LlmFunctionCallItem {
   callId?: string;
   name: string;
   arguments: string;
+  /** Provider reasoning retained privately for chat tool continuations. */
+  reasoning?: string;
 }
 
 export interface LlmFunctionOutputItem {
@@ -19,10 +21,17 @@ export interface LlmFunctionOutputItem {
   output: string;
 }
 
+/** Opaque reasoning item used only within the current Responses tool exchange. */
+export interface LlmReasoningItem {
+  type: 'reasoning';
+  data: Record<string, unknown>;
+}
+
 export type LlmInputItem =
   | LlmTextInputMessage
   | LlmFunctionCallItem
-  | LlmFunctionOutputItem;
+  | LlmFunctionOutputItem
+  | LlmReasoningItem;
 
 export interface LlmToolCall {
   id?: string;

@@ -768,6 +768,7 @@ export async function callNarrator(
   // function calling 主路径；解析失败时再切到 JSON-only 修复轮。
   let useFnCall = true;
   let lookupRoundsUsed = 0;
+  let stagedCalls: DmToolCall[] = [];
   let lastMalformedRaw = '';
   let semanticCorrection = '';
   const maxAttempts = input.maxAttempts ?? 2;
@@ -796,6 +797,22 @@ export async function callNarrator(
           continue;
         }
 
+        // Tool-first providers may return proposals before their JSON prose.
+        // Acknowledge receipt once; the Director still decides whether to apply
+        // them after the final narrative. No dice or state changes happen here.
+        if (!payload.raw.trim() && parsedCalls.some(call => call.name !== 'lookup_entity') && !stagedCalls.length) {
+          stagedCalls = parsedCalls.filter(call => call.name !== 'lookup_entity');
+          messages.push(...payload.outputItems);
+          for (const call of parsedCalls) {
+            messages.push(call.name === 'lookup_entity' && input.lookupResolver
+              ? buildLookupResultMessage(call, input.lookupResolver)
+              : { type: 'function_call_output', callId: call.callId ?? call.name,
+                output: JSON.stringify({ status: 'proposed', pending: true, message: '提议已收到，等待本轮正文共同审核；骰子与状态尚未结算。' }) });
+          }
+          useFnCall = false;
+          continue;
+        }
+
         // 最终响应：解析 JSON 成型
         let shaped: ReturnType<typeof shapeNarratorJson>;
         try {
@@ -804,7 +821,7 @@ export async function callNarrator(
           lastMalformedRaw = payload.raw;
           throw err;
         }
-        const finalCalls = parsedCalls.filter((c) => c.name !== 'lookup_entity');
+        const finalCalls = [...stagedCalls, ...parsedCalls.filter((c) => c.name !== 'lookup_entity')];
         const semanticIssue = normalizeValidationIssue(
           input.validateOutput?.(shaped, finalCalls) ?? null
         );
@@ -824,8 +841,7 @@ export async function callNarrator(
           keywords: shaped.keywords,
           // lookup_entity 已被回填不返还给上层，避免被 Resolver 误记为疑似事件。
           toolCalls: finalCalls,
-          usedFunctionCalling:
-            useFnCall && Array.isArray(payload.rawToolCalls) && payload.rawToolCalls.length > 0,
+          usedFunctionCalling: stagedCalls.length > 0 || (useFnCall && payload.rawToolCalls.length > 0),
           semanticWarnings: semanticIssue ? [semanticIssue.message] : undefined
         };
       }
@@ -849,6 +865,7 @@ export async function callNarrator(
       // 语义错误仍需工具能力；只有格式错误才切到 JSON-only 兜底。
       useFnCall = err instanceof NarratorSemanticError;
       lookupRoundsUsed = 0;
+      stagedCalls = [];
       // 重置话柄到首轮 user（丢弃上一次部分走过的 lookup 循环中间态）。
       messages.length = 0;
       messages.push(...input.history.filter((turn) => turn.content.trim()));

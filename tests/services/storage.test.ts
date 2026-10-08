@@ -84,6 +84,15 @@ describe('storage save compatibility', () => {
 });
 
 describe('AI API config storage', () => {
+  it('starts from bundled MiMo and keeps a saved player connection ahead of it', () => {
+    vi.stubEnv('VITE_AI_PROVIDER', 'mimo'); vi.stubEnv('VITE_AI_PROTOCOL', 'responses');
+    vi.stubEnv('VITE_AI_ENDPOINT', 'https://token-plan-cn.xiaomimimo.com/v1');
+    vi.stubEnv('VITE_AI_API_KEY', 'tp-test-only'); vi.stubEnv('VITE_AI_MODEL', 'mimo-v2.6-pro');
+    expect(readApiConfig()).toMatchObject({ provider: 'mimo', model: 'mimo-v2.6-pro', apiKey: 'tp-test-only' });
+    expect(localStorage.getItem('trpg-api')).toBeNull();
+    localStorage.setItem('trpg-api', JSON.stringify({ provider: 'custom', protocol: 'responses', apiKey: 'saved-key', endpoint: 'https://player.example/v1', model: 'player-model' }));
+    expect(readApiConfig()).toMatchObject({ provider: 'custom', endpoint: 'https://player.example/v1', model: 'player-model', apiKey: 'saved-key' });
+  });
   it('reads provider, protocol, endpoint, key, and model from VITE_AI env defaults', () => {
     vi.stubEnv('VITE_AI_PROVIDER', 'custom');
     vi.stubEnv('VITE_AI_PROTOCOL', 'chat-completions');

@@ -555,6 +555,8 @@ for (const size of [{ width: 390, height: 844, party: 1 }, { width: 1440, height
     await page.screenshot({ path: testInfo.outputPath('sheet-attributes.png') });
     await sheet.getByRole('tab', { name: '技能', exact: true }).click();
     const search = sheet.getByRole('searchbox', { name: '搜索技能' });
+    await search.fill('闪避');
+    await expect(sheet.locator('tbody td')).toHaveText(['30', '15', '6']);
     await search.fill('侦查');
     await expect(sheet.locator('tbody tr')).toHaveCount(1);
     await expect(sheet.locator('tbody td')).toHaveText(['75', '37', '15']);

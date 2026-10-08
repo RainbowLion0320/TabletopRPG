@@ -10,5 +10,5 @@
     "types": ["node"],
     "noEmit": true
   },
-  "include": ["vite.config.ts", "vite.android.config.ts", "capacitor.config.ts", "src/config/aiConfig.ts", "src/types/game.ts"]
+  "include": ["vite.config.ts", "vite.android.config.ts", "capacitor.config.ts", "src/config/aiConfig.ts", "src/config/androidBuildDefaults.ts", "src/types/game.ts"]
 }

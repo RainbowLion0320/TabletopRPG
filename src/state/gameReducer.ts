@@ -18,7 +18,8 @@ import {
   finaleSuggestionsNeedReplacement
 } from '../services/finaleChoices';
 import { allSkills } from '../data/skills';
-import { deriveInvestigatorStats, gameRules, resolveSkillBase } from '../data/gameRules';
+import { presets } from '../data/presets';
+import { deriveInvestigatorStats, gameRules, getDifficultyThreshold, resolveSkillBase } from '../data/gameRules';
 import {
   buildFactCaseBoardPatch,
   normalizeCaseBoardText,
@@ -132,13 +133,23 @@ function normalizeSkillValue(value: unknown, fallbackBase: number): SkillValue {
   return { base: fallbackBase, added: Math.max(0, total - fallbackBase) };
 }
 
-function normalizeSkills(value: unknown, attrs: Attributes) {
+function normalizeSkills(value: unknown, attrs: Attributes, presetDodgeTotal?: number) {
   const source = isRecord(value) ? value : {};
   const skills: Record<string, SkillValue> = {};
 
   allSkills.forEach((skill) => {
     const base = resolveSkillBase(skill.base, attrs);
-    skills[skill.name] = normalizeSkillValue(source[skill.name], base);
+    const saved = source[skill.name];
+    const normalized = normalizeSkillValue(saved, base);
+    if (skill.name === '闪避' && isRecord(saved) && saved.base === attrs.DEX * 2 && saved.base !== base) {
+      // Before 0.4.10 the percentile DEX was multiplied by two. Only this exact
+      // legacy base is corrected; explicit totals and other custom values stay.
+      // The old floor also discarded Robert's authored 50% allocation. Restore
+      // that lost allocation for his exact preset, preserving any earned points.
+      normalized.base = base;
+      normalized.added += Math.max(0, (presetDodgeTotal ?? base) - base);
+    }
+    skills[skill.name] = normalized;
   });
 
   Object.entries(source).forEach(([name, skillValue]) => {
@@ -160,6 +171,7 @@ function normalizeInvestigator(value: unknown, index: number): Investigator | nu
   const san = Math.max(gameRules.derivedStats.san.min, Math.floor(numberValue(value.san, derived.san)));
   const name = stringValue(value.name, `调查员${index + 1}`);
   const idValue = stringValue(value.id, `player-${index + 1}`);
+  const preset = presets.find(item => item.id === idValue && item.name === name && item.attrs.DEX === attrs.DEX);
 
   return {
     id: idValue,
@@ -178,7 +190,7 @@ function normalizeInvestigator(value: unknown, index: number): Investigator | nu
     currentHp: clamp(Math.floor(numberValue(value.currentHp, hp)), 0, hp),
     currentMp: clamp(Math.floor(numberValue(value.currentMp, mp)), 0, mp),
     currentSan: clamp(Math.floor(numberValue(value.currentSan, san)), 0, san),
-    skills: normalizeSkills(value.skills, attrs),
+    skills: normalizeSkills(value.skills, attrs, preset?.skills['闪避']),
     equipment: Array.isArray(value.equipment)
       ? value.equipment.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
       : defaultEquipment(idValue, name),
@@ -304,7 +316,17 @@ function restoreAuthoredPendingCheck(
       /(?:加热|烘烤|显字|隐写|解读|解码).{0,16}(?:小册子|夹页)|(?:小册子|夹页).{0,16}(?:加热|烘烤|显字|隐写|解读|解码)/.test(action.action)
     );
   if (bypassedBookletAnalysis) return null;
-  if (!bypassedFinaleListen) return prepareCheck(check, players);
+  if (!bypassedFinaleListen) {
+    const prepared = prepareCheck(check, players);
+    // An issued check can already have a locked roll in the Android session.
+    // Keep its consistent recorded threshold across rule updates. Future checks
+    // and unrolled queue entries are prepared from the corrected investigator.
+    if (typeof check.skillVal === 'number' && Number.isFinite(check.skillVal) && check.skillVal >= 0
+      && typeof check.threshold === 'number' && check.threshold === getDifficultyThreshold(check.skillVal, check.difficulty)) {
+      return { ...prepared, skillVal: check.skillVal, threshold: check.threshold };
+    }
+    return prepared;
+  }
   return prepareCheck({
     ...check,
     scenarioCheckId: 'CHECK_LISTEN',

@@ -51,7 +51,7 @@ export function deriveInvestigatorStats(attrs: Attributes) {
 export function resolveSkillBase(base: SkillDefinition['base'], attrs: Attributes) {
   if (typeof base === 'number') return base;
   if (base === 'EDU') return attrs.EDU;
-  if (base === 'DEX×2') return attrs.DEX * 2;
+  if (base === 'DEX÷2') return Math.floor(attrs.DEX / 2);
   return 0;
 }
 

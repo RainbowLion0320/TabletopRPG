@@ -111,6 +111,24 @@ afterEach(() => {
 });
 
 describe('callNarrator retry repair', () => {
+  it('finishes a tool-first response without discarding the proposed check or exposing reasoning', async () => {
+    const bodies: Record<string, any>[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (_url, init) => {
+      bodies.push(bodyFrom(init));
+      return bodies.length === 1 ? new Response(JSON.stringify({ output: [
+        { type: 'reasoning', id: 'rs_1', content: [{ type: 'reasoning_text', text: 'private reasoning' }], summary: [] },
+        { type: 'function_call', id: 'fc_1', call_id: 'call_1', name: 'request_check', arguments: '{"player":"亨利","skill":"侦查","difficulty":"普通"}' }
+      ] }), { status: 200 }) : jsonResponse('{"narrative":"亨利检查门廊的痕迹，接下来进行侦查检定。","activeNpc":null,"nextPrompt":"","playerChoices":{},"keywords":[]}');
+    }));
+    const result = await callNarrator({ ...config, provider: 'mimo' }, { ctx, actions: [{ player: '亨利', action: '检查门廊。' }], history: [] });
+    expect(bodies).toHaveLength(2);
+    expect(bodies[0].tools).toBeDefined(); expect(bodies[1].tools).toBeUndefined();
+    expect(bodies[1].input).toContainEqual(expect.objectContaining({ type: 'reasoning', id: 'rs_1' }));
+    expect(bodies[1].input).toContainEqual(expect.objectContaining({ type: 'function_call_output', call_id: 'call_1', output: expect.stringContaining('"pending":true') }));
+    expect(result.toolCalls).toEqual([expect.objectContaining({ name: 'request_check', arguments: { player: '亨利', skill: '侦查', difficulty: '普通' } })]);
+    expect(result.usedFunctionCalling).toBe(true);
+    expect(result.narrative).not.toContain('private');
+  });
   for (const protocol of ['responses', 'chat-completions'] as const) {
     it(`${protocol}: preserves a failed connection without format repair retries`, async () => {
       const networkError = new TypeError('Failed to fetch');

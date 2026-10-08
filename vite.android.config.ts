@@ -4,6 +4,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import sharp from 'sharp';
+import { getAndroidAiDefines } from './src/config/androidBuildDefaults';
 
 const root = import.meta.dirname;
 function androidAssets(): Plugin {
@@ -27,7 +28,7 @@ function androidAssets(): Plugin {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   root,
   base: '/',
   envDir: false,
@@ -36,7 +37,7 @@ export default defineConfig({
     transformIndexHtml: { order: 'pre', handler: () => fs.readFileSync(path.join(root, 'mobile/index.html'), 'utf8') },
     generateBundle() { this.emitFile({ type: 'asset', fileName: 'unsupported.html', source: fs.readFileSync(path.join(root, 'mobile/unsupported.html'), 'utf8') }); },
   }, react(), androidAssets()],
-  define: Object.fromEntries(['PROVIDER', 'PROTOCOL', 'ENDPOINT', 'API_KEY', 'MODEL'].map(key => [`import.meta.env.VITE_AI_${key}`, '""'])),
+  define: getAndroidAiDefines(command, process.env),
   server: { host: '127.0.0.1', port: 5275, strictPort: true, fs: { allow: [root] } },
   build: { outDir: path.join(root, 'dist-android'), emptyOutDir: true, target: 'chrome110', sourcemap: false },
-});
+}));

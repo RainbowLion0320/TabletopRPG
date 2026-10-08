@@ -50,6 +50,20 @@ describe('Android transport cancellation', () => {
 });
 
 describe('Android process recovery', () => {
+  it('corrects legacy Dodge without changing an already locked successful roll', () => {
+    const player = makeInvestigator({ name: '调查员' });
+    player.skills['闪避'] = { base: 120, added: 0 };
+    const state = makeState({ players: [player] });
+    state.pendingCheck = prepareCheck({ player: player.name, skill: '闪避', difficulty: '普通' }, state.players);
+    const roll = { check: state.pendingCheck, result: evaluateD100(state.pendingCheck, 80), phase: 'revealed' };
+    const restored = parseMobileSession(JSON.stringify({ version: 1, savedAt: 1234, state, roll }));
+    expect(restored?.state.players[0].skills['闪避'].base).toBe(30);
+    expect(restored?.state.pendingCheck?.threshold).toBe(120);
+    expect(restored?.roll?.result).toEqual(roll.result);
+    const future = prepareCheck({ player: player.name, skill: '闪避', difficulty: '普通' }, restored!.state.players);
+    expect(future.threshold).toBe(30);
+    expect(evaluateD100(future, 80).level).toBe('fail');
+  });
   for (const size of [1, 2, 4]) it(`restores ${size} players and a locked fumble without drawing a new roll`, () => {
     const state = makeState({ players: Array.from({ length: size }, (_, i) => makeInvestigator({ name: `调查员${i}` })) });
     state.pendingCheck = prepareCheck({ player: state.players[0].name, skill: '侦查', difficulty: '普通' }, state.players);

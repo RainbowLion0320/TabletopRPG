@@ -29,13 +29,15 @@ export async function requestResponsesJson(
   config: ResolvedApiConfig,
   request: LlmJsonRequest
 ): Promise<LlmResult> {
+  const mimo = config.provider === 'mimo';
+  const hasTools = request.useTools !== false && Boolean(request.tools?.length);
   const body: Record<string, unknown> = {
     model: config.model,
-    instructions: request.instructions,
+    instructions: mimo ? `${request.instructions}\n返回正文时输出符合以下 schema 的 JSON 对象；需要工具时使用工具通道。\n${JSON.stringify(request.schema)}` : request.instructions,
     input: toResponsesInput(request.input),
-    max_output_tokens: request.maxOutputTokens ?? 1024,
+    max_output_tokens: (request.maxOutputTokens ?? 1024) + (mimo ? 4096 : 0),
     text: {
-      format: {
+      format: mimo ? { type: hasTools ? 'text' : 'json_object' } : {
         type: 'json_schema',
         name: request.schemaName,
         strict: true,
@@ -44,6 +46,7 @@ export async function requestResponsesJson(
     },
     store: false
   };
+  if (mimo) body.reasoning = { effort: 'high' };
 
   if (request.useTools !== false && request.tools?.length) {
     body.tools = toResponsesTools(request.tools);
@@ -63,7 +66,7 @@ export async function requestResponsesJson(
   return {
     rawText: extractResponsesText(data),
     toolCalls: parseResponsesToolCalls(rawFunctionItems),
-    outputItems: rawFunctionItems.map(toOutputItem),
+    outputItems: continuationItems(data),
     finishReason: responseFinishReason(data)
   };
 }
@@ -78,6 +81,7 @@ function responseFinishReason(data: ResponsesJson): string | null {
 function toResponsesInput(input: LlmInputItem[]): Array<Record<string, unknown>> {
   return input.map((item) => {
     if ('role' in item) return { role: item.role, content: item.content };
+    if (item.type === 'reasoning') return item.data;
     if (item.type === 'function_call_output') {
       return {
         type: 'function_call_output',
@@ -102,10 +106,22 @@ function extractResponsesText(data: ResponsesJson): string {
   for (const item of output) {
     if (!item || typeof item !== 'object') continue;
     const record = item as Record<string, unknown>;
+    if (record.type === 'reasoning') continue;
     if (typeof record.text === 'string') parts.push(record.text);
     collectTextContent(record.content, parts);
   }
   return parts.join('\n');
+}
+
+function continuationItems(data: ResponsesJson): LlmInputItem[] {
+  const output = Array.isArray(data.output) ? data.output : [];
+  return output.flatMap((item): LlmInputItem[] => {
+    if (!item || typeof item !== 'object') return [];
+    const record = item as Record<string, unknown>;
+    if (record.type === 'reasoning') return [{ type: 'reasoning', data: record }];
+    if (record.type === 'function_call') return [toOutputItem(record as ResponseFunctionCallItem)];
+    return [];
+  });
 }
 
 function responseFunctionItems(data: ResponsesJson): ResponseFunctionCallItem[] {
