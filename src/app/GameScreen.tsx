@@ -51,9 +51,10 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
   return (
     <main className="game-screen">
       <SceneStage state={state} />
-      <TopBar state={state} onToggleMenu={() => controller.setMenuOpen(!controller.menuOpen)} />
+      <TopBar state={state} menuOpen={controller.menuOpen} onToggleMenu={() => controller.setMenuOpen(!controller.menuOpen)} />
       <GameMenu
         open={controller.menuOpen}
+        onClose={() => controller.setMenuOpen(false)}
         onHome={handleHome}
         onLoad={controller.loadCurrentLatest}
         onManageSaves={controller.openSaveManager}

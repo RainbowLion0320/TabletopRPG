@@ -6,9 +6,10 @@ import { getScenarioProgressForState } from '../../scenario/engine';
 interface TopBarProps {
   state: GameState;
   onToggleMenu: () => void;
+  menuOpen?: boolean;
 }
 
-export function TopBar({ state, onToggleMenu }: TopBarProps) {
+export function TopBar({ state, onToggleMenu, menuOpen = false }: TopBarProps) {
   const scene = storyData.scenes[state.currentScene];
   const progress = getScenarioProgressForState(state);
   const worldTime = progress.worldTime.replace('T', ' ');
@@ -19,7 +20,7 @@ export function TopBar({ state, onToggleMenu }: TopBarProps) {
         <div className="brand-scene">{scene.name}</div>
         <div className="world-time">{worldTime}</div>
       </div>
-      <button className="menu-button" onClick={onToggleMenu} title="菜单">
+      <button className="menu-button" onClick={(event) => { event.currentTarget.focus({ preventScroll: true }); onToggleMenu(); }} title="菜单" aria-haspopup="dialog" aria-expanded={menuOpen} aria-controls={menuOpen ? 'game-menu-panel' : undefined}>
         <Menu size={18} />
       </button>
     </header>

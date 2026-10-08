@@ -245,51 +245,6 @@ button {
   border-color: var(--gold);
 }
 
-.game-menu {
-  position: absolute;
-  top: 92px;
-  right: 36px;
-  z-index: 50;
-  width: 280px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: rgba(14,12,10,0.94);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 24px 70px rgba(0,0,0,0.48);
-  display: none;
-}
-
-.game-menu.open {
-  display: block;
-}
-
-.menu-list button {
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-}
-
-.menu-list {
-  margin: 0;
-}
-
-.menu-list button {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 10px 8px;
-  text-align: left;
-  border-radius: 5px;
-}
-
-.menu-list button:hover {
-  background: rgba(216,189,122,0.1);
-  color: var(--gold);
-}
-
 .narrative-panel {
   display: flex;
   flex-direction: column;

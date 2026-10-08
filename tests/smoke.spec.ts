@@ -394,7 +394,7 @@ for (const size of [{ width: 320, height: 568, party: 4 }, { width: 390, height:
     await page.screenshot({ path: testInfo.outputPath('expanded-long-story.png') });
     await page.getByRole('button', { name: '菜单', exact: true }).click();
     await expect(page.getByRole('button', { name: '保存游戏', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: '菜单', exact: true }).click();
+    await page.getByRole('button', { name: '继续调查', exact: true }).click();
     await page.getByRole('button', { name: '资料', exact: true }).click();
     await page.getByRole('button', { name: '关闭资料', exact: true }).click();
     await toggle.click();
@@ -953,15 +953,100 @@ test('reference panel uses the compact case board without horizontal overflow at
   expect(overflow.drawer).toBeLessThanOrEqual(1);
 });
 
-test('submitting an action without an API key opens AI settings instead of crashing', async ({ page }) => {
+test('submitting an action without an API key opens configuration and keeps validation local to the form', async ({ page }) => {
   test.skip(hasEnvDefaultApiKey, 'requires no default API key from process env or .env.local');
   await startNewGame(page);
 
   await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('检查书房桌面。');
   await page.getByRole('button', { name: '提交' }).click();
 
-  await expect(page.getByRole('dialog').getByText('请输入 API Key。')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'AI DM 配置' })).toBeVisible();
+  const dialog = page.getByRole('dialog', { name: 'AI DM 配置' });
+  await expect(dialog.getByLabel('API Key', { exact: true })).toBeVisible();
+  await expect(dialog.getByRole('alert')).toHaveCount(0);
+  await dialog.getByRole('button', { name: '保存', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toContainText('请输入 API Key');
+  await expect(page.locator('.dock-input')).toHaveValue('检查书房桌面。');
+});
+
+for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1440, height: 900 }]) {
+  test(`investigation menu closes nested sheets and returns to the unchanged draft at ${size.width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize(size);
+    await startNewGame(page);
+    const draft = page.locator('.dock-input');
+    await draft.fill('留在门廊观察雨水。');
+    const opener = page.getByRole('button', { name: '菜单', exact: true });
+    await opener.click();
+    const menu = page.getByRole('dialog', { name: '调查菜单', exact: true });
+    await expect(opener).toHaveAttribute('aria-expanded', 'true');
+    await expect(menu.getByRole('button', { name: '关闭调查菜单' })).toBeFocused();
+    await expect(menu.getByRole('button', { name: '保存游戏' })).toBeInViewport();
+    await expect(menu.getByRole('button', { name: '继续调查' })).toBeInViewport();
+    await menu.getByRole('button', { name: '声音设置' }).click();
+    await expect(page.getByRole('dialog', { name: '声音设置' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: '声音设置' })).toHaveCount(0);
+    await expect(menu.getByRole('button', { name: '声音设置' })).toBeFocused();
+    await page.screenshot({ path: testInfo.outputPath('investigation-menu.png') });
+    await menu.getByRole('button', { name: '继续调查' }).click();
+    await expect(menu).toHaveCount(0);
+    await expect(opener).toBeFocused();
+    await expect(draft).toHaveValue('留在门廊观察雨水。');
+    await opener.click(); await page.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0);
+    await expect(opener).toHaveAttribute('aria-expanded', 'false');
+    await opener.click();
+    await menu.getByRole('button', { name: 'AI 设置', exact: true }).click();
+    await page.getByRole('dialog', { name: 'AI DM 配置' }).getByRole('button', { name: '关闭 AI DM 配置' }).click();
+    await expect(opener).toBeFocused();
+    await expect(draft).toHaveValue('留在门廊观察雨水。');
+  });
+}
+
+test('phone AI configuration keeps core inputs concise and preserves explicit custom connections above the keyboard', async ({ page }, testInfo) => {
+  // Save only into this disposable browser context; never alter a developer's env.
+  await page.route('**/__api_config', (route) => route.fulfill({ status: 404, body: '' }));
+  await page.setViewportSize({ width: 320, height: 568 });
+  await gotoClean(page);
+  await page.getByRole('button', { name: 'AI 设置', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'AI DM 配置' });
+  await expect(dialog.getByRole('button', { name: '关闭 AI DM 配置' })).toBeFocused();
+  await expect(dialog.locator('.api-connection')).not.toHaveAttribute('open');
+  await expect(dialog.getByLabel('模型')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: '保存', exact: true })).toBeInViewport();
+  await dialog.getByLabel('API Key', { exact: true }).fill('ui-qa-only-token');
+  await dialog.getByRole('button', { name: '显示 API Key' }).click();
+  await expect(dialog.getByLabel('API Key', { exact: true })).toHaveAttribute('type', 'text');
+  await dialog.getByRole('button', { name: '隐藏 API Key' }).click();
+  await dialog.getByLabel('服务商', { exact: true }).selectOption('custom');
+  await expect(dialog.locator('.api-connection')).toHaveAttribute('open');
+  await expect(dialog.getByLabel('模型')).toHaveValue('');
+  await dialog.getByLabel('Endpoint').fill('https://ui-qa.example/v1');
+  await dialog.getByLabel('协议', { exact: true }).selectOption('responses');
+  await dialog.getByLabel('模型').fill('ui-qa-model');
+  await page.setViewportSize({ width: 320, height: 300 });
+  await dialog.getByLabel('API Key', { exact: true }).click();
+  await expect(dialog.getByLabel('API Key', { exact: true })).toBeInViewport();
+  await expect(dialog.getByRole('button', { name: '关闭 AI DM 配置' })).toBeInViewport();
+  await expect(dialog.getByRole('button', { name: '保存', exact: true })).toBeInViewport();
+  const keyboardBounds = await dialog.evaluate((element) => {
+    const h = element.querySelector('.api-config-header')!.getBoundingClientRect();
+    const field = element.querySelector('#api-key')!.getBoundingClientRect();
+    const body = element.querySelector('.api-config-fields')!.getBoundingClientRect();
+    const f = element.querySelector('footer')!.getBoundingClientRect();
+    return { header: h.top >= 0 && h.bottom <= innerHeight, key: field.top >= body.top && field.bottom <= body.bottom, footer: f.top >= body.bottom && f.bottom <= innerHeight, outerScroll: element.scrollTop };
+  });
+  expect(keyboardBounds).toEqual({ header: true, key: true, footer: true, outerScroll: 0 });
+  await page.screenshot({ path: testInfo.outputPath('api-keyboard.png') });
+  await dialog.getByRole('button', { name: '保存', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.getByRole('button', { name: 'AI 设置', exact: true }).click();
+  await expect(dialog.locator('.api-connection')).toHaveAttribute('open');
+  await expect(dialog.getByLabel('Endpoint')).toHaveValue('https://ui-qa.example/v1');
+  await expect(dialog.getByLabel('协议', { exact: true })).toHaveValue('responses');
+  await expect(dialog.getByLabel('模型')).toHaveValue('ui-qa-model');
+  await expect(dialog.getByLabel('API Key', { exact: true })).toHaveAttribute('type', 'password');
 });
 
 test('saving a game enables continuing the latest save from the title screen', async ({ page }) => {

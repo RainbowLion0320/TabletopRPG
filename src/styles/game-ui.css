@@ -45,7 +45,7 @@
 }
 
 /* Raised bronze plate for the current primary action and compact tool icons. */
-:root.fog-ui :is(.primary-btn, .primary-action, .secondary-action, .dice-roll-confirm, .menu-button, .audio-icon-button) { position: relative; }
+:root.fog-ui :is(.primary-btn, .primary-action, .secondary-action, .dice-roll-confirm, .menu-button, .audio-icon-button, .game-menu .menu-list button, .game-menu-close, .api-config-close, .api-key-reveal) { position: relative; }
 :root.fog-ui :is(.primary-btn, .primary-action, .dice-roll-confirm) {
   background: #aa8952;
   border-color: #b99559;
@@ -53,8 +53,8 @@
   text-shadow: 0 1px #fff0bc55;
   box-shadow: inset 0 0 0 2px #15110b, 0 2px 0 #080706, 0 0 14px #bb8d3620;
 }
-:root.fog-ui :is(.primary-btn, .primary-action, .secondary-action, .dice-roll-confirm,
-  .menu-button, .drawer-tab, .audio-icon-button)::before {
+:root.fog-ui :where(.primary-btn, .primary-action, .secondary-action, .dice-roll-confirm,
+  .menu-button, .drawer-tab, .audio-icon-button, .game-menu .menu-list button, .game-menu-close, .api-config-close, .api-key-reveal)::before {
   content: '';
   position: absolute;
   inset: -1px;
@@ -63,7 +63,7 @@
   pointer-events: none;
   z-index: -1;
 }
-:root.fog-ui :is(.menu-button, .drawer-tab, .audio-icon-button)::before {
+:root.fog-ui :is(.menu-button, .drawer-tab, .audio-icon-button, .game-menu .menu-list button, .game-menu-close, .api-config-close, .api-key-reveal)::before {
   border-image-width: 10px;
 }
 :root.fog-ui :is(.primary-btn, .primary-action, .dice-roll-confirm)::before {
@@ -130,7 +130,7 @@
 :root.fog-ui .title-actions > :nth-child(-n+2) { font-size: 17px; }
 
 /* Ledger surfaces: ornamental outer rim, restrained interiors for long reading. */
-:root.fog-ui :is(.modal-card, .entity-detail-card, .game-menu) {
+:root.fog-ui :is(.modal-card, .entity-detail-card) {
   position: relative;
   isolation: isolate;
   border-color: #79603c;
@@ -139,8 +139,6 @@
   background-image: linear-gradient(#191610ee, #12110fed), var(--ui-grain);
   box-shadow: inset 0 0 0 3px #0b0a08, inset 0 0 0 4px #58452b, 0 18px 55px #000a;
 }
-/* Keep positioned menus and dossier overlays in their original layout context. */
-:root.fog-ui .game-menu { position: absolute; }
 :root.fog-ui :is(.modal-card, .entity-detail-card)::before {
   content: '';
   position: absolute;
@@ -272,8 +270,6 @@
 :root.fog-ui.portrait-ui .narrative-toggle-btn { height: 40px; }
 :root.fog-ui.portrait-ui .narrative-header { min-height: 40px; }
 :root.fog-ui.portrait-ui .narrative-panel .npc-nameplate { min-height: 40px; }
-:root.fog-ui.portrait-ui .menu-list { gap: 6px; }
-:root.fog-ui.portrait-ui .menu-list button { min-height: 48px; }
 :root.fog-ui.portrait-ui .audio-settings .audio-preview { min-height: 40px; }
 /* Browser form fields avoid automatic input zoom on mobile WebKit. */
 :root.fog-ui.portrait-ui:not(.android-app) :is(input, select) { font-size: 16px; }

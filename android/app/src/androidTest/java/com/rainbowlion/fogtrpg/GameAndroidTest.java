@@ -76,13 +76,12 @@ public class GameAndroidTest {
     }
     private void configure(String endpoint, String protocol) throws Exception {
         until("document.querySelector('#api-config-modal-title')");
-        fill(".modal-card select", "custom");
-        until("document.querySelector('.modal-card select').value === 'custom'");
-        // Each select is nested in its own label.
-        js("(()=>{const e=document.querySelectorAll('.modal-card select')[1];Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(e," + JSONObject.quote(protocol) + ");e.dispatchEvent(new Event('change',{bubbles:true}));})()");
-        fill(".modal-card input:not([type=password])", endpoint);
-        fill(".modal-card input[type=password]", "android-qa-only-token");
-        fill(".modal-card label:last-of-type input", "android-qa-model");
+        fill("#api-provider", "custom");
+        until("document.querySelector('#api-provider').value === 'custom' && document.querySelector('.api-connection').open");
+        fill("#api-protocol", protocol);
+        fill("#api-endpoint", endpoint);
+        fill("#api-key", "android-qa-only-token");
+        fill("#api-model", "android-qa-model");
         click("保存"); until("!document.querySelector('#api-config-modal-title')");
     }
 
@@ -153,7 +152,9 @@ public class GameAndroidTest {
                 assertEquals("Home video does not create a page scrollbar", "true", js("document.querySelector('.title-screen').scrollHeight<=document.querySelector('.title-screen').clientHeight+1"));
                 click("AI 设置");
                 until("document.querySelector('.api-config-fields')");
-                for (int i = 1; i <= 5; i++) reachable(".api-config-fields label:nth-child(" + i + ") > :is(input,select)");
+                assertEquals("Fresh API setup is quiet and folds the official connection", "true", js("!document.querySelector('.api-config-card [role=alert]')&&!document.querySelector('.api-connection').open"));
+                for (String field : new String[] {"#api-provider", "#api-key", "#api-model", ".api-connection summary"}) reachable(field);
+                reachable(".api-config-close");
                 reachable(".api-config-card footer .primary-btn"); screenshot(prefix + "-api");
                 // No real API credentials or network dependency in layout probes.
                 configure("http://127.0.0.1:1/v1", "responses");
@@ -243,11 +244,18 @@ public class GameAndroidTest {
                 screenshot(prefix + "-audio");
                 js("document.querySelector('.audio-credits').open=true;document.querySelector('.audio-settings-body').scrollTop=99999");
                 reachable(".audio-close"); js("document.querySelector('.audio-close').click()");
+                until("document.querySelector('.game-menu').contains(document.activeElement)");
+                reachable(".game-menu-close"); reachable(".game-menu footer button"); screenshot(prefix + "-menu");
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                until("!document.querySelector('.game-menu') && document.activeElement===document.querySelector('.menu-button')");
                 for (int i = 0; i < 4; i++) { menu("保存游戏"); SystemClock.sleep(100); }
                 menu("存档管理"); reachable(".save-manager-card footer button");
                 js("document.querySelector('.save-list').scrollTop=99999");
                 reachable(".save-slot-card:last-child .danger"); screenshot(prefix + "-saves"); click("关闭");
+                js("document.querySelector('.menu-button').click()");
+                until("document.querySelector('.game-menu')");
                 assertEquals("KP notes are not in the player menu", "false", js("document.querySelector('.game-menu').innerText.includes('KP 笔记')"));
+                click("继续调查");
                 viewport(size[0], 300); fill(".dock-input", "输入法占位后仍可完成输入。");
                 assertEquals("Keyboard space prioritizes reading and input", "true", js("document.querySelector('.narrative-panel').getBoundingClientRect().width>innerWidth*.9 && getComputedStyle(document.querySelector('.scene-stage')).visibility==='hidden' && document.querySelector('.scene-stage').getBoundingClientRect().height===0"));
                 reachable(".dock-input"); reachable(".dock-submit"); screenshot(prefix + "-keyboard");
