@@ -2,6 +2,8 @@
 
 0.4.0 以手机竖屏为优先，统一 APK 与新版网页。视觉来自现有骰子美术与 1920 年伦敦调查故事：旧黄铜、深色皮革、档案纸页和刻印文字。场景与 NPC 保持原图；装饰集中在边缘，正文内区安静。
 
+0.4.7 将主要操作改为实心旧黄铜，搭配深墨文字；调查员卡使用独立绘制的皮革档案底板，保留照片护角和细边。选角优先显示身份、简述、两项擅长技能与 HP/MP/SAN/幸运；其余属性、完整技能和背景按需展开。选择为原生 checkbox，整张资料区可点击或通过空格选择，详情操作独立。手机维持单列，网页宽屏双列；两端的队伍摘要与进入按钮均固定在底部。展开资料在列表内排布，不覆盖后续角色。详见 [第一批控件优化](reviews/2026-10-08-ui-polish.md)。
+
 ## 控件与状态
 
 | 类型 | 视觉和用途 | 状态 |
@@ -39,7 +41,7 @@
 
 0.4.1 应用标识使用美术交付的深蓝底白色眼睛图案，覆盖安卓桌面/启动画面、网页标签与手机快捷图标；平台图标尺寸与裁切规则见 [图标资源](../assets/ui/app-icon/README.md)。
 
-`src/styles/game-ui.css` 管材质与状态，`src/styles/portrait.css` 管手机布局。`src/android/mobile.css` 仅为导入桥。`src/platform/layout.ts` 在渲染前添加 `fog-ui`；APK 总是启用 `portrait-ui`，网页宽度不超过 700 CSS px 时启用同一竖屏布局。
+`src/styles/game-ui.css` 管材质与状态，`src/styles/portrait.css` 管手机主界面布局；选角的组合与响应式规则统一在 `src/components/setup/character-setup.css`。通用按钮使用低优先级 `:where`，让主操作及状态样式可以正常覆盖。`src/android/mobile.css` 仅为导入桥。`src/platform/layout.ts` 在渲染前添加 `fog-ui`；APK 总是启用 `portrait-ui`，网页宽度不超过 700 CSS px 时启用同一竖屏布局。
 
 断点变化同时更新布局和选角底部操作，不重置队伍或输入草稿。宽网页保留宽屏结构。手机网页输入/选择器为 16px，避免输入时自动放大；viewport 开启安全区覆盖与 `interactive-widget=resizes-content`，让支持该选项的 Android Chrome 随键盘缩小内容窗口，依据 [Chrome 官方说明](https://developer.chrome.com/blog/viewport-resize-behavior/)。
 

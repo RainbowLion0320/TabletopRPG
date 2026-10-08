@@ -120,6 +120,8 @@ public class GameAndroidTest {
         try {
             viewport(562, 1000); click("开始游戏");
             until("document.querySelectorAll('.preset-card-modern.selected').length===1");
+            assertEquals("Default investigator uses a real checked selection control", "true", js("document.querySelector('.preset-selection-input').checked"));
+            assertEquals("Selection shows specialties while keeping background details collapsed", "true", js("document.querySelector('.preset-specialties').textContent.includes('侦查')&&document.querySelector('.preset-other-panel').hidden"));
             js("document.querySelectorAll('.preset-card-modern strong')[1].click()");
             for (int width : new int[] {562, 599, 600, 601, 700}) {
                 viewport(width, 1000);
@@ -127,6 +129,7 @@ public class GameAndroidTest {
                 assertEquals("Portrait cards stay full-width in one vertical column", "true", js("(()=>{const cards=Array.from(document.querySelectorAll('.preset-card-modern')).map(e=>e.getBoundingClientRect());return cards[0].width>innerWidth*.9&&cards.every((r,i)=>!i||(r.left===cards[0].left&&r.right===cards[0].right&&r.top>=cards[i-1].bottom+8))})()"));
                 js("document.querySelector('.preset-attrs-toggle').click()");
                 assertEquals("Expanding attributes keeps the selected party and fits inside the card", "true", js("document.querySelectorAll('.preset-card-modern.selected').length===2&&Array.from(document.querySelectorAll('.preset-card-content,.preset-vitals')).every(e=>e.scrollWidth<=e.clientWidth+1)"));
+                assertEquals("Expanded files never overlay the following investigator", "true", js("(()=>{const cards=document.querySelectorAll('.preset-card-modern');return cards[1].getBoundingClientRect().top>=cards[0].getBoundingClientRect().bottom+8})()"));
                 reachable(".setup-footer .primary-btn"); js("document.querySelector('.preset-attrs-toggle').click()");
                 screenshot("single-column-" + width);
                 js("document.querySelector('.preset-grid-modern').scrollTop=99999");

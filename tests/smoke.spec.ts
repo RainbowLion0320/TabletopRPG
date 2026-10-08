@@ -472,7 +472,7 @@ test('a solo player can replace the default investigator and cannot start an emp
   const cards = page.locator('.preset-card-modern');
   const start = page.getByRole('button', { name: /进入游戏/ });
   await expect(page.locator('.preset-card-modern.selected')).toHaveCount(1);
-  await expect(cards.nth(0)).toHaveAttribute('aria-pressed', 'true');
+  await expect(cards.nth(0).getByRole('checkbox')).toBeChecked();
   await cards.nth(0).locator('strong').click();
   await expect(start).toBeDisabled();
   await cards.nth(1).locator('strong').click();
@@ -527,7 +527,7 @@ test('investigator setup shows portraits and full attribute blocks', async ({ pa
   expect(layoutMetrics.firstCardWidth).toBeLessThan(layoutMetrics.gridWidth * 0.55);
   expect(Math.abs(layoutMetrics.secondCardTop - layoutMetrics.firstCardTop)).toBeLessThanOrEqual(4);
   expect(layoutMetrics.secondCardLeft).toBeGreaterThan(layoutMetrics.firstCardLeft + layoutMetrics.firstCardWidth * 0.75);
-  expect(Math.abs(layoutMetrics.firstCardHeight - layoutMetrics.firstPortraitHeight)).toBeLessThanOrEqual(48);
+  expect(Math.abs(layoutMetrics.firstCardHeight - layoutMetrics.firstPortraitHeight)).toBeLessThanOrEqual(80);
   const firstCard = page.locator('.preset-card-modern').first();
   const portraitRatio = await firstCard.locator('.preset-portrait-frame').evaluate((element) => {
     const rect = element.getBoundingClientRect();
@@ -539,26 +539,19 @@ test('investigator setup shows portraits and full attribute blocks', async ({ pa
   const skillList = firstCard.locator('.preset-skill-list');
   await expect(attrBlock).toBeHidden();
   await expect(skillList).toBeHidden();
-  const backgroundNoteTops = await firstCard.locator('.preset-background-notes span').evaluateAll((items) =>
-    items.map((item) => Math.round(item.getBoundingClientRect().top))
-  );
-  expect(backgroundNoteTops.length).toBe(3);
-  expect(new Set(backgroundNoteTops).size).toBe(3);
+  await expect(firstCard.locator('.preset-background-notes')).toBeHidden();
+  await expect(firstCard.locator('.preset-specialties')).toContainText('侦查75');
+  await expect(firstCard.locator('.preset-specialties')).toContainText('心理学70');
   const collapsedLayout = await firstCard.evaluate((card) => {
-    const notes = card.querySelector('.preset-background-notes')?.getBoundingClientRect();
     const vitalsRect = card.querySelector('.preset-vitals')?.getBoundingClientRect();
     const toggle = card.querySelector('.preset-attrs-toggle')?.getBoundingClientRect();
     const cardRect = card.getBoundingClientRect();
     return {
       cardHeight: cardRect.height,
-      notesTop: notes?.top ?? 0,
-      notesBottom: notes?.bottom ?? 0,
       vitalsTop: vitalsRect?.top ?? 0,
       toggleTop: toggle?.top ?? 0
     };
   });
-  expect(collapsedLayout.notesTop).toBeLessThan(collapsedLayout.vitalsTop);
-  expect(collapsedLayout.vitalsTop - collapsedLayout.notesBottom).toBeGreaterThanOrEqual(16);
   expect(collapsedLayout.vitalsTop).toBeLessThan(collapsedLayout.toggleTop);
   const selectedBeforeAttrsToggle = await page.locator('.preset-card-modern.selected').count();
   await firstCard.locator('.preset-attrs-toggle').click();
@@ -566,6 +559,7 @@ test('investigator setup shows portraits and full attribute blocks', async ({ pa
   await expect(firstCard).toHaveClass(/selected/);
   await expect(attrBlock).toBeVisible();
   await expect(skillList).toBeVisible();
+  await expect(firstCard.locator('.preset-background-notes')).toBeVisible();
   for (const attr of ['STR', 'CON', 'SIZ', 'DEX', 'APP', 'INT', 'POW', 'EDU']) {
     await expect(attrBlock.getByText(attr, { exact: true })).toBeVisible();
   }
@@ -584,8 +578,8 @@ test('investigator setup shows portraits and full attribute blocks', async ({ pa
       toggleBottom: toggle?.bottom ?? 0
     };
   });
-  expect(Math.abs(expandedLayout.cardHeight - collapsedLayout.cardHeight)).toBeLessThanOrEqual(4);
-  expect(expandedLayout.panelTop).toBeGreaterThanOrEqual(expandedLayout.toggleBottom + 4);
+  expect(expandedLayout.cardHeight).toBeGreaterThan(collapsedLayout.cardHeight + 100);
+  expect(expandedLayout.panelTop).toBeGreaterThanOrEqual(expandedLayout.toggleBottom);
   const vitalBorderColors = await vitals.locator('span').evaluateAll((items) =>
     items.map((item) => getComputedStyle(item).borderTopColor)
   );
@@ -617,6 +611,31 @@ test('investigator setup scrolls vertically on narrow screens', async ({ page })
   await expect.poll(() => cardList.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
   await expect(page.getByRole('button', { name: '进入游戏', exact: true })).toBeInViewport();
   await expect(setupScreen.locator('.preset-card-modern').last()).toBeInViewport();
+});
+
+test('investigator files support native keyboard selection without conflating details with the party', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await gotoClean(page);
+  await page.getByRole('button', { name: /开始游戏/ }).click();
+  const henry = page.getByRole('checkbox', { name: '选择亨利·格雷', exact: true });
+  const ada = page.getByRole('checkbox', { name: '选择艾达·华莱士', exact: true });
+  await henry.focus();
+  await henry.press('Space');
+  await expect(henry).not.toBeChecked();
+  await expect(page.getByRole('button', { name: '进入游戏', exact: true })).toBeDisabled();
+  await ada.focus();
+  await ada.press('Space');
+  await expect(ada).toBeChecked();
+  const card = page.locator('.preset-card-modern').filter({ has: ada });
+  await card.getByRole('button', { name: '档案详情', exact: true }).click();
+  await expect(card.locator('.preset-background-notes')).toBeVisible();
+  await expect(ada).toBeChecked();
+  await expect(page.locator('.preset-card-modern.selected')).toHaveCount(1);
+  const metrics = await card.evaluate(el => ({ width: el.clientWidth, scrollWidth: el.scrollWidth }));
+  expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.width + 1);
+  await expect(page.locator('.setup-footer .primary-btn')).toBeInViewport();
+  await page.locator('.setup-footer .primary-btn').click();
+  await expect(page.getByRole('textbox', { name: '艾达·华莱士的行动' })).toBeVisible();
 });
 
 test('portrait selection keeps one investigator per row across the former 600px breakpoint', async ({ page }, testInfo) => {

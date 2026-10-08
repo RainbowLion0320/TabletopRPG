@@ -33,41 +33,6 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 .portrait-ui .title-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 320px; margin-inline: auto; }
 .portrait-ui .title-actions > :nth-child(-n+2) { grid-column: 1 / -1; min-height: 48px; }
 .portrait-ui .title-save-hint { font-size: 11px; line-height: 1.5; margin: 12px 0 0; overflow-wrap: anywhere; }
-.portrait-ui .setup-screen { height: var(--mobile-height); min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: var(--mobile-top) var(--mobile-right) var(--mobile-bottom) var(--mobile-left); }
-.portrait-ui .setup-header { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; flex: 0 0 auto; gap: 10px; margin: 0 auto 10px; min-height: 44px; }
-.portrait-ui .setup-header h1 { font-size: 20px; letter-spacing: 2px; }
-.portrait-ui .setup-header .eyebrow { display: none; }
-.portrait-ui .setup-header-actions { gap: 6px; min-width: 0; }
-.portrait-ui .setup-header-actions > .primary-btn { flex: 0 0 auto; padding: 0 10px; white-space: nowrap; }
-.portrait-ui .setup-heading { text-align: center; }
-.portrait-ui .setup-header > .icon-text-btn { padding-inline: 8px; }
-.portrait-ui .setup-footer { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 2px 0; border-top: 1px solid var(--line-soft); }
-.portrait-ui .setup-footer > span { color: var(--muted); font-size: 12px; }
-.portrait-ui .setup-footer strong { color: var(--gold); font-size: 15px; }
-.portrait-ui .setup-footer .primary-btn { min-height: 48px; flex: 0 0 auto; min-width: 130px; }
-.portrait-ui .preset-grid-modern { width: 100%; min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; grid-template-columns: minmax(0, 1fr); gap: 12px; align-content: start; align-items: start; padding: 2px 2px 12px; scroll-padding: 4px; }
-.portrait-ui .preset-card-modern { min-width: 0; grid-template-columns: clamp(82px, 25vw, 140px) minmax(0, 1fr); transform: none; }
-.portrait-ui .preset-portrait-frame { border-right: 1px solid var(--line-soft); border-bottom: 0; aspect-ratio: 3 / 5; }
-.portrait-ui .preset-select-mark { left: 5px; right: auto; top: 5px; padding: 3px 7px; font-size: 10px; }
-.portrait-ui .preset-card-content { min-width: 0; grid-template-columns: minmax(0, 1fr); grid-template-areas: 'name' 'meta' 'desc' 'vitals' 'notes' 'toggle' 'details'; gap: 5px; padding: 10px; overflow-wrap: anywhere; }
-.portrait-ui .preset-card-content > strong { font-size: 16px; line-height: 1.3; }
-.portrait-ui .preset-card-content > small { font-size: 11px; line-height: 1.4; }
-.portrait-ui .preset-card-content > p { font-size: 12px; line-height: 1.5; }
-.portrait-ui .preset-vitals { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 2px 0; gap: 4px; }
-.portrait-ui .preset-vitals span, .portrait-ui .preset-attrs span { padding: 4px 2px; }
-.portrait-ui .preset-vitals em, .portrait-ui .preset-attrs em { font-size: 13px; margin-top: 2px; }
-.portrait-ui .preset-background-notes { font-size: 11px; line-height: 1.4; gap: 3px; }
-.portrait-ui .preset-background-notes span { padding-left: 5px; }
-.portrait-ui .preset-attrs-toggle { min-height: 36px; margin: 0; padding: 0 10px; font-size: 11px; color: var(--muted); }
-.portrait-ui .preset-other-panel { position: static; grid-area: details; min-width: 0; max-height: none; overflow: visible; padding: 6px; box-shadow: none; margin-top: 2px; }
-.portrait-ui .preset-other-panel[hidden] { display: none; }
-.portrait-ui .preset-attrs { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
-.portrait-ui .preset-skill-list { gap: 4px; }
-.portrait-ui .preset-skill-list span { flex-shrink: 1; font-size: 11px; padding: 3px 5px; }
-
-/* Every portrait device uses one investigator per row, including wide logical screens. */
-.portrait-ui :is(.setup-header, .setup-footer, .preset-grid-modern) { width: 100%; max-width: 720px; margin-inline: auto; }
-
 /* All current scene paintings are 1896 × 1080. Reserve their own wide frame
    instead of cropping them to fill the portrait screen behind the reading UI. */
 /* Let the scene yield space before reading drops below 140px (plus the frame border). */
@@ -266,9 +231,6 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 @media (max-width: 360px) {
   .portrait-ui .setup-header { gap: 6px; }
   .portrait-ui .setup-header h1 { font-size: 18px; letter-spacing: 0; }
-  .portrait-ui .preset-card-content { padding: 8px; }
-  .portrait-ui .preset-card-content > strong { font-size: 16px; }
-  .portrait-ui .preset-vitals { gap: 3px; }
   .portrait-ui .dock-submit { padding-inline: 10px !important; }
   .portrait-ui .party-compact { gap: 4px; padding-inline: 4px; }
   .portrait-ui .party-compact-bars { gap: 2px; }

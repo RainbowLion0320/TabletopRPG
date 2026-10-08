@@ -1,10 +1,12 @@
 # TabletopRPG Technical Spec
 
 > Version: v0.7
-> Updated: 2026-09-28
+> Updated: 2026-10-08
 > Scope: current React/Vite implementation
 
 ## Android edition (2026-09-09)
+
+In 0.4.7, investigator setup has one component-owned stylesheet instead of rules spread across three global stylesheets. A native checkbox inside the card's selection label handles pointer and keyboard selection; its separate detail button expands an inline panel without toggling the party. All setup layouts use a fixed footer and an independently scrolling list. Generated dossier and brass artwork use nine-slicing with live text and existing Lucide icons; generic control selectors use `:where` to avoid overriding primary/state variants. No game-state, AI protocol or save-schema changes are involved.
 
 In 0.4.6, Narrator and System2 response schemas use the current player/NPC roster to declare closed objects with all keys required. Optional memory values are nullable; internal dictionaries and saved data remain compatible. Production-schema contract tests cover both provider adapters and 1/2/4-player rosters. Check-instruction parsing respects clause boundaries, local negation and future scope; recovery matches each player/skill pair instead of skipping an entire batch when one tool exists. Direct outcome assertions use structured dice levels first, support legacy result text, and distinguish negated success from success. Quality advisories and warnings are accepted on the first response, without adding correction prompts. Blocking output still has bounded recovery.
 

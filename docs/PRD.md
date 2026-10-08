@@ -1,12 +1,14 @@
 # TabletopRPG PRD
 
 > Version: v0.9
-> Updated: 2026-09-28
+> Updated: 2026-10-08
 > Product baseline: Vite + React + TypeScript MVP
 
 ## 1. Product Positioning
 
 ### Android companion build — 2026-09-09
+
+Version 0.4.7 makes primary actions tangible brass plates with dark lettering and gives investigator selection its own illustrated dossier mount. Cards prioritize identity, two strongest non-language skills and core resources; full attributes, skills and background expand in the list. Native checkboxes keep selection independent from details. Both phone and desktop keep the party summary and entry action outside the scrolling list, retaining the default solo and explicit 2/4-player flows. See [UI polish verification](reviews/2026-10-08-ui-polish.md).
 
 Version 0.4.6 fixes strict API schema compatibility and false checks caused by negated or future instructions. A partially supplied multiplayer check batch now retains every explicitly requested player/skill. Truthful failed-roll narration is accepted without retry; prose-quality suggestions stay in developer diagnostics rather than causing another foreground generation. KP notes are removed from the player menu, provider errors become short actionable hints, and dice records identify the investigator and skill without repeating the roll number.
 

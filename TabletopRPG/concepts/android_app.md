@@ -4,7 +4,7 @@ title: Android 游戏客户端
 tags: [android, apk, capacitor, storage, release]
 sources: [../../docs/ANDROID.md, ../../docs/SPEC.md, ../../docs/PRD.md]
 created: 2026-09-09
-updated: 2026-09-28
+updated: 2026-10-08
 ---
 
 # Android 游戏客户端
@@ -13,7 +13,9 @@ updated: 2026-09-28
 
 ## 运行行为
 
-当前 0.4.6 修复严格 API 格式、否定骰果误判、无需/将来检定及多人漏骰；非阻断质量诊断不额外生成，KP 笔记只留开发侧，网络错误过滤原始接口内容，检定日志明确角色与技能。保留 0.4.5 的即兴叙事、未证实猜测与单条重试通知。见 [[entities/ai_dm]] 与 [回合流畅性验收](../../docs/reviews/2026-09-28-turn-smoothness.md)。
+0.4.7 更新调查员档案卡及主操作材质，完整资料按需展开，选人与查看资料互相独立；手机继续单列，底部摘要/进入常驻。美术随包离线提供，沿用原 release 签名。见 [[concepts/game_ui]] 与 [控件优化](../../docs/reviews/2026-10-08-ui-polish.md)。
+
+0.4.6 修复严格 API 格式、否定骰果误判、无需/将来检定及多人漏骰；非阻断质量诊断不额外生成，KP 笔记只留开发侧，网络错误过滤原始接口内容，检定日志明确角色与技能。保留 0.4.5 的即兴叙事、未证实猜测与单条重试通知。见 [[entities/ai_dm]] 与 [回合流畅性验收](../../docs/reviews/2026-09-28-turn-smoothness.md)。
 
 0.4.4 将所有竖屏选角统一为单列，取消 600px 起的双列规则；立绘与资料并排，列表及上下操作栏居中、最大宽度 720px。卡片纵向滚动，人数和进入按钮常驻。见 [选角验收](../../docs/reviews/2026-09-09-portrait-selection.md)。
 

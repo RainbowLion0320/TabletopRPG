@@ -18,12 +18,13 @@
   --ui-danger: #efaaa0;
   --ui-font: "Zihun Yunque", "Noto Serif SC", "Songti SC", serif;
   --ui-frame: url('../../assets/ui/chrome/brass-frame.webp');
+  --ui-primary-frame: url('../../assets/ui/chrome/primary-brass.webp');
   --ui-grain: url('../../assets/ui/chrome/leather-grain.webp');
   color-scheme: dark;
 }
 
 /* A quiet surface underneath the art is also the missing-image fallback. */
-:root.fog-ui :is(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
+:root.fog-ui :where(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
   .dice-roll-confirm, .menu-button, .drawer-tab, .narrative-toggle-btn, .audio-close,
   .entity-detail-close, .info-drawer-react header > button, .case-board-inspector header button,
   .case-board-toolbar > button, .preset-attrs-toggle, .menu-list button, .info-drawer-tabs button,
@@ -45,10 +46,11 @@
 
 /* Raised bronze plate for the current primary action and compact tool icons. */
 :root.fog-ui :is(.primary-btn, .primary-action, .secondary-action, .dice-roll-confirm, .menu-button, .audio-icon-button) { position: relative; }
-:root.fog-ui :is(.primary-btn, .primary-action, .secondary-action, .dice-roll-confirm) {
-  background: #4a3720;
+:root.fog-ui :is(.primary-btn, .primary-action, .dice-roll-confirm) {
+  background: #aa8952;
   border-color: #b99559;
-  color: #fff0cc;
+  color: #140e05;
+  text-shadow: 0 1px #fff0bc55;
   box-shadow: inset 0 0 0 2px #15110b, 0 2px 0 #080706, 0 0 14px #bb8d3620;
 }
 :root.fog-ui :is(.primary-btn, .primary-action, .secondary-action, .dice-roll-confirm,
@@ -64,8 +66,9 @@
 :root.fog-ui :is(.menu-button, .drawer-tab, .audio-icon-button)::before {
   border-image-width: 10px;
 }
-:root.fog-ui :is(.primary-btn, .primary-action, .secondary-action, .dice-roll-confirm)::before {
-  opacity: .78;
+:root.fog-ui :is(.primary-btn, .primary-action, .dice-roll-confirm)::before {
+  border-image-source: var(--ui-primary-frame);
+  opacity: 1;
 }
 :root.fog-ui :is(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action) svg {
   flex-shrink: 0;
@@ -78,7 +81,7 @@
   outline-offset: -3px;
 }
 @media (hover: hover) {
-  :root.fog-ui :is(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
+  :root.fog-ui :where(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
     .dice-roll-confirm, .menu-button, .drawer-tab, .narrative-toggle-btn, .audio-close,
     .entity-detail-close, .menu-list button, .suggestion-row button, .info-drawer-tabs button,
     .preset-attrs-toggle, .case-board-toolbar > button):enabled:hover {
@@ -87,8 +90,14 @@
     color: #fff2d4;
     box-shadow: inset 0 0 0 2px #17120c, inset 0 0 0 3px #987742, 0 2px 8px #0008;
   }
+  :root.fog-ui :is(.primary-btn, .primary-action, .dice-roll-confirm):enabled:hover {
+    color: #140e05;
+  }
+  :root.fog-ui :is(.primary-btn, .primary-action, .dice-roll-confirm):enabled:hover::before {
+    filter: brightness(1.12);
+  }
 }
-:root.fog-ui :is(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
+:root.fog-ui :where(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
   .dice-roll-confirm, .menu-button, .drawer-tab, .narrative-toggle-btn, .menu-list button,
   .suggestion-row button, .info-drawer-tabs button):enabled:active {
   transform: translateY(1px);
@@ -107,6 +116,10 @@
   transform: none;
 }
 :root.fog-ui button:disabled::before { opacity: .25; }
+:root.fog-ui :is(.primary-btn, .primary-action, .dice-roll-confirm):enabled:active {
+  color: #140e05;
+}
+:root.fog-ui :is(.primary-btn, .primary-action, .dice-roll-confirm):enabled:active::before { filter: brightness(.9); }
 
 /* Title: brass plates over the existing London film. */
 :root.fog-ui .title-content h1 { font-family: var(--ui-font); color: #e4c88c; }
@@ -143,7 +156,7 @@
   color: #e9d3a0;
   letter-spacing: .06em;
 }
-:root.fog-ui :is(.modal-card footer, .setup-footer) { border-top: 1px solid #55432c; padding-top: 10px; }
+:root.fog-ui .modal-card footer { border-top: 1px solid #55432c; padding-top: 10px; }
 :root.fog-ui .modal-card label { color: #cbbda3; }
 :root.fog-ui :is(.modal-card input:not([type='range']), .modal-card select, .dock-input,
   .case-board-search, .case-board-toolbar select) {
@@ -167,40 +180,9 @@
 :root.fog-ui :is(.modal-card input, .dock-input):disabled { color: #9e927d; border-color: #443b2e; }
 :root.fog-ui .modal-error { border-left: 2px solid #c07669; padding: 7px 10px; background: #40231d; }
 
-/* Investigation cards and selected seals; no pill-shaped web chips. */
-:root.fog-ui .setup-screen { background-image: linear-gradient(#15130fe8, #0e0d0bea), var(--ui-grain); }
-:root.fog-ui .preset-card-modern {
-  border-radius: 2px;
-  border-color: #5c4b34;
-  background: #1c1812;
-  box-shadow: inset 0 0 0 3px #100e0b, inset 0 0 0 4px #352c20;
-}
-:root.fog-ui .preset-card-modern.selected {
-  border-color: #cfad6d;
-  background: #302618;
-  box-shadow: inset 0 0 0 2px #0d0c0a, inset 0 0 0 3px #9c7842;
-}
-:root.fog-ui .preset-select-mark {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  border-radius: 1px;
-  border-color: #827055;
-  background: #1b1812;
-  color: #d2c4a8;
-  box-shadow: 0 2px 4px #0008;
-}
-:root.fog-ui .selected .preset-select-mark { background: #c3a369; color: #171109; border-color: #e1c58e; }
-:root.fog-ui :is(.preset-card-content > strong, .preset-select-mark, .party-compact strong) { font-family: var(--ui-font); }
-:root.fog-ui :is(.preset-vitals span, .preset-attrs span, .preset-skill-list span,
-  .party-compact, .check-card, .save-slot-card, .entity-detail-known, .entity-detail-unknown,
+:root.fog-ui :is(.party-compact, .check-card, .save-slot-card, .entity-detail-known, .entity-detail-unknown,
   .case-board-mobile-card, .case-board-compact-card, .case-board-node, .case-board-threads button) { border-radius: 2px; }
-:root.fog-ui .preset-vitals span { background: #15120f; border-color: #65513b; }
-:root.fog-ui .preset-vitals span:nth-child(1) { border-top-color: #a96d60; }
-:root.fog-ui .preset-vitals span:nth-child(2) { border-top-color: #658aa6; }
-:root.fog-ui .preset-vitals span:nth-child(3) { border-top-color: #709087; }
-:root.fog-ui .preset-vitals span:nth-child(4) { border-top-color: #b4975b; }
-:root.fog-ui .preset-other-panel { background: #17140f; border-color: #746044; }
+:root.fog-ui .party-compact strong { font-family: var(--ui-font); }
 :root.fog-ui .save-slot-card { background: #211c14; border-color: #59462e; }
 :root.fog-ui .save-slot-incompatible { border-color: #734c42; }
 
@@ -290,8 +272,6 @@
 :root.fog-ui.portrait-ui .narrative-toggle-btn { height: 40px; }
 :root.fog-ui.portrait-ui .narrative-header { min-height: 40px; }
 :root.fog-ui.portrait-ui .narrative-panel .npc-nameplate { min-height: 40px; }
-:root.fog-ui.portrait-ui .preset-select-mark { display: inline-flex; align-items: center; gap: 3px; }
-:root.fog-ui.portrait-ui .preset-attrs-toggle { min-height: 40px; }
 :root.fog-ui.portrait-ui .menu-list { gap: 6px; }
 :root.fog-ui.portrait-ui .menu-list button { min-height: 48px; }
 :root.fog-ui.portrait-ui .audio-settings .audio-preview { min-height: 40px; }
