@@ -546,6 +546,10 @@ for (const size of [{ width: 390, height: 844, party: 1 }, { width: 1440, height
     await expect(sheet).toHaveAccessibleName('亨利·格雷');
     await expect(sheet.locator('[data-stat="hp"] dd')).toHaveText('12 / 12');
     await expect(sheet.locator('.investigator-attributes > div')).toHaveCount(8);
+    expect(await sheet.evaluate(e => getComputedStyle(e).borderImageSource.includes('dossier-mount'))).toBe(true);
+    for (const selector of ['.investigator-tabs button', '.investigator-party button']) {
+      expect(await sheet.locator(selector).evaluateAll(elements => elements.every(e => e.getBoundingClientRect().height >= 44))).toBe(true);
+    }
     if (size.party > 1) {
       const teammate = size.party === 4 ? '罗伯特·肖' : '艾达·华莱士';
       await sheet.getByRole('button', { name: teammate, exact: true }).click();
@@ -560,14 +564,45 @@ for (const size of [{ width: 390, height: 844, party: 1 }, { width: 1440, height
     await search.fill('侦查');
     await expect(sheet.locator('tbody tr')).toHaveCount(1);
     await expect(sheet.locator('tbody td')).toHaveText(['75', '37', '15']);
+    const clear = sheet.getByRole('button', { name: '清除技能搜索' });
+    expect((await clear.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await sheet.getByRole('button', { name: '清除技能搜索' }).click();
+    await expect(search).toBeFocused();
+    expect(await sheet.locator('tbody th').first().evaluate(e => parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(15);
     await sheet.locator('.investigator-body').evaluate((element) => { element.scrollTop = element.scrollHeight; });
     await expect(search).toBeInViewport();
     await expect(sheet.getByRole('columnheader', { name: '困难' })).toBeInViewport();
     await expect(sheet.getByRole('button', { name: '关闭调查员档案' })).toBeInViewport();
     await page.screenshot({ path: testInfo.outputPath('sheet-skills.png') });
+    const readingPosition = await sheet.locator('.investigator-body').evaluate(e => e.scrollTop);
     await sheet.getByRole('tab', { name: '随身与背景' }).click();
     await expect(sheet).toContainText('苏格兰场徽章');
+    await sheet.getByRole('tab', { name: '技能', exact: true }).click();
+    await expect.poll(() => sheet.locator('.investigator-body').evaluate(e => e.scrollTop)).toBe(readingPosition);
+    if (size.width <= 700) {
+      await search.fill('侦查');
+      expect(await sheet.locator('.investigator-body').evaluate(e => e.scrollTop)).toBe(0);
+      await page.setViewportSize({ width: size.width, height: 300 });
+      await search.click();
+      await expect(clear).toBeInViewport(); await expect(sheet.getByRole('button', { name: '关闭调查员档案' })).toBeInViewport();
+      if (size.party > 1) {
+        await sheet.getByRole('button', { name: '罗伯特·肖', exact: true }).click();
+        await expect(search).toHaveValue('侦查'); await expect(sheet).toHaveAccessibleName('罗伯特·肖');
+        await sheet.getByRole('button', { name: '亨利·格雷', exact: true }).click();
+      }
+      const keyboardLayout = await sheet.evaluate(e => {
+        const body = e.querySelector('.investigator-body')!.getBoundingClientRect(), field = e.querySelector('.investigator-search')!.getBoundingClientRect();
+        const buttons = Array.from(e.querySelectorAll('.investigator-close,.investigator-tabs button,.investigator-search button'));
+        return { bodyHeight: body.height, searchAbove: field.bottom <= body.top + 1,
+          targets: buttons.every(b => { const r = b.getBoundingClientRect(); const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return r.height >= 44 && !!hit && b.contains(hit); }),
+          overflow: e.scrollWidth > e.clientWidth, outerScroll: e.scrollTop };
+      });
+      expect(keyboardLayout.bodyHeight).toBeGreaterThanOrEqual(70);
+      expect(keyboardLayout).toMatchObject({ searchAbove: true, targets: true, overflow: false, outerScroll: 0 });
+      await clear.click(); await expect(search).toBeFocused();
+      await page.screenshot({ path: testInfo.outputPath('sheet-keyboard.png') });
+      await page.setViewportSize(size);
+    }
     await page.keyboard.press('Escape');
     await expect(sheet).toHaveCount(0); await expect(avatar).toBeFocused();
     await expect(page.getByRole('textbox', { name: '亨利·格雷的行动' })).toHaveValue(draft);

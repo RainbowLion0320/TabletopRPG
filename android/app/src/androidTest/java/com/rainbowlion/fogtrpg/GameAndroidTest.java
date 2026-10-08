@@ -7,6 +7,8 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.ViewGroup;
 import android.webkit.WebView;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -44,6 +46,14 @@ public class GameAndroidTest {
         do { if ("true".equals(js("Boolean(" + expression + ")"))) return; SystemClock.sleep(100); }
         while (SystemClock.elapsedRealtime() < deadline);
         fail("Timed out: " + expression + "\n" + js("document.body.innerText.slice(-1400)"));
+    }
+    private boolean imeVisible() {
+        AtomicReference<Boolean> visible = new AtomicReference<>(false);
+        activity.onActivity(a -> {
+            WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(a.getWindow().getDecorView());
+            visible.set(insets != null && insets.isVisible(WindowInsetsCompat.Type.ime()));
+        });
+        return visible.get();
     }
     private void click(String text) throws Exception {
         String match = "Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === " + JSONObject.quote(text) + ")";
@@ -252,12 +262,39 @@ public class GameAndroidTest {
                 }
                 fill(".investigator-search input", "侦查");
                 assertEquals("Skill thresholds match the game rules", "true", js("Array.from(document.querySelectorAll('.investigator-skills tbody td')).map(e=>e.textContent).join(',')==='75,37,15'"));
-                fill(".investigator-search input", ""); js("document.querySelector('.investigator-body').scrollTop=99999");
+                reachable("[aria-label='清除技能搜索']"); nativeTap("[aria-label='清除技能搜索']");
+                until("document.activeElement===document.querySelector('.investigator-search input')&&document.querySelector('.investigator-search input').value===''");
+                assertEquals("Clearing skills returns to the list start", "0", js("document.querySelector('.investigator-body').scrollTop"));
+                assertEquals("Skills remain readable", "true", js("parseFloat(getComputedStyle(document.querySelector('.investigator-skills tbody th')).fontSize)>=15"));
+                if (partySize > 1) {
+                    fill(".investigator-search input", "侦查"); viewport(size[0], 300);
+                    js("document.querySelector('.investigator-party button:last-child').scrollIntoView({block:'nearest',inline:'nearest'})");
+                    reachable(".investigator-party button:last-child"); nativeTap(".investigator-party button:last-child");
+                    until("document.querySelector('.investigator-party button:last-child').getAttribute('aria-pressed')==='true'");
+                    assertEquals("Teammates can be compared above the keyboard without losing the skill query", "true", js("document.querySelector('.investigator-search input').value==='侦查'&&document.querySelector('.investigator-body').clientHeight>=70"));
+                    js("document.querySelector('.investigator-party button:first-child').scrollIntoView({block:'nearest',inline:'nearest'})");
+                    nativeTap(".investigator-party button:first-child"); nativeTap("[aria-label='清除技能搜索']");
+                    until("document.activeElement===document.querySelector('.investigator-search input')");
+                    viewport(size[0], size[1]);
+                }
+                js("document.querySelector('.investigator-body').scrollTop=99999");
+                String skillsReadingPosition = js("document.querySelector('.investigator-body').scrollTop");
                 reachable(".investigator-search input"); reachable(".investigator-close"); screenshot(prefix + "-skills");
                 click("随身与背景");
                 js("document.querySelector('.investigator-background dd').textContent='长篇角色背景记录。'.repeat(150);document.querySelector('.investigator-body').scrollTop=99999");
                 reachable(".investigator-close");
+                click("技能");
+                assertEquals("Returning to skills restores the reading position", skillsReadingPosition, js("document.querySelector('.investigator-body').scrollTop"));
+                boolean keyboardBeforeBack = imeVisible();
+                System.out.println("Skill input keyboard visible before system return: " + keyboardBeforeBack);
                 InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                if (keyboardBeforeBack) {
+                    long keyboardDeadline = SystemClock.elapsedRealtime() + 5000;
+                    while (imeVisible() && SystemClock.elapsedRealtime() < keyboardDeadline) SystemClock.sleep(100);
+                    assertFalse("The first return dismisses the input method", imeVisible());
+                    assertEquals("Dismissing the keyboard keeps the dossier open", "true", js("Boolean(document.querySelector('.investigator-sheet'))"));
+                    InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                }
                 until("!document.querySelector('.investigator-sheet')");
                 assertEquals("Inspecting a teammate preserves the current action and actor", "true", js("document.querySelector('.dock-input').value==='查看属性时保留这段行动草稿'&&document.querySelector('.party-compact.active strong').textContent==='亨利·格雷'"));
                 js("document.querySelector('.party-compact:last-child').click()"); until("document.querySelector('.investigator-sheet')");

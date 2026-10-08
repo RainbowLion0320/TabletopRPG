@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, X } from 'lucide-react';
 import type { Investigator } from '../../types/game';
@@ -22,17 +22,32 @@ export function InvestigatorSheet({ players, selectedId, onSelect, onClose }: In
   const player = players.find((item) => item.id === selectedId);
   const dialogRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const readingPositions = useRef<Partial<Record<SheetTab, number>>>({});
+  const previousPlayer = useRef(selectedId);
   const id = useId();
   const [tab, setTab] = useState<SheetTab>('overview');
   const [query, setQuery] = useState('');
   const [failedPortrait, setFailedPortrait] = useState<string | null>(null);
   useDialogFocus(Boolean(player), dialogRef, onClose);
-  useEffect(() => { if (bodyRef.current) bodyRef.current.scrollTop = 0; }, [selectedId, tab]);
+  useLayoutEffect(() => {
+    if (previousPlayer.current !== selectedId) {
+      previousPlayer.current = selectedId;
+      readingPositions.current = {};
+    }
+    if (bodyRef.current) bodyRef.current.scrollTop = readingPositions.current[tab] ?? 0;
+  }, [selectedId, tab]);
 
   if (!player) return null;
 
   function selectPlayer(playerId: string) {
     onSelect(playerId);
+  }
+
+  function searchSkills(value: string) {
+    setQuery(value);
+    readingPositions.current.skills = 0;
+    if (tab === 'skills' && bodyRef.current) bodyRef.current.scrollTop = 0;
   }
 
   function handleTabKey(event: KeyboardEvent<HTMLButtonElement>, index: number) {
@@ -81,11 +96,12 @@ export function InvestigatorSheet({ players, selectedId, onSelect, onClose }: In
 
         {tab === 'skills' && <div className="investigator-search">
           <Search size={16} aria-hidden="true" />
-          <input type="search" value={query} aria-label="搜索技能" placeholder="搜索技能" onChange={(event) => setQuery(event.target.value)} />
-          {query && <button type="button" aria-label="清除技能搜索" onClick={() => setQuery('')}><X size={16} /></button>}
+          <input ref={searchRef} type="search" value={query} aria-label="搜索技能" placeholder="搜索技能" autoComplete="off" spellCheck={false} onChange={(event) => searchSkills(event.target.value)} />
+          {query && <button type="button" aria-label="清除技能搜索" onClick={() => { searchSkills(''); searchRef.current?.focus({ preventScroll: true }); }}><X size={16} /></button>}
         </div>}
 
-        <div className={`investigator-body${tab === 'skills' ? ' skills-page' : ''}`} ref={bodyRef} id={`${id}-body`} role="tabpanel" aria-labelledby={`${id}-${tab}`} tabIndex={0}>
+        <div className={`investigator-body${tab === 'skills' ? ' skills-page' : ''}`} ref={bodyRef} id={`${id}-body`} role="tabpanel" aria-labelledby={`${id}-${tab}`} tabIndex={0}
+          onScroll={(event) => { readingPositions.current[tab] = event.currentTarget.scrollTop; }}>
           {tab === 'overview' && <>
             <dl className="investigator-vitals" aria-label="当前状态">
               <div data-stat="hp"><dt>生命 HP</dt><dd>{player.currentHp}<small> / {player.hp}</small></dd></div>
