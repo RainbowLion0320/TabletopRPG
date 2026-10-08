@@ -1,4 +1,5 @@
-/* Fog / investigation UI. Shared artwork and states; layout lives in portrait.css.
+/* Fog / investigation UI. Shared artwork and states; layout lives in portrait.css
+   and desktop-game-layout.css.
    Nine-sliced artwork keeps its corners at touch sizes and never contains text. */
 :root.fog-ui {
   --gold: #d6b77b;
@@ -193,9 +194,7 @@
 :root.fog-ui:not(.portrait-ui) :is(.brand-scene, .world-time) { margin: 0; flex-shrink: 0; }
 :root.fog-ui:not(.portrait-ui) .brand-scene::before, :root.fog-ui:not(.portrait-ui) .brand-scene::after { display: none; }
 :root.fog-ui:not(.portrait-ui) .menu-button { width: 44px; height: 44px; flex-shrink: 0; }
-:root.fog-ui:not(.portrait-ui) .scene-stage { top: 64px; height: calc(50dvh - 64px); }
 :root.fog-ui:not(.portrait-ui) .scene-npc { height: calc(100% - 8px); }
-:root.fog-ui:not(.portrait-ui) .narrative-panel.expanded { top: 64px; }
 :root.fog-ui :is(.narrative-panel, .action-dock) {
   background-color: #15130f;
   background-image: linear-gradient(#191711f5, #11110ff5), var(--ui-grain);
@@ -238,8 +237,6 @@
 :root.fog-ui .case-board-search { padding-inline: 9px; }
 :root.fog-ui .case-board-search input { background: transparent; color: var(--text); }
 :root.fog-ui .case-board-toolbar select { padding-inline: 10px; }
-
-:root.fog-ui .toast { border: 1px solid #a18752; border-radius: 2px; background: #292217; color: #eddbb2; box-shadow: inset 0 0 0 2px #0c0b09, 0 4px 18px #0009; }
 
 /* Art never increases the frame allocations proven on the smallest phones. */
 :root.fog-ui.portrait-ui .title-actions > button { min-height: 48px; }

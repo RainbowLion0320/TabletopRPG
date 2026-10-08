@@ -1,0 +1,7 @@
+/* Brief feedback stays above the action dock without consuming reading space. */
+:root .game-notice { position: fixed; top: 72px; left: 32px; z-index: 120; width: max-content; max-width: min(560px, calc(100vw - 64px)); pointer-events: none; }
+:root .game-notice .toast { padding: 6px 10px; border: 4px solid #665238; border-radius: 2px; background: #251f16; color: #eddbb2; font-family: var(--ui-font, inherit); font-size: 15px; line-height: 1.4; overflow-wrap: anywhere; }
+:root.fog-ui .game-notice .toast { border-color: transparent; border-image: url('../../../assets/ui/chrome/dossier-mount.webp') 64 fill / 4px / 0 stretch; background: #211c15; }
+:root.portrait-ui .game-notice { top: calc(var(--game-top, 54px) + 8px); left: var(--mobile-left); max-width: calc(100vw - var(--mobile-left) - var(--mobile-right)); }
+:root .game-screen:has(.narrative-panel.expanded) .game-notice { left: auto; right: 88px; max-width: min(560px, calc(100vw - 120px)); }
+:root.portrait-ui .game-screen:has(.narrative-panel.expanded) .game-notice { right: calc(var(--mobile-right) + 50px); max-width: calc(100vw - var(--mobile-left) - var(--mobile-right) - 50px); }

@@ -10,7 +10,6 @@ import { useToast } from './useToast';
 import { AiResponseFormatError, buildUserMessage, type PlayerAction } from '../services/aiDm';
 import { prepareCheck, rollD100 } from '../services/dice';
 import { persistApiConfig, readApiConfig } from '../services/storage';
-import { usingNativeStorage } from '../platform/storage';
 import { createInitialGameState, gameReducer } from '../state/gameReducer';
 import type { ApiConfig, GameState, Investigator } from '../types/game';
 import { AiProviderConfigError } from '../dm/llm/errors';
@@ -383,11 +382,9 @@ export function useGameController() {
   }
 
   async function saveApi(config: ApiConfig) {
-    const envWritten = await persistApiConfig(config);
+    await persistApiConfig(config);
     setApiOpen(false);
-    notify(envWritten
-      ? 'AI 设置已保存，下次启动自动生效'
-      : usingNativeStorage() ? 'AI 设置已加密保存至本机' : 'AI 设置已保存至本地浏览器');
+    notify('AI 设置已保存');
   }
 
   function returnHome() {

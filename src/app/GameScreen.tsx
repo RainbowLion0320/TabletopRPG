@@ -4,6 +4,7 @@ import { DmDebugDrawer } from '../components/game/DmDebugDrawer';
 import { DiceRollOverlay } from '../components/game/DiceRollOverlay';
 import { DmJournalModal } from '../components/game/DmJournalModal';
 import { GameMenu } from '../components/game/GameMenu';
+import { GameNotice } from '../components/game/GameNotice';
 import { InfoDrawer, type InfoDrawerTab } from '../components/game/InfoDrawer';
 import { NarrativePanel } from '../components/game/NarrativePanel';
 import { EntityDetailModal } from '../components/game/EntityDetailModal';
@@ -17,6 +18,7 @@ import { getNarrativeMarkDetail } from '../dm/entityDetail';
 import type { NarrativeMarkTarget } from '../services/narrativeMarkup';
 import type { GameController } from './useGameController';
 import { captureGameContinuation, type GameContinuation } from './gameContinuation';
+import '../styles/desktop-game-layout.css';
 
 interface GameScreenProps {
   autoFocusInput?: boolean;
@@ -106,7 +108,7 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
       <ApiConfigModal open={controller.apiOpen} onClose={() => controller.setApiOpen(false)} onSave={controller.saveApi} />
       <EntityDetailModal detail={narrativeDetail} onClose={() => setNarrativeDetail(null)} />
       {inspectedPlayerId && <InvestigatorSheet players={state.players} selectedId={inspectedPlayerId} onSelect={setInspectedPlayerId} onClose={() => setInspectedPlayerId(null)} />}
-      {controller.toast ? <div className="toast">{controller.toast}</div> : null}
+      <GameNotice message={controller.toast} />
       <DmDebugDrawer onOpenJournal={controller.openJournal} />
     </main>
   );

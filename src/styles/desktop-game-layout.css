@@ -1,0 +1,6 @@
+/* Keep the painting, readable story and variable-height actions in separate rows. */
+:root.fog-ui:not(.portrait-ui) .game-screen { display: grid; height: 100dvh; min-height: 0; grid-template-columns: minmax(0, 1fr); grid-template-rows: 64px minmax(0, calc(50dvh - 64px)) minmax(142px, 1fr) max-content; padding: 0 32px 16px; }
+:root.fog-ui:not(.portrait-ui) .scene-stage { position: relative; grid-column: 1; grid-row: 2; top: auto; left: -32px; right: auto; width: calc(100% + 64px); height: 100%; min-height: 0; }
+:root.fog-ui:not(.portrait-ui) .narrative-panel { position: relative; grid-column: 1; grid-row: 3; inset: auto; height: 100%; min-height: 0; max-height: none; }
+:root.fog-ui:not(.portrait-ui) .narrative-panel.expanded { grid-row: 2 / 4; }
+:root.fog-ui:not(.portrait-ui) .action-dock { position: relative; grid-column: 1; grid-row: 4; inset: auto; min-height: 0; max-height: none; }

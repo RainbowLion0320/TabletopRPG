@@ -146,6 +146,13 @@ public class GameAndroidTest {
         click(label);
     }
 
+    private void readableGameNotice() throws Exception {
+        until("document.querySelector('.game-notice .toast')");
+        assertEquals("Feedback is readable above the actions and never intercepts input", "true", js("(()=>{const e=document.querySelector('.game-notice'),n=e.querySelector('.toast'),r=n.getBoundingClientRect(),d=document.querySelector('.action-dock').getBoundingClientRect(),t=document.querySelector('.game-top').getBoundingClientRect();return e.getAttribute('role')==='status'&&e.getAttribute('aria-live')==='polite'&&getComputedStyle(e).pointerEvents==='none'&&parseFloat(getComputedStyle(n).fontSize)>=15&&getComputedStyle(n).borderImageSource.includes('dossier-mount')&&r.left>=0&&r.right<=innerWidth&&r.top>=t.bottom&&r.bottom<=d.top&&n.scrollWidth<=n.clientWidth+1})()"));
+        if (Double.parseDouble(js("innerHeight")) > 300) reachable(".party-compact:last-child");
+        assertEquals("Short confirmation leaves the NPC nameplate readable", "true", js("(()=>{const n=document.querySelector('.toast'),c=document.querySelector('.npc-nameplate');if(n.textContent!=='已保存'||!c)return true;const a=n.getBoundingClientRect(),b=c.getBoundingClientRect();return a.right<=b.left||a.left>=b.right||a.bottom<=b.top||a.top>=b.bottom})()"));
+    }
+
     @Test public void bundledDefaultsStartWithoutConfigurationAndKeepPlayerSettings() throws Exception {
         fresh();
         try {
@@ -403,7 +410,19 @@ public class GameAndroidTest {
                 until("document.querySelector('.title-resume-preview')"); click("继续游戏");
                 assertEquals("Cancelling character selection preserves the same investigation", currentDraft, js("document.querySelector('.dock-input').value"));
                 assertEquals("Cancelling character selection preserves the whole party", Integer.toString(partySize), js("document.querySelectorAll('.party-compact').length"));
-                for (int i = 0; i < 4; i++) { menu("保存游戏"); SystemClock.sleep(100); }
+                for (int i = 0; i < 4; i++) {
+                    if (i == 1 || i == 3) js("document.querySelector('.narrative-toggle-btn').click()");
+                    menu("保存游戏"); until("document.querySelector('.toast')?.textContent==='已保存'");
+                    if (i == 2) viewport(size[0], 300);
+                    readableGameNotice();
+                    assertEquals("Saving keeps the full action draft", currentDraft, js("document.querySelector('.dock-input').value"));
+                    if (i == 0) {
+                        nativeTap(".party-compact:last-child"); until("document.querySelector('.investigator-sheet')");
+                        reachable(".investigator-close"); nativeTap(".investigator-close");
+                    }
+                    if (i == 1) screenshot(prefix + "-feedback");
+                    if (i == 2) viewport(size[0], size[1]);
+                }
                 menu("存档管理"); reachable(".save-manager-card footer button");
                 js("document.querySelector('.save-list').scrollTop=99999");
                 reachable(".save-slot-card:last-child .save-slot-delete"); screenshot(prefix + "-saves");

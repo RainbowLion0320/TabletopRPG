@@ -13,12 +13,7 @@
 .portrait-ui .ending-copy { padding: 4px 6px; gap: 6px; }
 .portrait-ui .ending-copy strong { font-size: 16px; }
 .portrait-ui .ending-copy p { margin-top: 2px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-:root.fog-ui.portrait-ui .game-screen:has(.ending-dock) { grid-template-rows: var(--game-top) minmax(0, var(--scene-height)) minmax(142px, 1fr) max-content; }
-:root.fog-ui:not(.portrait-ui) .game-screen:has(.ending-dock) { display: grid; grid-template-rows: 64px minmax(0, calc(50dvh - 64px)) minmax(142px, 1fr) max-content; padding: 0 32px 16px; }
-:root.fog-ui:not(.portrait-ui) .game-screen:has(.ending-dock) .scene-stage { position: relative; grid-row: 2; top: auto; left: -32px; right: auto; width: calc(100% + 64px); height: 100%; min-height: 0; }
-:root.fog-ui:not(.portrait-ui) .game-screen:has(.ending-dock) .narrative-panel { position: relative; grid-row: 3; inset: auto; height: 100%; min-height: 0; max-height: none; }
-:root.fog-ui:not(.portrait-ui) .game-screen:has(.ending-dock) .narrative-panel.expanded { grid-row: 2 / 4; }
-:root.fog-ui:not(.portrait-ui) .ending-dock { position: relative; grid-row: 4; inset: auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 300px); align-items: center; }
+:root.fog-ui:not(.portrait-ui) .ending-dock { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 300px); align-items: center; }
 :root.fog-ui:not(.portrait-ui) .ending-dock .party-strip-compact { grid-column: 1 / -1; }
 @media (max-height: 500px) {
   .portrait-ui .ending-copy p { display: none; }

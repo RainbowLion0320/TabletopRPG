@@ -8,6 +8,8 @@
 
 ## 1. Product Positioning
 
+Version 0.4.27 keeps brief save feedback below the pinned top bar, leaving HP/SAN and actions visible. Feedback uses the existing drawn dossier, readable 15px text and a stable polite live region; longer notices stay for four seconds. Expanded story feedback uses the space before the toggle, keeping the NPC nameplate readable. Saving AI settings simply confirms that they are saved. Multiline declarations reserve their full action/party height before the painting yields space, on phones and desktop; viewing a party member during feedback does not lose the draft.
+
 Version 0.4.26 gives pending checks and preserved turns one compact drawn dossier strip. Player/check titles use 16px text, instructions and actions use 15px, and roll/retry controls remain at least 44px. Full text wraps within the available space, preserving story reading and every party card at normal phone heights. Desktop also hides the unavailable declaration row during these stages, then restores it when the turn becomes editable; drafts and turn resolution remain intact.
 
 Version 0.4.25 makes AI settings repairable on a phone: saving an incomplete connection identifies and focuses the relevant field, with a concise message beside it. An invalid service address opens its collapsed connection section; unrelated sections stay as the player left them. Field content scrolls within the dialog when the keyboard reduces space, while close and save remain fixed. Labels, feedback and footer actions use at least 15px type. Existing connection requirements, stored-player priority and APK defaults remain unchanged.

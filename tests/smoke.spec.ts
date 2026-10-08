@@ -1039,7 +1039,7 @@ for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height:
     await expect.poll(() => list.evaluate(el => el.scrollTop)).toBe(0);
     await page.getByRole('tab', { name: '进度' }).click(); await page.getByRole('tab', { name: '日志' }).click();
     await expect(search).toHaveValue('调查记录60');
-    await search.fill('EV_HIDDEN_RECORD'); await expect(page.getByRole('status')).toHaveText('没有找到相关记录。');
+    await search.fill('EV_HIDDEN_RECORD'); await expect(list.getByRole('status')).toHaveText('没有找到相关记录。');
     await expect(page.getByText('剧情事件：EV_HIDDEN_RECORD')).toHaveCount(0);
     await expect(page.getByText('AI DM 返回格式无效：未解锁地点的内部诊断')).toHaveCount(0);
     await page.getByRole('button', { name: '清空日志搜索' }).click(); await expect(search).toBeFocused();
@@ -1138,6 +1138,68 @@ for (const size of [{ width: 320, height: 568, party: 1, endingId: 'END_C' }, { 
     expect(stored.players.map(p => [p.currentHp, p.currentMp, p.currentSan])).toEqual(resources);
     expect(stored.scenarioProgress?.settledEndingIds).toEqual([size.endingId]); expect(aiCalls).toBe(0);
   });
+}
+
+for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390, height: 844, party: 1 as const }, { width: 562, height: 1000, party: 4 as const }, { width: 1440, height: 900, party: 4 as const }]) {
+  for (const expanded of [false, true]) {
+    test(`save feedback leaves the party and action unobscured at ${size.width}px with story ${expanded ? 'expanded' : 'normal'}`, async ({ page }, testInfo) => {
+      await page.setViewportSize(size);
+      await startNewGame(page, size.party);
+      const draft = '先记录信上的日期。\n请她继续讲述。';
+      await page.evaluate(() => document.fonts.ready);
+      await page.getByRole('textbox', { name: '亨利·格雷的行动' }).fill(draft);
+      if (expanded) await page.getByRole('button', { name: '展开剧情', exact: true }).click();
+      const reading = await page.locator('.narrative-scroll').evaluate(element => element.getBoundingClientRect().height);
+      await page.getByRole('button', { name: '菜单', exact: true }).click();
+      await page.getByRole('button', { name: '保存游戏', exact: true }).click();
+      const status = page.locator('.game-notice[role="status"]');
+      await expect(status).toHaveText('已保存');
+      async function verifyNotice() {
+        const bounds = await status.evaluate(element => {
+          const notice = element.querySelector('.toast')!, r = notice.getBoundingClientRect();
+          const dock = document.querySelector('.action-dock')!.getBoundingClientRect();
+          const top = document.querySelector('.game-top')!.getBoundingClientRect();
+          const visibleParty = innerHeight > 300 ? Array.from(document.querySelectorAll('.party-compact')) : [];
+          const caption = document.querySelector('.npc-nameplate')!.getBoundingClientRect();
+          const shortConfirmation = notice.textContent === '已保存';
+          return { inside: r.left >= 0 && r.right <= innerWidth && r.top >= top.bottom && r.bottom <= dock.top,
+            readable: parseFloat(getComputedStyle(notice).fontSize) >= 15 && notice.scrollWidth <= notice.clientWidth + 1,
+            drawn: getComputedStyle(notice).borderImageSource.includes('dossier-mount'),
+            passive: getComputedStyle(element).pointerEvents === 'none',
+            caption: !shortConfirmation || r.right <= caption.left || r.left >= caption.right || r.bottom <= caption.top || r.top >= caption.bottom,
+            party: visibleParty.every(e => { const b = e.getBoundingClientRect(); return b.bottom <= innerHeight && e.contains(document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2)); }),
+            horizontalOverflow: document.documentElement.scrollWidth > innerWidth };
+        });
+        expect(bounds).toEqual({ inside: true, readable: true, drawn: true, passive: true, caption: true, party: true, horizontalOverflow: false });
+      }
+      await verifyNotice();
+      expect(await page.locator('.narrative-scroll').evaluate(element => element.getBoundingClientRect().height)).toBe(reading);
+      await page.screenshot({ path: testInfo.outputPath('save-feedback.png') });
+      if (size.width === 320 && !expanded) await page.screenshot({ path: 'output/ui-2026-10-08/62-save-notice-four-player.png' });
+      if (size.width === 1440 && !expanded) await page.screenshot({ path: 'output/ui-2026-10-08/63-action-desktop-after.png' });
+      await page.locator('.party-compact').last().click();
+      await expect(page.locator('.investigator-sheet[role="dialog"]')).toBeVisible();
+      await page.getByRole('button', { name: '关闭调查员档案' }).click();
+      await expect(page.getByRole('textbox', { name: '亨利·格雷的行动' })).toHaveValue(draft);
+      await page.evaluate(() => {
+        const saved = JSON.parse(localStorage.getItem('trpg-saves-v2')!)[0];
+        saved.gameState.scenarioProgress.moduleVersion = '99.99.99';
+        saved.gameState.scenarioProgress.contentHash = 'INTERNAL_HASH';
+        localStorage.setItem('trpg-saves-v2', JSON.stringify([saved]));
+      });
+      await page.getByRole('button', { name: '菜单', exact: true }).click();
+      await page.getByRole('button', { name: '读取存档', exact: true }).click();
+      await expect(status).toHaveText('存档与当前剧情版本不兼容，请在存档管理中查看。');
+      await page.getByRole('button', { name: '关闭调查菜单' }).click();
+      await verifyNotice();
+      if (size.width < 600) {
+        await page.setViewportSize({ width: size.width, height: 300 });
+        await verifyNotice();
+      }
+      await expect(page.getByRole('textbox', { name: '亨利·格雷的行动' })).toHaveValue(draft);
+      await expect(page.locator('.game-screen')).not.toContainText('INTERNAL_HASH');
+    });
+  }
 }
 
 for (const size of [{ width: 320, height: 568, party: 4 }, { width: 390, height: 844, party: 1 }, { width: 562, height: 1000, party: 4 }, { width: 1440, height: 900, party: 4 }]) {
