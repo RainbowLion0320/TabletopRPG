@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, type MutableRefObject } from 'react';
-import { BookOpen, Check, ChevronDown, Clock3, Search, Target, X } from 'lucide-react';
+import { BookOpen, Check, ChevronDown, Clock3, Flag, Search, Target, X } from 'lucide-react';
 import type { GameState } from '../../types/game';
 import { getScenarioDefinition, getScenarioProgressForState, getVisibleScenarioObjectives } from '../../scenario/engine';
 import { isPlayerVisibleLogEntry } from '../../services/narrativeVisibility';
@@ -21,6 +21,7 @@ function ObjectiveRows({ objectives, progress }: { objectives: Objectives; progr
 export function InvestigationProgress({ state }: { state: GameState }) {
   const progress = getScenarioProgressForState(state);
   const objectives = getVisibleScenarioObjectives(progress);
+  const ending = getScenarioDefinition().progression.endings.find((item) => item.id === progress.endingId);
   const current = objectives.filter((objective) => !['completed', 'failed'].includes(progress.objectiveStates[objective.id]));
   const past = objectives.filter((objective) => ['completed', 'failed'].includes(progress.objectiveStates[objective.id]));
   const clueStates = Object.values(progress.clueStates);
@@ -32,11 +33,12 @@ export function InvestigationProgress({ state }: { state: GameState }) {
   });
 
   return <section className="investigation-progress scenario-progress" aria-label="剧情进度">
-    <section className="investigation-card">
+    {ending && <section className="investigation-card investigation-ending"><h3><Flag size={17} aria-hidden="true" />{ending.title}</h3><p>{ending.summary}</p></section>}
+    {(!ending || current.length > 0) && <section className="investigation-card">
       <h3><Target size={17} aria-hidden="true" />调查目标</h3>
       {current.length ? <ObjectiveRows objectives={current} progress={progress} />
         : <p className="investigation-note">{progress.endingId ? '本次调查已告一段落。' : '暂无新的调查目标。'}</p>}
-    </section>
+    </section>}
     {clocks.length > 0 && <section className="investigation-card investigation-clocks">
       <h3><Clock3 size={17} aria-hidden="true" />局势</h3>
       {clocks.map(({ presentation, clock }) => <div className="clock-row" key={presentation.id}>

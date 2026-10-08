@@ -4,7 +4,7 @@ import { DmDebugDrawer } from '../components/game/DmDebugDrawer';
 import { DiceRollOverlay } from '../components/game/DiceRollOverlay';
 import { DmJournalModal } from '../components/game/DmJournalModal';
 import { GameMenu } from '../components/game/GameMenu';
-import { InfoDrawer } from '../components/game/InfoDrawer';
+import { InfoDrawer, type InfoDrawerTab } from '../components/game/InfoDrawer';
 import { NarrativePanel } from '../components/game/NarrativePanel';
 import { EntityDetailModal } from '../components/game/EntityDetailModal';
 import { InvestigatorSheet } from '../components/game/InvestigatorSheet';
@@ -30,6 +30,7 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
   const { state } = controller;
   const [narrativeDetail, setNarrativeDetail] = useState<EntityDetail | null>(null);
   const [inspectedPlayerId, setInspectedPlayerId] = useState<string | null>(null);
+  const [drawerInitialTab, setDrawerInitialTab] = useState<InfoDrawerTab>('board');
 
   const handleNarrativeMarkOpen = useCallback((target: NarrativeMarkTarget, sourceText: string) => {
     const player = target.kind === 'person' && state.players.find((item) => item.id === target.id || item.name === (target.canonicalName ?? target.id));
@@ -82,8 +83,9 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
       <InfoDrawer
         open={controller.drawerOpen}
         state={state}
+        initialTab={drawerInitialTab}
         onClose={() => controller.setDrawerOpen(false)}
-        onOpen={() => controller.setDrawerOpen(true)}
+        onOpen={() => { setDrawerInitialTab('board'); controller.setDrawerOpen(true); }}
       />
       <NarrativePanel state={state} onMarkOpen={handleNarrativeMarkOpen} />
       <ActionDock
@@ -97,6 +99,8 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
         onSubmit={controller.submitAction}
         onSuggestion={controller.applySuggestion}
         onInspectPlayer={setInspectedPlayerId}
+        onReview={() => { setDrawerInitialTab('progress'); controller.setDrawerOpen(true); }}
+        onHome={handleHome}
       />
       <DiceRollOverlay onConfirm={controller.confirmDiceResult} roll={controller.diceRoll} />
       <ApiConfigModal open={controller.apiOpen} onClose={() => controller.setApiOpen(false)} onSave={controller.saveApi} />

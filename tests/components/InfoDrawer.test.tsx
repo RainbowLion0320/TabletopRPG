@@ -14,6 +14,21 @@ function renderDrawer(state = makeState({ activeNpcName: '伊莎贝拉·摩勒' 
 }
 
 describe('InfoDrawer v7 investigation workspace', () => {
+  it('opens a requested ending review, keeps tab choices during updates and returns focus to its actual entry', () => {
+    const state = makeState(); state.scenarioProgress = createScenarioProgress(); state.scenarioProgress.endingId = 'END_C';
+    state.scenarioProgress.objectiveStates.O01 = 'completed';
+    const close = vi.fn(), opener = document.createElement('button'); opener.textContent = '调查回顾'; document.body.append(opener); opener.focus();
+    const props = { onClose: close, onOpen: vi.fn(), state, initialTab: 'progress' as const };
+    const view = render(<InfoDrawer open {...props} />);
+    expect(screen.getByRole('tab', { name: '进度' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('heading', { name: '结局C：和平交涉' })).toBeVisible();
+    expect(screen.getByText('调查员听懂并说服深潜者释放埃里克，扶桑花号随后和平离港。')).toBeVisible();
+    expect(screen.queryByText('本次调查已告一段落。')).toBeNull(); expect(screen.queryByText('结局A：击败深潜者')).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: '日志' })); view.rerender(<InfoDrawer open {...props} state={{ ...state }} />);
+    expect(screen.getByRole('tab', { name: '日志' })).toHaveAttribute('aria-selected', 'true');
+    fireEvent.click(screen.getByRole('button', { name: '关闭资料' })); expect(close).toHaveBeenCalledOnce();
+    view.rerender(<InfoDrawer open={false} {...props} />); expect(opener).toHaveFocus(); opener.remove();
+  });
   it('puts the current objective before a collapsible review without showing locked objectives', () => {
     const state = makeState(); state.scenarioProgress = createScenarioProgress();
     state.scenarioProgress.objectiveStates.O01 = 'completed'; state.scenarioProgress.objectiveStates.O02 = 'active';
@@ -209,14 +224,16 @@ describe('InfoDrawer v7 investigation workspace', () => {
     expect(within(header as HTMLElement).getByRole('tab', { name: '日志' })).toBeInTheDocument();
   });
 
-  it('returns focus to the drawer tab before closing', async () => {
+  it('returns focus to the drawer tab after closing from its entry', async () => {
     const onClose = vi.fn();
-    render(<InfoDrawer open onClose={onClose} onOpen={vi.fn()} state={makeState()} />);
+    const state = makeState(), onOpen = vi.fn();
+    const view = render(<InfoDrawer open={false} onClose={onClose} onOpen={onOpen} state={state} />);
     const drawerTab = screen.getByRole('button', { name: '资料' });
-
+    fireEvent.click(drawerTab);
+    view.rerender(<InfoDrawer open onClose={onClose} onOpen={onOpen} state={state} />);
     fireEvent.click(screen.getByRole('button', { name: '关闭资料' }));
-
     expect(onClose).toHaveBeenCalledOnce();
+    view.rerender(<InfoDrawer open={false} onClose={onClose} onOpen={onOpen} state={state} />);
     expect(document.activeElement).toBe(drawerTab);
   });
 

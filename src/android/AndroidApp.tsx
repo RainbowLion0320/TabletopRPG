@@ -13,7 +13,7 @@ import { flushGameStorage } from '../platform/storage';
 import { isNativeAndroid } from './native';
 import { readMobileSession, writeMobileSession, type MobileSession } from './session';
 import { continuationPreview, type GameContinuation } from '../app/gameContinuation';
-import type { Investigator } from '../types/game';
+import type { GameState, Investigator } from '../types/game';
 
 type Screen = 'title' | 'setup' | 'game';
 export function AndroidApp() {
@@ -66,13 +66,16 @@ export function AndroidApp() {
     return () => { listeners.forEach(listener => { void listener.then(handle => handle.remove()); }); };
   }, []);
 
-  const configureIfNeeded = () => { if (!readApiConfig()) game.setApiOpen(true); };
+  const configureIfNeeded = (state?: GameState) => {
+    if (state && continuationPreview(state).completed) return;
+    if (!readApiConfig()) game.setApiOpen(true);
+  };
   const start = (players: Investigator[]) => {
     game.startGame(players); setScreen('game'); setNotice(''); configureIfNeeded();
   };
   const resume = () => {
-    if (session) { game.restoreSession(session.state, session.roll); setScreen('game'); configureIfNeeded(); }
-    else if (game.loadLatest()) { setScreen('game'); configureIfNeeded(); }
+    if (session) { game.restoreSession(session.state, session.roll); setScreen('game'); configureIfNeeded(session.state); }
+    else if (game.loadLatest()) { setScreen('game'); configureIfNeeded(game.saves[0]?.gameState); }
   };
   const exit = async () => {
     try { await flushGameStorage(); await NativeApp.exitApp(); }

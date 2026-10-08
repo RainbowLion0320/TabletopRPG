@@ -1,4 +1,4 @@
-import { lazy, Suspense, useId, useRef, useState, useCallback, useEffect, useLayoutEffect, type KeyboardEvent, type PointerEvent } from 'react';
+import { lazy, Suspense, useId, useRef, useState, useEffect, useLayoutEffect, type KeyboardEvent, type PointerEvent } from 'react';
 import { BookOpen, GripVertical, X } from 'lucide-react';
 import type { GameState } from '../../types/game';
 import { useDialogFocus } from '../shared/useDialogFocus';
@@ -9,16 +9,18 @@ import './info-drawer.css';
 
 const CaseBoard = lazy(() => import('./CaseBoard').then((module) => ({ default: module.CaseBoard })));
 const drawerTabs = [['progress', '进度'], ['board', '案件板'], ['log', '日志']] as const;
+export type InfoDrawerTab = typeof drawerTabs[number][0];
 
 interface InfoDrawerProps {
   open: boolean;
   state: GameState;
   onClose: () => void;
   onOpen: () => void;
+  initialTab?: InfoDrawerTab;
 }
 
-export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
-  const [activeTab, setActiveTab] = useState<'progress' | 'board' | 'log'>('board');
+export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' }: InfoDrawerProps) {
+  const [activeTab, setActiveTab] = useState<InfoDrawerTab>(initialTab);
   const [logQuery, setLogQuery] = useState('');
   const logScrollPosition = useRef(0);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -67,21 +69,16 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
   }, [portrait]);
 
   useEffect(() => {
-    if (open) setActiveTab('board');
+    if (open) setActiveTab(initialTab);
     else { setLogQuery(''); logScrollPosition.current = 0; }
-  }, [open]);
+  }, [open, initialTab]);
 
   useLayoutEffect(() => { if (pageRef.current) pageRef.current.scrollTop = 0; }, [activeTab]);
 
   useEffect(() => {
     if (drawerRef.current) drawerRef.current.inert = !open;
   }, [open]);
-  useDialogFocus(open, drawerRef, onClose, tabRef);
-
-  const handleClose = useCallback(() => {
-    tabRef.current?.focus({ preventScroll: true });
-    onClose();
-  }, [onClose]);
+  useDialogFocus(open, drawerRef, onClose);
 
   function changeTabWithKey(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     const next = event.key === 'ArrowRight' ? (index + 1) % drawerTabs.length
@@ -143,7 +140,7 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
               aria-selected={activeTab === tab} tabIndex={activeTab === tab ? 0 : -1} className={activeTab === tab ? 'active' : ''}
               onClick={() => setActiveTab(tab)} onKeyDown={(event) => changeTabWithKey(event, index)}>{label}</button>)}
           </nav>
-          <button aria-label="关闭资料" onClick={handleClose} title="关闭"><X size={18} /></button>
+          <button aria-label="关闭资料" onClick={onClose} title="关闭"><X size={18} /></button>
         </header>
 
         <div ref={pageRef} className={`info-drawer-page ${activeTab}-page`} role="tabpanel" id={`${id}-page`} aria-labelledby={`${id}-${activeTab}`}>

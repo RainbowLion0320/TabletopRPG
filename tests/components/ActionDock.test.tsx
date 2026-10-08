@@ -2,8 +2,29 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ActionDock } from '../../src/components/game/ActionDock';
 import { makeInvestigator, makeState } from '../dm/fixtures';
+import { createScenarioProgress, getScenarioDefinition } from '../../src/scenario/engine';
 
 describe('ActionDock player-specific suggestions', () => {
+  it.each(['END_A', 'END_B', 'END_C'])('keeps the authored %s outcome and party inspectable without reopening actions', (endingId) => {
+    const state = makeState({ players: [makeInvestigator({ id: 'henry', name: '亨利' }), makeInvestigator({ id: 'ada', name: '艾达' })] });
+    state.scenarioProgress = createScenarioProgress(); state.scenarioProgress.endingId = endingId;
+    state.declarations.ada = '保留的旧行动'; state.currentActorIndex = 1;
+    const original = JSON.stringify(state);
+    const review = vi.fn(), home = vi.fn(), inspect = vi.fn(), submit = vi.fn(), change = vi.fn(), roll = vi.fn(), retry = vi.fn();
+    render(<ActionDock state={state} isDiceRolling={false} onInspectPlayer={inspect} onReview={review} onHome={home}
+      onSubmit={submit} onDeclarationChange={change} onRoll={roll} onSuggestion={vi.fn()} onRetry={retry} />);
+    const ending = getScenarioDefinition().progression.endings.find(item => item.id === endingId)!;
+    expect(screen.getByRole('region', { name: '游戏结局' })).toHaveTextContent(ending.summary);
+    expect(screen.queryByRole('textbox')).toBeNull(); expect(screen.queryByText('行动中')).toBeNull();
+    expect(screen.queryByText('已提交')).toBeNull(); expect(screen.queryByRole('button', { name: '重试本轮' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /查看艾达的属性，HP/ }));
+    fireEvent.click(screen.getByRole('button', { name: '调查回顾' }));
+    expect(screen.getByRole('button', { name: '调查回顾' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: '返回首页' }));
+    expect(inspect).toHaveBeenCalledWith('ada'); expect(review).toHaveBeenCalledOnce(); expect(home).toHaveBeenCalledOnce();
+    expect(submit).not.toHaveBeenCalled(); expect(change).not.toHaveBeenCalled(); expect(roll).not.toHaveBeenCalled(); expect(retry).not.toHaveBeenCalled();
+    expect(JSON.stringify(state)).toBe(original);
+  });
   it('opens the requested investigator from the avatar or party card without submitting or changing a draft', () => {
     const state = makeState({ players: [makeInvestigator({ id: 'henry', name: '亨利' }), makeInvestigator({ id: 'ada', name: '艾达' })] });
     state.currentActorIndex = 1;

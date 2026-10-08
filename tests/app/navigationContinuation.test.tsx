@@ -2,7 +2,10 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../src/app/App';
 import { AndroidApp } from '../../src/android/AndroidApp';
-import { writeMobileSession, type MobileSession } from '../../src/android/session';
+import { SESSION_KEY, writeMobileSession, type MobileSession } from '../../src/android/session';
+import { createScenarioProgress } from '../../src/scenario/engine';
+import { makeState } from '../dm/fixtures';
+import { saveGameState } from '../../src/services/storage';
 
 vi.mock('../../src/audio/AudioDirector', () => ({ AudioDirector: () => null }));
 vi.mock('../../src/android/native', async (importOriginal) => ({
@@ -37,6 +40,19 @@ function navigate(label: string) {
 }
 
 describe('current investigation navigation', () => {
+  it.each(['automatic', 'manual'])('reviews a completed Android %s record without requiring a model connection', (source) => {
+    const state = makeState(); state.scenarioProgress = createScenarioProgress(); state.scenarioProgress.endingId = 'END_C';
+    state.scenarioProgress.settledEndingIds = ['END_C'];
+    if (source === 'automatic') localStorage.setItem(SESSION_KEY, JSON.stringify({ version: 1, savedAt: 1234, state, roll: null }));
+    else saveGameState(state);
+    render(<AndroidApp />);
+    const review = screen.getByRole('button', { name: '回顾调查', exact: true }); expect(review).toHaveClass('primary-btn');
+    fireEvent.click(review);
+    expect(screen.getByRole('region', { name: '游戏结局' })).toHaveTextContent('结局C：和平交涉');
+    expect(screen.queryByRole('dialog', { name: 'AI 设置' })).toBeNull(); expect(screen.queryByRole('textbox')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '返回首页', exact: true })); fireEvent.click(screen.getByRole('button', { name: '回顾调查', exact: true }));
+    expect(screen.queryByRole('dialog', { name: 'AI 设置' })).toBeNull(); expect(screen.getByRole('region', { name: '游戏结局' })).toHaveTextContent('和平交涉');
+  });
   it('returns to the unsaved web investigation with its draft and without creating a manual save', () => {
     render(<App />); const input = startSolo(); fireEvent.change(input, { target: { value: '先记录信上的日期。\n再查看门廊。' } });
     navigate('返回首页');

@@ -568,17 +568,6 @@ button {
   color: rgba(255, 255, 255, 0.68);
 }
 
-.ending-dock {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.ending-dock p {
-  margin: 4px 0 0;
-  color: rgba(255, 255, 255, 0.72);
-}
-
 /* 第一行：输入行 */
 .dock-input-row {
   display: flex;

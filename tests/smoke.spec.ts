@@ -1,8 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { rollD100 } from '../src/services/dice';
 import type { CheckRequest, GameState, ScenarioProgress } from '../src/types/game';
 import { makeInvestigator } from './dm/fixtures';
+import { parse as parseYaml } from 'yaml';
 
 const hasEnvDefaultApiKey =
   Boolean(process.env.VITE_AI_API_KEY) ||
@@ -13,6 +14,9 @@ const generatedScenarioRuntime = readFileSync(
 );
 const scenarioContentHash = /scenarioContentHash = "([^"]+)"/.exec(generatedScenarioRuntime)?.[1] ?? '';
 const scenarioContentVersion = /"contentVersion": "([^"]+)"/.exec(generatedScenarioRuntime)?.[1] ?? '';
+const scenarioEndings = (parseYaml(readFileSync('scenarios/wuzhongxiaoshi/progression.yaml', 'utf8')) as {
+  endings: Array<{ id: string; title: string; summary: string }>;
+}).endings;
 
 function createSmokeScenarioProgress(): ScenarioProgress {
   return {
@@ -982,21 +986,81 @@ for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height:
   });
 }
 
-test('v8 ending save locks the action area and preserves the authored ending', async ({ page }) => {
-  await gotoWithSave(page, createV8EndingSave());
-  await page.getByRole('button', { name: '继续游戏' }).click();
-  await expect(page.locator('.ending-dock')).toBeVisible();
-  await expect(page.getByText('结局C：和平交涉')).toBeVisible();
-  await expect(page.getByText('调查员听懂并说服深潜者释放埃里克，扶桑花号随后和平离港。')).toBeVisible();
-  await expect(page.locator('.dock-input')).toHaveCount(0);
-  await expect(page.locator('.scene-npc')).toHaveCount(0);
-  await expect(page.locator('.npc-nameplate')).toHaveCount(0);
-  await page.getByRole('button', { name: '资料', exact: true }).click();
-  await page.getByRole('tab', { name: '进度' }).click();
-  const skippedObjective = page.locator('.objective-row').filter({ hasText: '调查蒙特利尔与埃里克的关系' });
-  await expect(skippedObjective).toContainText('未完成');
-  await expect(skippedObjective).not.toContainText('进行中');
-});
+for (const size of [{ width: 320, height: 568, party: 1, endingId: 'END_C' }, { width: 320, height: 568, party: 4, endingId: 'END_B' }, { width: 390, height: 844, party: 4, endingId: 'END_C' }, { width: 430, height: 932, party: 2, endingId: 'END_A' }, { width: 1440, height: 900, party: 4, endingId: 'END_C' }]) {
+  test(`completed investigation keeps its outcome, records, party and return path at ${size.width}px with ${size.party} players`, async ({ page }, testInfo) => {
+    await page.setViewportSize(size);
+    const state = createV8EndingSave();
+    state.scenarioProgress!.endingId = size.endingId; state.scenarioProgress!.settledEndingIds = [size.endingId];
+    const outcome = scenarioEndings.find(e => e.id === size.endingId)!;
+    state.players = [...state.players, makeInvestigator({ id: 'reporter', name: '托马斯·贝尔' }), makeInvestigator({ id: 'police', name: '罗伯特·肖' })].slice(0, size.party);
+    const resources = state.players.map(p => [p.currentHp, p.currentMp, p.currentSan]);
+    let aiCalls = 0; await page.route('**/chat/completions', route => { aiCalls++; return route.abort(); });
+    await gotoWithSave(page, state);
+    const reviewOnTitle = page.getByRole('button', { name: '回顾调查', exact: true });
+    await expect(reviewOnTitle).toHaveClass(/primary-btn/);
+    await expect(page.getByRole('region', { name: '继续调查摘要' })).toContainText('已结案');
+    await reviewOnTitle.click();
+    const ending = page.getByRole('region', { name: '游戏结局' });
+    await expect(ending).toContainText(outcome.title);
+    await expect(ending).toContainText(outcome.summary);
+    await expect(page.locator('.dock-input, .scene-npc, .npc-nameplate, .party-action-status')).toHaveCount(0);
+    await expect(ending.locator('.party-compact')).toHaveCount(size.party);
+    await expect.poll(() => page.locator('.scene-backdrop-img').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('ending-layout.png') });
+    writeFileSync(testInfo.outputPath('ending-layout.json'), JSON.stringify(await ending.evaluate(el => ({
+      viewport: [innerWidth, innerHeight], dock: [el.clientHeight, el.scrollHeight],
+      dockStyle: { height: getComputedStyle(el).height, min: getComputedStyle(el).minHeight, max: getComputedStyle(el).maxHeight, flex: getComputedStyle(el).flex },
+      grid: getComputedStyle(document.querySelector('.game-screen')!).gridTemplateRows,
+      children: Array.from(document.querySelector('.game-screen')!.children).map(e => ({ tag: e.className, height: e.getBoundingClientRect().height, row: getComputedStyle(e).gridRow, position: getComputedStyle(e).position })),
+      elements: Array.from(el.querySelectorAll('button, .ending-copy, .ending-copy p, .party-strip-compact')).map(e => {
+        const r = e.getBoundingClientRect(), style = getComputedStyle(e);
+        return { tag: e.className, text: e.textContent, rect: [r.x, r.y, r.width, r.height], clamp: style.webkitLineClamp, minHeight: style.minHeight,
+          target: document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.className };
+      })
+    }))));
+    const bounds = () => ending.evaluate(el => {
+      const r = el.getBoundingClientRect(), story = document.querySelector('.narrative-panel')!.getBoundingClientRect();
+      const controls = Array.from(el.querySelectorAll('button')).filter(b => b.getBoundingClientRect().height > 0);
+      return { inside: r.top >= 0 && r.bottom <= innerHeight + 1, reading: story.height >= 140,
+        noOverlap: story.bottom <= r.top + 1, noOverflow: document.documentElement.scrollWidth <= innerWidth,
+        controls: controls.every(b => { const r = b.getBoundingClientRect(); return r.width >= 44 && r.height >= 44 && r.bottom <= innerHeight + 1 && b.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)); }) };
+    });
+    await expect.poll(bounds).toEqual({ inside: true, reading: true, noOverlap: true, noOverflow: true, controls: true });
+    await page.locator('.narrative-toggle-btn').click(); await expect(page.locator('.narrative-toggle-btn')).toHaveAttribute('aria-expanded', 'true');
+    await expect.poll(bounds).toEqual({ inside: true, reading: true, noOverlap: true, noOverflow: true, controls: true });
+    await expect.poll(() => page.locator('.narrative-panel').evaluate(el => el.getBoundingClientRect().top >= document.querySelector('.game-top')!.getBoundingClientRect().bottom - 1)).toBe(true);
+    await page.locator('.narrative-toggle-btn').click(); await expect(page.locator('.narrative-toggle-btn')).toHaveAttribute('aria-expanded', 'false');
+    await ending.locator('.party-compact').last().click();
+    await expect(page.getByRole('dialog', { name: state.players.at(-1)!.name, exact: true })).toBeVisible();
+    await page.getByRole('button', { name: '关闭调查员档案' }).click(); await expect(ending.locator('.party-compact').last()).toBeFocused();
+    const review = page.getByRole('button', { name: '调查回顾', exact: true });
+    await review.click(); await expect(page.getByRole('tab', { name: '进度' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('.investigation-ending')).toContainText(outcome.summary);
+    const skippedObjective = page.locator('.objective-row').filter({ hasText: '调查蒙特利尔与埃里克的关系' });
+    await expect(skippedObjective).toContainText('未完成'); await expect(skippedObjective).not.toContainText('进行中');
+    await page.getByRole('tab', { name: '日志' }).click(); await page.getByRole('button', { name: '关闭资料' }).click();
+    await expect(review).toBeFocused();
+    await page.getByRole('button', { name: '资料', exact: true }).click();
+    await expect(page.getByRole('tab', { name: '案件板' })).toHaveAttribute('aria-selected', 'true');
+    await page.getByRole('button', { name: '关闭资料' }).click();
+    await expect.poll(() => page.locator('.info-drawer-react').evaluate(el => el.getBoundingClientRect().left >= innerWidth - 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('ending-review.png') });
+    if (size.width === 390) await page.screenshot({ path: 'output/ui-2026-10-08/41-ending-after.png' });
+    if (size.width < 600) {
+      await page.setViewportSize({ width: size.width, height: 300 }); await expect.poll(bounds).toEqual({ inside: true, reading: true, noOverlap: true, noOverflow: true, controls: true });
+      await review.click(); await expect(page.locator('.investigation-ending')).toContainText(outcome.summary);
+      await page.getByRole('button', { name: '关闭资料' }).click(); await expect(review).toBeFocused(); await page.setViewportSize(size);
+    }
+    await page.getByRole('button', { name: '返回首页', exact: true }).click();
+    await expect(reviewOnTitle).toBeFocused(); await reviewOnTitle.click();
+    await expect(ending.locator('.party-compact')).toHaveCount(size.party);
+    await expect(ending).toContainText(outcome.title); await expect(page.locator('.dock-input')).toHaveCount(0);
+    await page.getByRole('button', { name: '菜单', exact: true }).click(); await page.getByRole('button', { name: '保存游戏', exact: true }).click();
+    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('trpg-saves-v2')!)[0].gameState as GameState);
+    expect(stored.players.map(p => [p.currentHp, p.currentMp, p.currentSan])).toEqual(resources);
+    expect(stored.scenarioProgress?.settledEndingIds).toEqual([size.endingId]); expect(aiCalls).toBe(0);
+  });
+}
 
 test('pending check plays the dice ritual before revealing its result', async ({ page }) => {
   await gotoWithSave(page, createPendingCheckSave());

@@ -18,6 +18,7 @@
 .investigation-history summary:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: -2px; }
 .investigation-history[open] .objective-list { padding: 8px 0 2px; border-top: 1px solid #604d33; }
 .progress-stat, .investigation-note { margin: 0; font-size: 15px; line-height: 1.8; color: #ded0b8; }
+.investigation-ending p { margin: 0; color: #e7dac1; font-size: 15px; line-height: 1.8; overflow-wrap: anywhere; }
 .clock-row { display: grid; gap: 8px; padding: 2px 0 8px; }
 .clock-row > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 15px; line-height: 1.7; }
 .clock-row strong { font-weight: 400; color: #e1c9a1; }

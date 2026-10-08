@@ -615,6 +615,54 @@ public class GameAndroidTest {
         } finally { activity.close(); }
     }
 
+    @Test public void completedInvestigationKeepsRecordsPartyAndNativeReturn() throws Exception {
+        int[][] cases = {{320, 568, 1}, {390, 844, 4}, {430, 932, 2}, {562, 1000, 4}};
+        String[] endings = {"END_C", "END_B", "END_A", "END_C"};
+        for (int index = 0; index < cases.length; index++) {
+            int[] size = cases[index]; fresh();
+            try {
+                viewport(size[0], size[1]); click("开始游戏");
+                for (int player = 1; player < size[2]; player++) js("document.querySelectorAll('.preset-card-modern strong')[" + player + "].click()");
+                click("进入游戏"); configure("http://127.0.0.1:1/v1", "responses");
+                SystemClock.sleep(300); menu("返回首页");
+                // Seed an already-settled QA record through the actual encrypted storage port.
+                js("window.qaEndingReady=false;Capacitor.Plugins.GameStorage.readAll().then(async ({values})=>{"
+                    + "const record=JSON.parse(values['trpg-android-session-v1']);const progress=record.state.scenarioProgress;"
+                    + "progress.endingId=" + JSONObject.quote(endings[index]) + ";progress.settledEndingIds=[progress.endingId];"
+                    + "progress.activeActId='A02';progress.objectiveStates.O01='completed';progress.objectiveStates.O03='active';"
+                    + "record.state.currentScene='S05';record.state.activeNpcName=null;record.state.activeNpcId=null;record.roll=null;"
+                    + "window.qaEndingVitals=JSON.stringify(record.state.players.map(p=>[p.currentHp,p.currentMp,p.currentSan]));"
+                    + "await Capacitor.Plugins.GameStorage.write({key:'trpg-android-session-v1',value:JSON.stringify(record)});window.qaEndingReady=true;})");
+                until("window.qaEndingReady");
+                String vitals = js("window.qaEndingVitals");
+                activity.recreate(); until("document.querySelector('.title-resume-preview')");
+                assertEquals("Completed records offer a review", "true", js("document.querySelector('.title-resume-preview').textContent.includes('已结案')&&document.querySelector('.title-actions button:first-child').textContent==='回顾调查'"));
+                click("回顾调查"); until("document.querySelector('.ending-dock')");
+                assertEquals("The ending stays read-only with the original party", "true", js("!document.querySelector('.dock-input')&&!document.querySelector('.party-action-status')&&!document.querySelector('.scene-npc')&&document.querySelectorAll('.ending-dock .party-compact').length===" + size[2]));
+                assertEquals("Outcome uses the drawn record mount and readable text", "true", js("getComputedStyle(document.querySelector('.ending-copy')).borderImageSource.includes('dossier-mount')&&parseFloat(getComputedStyle(document.querySelector('.ending-copy p')).fontSize)>=15"));
+                reachable(".ending-actions button:first-child"); reachable(".ending-actions button:last-child"); reachable(".ending-dock .party-compact:last-child");
+                assertEquals("Reading and actions do not overlap", "true", js("document.querySelector('.narrative-panel').clientHeight>=140&&document.querySelector('.narrative-panel').getBoundingClientRect().bottom<=document.querySelector('.ending-dock').getBoundingClientRect().top+.5"));
+                nativeTap(".ending-dock .party-compact:last-child"); until("document.querySelector('.investigator-sheet')");
+                nativeTap(".investigator-close"); until("!document.querySelector('.investigator-sheet')&&document.activeElement===document.querySelector('.ending-dock .party-compact:last-child')");
+                nativeTap(".ending-actions button:first-child"); until("document.querySelector('.investigation-ending')");
+                assertEquals("Review opens the progress page", "true", js("document.querySelector('.info-drawer-tabs button:first-child').getAttribute('aria-selected')==='true'"));
+                screenshot("ending-" + size[0] + "-review");
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                until("!document.querySelector('.info-drawer-react.open')&&document.activeElement===document.querySelector('.ending-actions button:first-child')");
+                viewport(size[0], 300); reachable(".ending-actions button:first-child"); reachable(".ending-actions button:last-child");
+                nativeTap(".ending-actions button:first-child"); until("document.querySelector('.investigation-ending')"); reachable("[aria-label='关闭资料']");
+                nativeTap("[aria-label='关闭资料']"); until("document.activeElement===document.querySelector('.ending-actions button:first-child')"); viewport(size[0], size[1]);
+                until("document.querySelector('.info-drawer-react').getBoundingClientRect().left>=innerWidth-.5");
+                screenshot("ending-" + size[0]); nativeTap(".ending-actions button:last-child"); until("document.querySelector('.title-screen')"); click("回顾调查"); until("document.querySelector('.ending-dock')");
+                assertEquals("Offline review does not re-award player resources", "true", js("!document.querySelector('.thinking-line')&&!document.querySelector('.check-card')&&!document.querySelector('.dock-input')"));
+                menu("保存游戏"); SystemClock.sleep(300);
+                js("window.qaEndingRead=false;Capacitor.Plugins.GameStorage.readAll().then(({values})=>{window.qaEndingSaved=JSON.parse(values['trpg-android-session-v1']);window.qaEndingRead=true;})"); until("window.qaEndingRead");
+                assertEquals("Player resources stay unchanged after home and resume", vitals, js("JSON.stringify(window.qaEndingSaved.state.players.map(p=>[p.currentHp,p.currentMp,p.currentSan]))"));
+                assertEquals("The ending is settled only once", "true", js("window.qaEndingSaved.state.scenarioProgress.settledEndingIds.length===1&&window.qaEndingSaved.state.scenarioProgress.endingId===" + JSONObject.quote(endings[index])));
+            } finally { activity.close(); }
+        }
+    }
+
     @Test public void audioStartsOnTouchAndSwitchesPersist() throws Exception {
         fresh();
         try {

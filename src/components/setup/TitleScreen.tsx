@@ -4,6 +4,7 @@ import type { SaveSlot } from '../../types/game';
 import fogVideo from '../../../assets/scenes/scene_main_fog_london.webm';
 import fogPoster from '../../../assets/scenes/scene_main_fog_london.webp';
 import { AudioSettingsButton } from '../shared/AudioSettingsButton';
+import { continuationPreview } from '../../app/gameContinuation';
 import './title-screen.css';
 
 interface TitleScreenProps {
@@ -12,13 +13,13 @@ interface TitleScreenProps {
   onLoadLatest: () => void;
   onOpenApi: () => void;
   latestSave?: SaveSlot;
-  continuation?: { label: string; scene: string; players: string; detail: string };
+  continuation?: ReturnType<typeof continuationPreview>;
 }
 
 export function TitleScreen({ hasSaves, latestSave, continuation, onLoadLatest, onNewGame, onOpenApi }: TitleScreenProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const primaryRef = useRef<HTMLButtonElement>(null);
-  const preview = continuation ?? (latestSave ? { label: '最近存档', scene: latestSave.scene,
+  const preview = continuation ?? (latestSave ? { ...continuationPreview(latestSave.gameState, '最近存档'),
     players: latestSave.players, detail: latestSave.savedAt } : null);
   useLayoutEffect(() => {
     if (document.activeElement === document.body) primaryRef.current?.focus({ preventScroll: true });
@@ -44,7 +45,7 @@ export function TitleScreen({ hasSaves, latestSave, continuation, onLoadLatest, 
     <Play size={18} aria-hidden="true" />开始游戏
   </button>;
   const continueAction = <button key="continue" ref={hasSaves ? primaryRef : undefined} className={hasSaves ? 'primary-btn' : 'ghost-btn'}
-    disabled={!hasSaves} onClick={onLoadLatest}>继续游戏</button>;
+    disabled={!hasSaves} onClick={onLoadLatest}>{preview?.completed ? '回顾调查' : '继续游戏'}</button>;
   return (
     <section className="title-screen">
       <div className="title-backdrop" aria-hidden="true">

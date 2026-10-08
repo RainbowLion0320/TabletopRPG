@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { captureGameContinuation, continuationPreview } from '../../src/app/gameContinuation';
 import { makeInvestigator, makeState } from '../dm/fixtures';
 import { evaluateD100, prepareCheck } from '../../src/services/dice';
+import { createScenarioProgress } from '../../src/scenario/engine';
 
 describe('suspended investigation checkpoints', () => {
   it('retains drafts, party actor, pending action and history without mutating the live thinking state', () => {
@@ -24,6 +25,12 @@ describe('suspended investigation checkpoints', () => {
   });
   it('previews only the current scene, party and public world time', () => {
     const state = makeState(); state.flags.internalSecret = 'secret';
-    expect(continuationPreview(state)).toEqual({ label: '当前调查', scene: '摩勒住宅', players: state.players.map(p => p.name).join('、'), detail: '1920-07-13 17:30' });
+    expect(continuationPreview(state)).toEqual({ label: '当前调查', scene: '摩勒住宅', players: state.players.map(p => p.name).join('、'), detail: '1920-07-13 17:30', completed: false });
+  });
+  it('identifies the public completed outcome without evaluating or settling the ending again', () => {
+    const state = makeState(); state.scenarioProgress = createScenarioProgress(); state.scenarioProgress.endingId = 'END_C';
+    const original = JSON.stringify(state);
+    expect(continuationPreview(state, '最近存档')).toMatchObject({ label: '已结案', scene: '结局C：和平交涉', completed: true });
+    expect(JSON.stringify(state)).toBe(original);
   });
 });
