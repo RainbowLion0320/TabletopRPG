@@ -1,5 +1,7 @@
 param([switch]$DebugBuild, [switch]$NativeTests, [string]$Device = $env:ANDROID_SERIAL)
 $ErrorActionPreference = 'Stop'
+if ($NativeTests -and $DebugBuild) { throw 'NativeTests cannot be combined with DebugBuild; regression uses the signed release.' }
+if ($NativeTests -and [string]::IsNullOrWhiteSpace($Device)) { throw 'Set ANDROID_SERIAL to a dedicated test emulator. Native tests reset only this app''s test data.' }
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $projectRoot
 $localConfig = Join-Path $projectRoot '.android-local.json'
@@ -28,20 +30,6 @@ try {
 & npx.cmd cap sync android
 Check-Exit 'Capacitor sync'
 
-if ($NativeTests) {
-    if (!$Device) { throw 'Set ANDROID_SERIAL to a dedicated test emulator. Native tests reset only this app''s test data.' }
-    & $gradle --no-daemon -p android :app:assembleDebug :app:assembleDebugAndroidTest
-    Check-Exit 'Android test build'
-    $adb = Join-Path $sdk 'platform-tools\adb.exe'
-    & $adb -s $Device install -r android/app/build/outputs/apk/debug/app-debug.apk
-    Check-Exit 'Install test game'
-    & $adb -s $Device install -r android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-    Check-Exit 'Install test runner'
-    $testOutput = & $adb -s $Device shell am instrument -w -r com.rainbowlion.fogtrpg.test/androidx.test.runner.AndroidJUnitRunner 2>&1
-    $testOutput | Write-Output
-    if (($testOutput -join "`n") -notmatch 'OK \(\d+ tests\)' -or ($testOutput -join "`n") -match 'FAILURES!!!|INSTRUMENTATION_FAILED') { throw 'Android instrumentation tests failed.' }
-    exit 0
-}
 if ($DebugBuild) {
     & $gradle --no-daemon -p android :app:assembleDebug
     Check-Exit 'Android debug build'
@@ -94,6 +82,25 @@ $stream = [IO.File]::OpenRead($apk)
 $hasher = [Security.Cryptography.SHA256]::Create()
 try { $hash = [BitConverter]::ToString($hasher.ComputeHash($stream)).Replace('-', '').ToLowerInvariant() } finally { $stream.Dispose(); $hasher.Dispose() }
 [IO.File]::WriteAllText("$apk.sha256", "$hash  $([IO.Path]::GetFileName($apk))`n", (New-Object Text.UTF8Encoding($false)))
+if ($NativeTests) {
+    & $gradle --no-daemon -p android :app:assembleDebugAndroidTest
+    Check-Exit 'Android test runner build'
+    $testApk = Join-Path $artifactDir 'Fog-TRPG-qa-tests.apk'
+    & "$sdk\build-tools\36.0.0\apksigner.bat" sign --ks $keystore --ks-key-alias fog-trpg --ks-pass "file:$passwordFile" --out $testApk android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+    Check-Exit 'Sign Android test runner'
+    & "$sdk\build-tools\36.0.0\apksigner.bat" verify --verbose $testApk
+    Check-Exit 'Verify Android test runner'
+    $adb = Join-Path $sdk 'platform-tools\adb.exe'
+    & $adb -s $Device install -r $apk
+    Check-Exit 'Install signed release for regression'
+    & $adb -s $Device install -r -t $testApk
+    Check-Exit 'Install signed test runner'
+    $testOutput = & $adb -s $Device shell am instrument -w -r com.rainbowlion.fogtrpg.test/androidx.test.runner.AndroidJUnitRunner 2>&1
+    Check-Exit 'Run Android instrumentation'
+    $testOutput | Write-Output
+    $testText = $testOutput -join "`n"
+    if ($testText -notmatch 'OK \([1-9]\d* tests?\)' -or $testText -match 'FAILURES!!!|INSTRUMENTATION_FAILED') { throw 'Android instrumentation failed or no tests were run.' }
+}
 . (Join-Path $PSScriptRoot 'artifact-retention.ps1')
 $pruned = Remove-ObsoleteApkArtifacts -ArtifactDirectory $artifactDir -KeepApk $apk
 Write-Output "Removed $($pruned.RemovedFiles) obsolete delivery files ($($pruned.RemovedBytes) bytes); kept the two latest releases."

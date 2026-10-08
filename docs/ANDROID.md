@@ -85,9 +85,11 @@ npm run android:apk
 | `npm run android:debug` | 本地调试 APK |
 | `npm run android:apk` | 正式签名 APK |
 | `npm run clean:generated` | 校验当前正式包，保留最近两版并清理已完成的音频下载/中间文件 |
-| `$env:ANDROID_SERIAL='设备序列号'; npm run android:test` | 在指定专用测试设备安装 debug 包及运行包内测试 |
+| `$env:ANDROID_SERIAL='设备序列号'; npm run android:test` | 构建/校验正式签名 APK，在指定专用测试设备覆盖安装并运行同签名 runner |
 
 原生测试会重置指定设备上 **本游戏的测试数据**，请使用独立模拟器，不要指向正在游玩的手机。当前测试专用 MuMu 实例为 `Fog TRPG APK QA`（Android 15），与原有实例分离。
+
+`android:test` 共用 `android:apk` 的正式资源、签名、非调试 manifest、包内配置与 SHA256 核验，不另建 debug 游戏 APK。测试 runner 临时写入 `output/apk/Fog-TRPG-qa-tests.apk`，使用同一长期签名；无需卸载已装正式包。未指定/空白设备，或同时指定 `-NativeTests` 和 `-DebugBuild`，在构建前退出。安装和测试进程须成功，且实际至少运行一项通过的测试；失败时保留旧交付与诊断临时文件，成功后仅保留最近两版及校验文件并移除 runner。测试使用原生离线服务替身，默认不会调用付费模型。
 
 ## 签名与升级
 
