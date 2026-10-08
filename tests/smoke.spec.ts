@@ -1627,6 +1627,56 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
   });
 }
 
+for (const width of [320, 390, 562, 1440]) {
+  test(`AI configuration repairs the relevant field within its body at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: width > 700 ? 900 : 844 });
+    await gotoClean(page);
+    await page.getByRole('button', { name: 'AI 设置', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'AI DM 配置' });
+    const save = dialog.getByRole('button', { name: '保存', exact: true });
+    await dialog.getByLabel('API Key', { exact: true }).fill('ui-qa-only-token');
+    await dialog.getByLabel('服务商', { exact: true }).selectOption('custom');
+    await dialog.getByLabel('Endpoint').fill('https://ui-qa.example/v1');
+    await dialog.getByText('连接设置', { exact: true }).click();
+    await save.click();
+    const model = dialog.getByLabel('模型');
+    await expect(model).toBeFocused(); await expect(model).toHaveAttribute('aria-invalid', 'true');
+    await expect(model).toHaveAccessibleDescription('请填写模型名。');
+    await expect(dialog.locator('.api-connection')).not.toHaveAttribute('open');
+    await save.click(); await expect(model).toBeFocused();
+    await page.setViewportSize({ width, height: 300 });
+    const verify = async (field: string) => {
+      await expect.poll(() => dialog.evaluate((element, id) => {
+        const body = element.querySelector('.api-config-fields')!.getBoundingClientRect();
+        const target = element.querySelector<HTMLElement>(`#${id}`)!;
+        const input = target.getBoundingClientRect();
+        const error = element.querySelector('[role="alert"]')!.getBoundingClientRect();
+        const footer = element.querySelector('footer')!.getBoundingClientRect();
+        const header = element.querySelector('.api-config-header')!.getBoundingClientRect();
+        return input.top >= body.top && input.bottom <= body.bottom && error.top >= body.top && error.bottom <= body.bottom
+          && footer.top >= body.bottom && footer.bottom <= innerHeight && header.top >= 0 && header.bottom <= body.top
+          && element.scrollTop === 0 && target.contains(document.elementFromPoint(input.x + input.width / 2, input.y + input.height / 2));
+      }, field)).toBe(true);
+      await expect(dialog.getByRole('button', { name: '关闭 AI DM 配置' })).toBeInViewport();
+      expect(await dialog.locator('label, summary, footer button, [role="alert"]').evaluateAll(elements => elements.every(element => parseFloat(getComputedStyle(element).fontSize) >= 15))).toBe(true);
+    };
+    await verify('api-model');
+    await model.fill('ui-qa-model'); await expect(dialog.getByRole('alert')).toHaveCount(0);
+    await dialog.getByText('连接设置', { exact: true }).click();
+    const endpoint = dialog.getByLabel('Endpoint');
+    await endpoint.fill('bad-address');
+    await dialog.getByText('连接设置', { exact: true }).click();
+    await save.click();
+    await expect(endpoint).toBeFocused(); await expect(dialog.locator('.api-connection')).toHaveAttribute('open');
+    await expect(endpoint).toHaveAccessibleDescription('请输入完整的 HTTP(S) 服务地址。');
+    await verify('api-endpoint');
+    await page.screenshot({ path: testInfo.outputPath('api-repair-short.png') });
+    await expect(model).toHaveValue('ui-qa-model');
+    await expect(dialog.getByLabel('API Key', { exact: true })).toHaveValue('ui-qa-only-token');
+    await expect(dialog.getByLabel('API Key', { exact: true })).toHaveAttribute('type', 'password');
+  });
+}
+
 test('phone AI configuration keeps core inputs concise and preserves explicit custom connections above the keyboard', async ({ page }, testInfo) => {
   // Save only into this disposable browser context; never alter a developer's env.
   await page.route('**/__api_config', (route) => route.fulfill({ status: 404, body: '' }));

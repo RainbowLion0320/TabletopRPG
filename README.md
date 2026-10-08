@@ -1,10 +1,10 @@
 # TabletopRPG
 
-AI 驱动的横屏网页跑团游戏。当前项目已经迁移为 Vite + React + TypeScript 架构，主界面采用简洁的一级游戏界面，将资料、设置、存档等低频功能收进二级菜单。
+AI 驱动的跑团游戏，优先适配手机竖屏，兼顾桌面网页。当前项目采用 Vite + React + TypeScript 架构，主界面将资料、设置、存档等低频功能收进二级菜单。
 
 ## 技术栈
 
-安卓版已增加独立构建入口，运行 `npm run android:apk` 生成正式签名 APK。首次准备工具及安装说明见 [Android 开发与交付](docs/ANDROID.md)。玩家进入游戏后自行填写 API；安卓包不会采用下文的网页开发环境密钥配置。
+安卓版使用独立构建入口，运行 `npm run android:apk` 生成正式签名 APK。首次准备工具及安装说明见 [Android 开发与交付](docs/ANDROID.md)。按项目授权，正式 APK 从系统 `APIKEY_MIMO` 注入 MiMo Token Plan / `mimo-v2.6-pro` 默认连接，新安装可直接游玩；玩家已保存的连接优先，仍可在「AI 设置」修改。网页默认连接按下文的本地配置设置，真实默认密钥不进入 Git 或网页产物。
 
 | 模块 | 方案 |
 | --- | --- |

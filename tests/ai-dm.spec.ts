@@ -831,7 +831,7 @@ test('AI DM opens settings when a chat-compatible provider is missing its endpoi
   const configDialog = page.getByRole('dialog', { name: 'AI DM 配置' });
   await expect(configDialog).toBeVisible();
   await expect(configDialog.getByLabel('Endpoint')).toBeVisible();
-  await expect(configDialog.getByText(/MiMo\/custom provider 必须配置 endpoint/)).toBeVisible();
+  await expect(configDialog.getByRole('alert')).toContainText('请填写服务地址');
   await expect(page.locator('.narrative-panel')).not.toContainText('请补全 AI DM 配置');
 });
 

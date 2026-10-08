@@ -8,6 +8,8 @@
 
 ## 1. Product Positioning
 
+Version 0.4.25 makes AI settings repairable on a phone: saving an incomplete connection identifies and focuses the relevant field, with a concise message beside it. An invalid service address opens its collapsed connection section; unrelated sections stay as the player left them. Field content scrolls within the dialog when the keyboard reduces space, while close and save remain fixed. Labels, feedback and footer actions use at least 15px type. Existing connection requirements, stored-player priority and APK defaults remain unchanged.
+
 Version 0.4.24 gives the current web edition the same optimized art as the APK. Scene composition and transparent portraits remain intact; images keep their aspect ratio and never upscale. Both builds share one regenerable cache while original masters remain available. Seven unreferenced dark scene copies are removed, as the existing scene shade already supplies darkness. This changes loading cost and generated-file retention, not the story, UI layout or older web revision in Git.
 
 Existing saves and automatic sessions restore authored investigator portraits from the current build when their previous bundled URL has expired. Current resources, learned skills, declarations and locked dice remain intact; explicit custom images remain unchanged. Players can continue after an update without rebuilding their party.

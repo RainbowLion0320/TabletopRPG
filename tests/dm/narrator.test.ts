@@ -499,6 +499,6 @@ describe('callNarrator retry repair', () => {
       ctx,
       actions: [{ player: '亨利', action: '我查看码头地面。' }],
       history: []
-    })).rejects.toThrow(/endpoint|协议|模型|chat-compatible/i);
+    })).rejects.toThrow(/服务地址/);
   });
 });

@@ -8,6 +8,9 @@ export interface ResolvedApiConfig extends ApiConfig {
   model: string;
 }
 
+export type ApiConfigField = 'apiKey' | 'endpoint' | 'model';
+export interface ApiConfigValidationIssue { field: ApiConfigField; message: string }
+
 export function isAiProvider(value: unknown): value is AiProvider {
   return value === 'openai' || value === 'mimo' || value === 'custom';
 }
@@ -52,31 +55,25 @@ export function resolveApiConfig(config: ApiConfig): ResolvedApiConfig {
 }
 
 export function getApiConfigValidationError(config: ApiConfig): string | null {
+  return getApiConfigValidationIssue(config)?.message ?? null;
+}
+
+export function getApiConfigValidationIssue(config: ApiConfig): ApiConfigValidationIssue | null {
   const normalized = normalizeApiConfig(config);
-  if (!normalized.apiKey) return '请输入 API Key。';
-  if ([normalized.apiKey, normalized.endpoint, normalized.model].some((value) => /[\r\n]/.test(value ?? ''))) {
-    return 'API 配置不能包含换行符。';
+  if (!normalized.apiKey) return { field: 'apiKey', message: '请输入 API Key。' };
+  for (const [field, label] of [['apiKey', 'API Key'], ['endpoint', '服务地址'], ['model', '模型名']] as const) {
+    if (/[\r\n]/.test(normalized[field] ?? '')) return { field, message: `${label}不能包含换行符。` };
   }
-  if (normalized.provider !== 'openai' && !normalized.endpoint) {
-    return 'MiMo/custom provider 必须配置 endpoint，例如 https://你的网关域名/v1。';
+  if (!normalized.endpoint) {
+    return { field: 'endpoint', message: '请填写服务地址。' };
   }
-  if (normalized.protocol === 'chat-completions' && !normalized.endpoint) {
-    return 'chat-compatible 协议必须配置 endpoint，例如 https://你的网关域名/v1。';
-  }
-  if (normalized.provider === 'custom' && !normalized.model) {
-    return 'custom provider 必须配置 model，请填写网关提供的模型名。';
-  }
-  if (normalized.protocol === 'chat-completions' && !normalized.model) {
-    return 'chat-compatible 协议必须配置 model，请填写网关提供的模型名。';
-  }
-  if (!normalized.model) return '请填写模型名。';
+  if (!normalized.model) return { field: 'model', message: '请填写模型名。' };
   try {
     const url = new URL(normalized.endpoint ?? '');
-    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) {
-      return 'Endpoint 需要是 HTTP(S) 服务地址，不含账号、查询参数或片段。';
-    }
+    if (!['http:', 'https:'].includes(url.protocol)) return { field: 'endpoint', message: '服务地址需以 http:// 或 https:// 开头。' };
+    if (url.username || url.password || url.search || url.hash) return { field: 'endpoint', message: '服务地址不能含账号、查询参数或片段。' };
   } catch {
-    return 'Endpoint 需要是完整的 HTTP(S) 服务地址。';
+    return { field: 'endpoint', message: '请输入完整的 HTTP(S) 服务地址。' };
   }
   return null;
 }

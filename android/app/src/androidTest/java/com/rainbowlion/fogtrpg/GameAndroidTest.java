@@ -429,6 +429,24 @@ public class GameAndroidTest {
                 js("document.querySelector('.api-config-fields input[type=password]').focus()");
                 reachable(".api-config-fields input[type=password]"); reachable(".api-config-card footer .primary-btn");
                 screenshot(prefix + "-api-keyboard");
+                fill("#api-model", "");
+                js("document.querySelector('.api-connection summary').click()");
+                nativeTap(".api-config-card footer .primary-btn");
+                until("document.activeElement===document.querySelector('#api-model')&&document.querySelector('#api-model').getAttribute('aria-invalid')==='true'");
+                assertEquals("Model correction leaves unrelated connection fields collapsed", "false", js("document.querySelector('.api-connection').open"));
+                reachable("#api-model"); reachable(".api-config-close"); reachable(".api-config-card footer .primary-btn");
+                assertEquals("Model and its readable error fit within the keyboard body", "true", js("(()=>{const b=document.querySelector('.api-config-fields').getBoundingClientRect(),m=document.querySelector('#api-model').getBoundingClientRect(),e=document.querySelector('.api-field-error').getBoundingClientRect();return m.top>=b.top&&m.bottom<=b.bottom&&e.top>=b.top&&e.bottom<=b.bottom&&parseFloat(getComputedStyle(document.querySelector('.api-field-error')).fontSize)>=15&&document.querySelector('.api-config-card').scrollTop===0})()"));
+                fill("#api-model", "edited-qa-model"); fill("#api-endpoint", "bad-address");
+                nativeTap(".api-config-card footer .primary-btn");
+                until("document.activeElement===document.querySelector('#api-endpoint')&&document.querySelector('.api-connection').open");
+                reachable("#api-endpoint");
+                assertEquals("Endpoint and its error fit without moving the dialog", "true", js("(()=>{const b=document.querySelector('.api-config-fields').getBoundingClientRect(),m=document.querySelector('#api-endpoint').getBoundingClientRect(),e=document.querySelector('.api-field-error').getBoundingClientRect();return m.top>=b.top&&m.bottom<=b.bottom&&e.top>=b.top&&e.bottom<=b.bottom&&document.querySelector('.api-config-card').scrollTop===0})()"));
+                screenshot(prefix + "-api-repair");
+                nativeTap(".api-config-close"); until("!document.querySelector('.api-config-card')"); viewport(size[0], size[1]);
+                assertEquals("Configuration correction does not erase the game draft", JSONObject.quote("输入法占位后仍可完成输入。"), js("document.querySelector('.dock-input').value"));
+                menu("AI 设置");
+                assertEquals("Closing an invalid edit retains the saved connection and masked credential", "true", js("document.querySelector('#api-model').value==='android-qa-model'&&document.querySelector('#api-endpoint').value==='http://127.0.0.1:1/v1'&&document.querySelector('#api-key').type==='password'&&!document.querySelector('.api-config-card [role=alert]')"));
+                nativeTap(".api-config-close");
             } finally { activity.close(); }
         }
     }

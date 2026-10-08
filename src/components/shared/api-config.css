@@ -3,17 +3,17 @@
 .api-config-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-shrink: 0; }
 .api-config-header h2 { margin: 0; }
 .api-config-close { flex: 0 0 44px; width: 44px; min-height: 44px; padding: 0; display: grid; place-items: center; }
-.api-config-card .api-storage-note { margin: 4px 0 16px; font-size: 12px; line-height: 1.5; }
+:root .api-config-card .api-storage-note { margin: 4px 0 16px; font-size: 14px; line-height: 1.5; }
 .api-config-card .api-config-fields { margin: 0; padding: 1px 3px 3px; min-height: 0; min-width: 0; overflow-y: auto; overscroll-behavior: contain; scroll-padding: 8px; }
 .api-config-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; border: 0; margin: 0; padding: 0; min-width: 0; }
-.api-config-card .api-config-fields label { margin: 0; min-width: 0; gap: 6px; line-height: 1.4; }
-.api-config-fields input, .api-config-fields select { min-height: 44px; width: 100%; min-width: 0; }
+:root .api-config-card .api-config-fields label { margin: 0; min-width: 0; gap: 6px; font-size: 15px; line-height: 1.4; }
+:root .api-config-card .api-config-fields input, :root .api-config-card .api-config-fields select { min-height: 44px; width: 100%; min-width: 0; font-size: 16px; }
 .api-key-field { display: grid; gap: 6px; }
 .api-field { display: grid; gap: 6px; min-width: 0; }
 .api-key-control { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 6px; align-items: stretch; }
 .api-key-reveal { display: grid; place-items: center; min-width: 44px; min-height: 44px; padding: 0; }
 .api-connection { min-width: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.api-connection summary { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 4px; list-style: none; color: var(--gold); font-family: var(--ui-font); cursor: pointer; }
+.api-connection summary { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 4px; list-style: none; color: var(--gold); font-family: var(--ui-font); font-size: 15px; cursor: pointer; }
 .api-connection summary::-webkit-details-marker { display: none; }
 .api-connection summary span { flex: 1; }
 .api-connection summary > svg:last-child { transition: transform 130ms ease; }
@@ -21,10 +21,14 @@
 .api-connection summary:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: -2px; }
 .api-connection-fields { display: grid; gap: 14px; padding: 2px 0 14px; }
 .api-config-card footer { flex: 0 0 auto; }
-:root .api-config-card > .modal-error { flex: 0 0 auto; margin: 10px 3px 0; font-size: 12px; line-height: 1.5; }
+:root .api-config-card footer button { font-size: 15px; }
+:root .api-config-card .api-field-error { margin: 0; padding: 8px 10px; border-left: 2px solid var(--red); background: rgba(110, 40, 31, .22); color: #efbbb0; font-size: 15px; line-height: 1.5; }
+.api-config-card input[aria-invalid="true"] { border-color: var(--red); }
+.api-config-card .api-config-fields > .api-field-error { margin-top: 12px; }
 :root.portrait-ui .modal-card.api-config-card { max-height: var(--mobile-dialog-height); }
 :root.portrait-ui .api-config-controls { gap: 12px; }
 @media (max-height: 500px) {
+  :root .modal-card.api-config-card { max-height: calc(100dvh - 16px); padding: 12px; }
   .api-config-card .api-storage-note { display: none; }
   .api-config-header { margin-bottom: 8px; }
 }

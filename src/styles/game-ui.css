@@ -177,7 +177,6 @@
   box-shadow: inset 0 0 0 3px #392b18;
 }
 :root.fog-ui :is(.modal-card input, .dock-input):disabled { color: #9e927d; border-color: #443b2e; }
-:root.fog-ui .modal-error { border-left: 2px solid #c07669; padding: 7px 10px; background: #40231d; }
 
 :root.fog-ui :is(.party-compact, .check-card,
   .case-board-mobile-card, .case-board-threads button) { border-radius: 2px; }

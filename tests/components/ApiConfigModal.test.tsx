@@ -44,7 +44,44 @@ describe('ApiConfigModal', () => {
 
     fireEvent.change(screen.getByLabelText('API Key'), { target: { value: 'test-key' } });
     fireEvent.click(screen.getByRole('button', { name: '保存' }));
-    expect(screen.getByText(/必须配置 endpoint/)).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('请填写服务地址');
+    expect(screen.getByLabelText('服务地址（Endpoint）')).toHaveFocus();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('points a missing model back to its own field and clears its accessible error after editing', () => {
+    const onSave = vi.fn();
+    render(<ApiConfigModal open onClose={vi.fn()} onSave={onSave} />);
+    fireEvent.change(screen.getByLabelText('服务商'), { target: { value: 'custom' } });
+    fireEvent.change(screen.getByLabelText('API Key'), { target: { value: 'test-key' } });
+    fireEvent.change(screen.getByLabelText('服务地址（Endpoint）'), { target: { value: 'https://gateway.example/v1' } });
+    screen.getByRole('button', { name: '保存' }).focus();
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+    const model = screen.getByLabelText('模型');
+    expect(model).toHaveFocus();
+    expect(model).toHaveAttribute('aria-invalid', 'true');
+    expect(model).toHaveAccessibleDescription('请填写模型名。');
+    expect(model.closest('.api-field')).toContainElement(screen.getByRole('alert'));
+    expect(onSave).not.toHaveBeenCalled();
+    fireEvent.change(model, { target: { value: 'gateway-model' } });
+    expect(model).not.toHaveAttribute('aria-invalid');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('opens a collapsed connection and focuses an invalid endpoint without discarding other inputs', () => {
+    window.localStorage.setItem('trpg-api', JSON.stringify({ provider: 'custom', protocol: 'responses', endpoint: 'bad-address', apiKey: 'test-key', model: 'gateway-model' }));
+    const onSave = vi.fn();
+    render(<ApiConfigModal open onClose={vi.fn()} onSave={onSave} />);
+    const connection = screen.getByText('连接设置').closest('details')!;
+    connection.open = false; fireEvent(connection, new Event('toggle'));
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+    expect(connection).toHaveAttribute('open');
+    const endpoint = screen.getByLabelText('服务地址（Endpoint）');
+    expect(endpoint).toHaveFocus();
+    expect(endpoint).toHaveAttribute('aria-invalid', 'true');
+    expect(endpoint.closest('.api-field')).toContainElement(screen.getByRole('alert'));
+    expect(screen.getByLabelText('模型')).toHaveValue('gateway-model');
+    expect(screen.getByLabelText('API Key')).toHaveValue('test-key');
     expect(onSave).not.toHaveBeenCalled();
   });
 
