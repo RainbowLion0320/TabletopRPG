@@ -4,10 +4,12 @@ title: 动态案件板与调查台
 tags: [case-board, ai, ui, memory, implemented]
 sources: [../../docs/PRD.md, ../../docs/SPEC.md, ../../docs/GDD.md]
 created: 2026-07-11
-updated: 2026-07-11
+updated: 2026-10-08
 ---
 
 # 动态案件板与调查台
+
+0.4.12 移动端复用原人物/场景照片和档案底板，去掉重复计数、单记录重复标题与零项摘要；资料页签和搜索/筛选常驻，长列表单独滚动，详情返回原卡片。手机与原生宽竖屏不构建隐藏关系图，React Flow/ELK/worker 仅桌面按需加载；手机/桌面切换保留查询与类型，清除不可见的脉络筛选。进度只显示已发现/已分析数量，不泄露剧本线索总数。事实来源、可见范围和 patch 审核不变。
 
 ## 定位
 
@@ -46,3 +48,6 @@ v7 存档持久化核心节点、关系和 insights。v6 存档在 hydrate 时�
 - [[../overview]]
 - [[../entities/ai_dm]]
 - [[tech_stack]]
+- [[game_ui]]
+- [[android_app]]
+- [[../index]]

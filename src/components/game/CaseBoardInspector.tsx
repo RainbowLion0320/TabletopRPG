@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef } from 'react';
 import { X } from 'lucide-react';
 import { useDialogFocus } from '../shared/useDialogFocus';
+import { useCaseBoardListLayout } from '../../platform/layout';
 import { storyData } from '../../data/storyData';
 import { getClueDetail, getNpcDetail } from '../../dm/entityDetail';
 import type { GameState } from '../../types/game';
@@ -71,25 +72,8 @@ const INSIGHT_LABEL = {
   status: '状态'
 } as const;
 
-function useMobileInspector() {
-  const [mobile, setMobile] = useState(() =>
-    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-      ? window.matchMedia('(max-width: 900px)').matches
-      : false
-  );
-  useEffect(() => {
-    if (typeof window.matchMedia !== 'function') return;
-    const query = window.matchMedia('(max-width: 900px)');
-    const update = () => setMobile(query.matches);
-    update();
-    query.addEventListener('change', update);
-    return () => query.removeEventListener('change', update);
-  }, []);
-  return mobile;
-}
-
 export function CaseBoardInspector({ model, node, onClose, state }: CaseBoardInspectorProps) {
-  const mobile = useMobileInspector();
+  const mobile = useCaseBoardListLayout();
   const dialogRef = useRef<HTMLElement>(null);
   useDialogFocus(mobile, dialogRef, onClose);
   const base = nodeBaseInfo(node, state);

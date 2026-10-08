@@ -843,7 +843,7 @@ test('reference panel opens a fullscreen case board and keeps the log tab', asyn
   expect(drawerBox?.height ?? 0).toBeGreaterThanOrEqual(650);
   await expect(drawer).toHaveClass(/fullscreen/);
   await expect(drawer.locator('.case-board-view')).toBeVisible();
-  await expect(page.getByRole('button', { name: '案件板' })).toHaveClass(/active/);
+  await expect(page.getByRole('tab', { name: '案件板' })).toHaveClass(/active/);
   const board = page.locator('.case-board-flow-wrap');
   await expect(board).toBeVisible();
   await expect(board.locator('.case-flow-node.scene', { hasText: '摩勒住宅' })).toBeVisible();
@@ -853,7 +853,7 @@ test('reference panel opens a fullscreen case board and keeps the log tab', asyn
   await expect(page.getByRole('button', { name: '线索' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: '人物' })).toHaveCount(0);
 
-  await page.getByRole('button', { name: '日志' }).click();
+  await page.getByRole('tab', { name: '日志' }).click();
   await expect(page.getByRole('heading', { name: '行动日志' })).toBeVisible();
 
   await page.getByRole('button', { name: '关闭资料' }).click();
@@ -867,10 +867,11 @@ test('progress tab shows authored objectives, clue counts, and world time', asyn
   await startNewGame(page);
   await expect(page.locator('.world-time')).toHaveText('1920-07-13 17:30');
   await page.getByRole('button', { name: '资料', exact: true }).click();
-  await page.getByRole('button', { name: '进度' }).click();
+  await page.getByRole('tab', { name: '进度' }).click();
   await expect(page.getByRole('heading', { name: '调查目标' })).toBeVisible();
   await expect(page.getByText('与伊莎贝拉确认委托和埃里克失踪的基本情况。')).toBeVisible();
-  await expect(page.getByText(/已发现 0 \/ 8/)).toBeVisible();
+  await expect(page.locator('.progress-stat')).toHaveText('已发现 0 · 已分析 0');
+  await expect(page.locator('.progress-stat')).not.toContainText('/ 8');
 });
 
 test('v8 ending save locks the action area and preserves the authored ending', async ({ page }) => {
@@ -883,7 +884,7 @@ test('v8 ending save locks the action area and preserves the authored ending', a
   await expect(page.locator('.scene-npc')).toHaveCount(0);
   await expect(page.locator('.npc-nameplate')).toHaveCount(0);
   await page.getByRole('button', { name: '资料', exact: true }).click();
-  await page.getByRole('button', { name: '进度' }).click();
+  await page.getByRole('tab', { name: '进度' }).click();
   const skippedObjective = page.locator('.objective-row').filter({ hasText: '调查蒙特利尔与埃里克的关系' });
   await expect(skippedObjective).toContainText('未完成');
   await expect(skippedObjective).not.toContainText('进行中');
@@ -1017,7 +1018,7 @@ test('legacy internal progression prompts stay hidden after loading a save', asy
   await expect(page.locator('.story-message.system').filter({ hasText: '检定结果：普通成功（42）' })).toBeVisible();
   await expect(page.getByText('浓雾压在摩勒住宅的窗外。')).toBeVisible();
   await page.getByRole('button', { name: '资料', exact: true }).click();
-  await page.getByRole('button', { name: '日志', exact: true }).click();
+  await page.getByRole('tab', { name: '日志', exact: true }).click();
   await expect(page.getByText(/剧情事件：EV_ACCEPT_COMMISSION/)).toHaveCount(0);
 });
 
@@ -1072,6 +1073,84 @@ test('reference panel uses the compact case board without horizontal overflow at
   }));
   expect(overflow.document).toBeLessThanOrEqual(1);
   expect(overflow.drawer).toBeLessThanOrEqual(1);
+});
+
+for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 780, height: 1000 }]) {
+  test(`case archive keeps photos, filters and nested return usable at ${size.width}px without loading graph code`, async ({ page }, testInfo) => {
+    const requests: string[] = [];
+    page.on('request', (request) => requests.push(request.url()));
+    await page.setViewportSize(size);
+    const state = createDynamicCaseBoardSave();
+    state.caseBoard!.nodes.push(...Array.from({ length: 14 }, (_, index) => ({
+      ...state.caseBoard!.nodes[0], id: `qa-record-${index}`, title: `现场记录 ${index + 1}`
+    })));
+    state.caseBoard!.edges.push(...Array.from({ length: 14 }, (_, index) => ({
+      ...state.caseBoard!.edges[0], id: `qa-relation-${index}`, from: 'scene-s01', to: `qa-record-${index}`, label: '现场观察', certainty: 'confirmed' as const
+    })));
+    await gotoWithSave(page, state);
+    await page.getByRole('button', { name: '继续游戏' }).click();
+    const opener = page.getByRole('button', { name: '资料', exact: true });
+    await opener.click();
+    const drawer = page.getByRole('dialog', { name: '资料', exact: true });
+    const card = drawer.getByRole('button', { name: '人物 伊莎贝拉·摩勒', exact: true });
+    await expect(card).toBeVisible();
+    await expect.poll(() => card.locator('img').evaluate((element) => (element as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+    const scenePhoto = drawer.getByRole('button', { name: '地点 摩勒住宅' }).locator('img');
+    await expect.poll(() => scenePhoto.evaluate((element) => (element as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+    await expect(scenePhoto).toHaveCSS('object-fit', 'contain');
+    await expect(drawer.locator('.react-flow')).toHaveCount(0);
+    expect(requests.filter((url) => /CaseBoardFlow|caseBoardLayout|elk-worker/.test(url))).toEqual([]);
+    expect(page.workers()).toHaveLength(0);
+    await expect(drawer.locator('.case-board-heading')).not.toContainText('0 个');
+    const header = drawer.locator(':scope > header');
+    const headerTop = (await header.boundingBox())!.y;
+    const workspace = drawer.locator('.case-board-workspace');
+    await expect.poll(() => workspace.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+    await workspace.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+    expect((await header.boundingBox())!.y).toBe(headerTop);
+    await expect(drawer.getByRole('button', { name: '关闭资料', exact: true })).toBeInViewport();
+    await expect(drawer.getByRole('searchbox', { name: '搜索案件资料' })).toBeInViewport();
+    expect(await drawer.evaluate((element) => element.scrollTop)).toBe(0);
+    await page.setViewportSize({ width: size.width, height: 300 });
+    const search = drawer.getByRole('searchbox', { name: '搜索案件资料' });
+    await search.fill('不存在的调查记录');
+    await expect(drawer.getByText('当前筛选条件下没有匹配资料。')).toBeVisible();
+    await expect(drawer.getByRole('button', { name: '关闭资料', exact: true })).toBeInViewport();
+    await drawer.getByRole('button', { name: '清除案件搜索' }).click();
+    await expect(search).toHaveValue(''); await expect(search).toBeFocused();
+    await page.setViewportSize(size);
+    await card.click();
+    const detail = page.getByRole('dialog', { name: '伊莎贝拉·摩勒详情', exact: true });
+    await expect(detail.getByRole('button', { name: '关闭资料详情' })).toBeFocused();
+    await expect(detail).not.toContainText(/I0[1-8]|鸦片运输/);
+    await page.keyboard.press('Escape');
+    await expect(detail).toHaveCount(0); await expect(drawer).toBeVisible(); await expect(card).toBeFocused();
+    await drawer.getByRole('tab', { name: '进度' }).click();
+    await expect(drawer.getByRole('tabpanel')).not.toContainText(/已发现\s+0\s*\/\s*8/);
+    await drawer.getByRole('tab', { name: '案件板' }).click();
+    await page.screenshot({ path: testInfo.outputPath('case-archive.png') });
+    await drawer.getByRole('button', { name: '关闭资料', exact: true }).click(); await expect(opener).toBeFocused();
+  });
+}
+
+test('moving the desktop case board to a phone preserves search and removes the hidden thread filter', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await gotoWithSave(page, createDynamicCaseBoardSave());
+  await page.getByRole('button', { name: '继续游戏' }).click();
+  await page.getByRole('button', { name: '资料', exact: true }).click();
+  const drawer = page.getByRole('dialog', { name: '资料', exact: true });
+  await expect(drawer.locator('.react-flow')).toBeVisible();
+  await drawer.locator('.case-board-threads button').filter({ hasText: '埃里克·摩勒' }).click();
+  await drawer.getByRole('combobox', { name: '资料类型' }).selectOption('npc');
+  await drawer.getByRole('searchbox', { name: '搜索案件资料' }).fill('伊莎贝拉');
+  await expect(drawer.getByText('当前筛选条件下没有匹配资料。')).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(drawer.getByRole('button', { name: '人物 伊莎贝拉·摩勒', exact: true })).toBeVisible();
+  await expect(drawer.getByRole('searchbox', { name: '搜索案件资料' })).toHaveValue('伊莎贝拉');
+  await expect(drawer.getByRole('combobox', { name: '资料类型' })).toHaveValue('npc');
+  await expect(drawer.locator('.react-flow')).toHaveCount(0);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(drawer.locator('.case-flow-node.npc', { hasText: '伊莎贝拉·摩勒' })).toBeVisible();
 });
 
 test('submitting an action without an API key opens configuration and keeps validation local to the form', async ({ page }) => {

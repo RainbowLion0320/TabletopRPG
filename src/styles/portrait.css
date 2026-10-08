@@ -147,7 +147,6 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 .portrait-ui .info-drawer-tabs { grid-column: 1 / -1; grid-row: 2; order: 0; width: 100%; min-width: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .portrait-ui .info-drawer-tabs button { min-height: 44px; min-width: 64px; padding: 0 12px; font-size: 13px; }
 .portrait-ui .info-drawer-react > header > button { grid-column: 2; grid-row: 1; order: 0; width: 44px; height: 44px; }
-.portrait-ui .info-drawer-react > section { min-height: 0; flex: 1; overflow-y: auto; margin-top: 0; padding: 0 2px 8px; overscroll-behavior: contain; }
 .portrait-ui .drawer-section h3 { font-size: 14px; margin: 10px 0; }
 .portrait-ui .objective-row { padding: 7px 0; gap: 8px; font-size: 13px; }
 .portrait-ui .progress-stat, .portrait-ui .clock-row { font-size: 12px; }
@@ -156,7 +155,6 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 .portrait-ui .case-board-heading { flex: 0 0 auto; flex-direction: row; align-items: center; gap: 8px; }
 .portrait-ui .case-board-heading h3 { display: none; }
 .portrait-ui .case-board-heading p { font-size: 11px; margin: 0; }
-.portrait-ui .case-board-heading > span { padding: 0; border: 0; font-size: 10px; white-space: normal; text-align: right; }
 .portrait-ui .case-board-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; flex: 0 0 auto; gap: 8px; }
 .portrait-ui .case-board-search { grid-column: 1 / -1; width: auto; min-width: 0; min-height: 44px; }
 .portrait-ui .case-board-search input { font-size: 14px; min-height: 44px; }
@@ -169,19 +167,6 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 .portrait-ui .case-board-inspector section { padding: 10px 0; }
 .portrait-ui .case-board-inspector h4 { font-size: 16px; }
 .portrait-ui .case-board-inspector p, .portrait-ui .case-board-inspector li { font-size: 13px; overflow-wrap: anywhere; }
-@media (max-width: 900px) {
-  .portrait-ui .case-board-workspace, .portrait-ui .case-board-workspace.has-inspector { display: block; }
-  .portrait-ui .case-board-mobile-list { display: grid; gap: 12px; padding: 6px 0 12px; }
-  .portrait-ui .case-board-mobile-list > section { grid-template-columns: minmax(0, 1fr); gap: 10px; align-items: start; }
-  .portrait-ui .case-board-mobile-list h4 { grid-column: 1 / -1; font-size: 11px; }
-  .portrait-ui .case-board-mobile-card { padding: 12px; font-size: 14px; overflow-wrap: anywhere; }
-}
-@media (min-width: 901px) {
-  .portrait-ui .case-board-workspace { grid-template-columns: 130px minmax(0, 1fr); }
-  .portrait-ui .case-board-workspace.has-inspector { grid-template-columns: 120px minmax(0, 1fr) 260px; }
-  .portrait-ui .case-board-inspector { display: flex; flex-direction: column; }
-  .portrait-ui .case-board-threads { padding: 8px 6px 8px 0; }
-}
 
 /* Vertical dice composition preserves the supplied art and its font. */
 .portrait-ui .dice-roll-card { width: min(360px, 100%); max-height: var(--mobile-dialog-height); display: flex; flex-direction: column; align-items: center; gap: 8px; }
@@ -229,6 +214,5 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 }
 /* Large portrait tablets retain the same vertical hierarchy with roomier lists. */
 @media (min-width: 600px) {
-  .portrait-ui .case-board-mobile-list > section { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .portrait-ui .party-strip-compact:has(.party-compact:nth-child(3)) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }

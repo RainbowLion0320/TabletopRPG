@@ -1,5 +1,3 @@
-import ELK from 'elkjs/lib/elk-api.js';
-import ElkWorker from 'elkjs/lib/elk-worker.min.js?worker';
 import { caseBoard } from '../../data/scenarios/wuzhongxiaoshi';
 import { storyData } from '../../data/storyData';
 import { getVisibleCaseBoard } from '../../dm/caseBoard';
@@ -63,18 +61,6 @@ export interface LayoutedCaseBoardNode extends CaseBoardDisplayNode {
   y: number;
   width: number;
   height: number;
-}
-
-type ElkEngine = InstanceType<typeof ELK>;
-let elkPromise: Promise<ElkEngine> | null = null;
-
-function getElk(): Promise<ElkEngine> {
-  if (!elkPromise) {
-    elkPromise = import.meta.env.MODE === 'test'
-      ? import('elkjs/lib/elk.bundled.js').then(({ default: BundledElk }) => new BundledElk())
-      : Promise.resolve(new ELK({ workerFactory: () => new ElkWorker() }));
-  }
-  return elkPromise;
 }
 
 export const CASE_BOARD_NODE_SIZE: Record<CaseBoardDisplayNodeType, { width: number; height: number }> = {
@@ -213,7 +199,8 @@ export function buildCaseBoardGraphModel(state: GameState): CaseBoardGraphModel 
   const evidence = nodes.filter((node) => node.type === 'item' || node.type === 'event').length;
   const hypotheses = nodes.filter((node) => node.type === 'theory' && node.certainty === 'hypothesis').length;
   const recent = [...nodes].sort((left, right) => right.latestUpdateTurn - left.latestUpdateTurn)[0];
-  const summary = `目前整理了 ${people} 名相关人物、${evidence} 项证据和 ${hypotheses} 条待验证推测。${recent?.latestUpdateTurn ? `最近更新：${recent.title}。` : '调查刚刚开始。'}`;
+  const knownCounts = [people ? `${people} 名相关人物` : '', evidence ? `${evidence} 项证据` : '', hypotheses ? `${hypotheses} 条待验证推测` : ''].filter(Boolean).join(' · ');
+  const summary = `${knownCounts ? `${knownCounts}。` : ''}${recent?.latestUpdateTurn ? `最近更新：${recent.title}。` : '调查刚刚开始。'}`;
   return { nodes, edges, insights: activeInsights, threads, summary };
 }
 
@@ -222,37 +209,8 @@ export async function layoutCaseBoardGraph(
   edges: CaseBoardDisplayEdge[]
 ): Promise<LayoutedCaseBoardNode[]> {
   if (!nodes.length) return [];
-  const elk = await getElk();
-  const layout = await elk.layout({
-    id: 'case-board',
-    layoutOptions: {
-      'elk.algorithm': 'layered',
-      'elk.direction': 'RIGHT',
-      'elk.edgeRouting': 'ORTHOGONAL',
-      'elk.spacing.nodeNode': '46',
-      'elk.layered.spacing.nodeNodeBetweenLayers': '96',
-      'elk.spacing.componentComponent': '72',
-      'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES'
-    },
-    children: nodes.map((node) => ({
-      id: node.id,
-      width: CASE_BOARD_NODE_SIZE[node.type].width,
-      height: CASE_BOARD_NODE_SIZE[node.type].height
-    })),
-    edges: edges.map((edge) => ({ id: edge.id, sources: [edge.from], targets: [edge.to] }))
-  });
-  const positionById = new Map((layout.children ?? []).map((child) => [child.id, child]));
-  return nodes.map((node) => {
-    const position = positionById.get(node.id);
-    const size = CASE_BOARD_NODE_SIZE[node.type];
-    return {
-      ...node,
-      x: position?.x ?? 0,
-      y: position?.y ?? 0,
-      width: size.width,
-      height: size.height
-    };
-  });
+  const { layoutNodes } = await import('./caseBoardLayout');
+  return layoutNodes(nodes, edges);
 }
 
 export function filterCaseBoardGraph(

@@ -2496,37 +2496,6 @@ button.case-board-node:hover {
   }
   .case-board-threads,
   .case-board-flow-wrap { display: none; }
-  .case-board-mobile-list {
-    display: grid;
-    gap: 18px;
-    padding: 8px 0 24px;
-  }
-  .case-board-mobile-list > section { display: grid; gap: 8px; }
-  .case-board-mobile-list h4 {
-    margin: 0;
-    color: var(--gold);
-    font-size: 12px;
-    font-weight: 500;
-  }
-  .case-board-mobile-card {
-    display: grid;
-    gap: 4px;
-    width: 100%;
-    border: 1px solid var(--line-soft);
-    border-left: 3px solid #b99a61;
-    border-radius: 5px;
-    background: rgba(255,255,255,0.025);
-    color: var(--text);
-    padding: 10px 11px;
-    text-align: left;
-  }
-  .case-board-mobile-card.scene { border-left-color: #6f9d91; }
-  .case-board-mobile-card.npc { border-left-color: #b7836c; }
-  .case-board-mobile-card.theory { border-left-color: #c97163; }
-  .case-board-mobile-card.hypothesis { border-style: dashed; }
-  .case-board-mobile-card > span { color: var(--quiet); font-size: 9px; }
-  .case-board-mobile-card strong { font-size: 13px; }
-  .case-board-mobile-card small { color: var(--muted); font-size: 11px; line-height: 1.4; }
   .case-board-inspector {
     position: fixed;
     inset: 0;

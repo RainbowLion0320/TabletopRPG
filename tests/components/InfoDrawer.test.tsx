@@ -5,11 +5,28 @@ import { storyData } from '../../src/data/storyData';
 import { makeState } from '../dm/fixtures';
 import { createScenarioProgress } from '../../src/scenario/engine';
 
+vi.mock('../../src/platform/layout', () => ({ useCaseBoardListLayout: () => true }));
+
 function renderDrawer(state = makeState({ activeNpcName: '伊莎贝拉·摩勒' })) {
   return render(<InfoDrawer open onClose={vi.fn()} onOpen={vi.fn()} state={state} />);
 }
 
 describe('InfoDrawer v7 investigation workspace', () => {
+  it('uses keyboard tabs and keeps script-wide clue totals out of player progress', async () => {
+    renderDrawer();
+    const board = screen.getByRole('tab', { name: '案件板' });
+    expect(board).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('dialog', { name: '资料' })).toBeInTheDocument();
+    board.focus(); fireEvent.keyDown(board, { key: 'ArrowLeft' });
+    const progress = screen.getByRole('tab', { name: '进度' });
+    expect(progress).toHaveFocus(); expect(progress).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel')).toHaveAccessibleName('进度');
+    expect(screen.getByText(/已发现 0/)).toHaveTextContent('已发现 0 · 已分析 0');
+    expect(screen.queryByText(/\/\s*8/)).toBeNull();
+    fireEvent.keyDown(progress, { key: 'End' });
+    expect(screen.getByRole('tab', { name: '日志' })).toHaveFocus();
+    expect(screen.getByRole('tabpanel')).toHaveAccessibleName('日志');
+  });
   it('hides internal event IDs from the player log while retaining ordinary records', () => {
     const state = makeState();
     state.actionLog = [
@@ -17,7 +34,7 @@ describe('InfoDrawer v7 investigation workspace', () => {
       { time: '17:35', text: '伊莎贝拉开始讲述父亲失踪的经过。' }
     ];
     renderDrawer(state);
-    fireEvent.click(screen.getByRole('button', { name: '日志', exact: true }));
+    fireEvent.click(screen.getByRole('tab', { name: '日志', exact: true }));
     expect(screen.queryByText(/EV_ACCEPT_COMMISSION/)).not.toBeInTheDocument();
     expect(screen.getByText('伊莎贝拉开始讲述父亲失踪的经过。')).toBeInTheDocument();
     expect(state.actionLog[0].text).toContain('EV_ACCEPT_COMMISSION');
@@ -33,7 +50,7 @@ describe('InfoDrawer v7 investigation workspace', () => {
   it('opens on a spoiler-safe case board with only visible entities', async () => {
     renderDrawer();
     expect(await screen.findByRole('heading', { name: '案件板' }, { timeout: 5_000 })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '案件板' })).toHaveClass('active');
+    expect(screen.getByRole('tab', { name: '案件板' })).toHaveClass('active');
     expect(screen.getAllByText('摩勒住宅').length).toBeGreaterThan(0);
     expect(screen.getAllByText('伊莎贝拉·摩勒').length).toBeGreaterThan(0);
     expect(screen.queryByText('卡森其药店')).not.toBeInTheDocument();
@@ -47,8 +64,8 @@ describe('InfoDrawer v7 investigation workspace', () => {
     expect(container.querySelector('.info-drawer-react')).toHaveClass('fullscreen', 'open');
     const header = container.querySelector('.info-drawer-react > header');
     expect(header).not.toBeNull();
-    expect(within(header as HTMLElement).getByRole('button', { name: '案件板' })).toBeInTheDocument();
-    expect(within(header as HTMLElement).getByRole('button', { name: '日志' })).toBeInTheDocument();
+    expect(within(header as HTMLElement).getByRole('tab', { name: '案件板' })).toBeInTheDocument();
+    expect(within(header as HTMLElement).getByRole('tab', { name: '日志' })).toBeInTheDocument();
   });
 
   it('returns focus to the drawer tab before closing', async () => {
@@ -106,7 +123,7 @@ describe('InfoDrawer v7 investigation workspace', () => {
     state.actionLog = [{ time: '20:00', text: '检查书房桌面' }];
     renderDrawer(state);
     await screen.findByRole('heading', { name: '案件板' });
-    fireEvent.click(screen.getByRole('button', { name: '日志' }));
+    fireEvent.click(screen.getByRole('tab', { name: '日志' }));
     expect(screen.getByRole('heading', { name: '行动日志' })).toBeInTheDocument();
     expect(screen.getByText('检查书房桌面')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '线索' })).not.toBeInTheDocument();
@@ -118,7 +135,7 @@ describe('InfoDrawer v7 investigation workspace', () => {
     state.scenarioProgress = createScenarioProgress();
     state.scenarioProgress.clocks.fusangEscape = { value: 6, active: true, visible: true };
     renderDrawer(state);
-    fireEvent.click(screen.getByRole('button', { name: '进度' }));
+    fireEvent.click(screen.getByRole('tab', { name: '进度' }));
 
     expect(screen.getByText('扶桑花号离港')).toBeInTheDocument();
     expect(screen.getByText('6 / 7')).toBeInTheDocument();
@@ -136,10 +153,10 @@ describe('InfoDrawer v7 investigation workspace', () => {
     state.actionLog = undefined as unknown as typeof state.actionLog;
     renderDrawer(state);
 
-    fireEvent.click(screen.getByRole('button', { name: '进度' }));
+    fireEvent.click(screen.getByRole('tab', { name: '进度' }));
     expect(screen.getByRole('heading', { name: '调查目标' })).toBeInTheDocument();
     expect(screen.getByText(/已发现 0/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '日志' }));
+    fireEvent.click(screen.getByRole('tab', { name: '日志' }));
     expect(screen.getByRole('heading', { name: '行动日志' })).toBeInTheDocument();
   });
 });

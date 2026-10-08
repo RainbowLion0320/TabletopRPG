@@ -1,12 +1,14 @@
-import { lazy, Suspense, useRef, useState, useCallback, useEffect } from 'react';
+import { lazy, Suspense, useId, useRef, useState, useCallback, useEffect, type KeyboardEvent } from 'react';
 import { BookOpen, Clock3, GripVertical, Target, X } from 'lucide-react';
 import type { GameState } from '../../types/game';
 import { useDialogFocus } from '../shared/useDialogFocus';
 import { storyData } from '../../data/storyData';
 import { isPlayerVisibleLogEntry } from '../../services/narrativeVisibility';
 import { getScenarioDefinition, getScenarioProgressForState, getVisibleScenarioObjectives } from '../../scenario/engine';
+import './info-drawer.css';
 
 const CaseBoard = lazy(() => import('./CaseBoard').then((module) => ({ default: module.CaseBoard })));
+const drawerTabs = [['progress', '进度'], ['board', '案件板'], ['log', '日志']] as const;
 
 interface InfoDrawerProps {
   open: boolean;
@@ -17,6 +19,7 @@ interface InfoDrawerProps {
 
 export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
   const [activeTab, setActiveTab] = useState<'progress' | 'board' | 'log'>('board');
+  const id = useId();
   const scenario = getScenarioDefinition();
   const progress = getScenarioProgressForState(state);
   const objectives = getVisibleScenarioObjectives(progress);
@@ -108,6 +111,16 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
     onClose();
   }, [onClose]);
 
+  function changeTabWithKey(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    const next = event.key === 'ArrowRight' ? (index + 1) % drawerTabs.length
+      : event.key === 'ArrowLeft' ? (index + drawerTabs.length - 1) % drawerTabs.length
+        : event.key === 'Home' ? 0 : event.key === 'End' ? drawerTabs.length - 1 : -1;
+    if (next < 0) return;
+    event.preventDefault();
+    setActiveTab(drawerTabs[next][0]);
+    drawerRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
+  }
+
   return (
     <>
       <button
@@ -134,6 +147,8 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
       <aside
         aria-hidden={!open}
         aria-label="资料"
+        role={open ? 'dialog' : undefined}
+        aria-modal={open ? true : undefined}
         className={`info-drawer-react fullscreen ${open ? 'open' : ''}`}
         id="game-info-drawer"
         tabIndex={-1}
@@ -144,14 +159,15 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
             <h2>资料</h2>
             <span>{storyData.scenes[state.currentScene]?.chapterTitle ?? '当前章节'}</span>
           </div>
-          <nav className="info-drawer-tabs" aria-label="资料视图">
-            <button className={activeTab === 'progress' ? 'active' : ''} onClick={() => setActiveTab('progress')}>进度</button>
-            <button className={activeTab === 'board' ? 'active' : ''} onClick={() => setActiveTab('board')}>案件板</button>
-            <button className={activeTab === 'log' ? 'active' : ''} onClick={() => setActiveTab('log')}>日志</button>
+          <nav className="info-drawer-tabs" role="tablist" aria-label="资料视图">
+            {drawerTabs.map(([tab, label], index) => <button key={tab} type="button" role="tab" id={`${id}-${tab}`} aria-controls={`${id}-page`}
+              aria-selected={activeTab === tab} tabIndex={activeTab === tab ? 0 : -1} className={activeTab === tab ? 'active' : ''}
+              onClick={() => setActiveTab(tab)} onKeyDown={(event) => changeTabWithKey(event, index)}>{label}</button>)}
           </nav>
           <button aria-label="关闭资料" onClick={handleClose} title="关闭"><X size={18} /></button>
         </header>
 
+        <div className={`info-drawer-page ${activeTab}-page`} role="tabpanel" id={`${id}-page`} aria-labelledby={`${id}-${activeTab}`}>
         {activeTab === 'progress' ? (
           <section className="drawer-section scenario-progress" aria-label="剧情进度">
             <h3><Target size={17} />调查目标</h3>
@@ -168,7 +184,6 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
             <h3><BookOpen size={17} />线索进度</h3>
             <p className="progress-stat">
               已发现 {Object.values(progress.clueStates).filter((status) => status !== 'unknown').length}
-              {' / '}{scenario.world.items.length}
               {' · '}已分析 {Object.values(progress.clueStates).filter((status) => status === 'analyzed').length}
             </p>
             {visibleClocks.length ? <h3><Clock3 size={17} />可见时钟</h3> : null}
@@ -200,6 +215,7 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
             </div>
           </section>
         ) : null}
+        </div>
       </aside>
     </>
   );

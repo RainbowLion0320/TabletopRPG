@@ -276,12 +276,28 @@ public class GameAndroidTest {
                 reachable(".entity-detail-close"); js("document.querySelector('.entity-detail-close').click()");
                 js("document.querySelector('.drawer-tab').click()");
                 until("document.querySelector('.case-board-mobile-card')"); reachable("[aria-label='关闭资料']");
+                assertEquals("Phone archive does not construct a hidden graph", "true", js("!document.querySelector('.react-flow')&&!document.querySelector('.case-board-flow-wrap')"));
+                until("Array.from(document.querySelectorAll('.case-record-photo img')).every(i=>i.complete&&i.naturalWidth>0)");
+                assertEquals("Archive tabs announce the active page", "true", js("document.querySelector('[role=tab][aria-selected=true]').textContent==='案件板'&&document.querySelector('[role=tabpanel]').getAttribute('aria-labelledby')===document.querySelector('[role=tab][aria-selected=true]').id"));
+                fill(".case-board-search input", "伊莎贝拉");
+                until("document.querySelectorAll('.case-board-mobile-card').length===2");
+                assertEquals("Search keeps the matched person and related scene without unrelated records", "true", js("Array.from(document.querySelectorAll('.case-board-mobile-card')).map(e=>e.textContent).join(',').includes('伊莎贝拉')&&document.querySelector('.case-board-mobile-card.scene')&&!Array.from(document.querySelectorAll('.case-board-mobile-card')).some(e=>e.textContent.includes('埃里克'))"));
+                viewport(size[0], 300); reachable("[aria-label='关闭资料']"); reachable(".case-search-clear");
+                js("document.querySelector('.case-search-clear').click()");
+                assertEquals("Clearing search keeps typing focus", "true", js("document.activeElement===document.querySelector('.case-board-search input')&&document.activeElement.value===''") );
+                viewport(size[0], size[1]);
+                if (size[0] == 430) {
+                    viewport(960, 1000);
+                    assertEquals("Wide native portrait remains a list rather than creating the desktop graph", "true", js("document.querySelector('.case-board-view').classList.contains('archive-layout')&&!document.querySelector('.react-flow')&&document.querySelectorAll('.case-board-mobile-card').length===3"));
+                    viewport(size[0], size[1]);
+                }
                 reachable(".case-board-mobile-card"); screenshot(prefix + "-board");
                 js("document.querySelector('.case-board-mobile-card').click()"); reachable("[aria-label='关闭资料详情']");
                 until("document.querySelector('.case-board-inspector').contains(document.activeElement)");
                 screenshot(prefix + "-inspector");
                 InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
                 until("!document.querySelector('.case-board-inspector') && document.querySelector('.info-drawer-react.open')"); click("进度");
+                assertEquals("Progress does not expose the script's undiscovered clue total", "true", js("!document.querySelector('.scenario-progress').textContent.match(/已发现\\s+0\\s*\\/\\s*8/)") );
                 reachable("[aria-label='关闭资料']"); click("日志"); reachable("[aria-label='关闭资料']");
                 js("document.querySelector('[aria-label=关闭资料]').click()");
                 menu("声音设置"); reachable("[role='switch'][aria-label='背景音乐']"); reachable("[role='switch'][aria-label='游戏音效']");
