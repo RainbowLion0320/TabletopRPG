@@ -5,6 +5,7 @@ import { getScenarioDefinition, getScenarioProgressForState } from '../../scenar
 import { pendingDmFailureText } from '../../services/narrativeVisibility';
 import './ending-dock.css';
 import './turn-prompt.css';
+import './party-status.css';
 
 interface ActionDockProps {
   autoFocusInput?: boolean;
@@ -160,7 +161,7 @@ export function ActionDock({
         </button>
       </div>
 
-      {/* 第二行：全部角色紧凑信息条（名 + HP + SAN 同行） */}
+      {/* Party resources also open each investigator's existing dossier. */}
       <PartyStatusStrip state={state} canDeclare={canDeclare} onInspectPlayer={onInspectPlayer} />
     </section>
   );
@@ -188,12 +189,16 @@ function PartyStatusStrip({ state, canDeclare, onInspectPlayer }: Pick<ActionDoc
             >
               <span className="party-compact-heading"><strong>{player.name}</strong>{status && <span className="party-action-status">{status}</span>}</span>
               <span className="party-compact-bars">
-                <span className="bar-label hp">HP</span>
-                <span className="mini-bar"><i style={{ width: `${hpPct}%` }} /></span>
-                <span className="bar-value">{player.currentHp}/{player.hp}</span>
-                <span className="bar-label san">SAN</span>
-                <span className="mini-bar"><i className="san" style={{ width: `${sanPct}%` }} /></span>
-                <span className="bar-value">{player.currentSan}/{player.san}</span>
+                <span className="party-resource">
+                  <span className="bar-label hp">HP</span>
+                  <span className="mini-bar" aria-hidden="true"><i style={{ width: `${hpPct}%` }} /></span>
+                  <span className="bar-value">{player.currentHp}/{player.hp}</span>
+                </span>
+                <span className="party-resource">
+                  <span className="bar-label san">SAN</span>
+                  <span className="mini-bar" aria-hidden="true"><i className="san" style={{ width: `${sanPct}%` }} /></span>
+                  <span className="bar-value">{player.currentSan}/{player.san}</span>
+                </span>
               </span>
             </button>
           );

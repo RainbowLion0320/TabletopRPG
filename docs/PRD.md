@@ -8,6 +8,8 @@
 
 ## 1. Product Positioning
 
+Version 0.4.28 gives party resources the existing illustrated dossier frame. Names use 14px type, HP/SAN values 13px and labels/action status 12px, with at least 44px targets. Submitted investigators remain fully readable and open the same live dossier without changing the acting player or draft. HP and SAN wrap as complete label/value groups; phone teams use two columns, with four only on wider native portrait windows. Narrow multiline declarations retain every party card and the existing minimum reading area.
+
 Version 0.4.27 keeps brief save feedback below the pinned top bar, leaving HP/SAN and actions visible. Feedback uses the existing drawn dossier, readable 15px text and a stable polite live region; longer notices stay for four seconds. Expanded story feedback uses the space before the toggle, keeping the NPC nameplate readable. Saving AI settings simply confirms that they are saved. Multiline declarations reserve their full action/party height before the painting yields space, on phones and desktop; viewing a party member during feedback does not lose the draft.
 
 Version 0.4.26 gives pending checks and preserved turns one compact drawn dossier strip. Player/check titles use 16px text, instructions and actions use 15px, and roll/retry controls remain at least 44px. Full text wraps within the available space, preserving story reading and every party card at normal phone heights. Desktop also hides the unavailable declaration row during these stages, then restores it when the turn becomes editable; drafts and turn resolution remain intact.

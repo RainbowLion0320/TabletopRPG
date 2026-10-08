@@ -179,9 +179,7 @@
 }
 :root.fog-ui :is(.modal-card input, .dock-input):disabled { color: #9e927d; border-color: #443b2e; }
 
-:root.fog-ui :is(.party-compact,
-  .case-board-mobile-card, .case-board-threads button) { border-radius: 2px; }
-:root.fog-ui .party-compact strong { font-family: var(--ui-font); }
+:root.fog-ui :is(.case-board-mobile-card, .case-board-threads button) { border-radius: 2px; }
 
 /* Story and tools are one desk, with the full scene painting left untouched. */
 :root.fog-ui .game-top { background: #11100e; border-bottom: 1px solid #534129; }
@@ -209,18 +207,12 @@
 :root.fog-ui .story-message.player { background: #30281bd9; border-right: 2px solid #a48953; }
 :root.fog-ui .message-label { color: #d1b981; letter-spacing: .1em; }
 :root.fog-ui .suggestion-row button { box-shadow: inset 0 -2px #645034; background: #252015; color: #d9c9aa; }
-:root.fog-ui .party-compact { background: #181611; border-color: #49402f; }
-:root.fog-ui .party-compact.active { background: #302719; border-color: #b3945d; }
-:root.fog-ui .party-compact.acted { opacity: .75; }
-:root.fog-ui .party-strip-compact { border-top-color: #51412b; }
 :root.fog-ui .dock-actor-avatar { border-radius: 1px; border-color: #ab8851; background: #17120c; }
 :root.fog-ui .dock-actor-avatar { width: 44px; height: 44px; padding: 3px; cursor: pointer; }
-:root.fog-ui .party-compact { cursor: pointer; min-height: 40px; }
-:root.fog-ui :is(.dock-actor-avatar, .party-compact):active { border-color: #f0cf8b; box-shadow: inset 0 0 0 1px #f0cf8b; }
+:root.fog-ui .dock-actor-avatar:active { border-color: #f0cf8b; box-shadow: inset 0 0 0 1px #f0cf8b; }
 @media (hover: hover) {
-  :root.fog-ui :is(.dock-actor-avatar, .party-compact):hover { border-color: #e4c181; background-color: #3a2e1d; }
+  :root.fog-ui .dock-actor-avatar:hover { border-color: #e4c181; background-color: #3a2e1d; }
 }
-:root.fog-ui .mini-bar, :root.fog-ui .mini-bar i { border-radius: 0; }
 :root.fog-ui .menu-list button { justify-content: flex-start; box-shadow: inset 0 -1px #57452d; padding-inline: 12px; }
 
 /* Archive tabs and cards carry the same file-tab selection language. */

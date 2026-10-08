@@ -136,8 +136,13 @@ public class GameAndroidTest {
 
     private void readableTurnPrompt() throws Exception {
         reachable(".check-card"); reachable(".check-card > button");
-        if (Double.parseDouble(js("innerHeight")) > 300) reachable(".party-compact:last-child");
+        if (Double.parseDouble(js("innerHeight")) > 300) readablePartyDossiers();
         assertEquals("Turn information uses readable text, drawn dossier and full touch controls", "true", js("(()=>{const c=document.querySelector('.check-card'),b=c.querySelector('button'),r=b.getBoundingClientRect(),d=c.closest('.action-dock').getBoundingClientRect(),s=document.querySelector('.narrative-panel').getBoundingClientRect();return Array.from(c.querySelectorAll('strong,span,button')).every(e=>parseFloat(getComputedStyle(e).fontSize)>=15)&&getComputedStyle(c).borderImageSource.includes('dossier-mount')&&r.width>=44&&r.height>=44&&s.height>=140&&s.bottom<=d.top+.5&&c.scrollWidth<=c.clientWidth+1})()"));
+    }
+
+    private void readablePartyDossiers() throws Exception {
+        reachable(".party-compact:last-child");
+        assertEquals("Every investigator remains readable, drawn and reachable", "true", js("(()=>{const d=document.querySelector('.action-dock').getBoundingClientRect();return Array.from(document.querySelectorAll('.party-compact')).every(e=>{const r=e.getBoundingClientRect();return r.width>=44&&r.height>=44&&r.top>=d.top&&r.bottom<=Math.min(d.bottom,innerHeight)+.5&&e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))&&getComputedStyle(e).borderImageSource.includes('dossier-mount')&&getComputedStyle(e).opacity==='1'&&e.scrollWidth<=e.clientWidth+1&&Array.from(e.querySelectorAll('strong,.party-action-status,.bar-label,.bar-value')).every(t=>{const b=t.getBoundingClientRect(),s=parseFloat(getComputedStyle(t).fontSize);return s>=(t.tagName==='STRONG'?14:t.classList.contains('bar-value')?13:12)&&b.left>=r.left&&b.right<=r.right})})})()"));
     }
 
     private void menu(String label) throws Exception {
@@ -149,7 +154,7 @@ public class GameAndroidTest {
     private void readableGameNotice() throws Exception {
         until("document.querySelector('.game-notice .toast')");
         assertEquals("Feedback is readable above the actions and never intercepts input", "true", js("(()=>{const e=document.querySelector('.game-notice'),n=e.querySelector('.toast'),r=n.getBoundingClientRect(),d=document.querySelector('.action-dock').getBoundingClientRect(),t=document.querySelector('.game-top').getBoundingClientRect();return e.getAttribute('role')==='status'&&e.getAttribute('aria-live')==='polite'&&getComputedStyle(e).pointerEvents==='none'&&parseFloat(getComputedStyle(n).fontSize)>=15&&getComputedStyle(n).borderImageSource.includes('dossier-mount')&&r.left>=0&&r.right<=innerWidth&&r.top>=t.bottom&&r.bottom<=d.top&&n.scrollWidth<=n.clientWidth+1})()"));
-        if (Double.parseDouble(js("innerHeight")) > 300) reachable(".party-compact:last-child");
+        if (Double.parseDouble(js("innerHeight")) > 300) readablePartyDossiers();
         assertEquals("Short confirmation leaves the NPC nameplate readable", "true", js("(()=>{const n=document.querySelector('.toast'),c=document.querySelector('.npc-nameplate');if(n.textContent!=='已保存'||!c)return true;const a=n.getBoundingClientRect(),b=c.getBoundingClientRect();return a.right<=b.left||a.left>=b.right||a.bottom<=b.top||a.top>=b.bottom})()"));
     }
 
@@ -202,6 +207,11 @@ public class GameAndroidTest {
             js("document.querySelectorAll('.preset-card-modern strong')[2].click();document.querySelectorAll('.preset-card-modern strong')[3].click()");
             until("document.querySelectorAll('.preset-card-modern.selected').length===4");
             click("进入游戏"); until("document.querySelectorAll('.party-compact').length===4");
+            for (int width : new int[] {562, 600, 700}) {
+                viewport(width, 1000); readablePartyDossiers();
+                assertEquals("Wide phone party remains in two readable columns", "true", js("getComputedStyle(document.querySelector('.party-strip-compact')).gridTemplateColumns.split(' ').length===2"));
+            }
+            screenshot("party-dossiers-wide-phone");
         } finally { activity.close(); }
     }
 
@@ -233,12 +243,14 @@ public class GameAndroidTest {
                 reachable(".setup-footer .primary-btn");
                 assertEquals("Expanded stats do not widen the card", "true", js("Array.from(document.querySelectorAll('.preset-card-content')).every(e=>e.scrollWidth<=e.clientWidth+1)"));
                 click("进入游戏"); reachable(".dock-input");
+                readablePartyDossiers();
                 if (size[0] == 360) {
                     // Wait for the non-interactive save notification to fade before testing the HUD.
                     until("!document.querySelector('.toast')");
                     reachable(".party-compact:last-child");
                     assertEquals("All four status cards fit without horizontal scrolling", "true", js("document.querySelector('.party-strip-compact').scrollWidth<=document.querySelector('.party-strip-compact').clientWidth+1"));
                     viewport(320, 568);
+                    readablePartyDossiers();
                     assertEquals("Smallest four-player HUD keeps every value inside its card", "true", js("Array.from(document.querySelectorAll('.party-compact,.party-strip-compact')).every(e=>e.scrollWidth<=e.clientWidth+1)"));
                     assertEquals("Smallest four-player reading area remains usable", "true", js("document.querySelector('.narrative-panel').clientHeight>=140"));
                     screenshot("portrait-320x568-four-game");
@@ -600,6 +612,7 @@ public class GameAndroidTest {
                     if (i < party - 1) {
                         assertEquals("Next investigator can keep typing immediately", "true", js("document.activeElement===document.querySelector('.dock-input')"));
                         assertEquals("Completed actor is indicated", "true", js("document.querySelectorAll('.party-compact')[" + i + "].textContent.includes('已提交')"));
+                        readablePartyDossiers();
                     }
                 }
                 until("document.body.innerText.includes('Android 调查继续')");

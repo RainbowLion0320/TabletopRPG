@@ -8,7 +8,6 @@
 .ending-actions { display: grid; flex: 0 0 auto; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .ending-actions > button { min-width: 0; min-height: 44px; }
 :root.fog-ui .ending-dock .party-strip-compact { flex: 0 0 auto; margin-top: 0; padding-top: 0; border-top: 0; }
-:root.fog-ui .ending-dock .party-compact { min-height: 44px; }
 :root.fog-ui.portrait-ui .ending-dock { gap: 5px; max-height: 45dvh; }
 .portrait-ui .ending-copy { padding: 4px 6px; gap: 6px; }
 .portrait-ui .ending-copy strong { font-size: 16px; }
@@ -20,5 +19,4 @@
 }
 @media (max-height: 300px) {
   :root.fog-ui.portrait-ui .ending-dock { max-height: 55dvh; }
-  :root.fog-ui.portrait-ui .ending-dock .party-strip-compact { display: none; }
 }

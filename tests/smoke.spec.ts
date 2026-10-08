@@ -1140,6 +1140,73 @@ for (const size of [{ width: 320, height: 568, party: 1, endingId: 'END_C' }, { 
   });
 }
 
+for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390, height: 844, party: 1 as const }, { width: 430, height: 932, party: 2 as const }, { width: 600, height: 1000, party: 4 as const }, { width: 820, height: 1180, party: 3 as const }, { width: 1440, height: 900, party: 4 as const }]) {
+  test(`party dossiers stay readable and return to the correct action at ${size.width}px with ${size.party} players`, async ({ page }, testInfo) => {
+    await page.setViewportSize(size);
+    let modelCalls = 0;
+    await page.route(/\/(chat\/completions|responses)(?:\?|$)/, route => { modelCalls++; return route.abort(); });
+    await startNewGame(page, size.party);
+    const cards = page.locator('.party-compact');
+    await expect(cards).toHaveCount(size.party);
+    await page.evaluate(() => document.fonts.ready);
+    async function verifyParty() {
+      const bounds = await cards.evaluateAll(elements => elements.map(e => {
+        const r = e.getBoundingClientRect(), d = document.querySelector('.action-dock')!.getBoundingClientRect();
+        const story = document.querySelector('.narrative-panel')!.getBoundingClientRect();
+        const text = Array.from(e.querySelectorAll('strong, .party-action-status, .bar-label, .bar-value'));
+        return { target: r.width >= 44 && r.height >= 44 && e.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)),
+          inside: r.left >= 0 && r.right <= innerWidth && r.top >= d.top && r.bottom <= Math.min(d.bottom, innerHeight) + .5,
+          reading: story.height >= 140 && story.bottom <= d.top + .5,
+          drawn: getComputedStyle(e).borderImageSource.includes('dossier-mount'),
+          opaque: getComputedStyle(e).opacity === '1',
+          text: text.every(t => { const s = getComputedStyle(t); const size = parseFloat(s.fontSize); const b = t.getBoundingClientRect(); return size >= (t.tagName === 'STRONG' ? 14 : t.classList.contains('bar-value') ? 13 : 12) && b.left >= r.left && b.right <= r.right; }),
+          noOverflow: e.scrollWidth <= e.clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth };
+      }));
+      for (const b of bounds) expect(b).toEqual({ target: true, inside: true, reading: true, drawn: true, opaque: true, text: true, noOverflow: true });
+    }
+    const names = await cards.locator('strong').allTextContents();
+    const resources = await cards.locator('.party-compact-bars').allTextContents();
+    const draft = '记录信中的日期与姓名。\n再请她描述失踪的经过。';
+    await page.locator('.dock-input').fill(draft);
+    writeFileSync(testInfo.outputPath('party-bounds.json'), JSON.stringify(await page.locator('.action-dock').evaluate(e => ({
+      viewport: [innerWidth, innerHeight], dock: e.getBoundingClientRect().toJSON(), max: getComputedStyle(e).maxHeight,
+      children: Array.from(e.querySelectorAll('.suggestion-row,.dock-input-row,.party-strip-compact,.party-compact,.dock-input')).map(c => ({ name: c.className, rect: c.getBoundingClientRect().toJSON(), scrollHeight: c.scrollHeight, clientHeight: c.clientHeight }))
+    }))));
+    await verifyParty();
+    for (let i = 0; i < size.party; i++) {
+      await cards.nth(i).click();
+      await expect(page.locator('.investigator-sheet')).toHaveAccessibleName(names[i]);
+      await page.getByRole('button', { name: '关闭调查员档案' }).click();
+      await expect(cards.nth(i)).toBeFocused();
+      await expect(page.locator('.dock-input')).toHaveValue(draft);
+    }
+    if (size.party > 1) {
+      await page.getByRole('button', { name: '下一位', exact: true }).click();
+      await page.locator('.dock-input').fill(draft);
+      await expect(cards.first()).toContainText('已提交');
+      await expect(cards.nth(1)).toHaveAttribute('aria-current', 'step');
+      await verifyParty();
+      await cards.first().click();
+      await page.getByRole('button', { name: '关闭调查员档案' }).click();
+      await expect(page.locator('.dock-input')).toHaveAttribute('aria-label', `${names[1]}的行动`);
+      await expect(page.locator('.dock-input')).toHaveValue(draft);
+    }
+    expect(await cards.locator('.party-compact-bars').allTextContents()).toEqual(resources);
+    expect(modelCalls).toBe(0);
+    await page.screenshot({ path: testInfo.outputPath('party-dossiers.png') });
+    if (size.width === 320) await page.screenshot({ path: 'output/ui-2026-10-08/67-party-card-four-after.png' });
+    if (size.width === 1440) await page.screenshot({ path: 'output/ui-2026-10-08/68-party-card-desktop-after.png' });
+    if (size.width <= 700) {
+      await page.setViewportSize({ width: size.width, height: 300 });
+      await expect(page.locator('.party-strip-compact')).toBeHidden();
+      await expect(page.locator('.dock-input')).toBeInViewport();
+      await expect(page.locator('.dock-submit')).toBeInViewport();
+      await page.setViewportSize(size); await verifyParty();
+      await expect(page.locator('.dock-input')).toHaveValue(draft);
+    }
+  });
+}
+
 for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390, height: 844, party: 1 as const }, { width: 562, height: 1000, party: 4 as const }, { width: 1440, height: 900, party: 4 as const }]) {
   for (const expanded of [false, true]) {
     test(`save feedback leaves the party and action unobscured at ${size.width}px with story ${expanded ? 'expanded' : 'normal'}`, async ({ page }, testInfo) => {
