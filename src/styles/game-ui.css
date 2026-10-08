@@ -206,12 +206,10 @@
 }
 :root.fog-ui .narrative-panel { border-bottom: 0; }
 :root.fog-ui .action-dock { border-top-color: #77603d; }
-:root.fog-ui .narrative-header { border-bottom: 1px solid #453824; margin-bottom: 4px; }
 :root.fog-ui .story-message { border-radius: 1px; }
 :root.fog-ui .story-message.dm { border-left: 2px solid #b49a65; background: #211e1755; }
 :root.fog-ui .story-message.player { background: #30281bd9; border-right: 2px solid #a48953; }
 :root.fog-ui .message-label { color: #d1b981; letter-spacing: .1em; }
-:root.fog-ui .narrative-toggle-btn { background: #292216; }
 :root.fog-ui .suggestion-row button { box-shadow: inset 0 -2px #645034; background: #252015; color: #d9c9aa; }
 :root.fog-ui .party-compact { background: #181611; border-color: #49402f; }
 :root.fog-ui .party-compact.active { background: #302719; border-color: #b3945d; }
@@ -252,9 +250,6 @@
 :root.fog-ui.portrait-ui .narrative-panel.expanded { border-radius: 2px; }
 :root.fog-ui.portrait-ui .suggestion-row button { min-height: 40px; font-size: 12px; }
 :root.fog-ui.portrait-ui .action-dock { padding: 4px 6px; }
-:root.fog-ui.portrait-ui .narrative-toggle-btn { height: 40px; }
-:root.fog-ui.portrait-ui .narrative-header { min-height: 40px; }
-:root.fog-ui.portrait-ui .narrative-panel .npc-nameplate { min-height: 40px; }
 /* Browser form fields avoid automatic input zoom on mobile WebKit. */
 :root.fog-ui.portrait-ui:not(.android-app) :is(input, select, textarea) { font-size: 16px; }
 @media (prefers-reduced-motion: reduce) {

@@ -267,22 +267,6 @@ button {
   z-index: 20;
 }
 
-.narrative-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: relative;
-  flex: 0 0 auto;
-  z-index: 2;
-  background: #1c1914;
-  padding: 10px 0 8px;
-  gap: 6px;
-}
-
-.narrative-tools { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-.narrative-new-content { display: inline-flex; align-items: center; justify-content: center; gap: 3px; min-height: 32px; padding: 0 6px; border: 1px solid var(--line); background: #302719; color: var(--gold); cursor: pointer; white-space: nowrap; font-size: 12px; }
-.narrative-header > :first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
 .narrative-scroll {
   position: relative;
   flex: 1 1 auto;
@@ -296,53 +280,6 @@ button {
 .narrative-scroll:focus-visible {
   outline: 1px solid var(--gold);
   outline-offset: -1px;
-}
-
-.narrative-title {
-  color: var(--gold);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 2px;
-}
-
-.narrative-toggle-btn {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 0;
-  border-radius: 4px;
-  background: rgba(216,189,122,0.12);
-  color: var(--gold);
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.narrative-toggle-btn:hover {
-  background: rgba(216,189,122,0.25);
-}
-
-/* NPC 名牌条 */
-.narrative-panel .npc-nameplate {
-  display: inline-block;
-  border: 1px solid rgba(216,189,122,0.34);
-  background: rgba(8,7,6,0.42);
-  color: var(--quiet);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0;
-  padding: 3px 14px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.narrative-panel .npc-nameplate strong {
-  color: var(--person-color, var(--gold));
-  font-weight: 700;
-}
-
-.narrative-panel .npc-nameplate:hover strong {
-  filter: brightness(1.16);
 }
 
 .story-message {

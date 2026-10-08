@@ -269,6 +269,26 @@ for (const size of [{ width: 320, height: 568 }, { width: 1440, height: 900 }]) 
     const newContent = page.getByRole('button', { name: '查看新剧情', exact: true });
     await expect(newContent).toBeInViewport();
     await expect(page.locator('.narrative-toggle-btn')).toBeInViewport();
+    const header = page.locator('.narrative-header');
+    const headerMetrics = await header.evaluate(e => {
+      const h = e.getBoundingClientRect();
+      return [...e.querySelectorAll('button')].map(b => {
+        const r = b.getBoundingClientRect();
+        return { width: r.width, height: r.height, inside: r.left >= h.left && r.right <= h.right + .5 && r.top >= h.top && r.bottom <= h.bottom + .5,
+          hit: b.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)) };
+      });
+    });
+    for (const control of headerMetrics) { expect(control.width).toBeGreaterThanOrEqual(44); expect(control.height).toBeGreaterThanOrEqual(44); expect(control.inside).toBe(true); expect(control.hit).toBe(true); }
+    expect(await newContent.evaluate(e => getComputedStyle(e, '::before').borderImageSource)).toContain('brass-frame');
+    expect(await header.locator('.npc-nameplate').evaluate(e => getComputedStyle(e).borderImageSource)).toContain('dossier-mount');
+    expect(await header.locator('.npc-nameplate strong').evaluate(e => parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(14);
+    await expect(page.getByRole('button', { name: '收起剧情', exact: true })).toHaveAttribute('aria-expanded', 'true');
+    const storyBeforeDetails = await scroll.evaluate(e => e.scrollTop);
+    await header.getByRole('button', { name: '查看伊莎贝拉·摩勒详情', exact: true }).click();
+    const npcDetail = page.getByRole('dialog', { name: '伊莎贝拉·摩勒' }); await expect(npcDetail).toBeVisible();
+    await npcDetail.getByRole('button', { name: '关闭详情', exact: true }).click();
+    await expect(header.getByRole('button', { name: '查看伊莎贝拉·摩勒详情', exact: true })).toBeFocused();
+    await expect(scroll).toHaveJSProperty('scrollTop', storyBeforeDetails); await expect(newContent).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('older-reading-new-reply.png') });
     await newContent.click();
     await expect(newContent).toHaveCount(0);

@@ -307,6 +307,7 @@ public class GameAndroidTest {
                 assertEquals("Expanded reading stays below navigation and above the dock", "true", js("(()=>{const p=document.querySelector('.narrative-panel').getBoundingClientRect(),d=document.querySelector('.action-dock').getBoundingClientRect(),n=document.querySelector('.game-top').getBoundingClientRect();return p.top>=n.bottom&&p.bottom<=d.top+.5&&p.width>innerWidth*.9&&p.left===d.left&&p.right===d.right})()"));
                 js("(()=>{const e=document.createElement('div');e.id='qa-long-story';e.className='story-message dm';e.textContent='调查员沿着门廊仔细查看，斑驳的木板上留下了一道浅浅的划痕。伊莎贝拉回忆起那天走廊里急促的脚步声。'.repeat(40);document.querySelector('.narrative-scroll').appendChild(e)})()");
                 String headerTop = js("document.querySelector('.narrative-header').getBoundingClientRect().top");
+                assertEquals("Story identity and tools have readable illustrated touch controls", "true", js("(()=>{const h=document.querySelector('.narrative-header').getBoundingClientRect();return Array.from(document.querySelectorAll('.narrative-header button')).every(e=>{const r=e.getBoundingClientRect();return r.width>=44&&r.height>=44&&r.left>=h.left&&r.right<=h.right+.5})&&parseFloat(getComputedStyle(document.querySelector('.npc-nameplate strong')).fontSize)>=14&&getComputedStyle(document.querySelector('.npc-nameplate')).borderImageSource.includes('dossier-mount')&&getComputedStyle(document.querySelector('.narrative-toggle-btn'),'::before').borderImageSource.includes('brass-frame')})()"));
                 for (double fraction : new double[] {0, .5, 1}) {
                     js("(()=>{const s=document.querySelector('.narrative-scroll');s.scrollTop=(s.scrollHeight-s.clientHeight)*" + fraction + "})()");
                     assertEquals("Story header stays fixed when history scrolls", headerTop, js("document.querySelector('.narrative-header').getBoundingClientRect().top"));
@@ -315,7 +316,8 @@ public class GameAndroidTest {
                 }
                 screenshot(prefix + "-expanded");
                 js("document.querySelector('#qa-long-story').remove();document.querySelector('.narrative-scroll').scrollTop=0");
-                js("document.querySelector('.narrative-toggle-btn').click();document.querySelector('.npc-nameplate').click()");
+                nativeTap(".narrative-toggle-btn"); until("document.querySelector('.narrative-toggle-btn').getAttribute('aria-label')==='展开剧情'");
+                reachable(".npc-nameplate"); nativeTap(".npc-nameplate"); until("document.querySelector('.entity-detail-card')");
                 reachable(".entity-detail-close"); screenshot(prefix + "-entity");
                 // Long unlocked descriptions scroll without moving the close control.
                 js("document.querySelector('.entity-detail-known p').textContent='长篇调查记录。'.repeat(150)");

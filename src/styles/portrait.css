@@ -52,9 +52,6 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 .portrait-ui .narrative-panel { position: relative; grid-column: 1; grid-row: 3; inset: auto; min-width: 0; min-height: 0; max-height: none; height: 100%; padding: 0 8px 6px; }
 .portrait-ui .narrative-panel.expanded { position: relative; grid-row: 2 / 4; inset: auto; max-height: none; z-index: 24; padding-top: 0; border-radius: 10px 10px 0 0; }
 .portrait-ui .game-screen:has(.narrative-panel.expanded) .scene-stage { visibility: hidden; }
-.portrait-ui .narrative-header { padding: 0; min-height: 32px; }
-.portrait-ui .narrative-toggle-btn { width: 44px; height: 32px; flex-shrink: 0; }
-.portrait-ui .narrative-panel .npc-nameplate { min-height: 32px; padding: 0 8px; font-size: 11px; background: transparent; border: 0; text-align: left; }
 .portrait-ui .story-message { font-size: 15px; margin-bottom: 8px; padding: 6px 8px; overflow-wrap: anywhere; }
 .portrait-ui .story-message p { line-height: 1.65; }
 .portrait-ui .story-message.player { padding: 5px 8px; max-width: 92%; }

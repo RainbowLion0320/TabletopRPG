@@ -9,6 +9,7 @@ import {
 } from '../../services/narrativeMarkup';
 import { ThinkingIndicator } from './ThinkingIndicator';
 import { isPlayerVisibleMessage } from '../../services/narrativeVisibility';
+import './narrative-tools.css';
 
 interface NarrativePanelProps {
   state: GameState;
@@ -129,9 +130,10 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
               canonicalName: state.activeNpcName!
             }, state.activeNpcName!)}
             style={{ '--person-color': getPersonColor(state, state.activeNpcName!) } as CSSProperties}
+            title={`${state.activeNpcName} · ${activeNpc.role}`}
             type="button"
           >
-            <strong>{state.activeNpcName}</strong><span> · {activeNpc.role}</span>
+            <strong>{state.activeNpcName}</strong><span className="npc-role">{activeNpc.role}</span>
           </button>
         ) : (
           <div className="narrative-title">对话记录</div>
@@ -140,6 +142,7 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
           {hasNewContent && <button className="narrative-new-content" onClick={readNewContent} aria-label="查看新剧情" aria-controls={scrollId} type="button"><ChevronDown size={14} />新内容</button>}
           <button
             className="narrative-toggle-btn"
+            aria-label={expanded ? '收起剧情' : '展开剧情'}
             aria-expanded={expanded}
             aria-controls={scrollId}
             onClick={() => setExpanded(!expanded)}
