@@ -4,12 +4,14 @@ title: 存档系统
 tags: [save, storage, localStorage]
 sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-18
-updated: 2026-10-08
+updated: 2026-10-09
 ---
 
 # 存档系统
 
 ## 概述
+
+0.4.24 `hydrateGameState` 按原预设 id/姓名更新过期包内头像 URL，原图地址、旧网页 PNG 和 APK/WebP 生成地址均可续接；图片身份不依赖成长后的敏捷值。缺失的预设头像恢复，显式自定义/远程图片与非预设角色保留。手动/自动记录共用路径，原属性、技能、装备、宣言、锁定检定与存储格式不变。见 [[concepts/game_ui]] 与 [[concepts/android_app]]。
 
 0.4.20 已结案的当前会话、自动会话或最近手动记录以「已结案 / 回顾调查」展示。返回首页后仍接续同一结局、实时队伍与已知档案；回看不增加 AI 请求或重复结算原奖励，也不要求新的 API 配置。结案后资料入口可直达公开进度并返回原操作，队友属性继续可查，原存储结构不变。见 [[concepts/game_ui]] 与 [[concepts/android_app]]。
 

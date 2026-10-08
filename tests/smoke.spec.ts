@@ -4,6 +4,10 @@ import { rollD100 } from '../src/services/dice';
 import type { CheckRequest, GameState, ScenarioProgress } from '../src/types/game';
 import { makeInvestigator } from './dm/fixtures';
 import { parse as parseYaml } from 'yaml';
+import sharp from 'sharp';
+
+const artThumbnail = (input: Buffer) => sharp(input).flatten({ background: '#1c1914' }).resize(32, 40).raw().toBuffer();
+const artDistance = (picture: Buffer, master: Buffer) => picture.reduce((sum, value, pixel) => sum + Math.abs(value - master[pixel]), 0) / picture.length;
 
 const hasEnvDefaultApiKey =
   Boolean(process.env.VITE_AI_API_KEY) ||
@@ -718,16 +722,30 @@ test('investigator setup shows portraits and full attribute blocks', async ({ pa
     return {
       alt: portrait.alt,
       file: new URL(portrait.currentSrc).pathname.split('/').pop(),
+      url: portrait.currentSrc,
       naturalWidth: portrait.naturalWidth,
       naturalHeight: portrait.naturalHeight
     };
   }));
-  expect(portraitAssets).toEqual([
-    { alt: '亨利·格雷 立绘', file: 'henry_gray.png', naturalWidth: 1600, naturalHeight: 2000 },
-    { alt: '艾达·华莱士 立绘', file: 'ada_wallace.png', naturalWidth: 1600, naturalHeight: 2000 },
-    { alt: '托马斯·贝尔 立绘', file: 'thomas_bell.png', naturalWidth: 1600, naturalHeight: 2000 },
-    { alt: '罗伯特·肖 立绘', file: 'robert_shaw.png', naturalWidth: 1600, naturalHeight: 2000 }
+  expect(portraitAssets.map(({ alt, naturalWidth, naturalHeight }) => ({ alt, naturalWidth, naturalHeight }))).toEqual([
+    { alt: '亨利·格雷 立绘', naturalWidth: 900, naturalHeight: 1125 },
+    { alt: '艾达·华莱士 立绘', naturalWidth: 900, naturalHeight: 1125 },
+    { alt: '托马斯·贝尔 立绘', naturalWidth: 900, naturalHeight: 1125 },
+    { alt: '罗伯特·肖 立绘', naturalWidth: 900, naturalHeight: 1125 }
   ]);
+  expect(portraitAssets.every(portrait => portrait.file?.endsWith('.webp'))).toBe(true);
+  expect(new Set(portraitAssets.map(portrait => portrait.url)).size).toBe(4);
+  // Verify each compressed picture against all four masters, rather than relying
+  // on the old PNG filename to detect a swapped investigator portrait.
+  const masters = await Promise.all(['henry_gray', 'ada_wallace', 'thomas_bell', 'robert_shaw']
+    .map(name => artThumbnail(readFileSync(`assets/investigators/${name}.png`))));
+  for (let index = 0; index < portraitAssets.length; index++) {
+    const response = await page.request.get(portraitAssets[index].url); expect(response.ok()).toBe(true);
+    const delivered = await artThumbnail(await response.body());
+    const distances = masters.map(master => artDistance(delivered, master));
+    expect(distances[index]).toBeLessThan(6);
+    expect(distances.indexOf(Math.min(...distances))).toBe(index);
+  }
   const layoutMetrics = await page.locator('.preset-grid-modern').evaluate((grid) => {
     const cards = Array.from(grid.querySelectorAll('.preset-card-modern')).slice(0, 2);
     const gridRect = grid.getBoundingClientRect();
@@ -1260,8 +1278,14 @@ test('second-act scene loads its authored backdrop and NPC portrait together', a
 
   await expect(page.locator('.brand-title')).toHaveText('第二幕：街区调查');
   await expect(page.locator('.brand-scene')).toHaveText('上城区第二分局');
-  await expect(page.locator('.scene-backdrop-img')).toHaveAttribute('src', /%E8%AD%A6%E5%B1%80\.png/i);
-  await expect(page.locator('.scene-npc')).toHaveAttribute('src', /montreal\.png/);
+  for (const [selector, master] of [['.scene-backdrop-img', 'assets/scenes/警局.png'], ['.scene-npc', 'assets/avatars/montreal.png']]) {
+    const picture = page.locator(selector);
+    await expect(picture).toHaveAttribute('src', /\.webp$/);
+    await expect.poll(() => picture.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+    const response = await page.request.get(await picture.evaluate((image: HTMLImageElement) => image.currentSrc));
+    expect(response.ok()).toBe(true);
+    expect(artDistance(await artThumbnail(await response.body()), await artThumbnail(readFileSync(master)))).toBeLessThan(6);
+  }
 });
 
 test('reference panel renders saved dynamic case board hypotheses', async ({ page }) => {
@@ -1734,6 +1758,41 @@ test('saving a game enables continuing the latest save after reloading the title
     await expect(reopened.getByRole('textbox', { name: '亨利·格雷的行动' })).toBeVisible();
   } finally { await reopened.close(); }
 });
+
+for (const party of [1, 2, 4] as const) {
+  test(`pre-update portrait URLs recover every ${party}-player investigator without resetting their save`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await startNewGame(page, party);
+    await page.getByRole('textbox', { name: '亨利·格雷的行动' }).fill('先记录门廊\n再询问访客');
+    await page.getByRole('button', { name: '菜单', exact: true }).click();
+    await page.getByRole('button', { name: '保存游戏', exact: true }).click();
+    const state = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('trpg-saves-v2')!)[0].gameState;
+      saved.players.forEach((player: { portrait: string }, index: number) => { player.portrait = `/assets/${String(index + 1).padStart(16, '0')}-oldBuild.webp`; });
+      saved.players[0].currentHp = 9; saved.players[0].currentSan = 53;
+      return saved;
+    }) as GameState;
+    await gotoWithSave(page, state);
+    await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+    await expect(page.getByRole('textbox', { name: '亨利·格雷的行动' })).toHaveValue('先记录门廊\n再询问访客');
+    await expect.poll(() => page.locator('.dock-actor-avatar img').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+    await page.getByRole('button', { name: '查看亨利·格雷的属性', exact: true }).click();
+    const sheet = page.locator('.investigator-sheet');
+    await expect(sheet.locator('[data-stat="hp"] dd')).toHaveText('9 / 12');
+    await expect(sheet.locator('[data-stat="san"] dd')).toHaveText('53 / 60');
+    const portraitFiles: Record<string, string> = { inspector: 'henry_gray', nurse: 'ada_wallace', reporter: 'thomas_bell', constable: 'robert_shaw' };
+    for (const player of state.players) {
+      if (party > 1) await sheet.getByRole('button', { name: player.name, exact: true }).click();
+      await expect.poll(() => sheet.locator('.investigator-portrait img').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+      const response = await page.request.get(await sheet.locator('.investigator-portrait img').evaluate((image: HTMLImageElement) => image.currentSrc));
+      expect(response.ok()).toBe(true);
+      const file = portraitFiles[player.id];
+      expect(artDistance(await artThumbnail(await response.body()), await artThumbnail(readFileSync(`assets/investigators/${file}.png`)))).toBeLessThan(6);
+    }
+    await sheet.getByRole('button', { name: '关闭调查员档案' }).click();
+    await expect(page.getByRole('textbox', { name: '亨利·格雷的行动' })).toHaveValue('先记录门廊\n再询问访客');
+  });
+}
 
 test('save manager can load and delete explicit save slots', async ({ page }) => {
   await startNewGame(page);

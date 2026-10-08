@@ -1,12 +1,16 @@
 # TabletopRPG PRD
 
 > Version: v0.9
-> Updated: 2026-10-08
+> Updated: 2026-10-09
 > Product baseline: Vite + React + TypeScript MVP
 
 0.4.20 结案后保留本次结局、队伍属性入口，并可直接打开「调查回顾」或返回首页。手机只显示两行结案摘要，完整原文在进度页；固定操作与 1–4 人状态条不压住剧情阅读，短窗口收起摘要/状态条。首页的已结案记录明确使用「回顾调查」，回看不重新请求 AI 或结算奖励，安卓版无需配置模型即可查看已有结局。普通「资料」仍从案件板打开，关闭回到实际入口。原结局、奖励与存储格式不变。
 
 ## 1. Product Positioning
+
+Version 0.4.24 gives the current web edition the same optimized art as the APK. Scene composition and transparent portraits remain intact; images keep their aspect ratio and never upscale. Both builds share one regenerable cache while original masters remain available. Seven unreferenced dark scene copies are removed, as the existing scene shade already supplies darkness. This changes loading cost and generated-file retention, not the story, UI layout or older web revision in Git.
+
+Existing saves and automatic sessions restore authored investigator portraits from the current build when their previous bundled URL has expired. Current resources, learned skills, declarations and locked dice remain intact; explicit custom images remain unchanged. Players can continue after an update without rebuilding their party.
 
 Version 0.4.23 reduces repeated work when typing alongside a long story. Each panel render prepares its known terms and person colors once for the entire visible history, then rebuilds them from the full current state on the next render. Complete prose, colors, per-message AI hints, known-information boundaries, detail actions and reading position remain intact. No history truncation, additional narrative restrictions or new player-facing settings are introduced.
 

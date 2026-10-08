@@ -18,7 +18,7 @@ import {
   finaleSuggestionsNeedReplacement
 } from '../services/finaleChoices';
 import { allSkills } from '../data/skills';
-import { presets } from '../data/presets';
+import { presets, restoreInvestigatorPortrait } from '../data/presets';
 import { deriveInvestigatorStats, gameRules, getDifficultyThreshold, resolveSkillBase } from '../data/gameRules';
 import {
   buildFactCaseBoardPatch,
@@ -171,12 +171,13 @@ function normalizeInvestigator(value: unknown, index: number): Investigator | nu
   const san = Math.max(gameRules.derivedStats.san.min, Math.floor(numberValue(value.san, derived.san)));
   const name = stringValue(value.name, `调查员${index + 1}`);
   const idValue = stringValue(value.id, `player-${index + 1}`);
-  const preset = presets.find(item => item.id === idValue && item.name === name && item.attrs.DEX === attrs.DEX);
+  const portraitPreset = presets.find(item => item.id === idValue && item.name === name);
+  const preset = portraitPreset?.attrs.DEX === attrs.DEX ? portraitPreset : undefined;
 
   return {
     id: idValue,
     name,
-    portrait: typeof value.portrait === 'string' ? value.portrait : undefined,
+    portrait: restoreInvestigatorPortrait(portraitPreset, value.portrait),
     gender: stringValue(value.gender, '未知'),
     age: Math.max(0, Math.floor(numberValue(value.age, 30))),
     hometown: stringValue(value.hometown, '伦敦'),

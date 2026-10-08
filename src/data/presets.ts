@@ -89,6 +89,21 @@ export const presets: PresetInvestigator[] = [
   }
 ];
 
+const portraitNames: Record<string, string> = {
+  inspector: 'henry_gray', nurse: 'ada_wallace', reporter: 'thomas_bell', constable: 'robert_shaw'
+};
+
+/** Build URLs are disposable; a saved authored investigator keeps its current artwork. */
+export function restoreInvestigatorPortrait(preset: PresetInvestigator | undefined, value: unknown): string | undefined {
+  const saved = typeof value === 'string' ? value : undefined;
+  if (!preset) return saved;
+  if (!saved || saved === preset.portrait) return preset.portrait;
+  const name = portraitNames[preset.id];
+  const named = new RegExp(`^/?assets/(?:investigators/)?${name}(?:-[\\w-]+)?\\.(?:png|webp)(?:[?#].*)?$`);
+  const generated = /^\/?(?:assets\/[a-f0-9]{16}-[\w-]+|output\/android-art\/[a-f0-9]{16})\.webp(?:[?#].*)?$/;
+  return named.test(saved) || generated.test(saved) ? preset.portrait : saved;
+}
+
 export function createInvestigatorFromPreset(preset: PresetInvestigator): Investigator {
   const job = jobs.find((item) => item.id === preset.job);
   const jobSkills = new Set(jobSkillMap[preset.job] ?? []);

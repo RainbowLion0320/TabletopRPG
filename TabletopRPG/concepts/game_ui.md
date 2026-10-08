@@ -4,10 +4,14 @@ title: 共享交互 UI
 tags: [ui, art, mobile, android, web, accessibility]
 sources: [../../docs/UI_SYSTEM.md, ../../assets/ui/chrome/README.md, ../../src/styles/game-ui.css]
 created: 2026-09-09
-updated: 2026-10-08
+updated: 2026-10-09
 ---
 
 # 共享交互 UI
+
+0.4.24 旧记录恢复后使用当前调查员立绘，包内图片文件名变化不会让头像与档案缺图；自定义图片、原属性和多行行动保留。见 [[entities/save_system]]。
+
+0.4.24 新版网页复用 APK 的场景/人物 WebP 策略，保持全幅和透明度，原图继续用于美术迭代。共用生成缓存并按当前原图保留，移除无引用的暗版背景；材质、字号、布局、颜色与阴影不变，无新玩家控件。见 [[concepts/android_app]]。
 
 0.4.23 每次剧情渲染共用已知术语/人物颜色，逐条正文的 AI 提示独立；下一次渲染重读完整状态，不以对象身份或部分字段缓存知识。减少长历史输入时的重复扫描，保留全部正文、标记/颜色、详情回调和回看位置，无新增资源、UI 或跑团约束。见 [[concepts/android_app]]。
 

@@ -4,6 +4,7 @@ import { createScenarioProgress, getScenarioDefinition } from '../../src/scenari
 import { isAffirmativeCombatAction } from '../../src/services/actionIntent';
 import type { AiResponse, AtomicFact, EpisodicMemoryRecord, PersistedDMEvent, ProspectiveIntent } from '../../src/types/game';
 import { makeInvestigator, makeState } from './fixtures';
+import { createInvestigatorFromPreset, presets } from '../../src/data/presets';
 
 describe('gameReducer start opening message', () => {
   it('keeps the scenario opening compact while preserving the letter paragraph break', () => {
@@ -838,6 +839,37 @@ describe('gameReducer scene focus synchronization', () => {
 });
 
 describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
+  it('rebinds shipped portrait URLs across builds without resetting investigator progress', () => {
+    const files = ['henry_gray', 'ada_wallace', 'thomas_bell', 'robert_shaw'];
+    for (const format of ['apk', 'web', 'source', 'android-preview', 'missing']) {
+      const players = presets.map((preset, index) => {
+        const player = structuredClone(createInvestigatorFromPreset(preset));
+        const oldKey = String(index + 1).padStart(16, '0');
+        player.portrait = format === 'apk' ? `/assets/${oldKey}-oldBuild.webp`
+          : format === 'web' ? `/assets/${files[index]}-oldBuild.png`
+          : format === 'source' ? `/assets/investigators/${files[index]}.png`
+          : format === 'android-preview' ? `/output/android-art/${oldKey}.webp` : undefined;
+        player.currentHp -= 2; player.currentSan -= 4; player.skills['侦查'].added += 3; player.attrs.DEX += 1;
+        return player;
+      });
+      const input = makeState({ players, declarations: { inspector: '先记下日期\n再查看门廊' } });
+      const savedPlayers = structuredClone(players);
+      const restored = hydrateGameState(input);
+      expect(restored.players).toMatchObject(savedPlayers.map((player, index) => ({ ...player, portrait: presets[index].portrait })));
+      expect(restored.declarations).toEqual(input.declarations);
+      expect(input.players).toEqual(savedPlayers);
+    }
+  });
+
+  it('keeps explicit custom portraits and does not infer preset identity from a name alone', () => {
+    for (const portrait of ['data:image/png;base64,custom', 'https://photos.example/henry_gray-oldBuild.png', '/assets/custom-portrait.png']) {
+      const player = { ...createInvestigatorFromPreset(presets[0]), portrait };
+      expect(hydrateGameState(makeState({ players: [player] })).players[0].portrait).toBe(portrait);
+    }
+    const custom = { ...createInvestigatorFromPreset(presets[0]), id: 'custom', portrait: '/assets/0000000000000001-oldBuild.webp' };
+    expect(hydrateGameState(makeState({ players: [custom] })).players[0].portrait).toBe(custom.portrait);
+  });
+
   it('restores a pending multi-check queue with prepared thresholds and continuation context', () => {
     const state = makeState({
       players: [

@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { getApiConfigValidationError, normalizeApiConfig } from './src/config/aiConfig';
+import { runtimeArtPlugin } from './scripts/runtime-art';
 
 export const AI_ENV_KEYS = [
   'VITE_AI_PROVIDER',
@@ -136,7 +137,7 @@ export function mergeEnvValues(
 }
 
 export default defineConfig({
-  plugins: [react(), envWriterPlugin()],
+  plugins: [react(), envWriterPlugin(), runtimeArtPlugin(import.meta.dirname)],
   server: {
     port: 5273,
     strictPort: false,

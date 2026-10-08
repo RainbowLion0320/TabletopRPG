@@ -554,10 +554,26 @@ public class GameAndroidTest {
                 assertTrue(context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE).contains("trpg-api"));
                 fill(".dock-input", "下轮先观察门廊\n再询问雨夜访客");
                 SystemClock.sleep(300);
-                activity.recreate(); until("document.querySelector('.title-screen')"); click("继续游戏");
+                js("window.qaPortraitUpgradeReady=false;Capacitor.Plugins.GameStorage.readAll().then(async({values})=>{"
+                    + "const record=JSON.parse(values['trpg-android-session-v1']);record.state.players.forEach((p,i)=>p.portrait='/assets/'+String(i+1).padStart(16,'0')+'-oldBuild.webp');"
+                    + "await Capacitor.Plugins.GameStorage.write({key:'trpg-android-session-v1',value:JSON.stringify(record)});window.qaPortraitUpgradeReady=true;})");
+                until("window.qaPortraitUpgradeReady");
+                activity.recreate(); until("document.querySelector('.title-screen')"); viewport(390, 844); click("继续游戏");
                 until("document.body.innerText.includes('Android 调查继续')");
                 assertEquals("No repeated API prompt", "false", js("Boolean(document.querySelector('#api-config-modal-title'))"));
                 assertEquals("Encrypted session recovery keeps every line of the draft", "true", js("document.querySelector('.dock-input').value.split(String.fromCharCode(10)).join('|')==='下轮先观察门廊|再询问雨夜访客'"));
+                until("document.querySelector('.dock-actor-avatar img')?.complete&&document.querySelector('.dock-actor-avatar img').naturalWidth>0");
+                nativeTap(".dock-actor-avatar"); until("document.querySelector('.investigator-sheet')");
+                for (int i = 0; i < party; i++) {
+                    if (party > 1) {
+                        nativeTap(".investigator-party button:nth-child(" + (i + 1) + ")");
+                        until("document.querySelector('.investigator-party button:nth-child(" + (i + 1) + ")').getAttribute('aria-pressed')==='true'");
+                    }
+                    until("document.querySelector('.investigator-portrait img')?.complete&&document.querySelector('.investigator-portrait img').naturalWidth>0");
+                    assertEquals("Updated artwork does not retain an obsolete saved build URL", "true", js("!document.querySelector('.investigator-portrait img').getAttribute('src').includes('oldBuild')"));
+                }
+                nativeTap("[aria-label='关闭调查员档案']"); until("!document.querySelector('.investigator-sheet')");
+                assertEquals("Inspecting updated artwork retains the recovered draft", "true", js("document.querySelector('.dock-input').value.split(String.fromCharCode(10)).join('|')==='下轮先观察门廊|再询问雨夜访客'"));
                 screenshot("restored-" + party);
                 if (party == 1) {
                     js("document.querySelector('.drawer-tab').click()");

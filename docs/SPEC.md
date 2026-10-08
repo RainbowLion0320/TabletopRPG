@@ -1,12 +1,16 @@
 # TabletopRPG Technical Spec
 
 > Version: v0.7
-> Updated: 2026-10-08
+> Updated: 2026-10-09
 > Scope: current React/Vite implementation
 
 In 0.4.20, `ActionDock` reuses one `PartyStatusStrip` in active and completed investigations. Ending records keep authored title/summary, fixed review/home actions and a read-only party; declaration status and action input remain absent. Component-owned ending CSS reserves the content's minimum height before the scene yields, preventing Grid/Flex intrinsic sizing from clipping the second party row; phone summaries clamp to two lines, with the full text in `InvestigationProgress`. Desktop ending layout uses scene/story/dock grid rows and supports expanding the story. `InfoDrawer.initialTab` selects progress for the ending action and board for the ordinary entry; closing restores the actual opener through the existing focus stack. `continuationPreview` reads the known ending to label automatic/current/manual completed records as a review; Android skips the model-configuration gate for those read-only records. No schema, endpoint, prompt, reducer reward or ending-definition changes.
 
 ## Android edition (2026-09-09)
+
+In 0.4.24, investigator hydration matches authored identity by preset id and name, and `restoreInvestigatorPortrait` refreshes only missing or recognized bundled image URLs (previous PNG source/build paths and generated Android/WebP paths). Custom data/remote/unrecognized images and non-preset investigators remain unchanged. Artwork identity does not depend on earned DEX; the narrower legacy Dodge migration retains its original DEX guard. Manual saves and encrypted automatic sessions already share hydration, so no schema or new stored field is required. Statistics, equipment, declarations and locked checks remain on their existing recovery paths.
+
+In 0.4.24, both Vite entries use `scripts/runtime-art.ts` for PNG imports under project assets. Existing scene (1920×1080) and portrait (900×1200) bounds, inside fit, no enlargement, WebP quality 88 and alpha quality 100 remain the APK policy. Content, policy version and size profile determine the cache key, so identical pixels in scene/portrait folders cannot reuse the wrong size. Complete buffers are atomically installed through unique temporary files; cache metadata is read from buffers to avoid Windows file locks, and damaged entries are regenerated. Successful resource output prunes only recognized obsolete WebP hash entries in the existing `output/android-art` cache, keeping all current PNG-derived keys even when the particular entry does not import them. Linked directories/entries are rejected or skipped and unknown files remain untouched. Masters, raw material, audio, fonts, drawn UI assets and release-signing files remain outside this cleanup.
 
 In 0.4.23, `createNarrativeMarkup(state)` prepares the deterministic definitions and person palette once per `NarrativePanel` render. Each message independently normalizes its own hints without mutating the shared definitions. The next render reads the entire state again, including history, flags and scenario progress used by existing case-board visibility; there is no global cache or partial dependency list. Legacy `markNarrativeText` and `getPersonColor` retain their contracts. This removes repeated full-history knowledge scans and color sorting from each paragraph/person occurrence while preserving complete prose, matching priority, public-information boundaries, callbacks and scroll-follow behavior.
 

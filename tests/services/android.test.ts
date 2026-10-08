@@ -3,6 +3,7 @@ import { createNativeStorage, createNativeTransport, type NativeHttp, type Nativ
 import { parseMobileSession } from '../../src/android/session';
 import { evaluateD100, prepareCheck } from '../../src/services/dice';
 import { makeInvestigator, makeState } from '../dm/fixtures';
+import { createInvestigatorFromPreset, presets } from '../../src/data/presets';
 
 describe('Android encrypted storage queue', () => {
   it('coalesces pending writes and persists removal without resurrecting old data', async () => {
@@ -50,6 +51,18 @@ describe('Android transport cancellation', () => {
 });
 
 describe('Android process recovery', () => {
+  it('restores updated preset artwork while preserving a locked check and multiline declaration', () => {
+    const players = presets.map((preset, index) => ({ ...createInvestigatorFromPreset(preset), portrait: `/assets/${String(index + 1).padStart(16, '0')}-oldBuild.webp` }));
+    const state = makeState({ players, declarations: { inspector: '先查看门廊\n再询问失踪经过' } });
+    state.pendingCheck = prepareCheck({ player: players[0].name, skill: '侦查', difficulty: '普通' }, players);
+    const roll = { check: state.pendingCheck, result: evaluateD100(state.pendingCheck, 100), phase: 'revealed' };
+    const restored = parseMobileSession(JSON.stringify({ version: 1, savedAt: 1234, state, roll }));
+    expect(restored?.state.players.map(player => player.portrait)).toEqual(presets.map(preset => preset.portrait));
+    expect(restored?.state.declarations).toEqual(state.declarations);
+    expect(restored?.state.pendingCheck).toMatchObject(state.pendingCheck);
+    expect(restored?.roll?.result).toEqual(roll.result);
+  });
+
   it('corrects legacy Dodge without changing an already locked successful roll', () => {
     const player = makeInvestigator({ name: '调查员' });
     player.skills['闪避'] = { base: 120, added: 0 };
