@@ -1140,6 +1140,63 @@ for (const size of [{ width: 320, height: 568, party: 1, endingId: 'END_C' }, { 
   });
 }
 
+for (const size of [{ width: 320, height: 568, party: 4 }, { width: 390, height: 844, party: 1 }, { width: 562, height: 1000, party: 4 }, { width: 1440, height: 900, party: 4 }]) {
+  for (const mode of ['check', 'retry'] as const) {
+    test(`turn prompt stays readable and actionable at ${size.width}px with ${size.party} players and ${mode}`, async ({ page }, testInfo) => {
+      await page.setViewportSize(size);
+      const state = createPendingCheckSave();
+      const names = ['亨利·格雷', '艾达·华莱士', '托马斯·贝尔', '罗伯特·肖'];
+      const ids = ['inspector', 'nurse', 'reporter', 'constable'];
+      state.players = names.slice(0, size.party).map((name, index) => makeInvestigator({ id: ids[index], name }));
+      state.declarations = Object.fromEntries(state.players.map((p, index) => [p.id, `询问失踪经过，记录${index + 1}。\n请她继续说明。`]));
+      state.pendingCheck = mode === 'check' ? { player: names[size.party - 1], skill: '格斗（拳）', difficulty: '困难', skillVal: 50, threshold: 25, batchIndex: 1, batchTotal: size.party, continuationActions: [] } : null;
+      if (mode === 'retry') {
+        state.pendingDmActions = state.players.map(p => ({ player: p.name, action: state.declarations[p.id] }));
+        state.messages.push({ id: 'private-turn-diagnostic', type: 'system', text: 'AI DM 返回格式无效：private-turn-diagnostic' });
+      }
+      let narratorCalls = 0;
+      await page.route('https://turn-test.invalid/v1/**', async route => {
+        const narrator = (route.request().postData() ?? '').includes('COC 第七版 AI DM Agent');
+        if (narrator) narratorCalls++;
+        const content = JSON.stringify(narrator ? { narrative: '回应恢复，原行动已得到回应。', activeNpc: null, nextPrompt: '', playerChoices: {} } : { facts: [], nodes: [], edges: [] });
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ output_text: content, output: [] }) });
+      });
+      await gotoWithSave(page, state, { provider: 'custom', protocol: 'responses', endpoint: 'https://turn-test.invalid/v1', apiKey: 'test-key', model: 'test-model' });
+      await page.getByRole('button', { name: '继续游戏' }).click();
+      const card = page.locator('.check-card'), action = card.getByRole('button', { name: mode === 'check' ? '掷骰' : '重试本轮', exact: true });
+      const bounds = () => card.evaluate(el => {
+        const r = el.getBoundingClientRect(), b = el.querySelector('button')!, br = b.getBoundingClientRect();
+        const dock = el.closest('.action-dock')!.getBoundingClientRect(), story = document.querySelector('.narrative-panel')!.getBoundingClientRect();
+        return {
+          inside: r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight && br.bottom <= dock.bottom,
+          touch: br.width >= 44 && br.height >= 44 && b.contains(document.elementFromPoint(br.x + br.width / 2, br.y + br.height / 2)),
+          reading: story.height >= 140 && story.bottom <= dock.top + .5,
+          party: innerHeight <= 300 || Array.from(document.querySelectorAll('.party-compact')).every(e => { const r = e.getBoundingClientRect(); return r.top >= dock.top && r.bottom <= dock.bottom + .5 && e.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)); }),
+          font: Array.from(el.querySelectorAll('strong, span, button')).every(e => parseFloat(getComputedStyle(e).fontSize) >= 15),
+          drawn: getComputedStyle(el).borderImageSource.includes('dossier-mount'),
+          overflow: document.documentElement.scrollWidth <= innerWidth && el.scrollWidth <= el.clientWidth + 1
+        };
+      });
+      await expect.poll(bounds).toEqual({ inside: true, touch: true, reading: true, party: true, font: true, drawn: true, overflow: true });
+      await expect(page.locator('.party-compact')).toHaveCount(size.party);
+      await expect(page.getByText('private-turn-diagnostic', { exact: false })).toHaveCount(0);
+      if (mode === 'check') await expect(card).toContainText('难度：困难，阈值 25');
+      else await expect(card).toContainText('已确认的骰点无需重掷');
+      await page.screenshot({ path: testInfo.outputPath('turn-prompt.png') });
+      if (size.width === 390) await page.screenshot({ path: `output/ui-2026-10-08/59-turn-${mode}-after.png` });
+      if (size.width < 600) {
+        await page.setViewportSize({ width: size.width, height: 300 });
+        await expect.poll(bounds).toEqual({ inside: true, touch: true, reading: true, party: true, font: true, drawn: true, overflow: true });
+        await page.setViewportSize(size);
+      }
+      expect(narratorCalls).toBe(0);
+      await action.click();
+      if (mode === 'check') await expect(page.getByRole('dialog', { name: '命运检定' })).toHaveClass(/rolling/);
+      else { await expect(page.getByText('回应恢复，原行动已得到回应。')).toBeVisible(); expect(narratorCalls).toBe(1); }
+    });
+  }
+}
+
 test('pending check plays the dice ritual before revealing its result', async ({ page }) => {
   await gotoWithSave(page, createPendingCheckSave());
   await page.getByRole('button', { name: '继续游戏' }).click();

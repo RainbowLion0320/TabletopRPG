@@ -4,6 +4,7 @@ import type { GameState } from '../../types/game';
 import { getScenarioDefinition, getScenarioProgressForState } from '../../scenario/engine';
 import { pendingDmFailureText } from '../../services/narrativeVisibility';
 import './ending-dock.css';
+import './turn-prompt.css';
 
 interface ActionDockProps {
   autoFocusInput?: boolean;
@@ -105,7 +106,7 @@ export function ActionDock({
             </span>
           </div>
           <button className="secondary-action" disabled={isDiceRolling || state.isThinking} onClick={onRoll}>
-            <Dice5 size={16} />
+            <Dice5 size={16} aria-hidden="true" />
             {isDiceRolling ? '掷骰中' : '掷骰'}
           </button>
         </div>

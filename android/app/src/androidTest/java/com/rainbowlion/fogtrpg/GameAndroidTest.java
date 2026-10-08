@@ -134,6 +134,12 @@ public class GameAndroidTest {
             + "return e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})()");
     }
 
+    private void readableTurnPrompt() throws Exception {
+        reachable(".check-card"); reachable(".check-card > button");
+        if (Double.parseDouble(js("innerHeight")) > 300) reachable(".party-compact:last-child");
+        assertEquals("Turn information uses readable text, drawn dossier and full touch controls", "true", js("(()=>{const c=document.querySelector('.check-card'),b=c.querySelector('button'),r=b.getBoundingClientRect(),d=c.closest('.action-dock').getBoundingClientRect(),s=document.querySelector('.narrative-panel').getBoundingClientRect();return Array.from(c.querySelectorAll('strong,span,button')).every(e=>parseFloat(getComputedStyle(e).fontSize)>=15)&&getComputedStyle(c).borderImageSource.includes('dossier-mount')&&r.width>=44&&r.height>=44&&s.height>=140&&s.bottom<=d.top+.5&&c.scrollWidth<=c.clientWidth+1})()"));
+    }
+
     private void menu(String label) throws Exception {
         if (!"true".equals(js("Boolean(document.querySelector('.game-menu.open'))")))
             js("document.querySelector('.menu-button').click()");
@@ -475,8 +481,15 @@ public class GameAndroidTest {
                 assertEquals("One recovery notice", "1", js("document.querySelectorAll('.action-dock [role=status]').length"));
                 assertEquals("No leaked rules or hidden scene names", "false", js("/贝尔街|request_check|返回格式无效/.test(document.body.innerText)"));
                 assertEquals("No error history spam", "0", js("document.querySelectorAll('.story-message.system').length"));
-                reachable(".action-dock .secondary-action"); screenshot("semantic-retry-" + expected);
-                click("重试本轮");
+                if (expected == 3) {
+                    for (int[] size : new int[][] {{320,568},{390,844},{430,932},{562,1000}}) {
+                        viewport(size[0], size[1]); readableTurnPrompt();
+                        viewport(size[0], 300); readableTurnPrompt();
+                    }
+                    viewport(390,844);
+                }
+                readableTurnPrompt(); screenshot("semantic-retry-" + expected);
+                nativeTap(".check-card > button");
             }
             until("document.querySelector('.check-card strong')?.textContent.includes('潜行')");
             assertEquals(7, calls.get()); assertEquals(2, retainedCorrections.get());
@@ -522,7 +535,14 @@ public class GameAndroidTest {
             for (int i = 0; i < 4; i++) {
                 until("document.querySelector('.check-card') && document.querySelector('.check-card').textContent.includes(" + JSONObject.quote(names[i] + " · 潜行") + ")");
                 assertEquals("Complete batch", "true", js("document.querySelector('.check-card').textContent.includes('" + (i + 1) + "/4')"));
-                click("掷骰"); until("document.querySelector('.dice-roll-overlay.revealed')"); click("确认结果");
+                if (i == 0) {
+                    for (int[] size : new int[][] {{320,568},{390,844},{430,932},{562,1000}}) {
+                        viewport(size[0], size[1]); readableTurnPrompt();
+                        viewport(size[0], 300); readableTurnPrompt();
+                    }
+                    viewport(390,844); screenshot("turn-check-four-player");
+                }
+                nativeTap(".check-card > button"); until("document.querySelector('.dice-roll-overlay.revealed')"); click("确认结果");
             }
             until("document.body.innerText.includes('你们停下脚步，另想办法。') && !document.querySelector('.dock-input').disabled");
             assertEquals("No false failure retry", 3, calls.get());

@@ -806,26 +806,6 @@ button {
   border-color: var(--line);
 }
 
-.check-card {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  border: 1px solid var(--line-soft);
-  border-radius: 6px;
-  background: rgba(216,189,122,0.08);
-  padding: 10px 12px;
-  margin-bottom: 10px;
-}
-
-.check-card div {
-  display: grid;
-  gap: 3px;
-}
-
-.check-card span, .check-card small {
-  color: var(--muted);
-}
-
 .secondary-action:disabled {
   opacity: 0.46;
   cursor: wait;
