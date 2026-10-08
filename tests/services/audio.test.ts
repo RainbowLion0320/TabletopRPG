@@ -27,6 +27,7 @@ class Source {
 class Context {
   static instances: Context[] = [];
   state = 'running';
+  onstatechange: (() => void) | null = null;
   currentTime = 0;
   destination = {};
   gains: Gain[] = [];
@@ -35,9 +36,14 @@ class Context {
   createGain = () => { const gain = new Gain(); this.gains.push(gain); return gain; };
   createBufferSource = () => { const source = new Source(); this.sources.push(source); return source; };
   decodeAudioData = vi.fn(async (data: ArrayBuffer) => ({ id: new Uint8Array(data)[0] }));
-  resume = vi.fn(async () => { this.state = 'running'; });
-  suspend = vi.fn(async () => { this.state = 'suspended'; });
-  close = vi.fn(async () => { this.state = 'closed'; });
+  private changeState(state: string) {
+    if (this.state === state) return;
+    this.state = state;
+    this.onstatechange?.();
+  }
+  resume = vi.fn(async () => { this.changeState('running'); });
+  suspend = vi.fn(async () => { this.changeState('suspended'); });
+  close = vi.fn(async () => { this.changeState('closed'); });
 }
 
 const ids = Object.fromEntries(Object.entries(audioAssets).map(([key, url], index) => [url, index + 1]));
@@ -71,6 +77,49 @@ describe('audio preferences', () => {
 });
 
 describe('audio lifetime and races', () => {
+  it('starts a track decoded during device suspension when the device resumes without another gesture', async () => {
+    let release!: (value: ReturnType<typeof response>) => void;
+    vi.mocked(fetch).mockImplementationOnce(() => new Promise((resolve) => { release = resolve as typeof release; }));
+    engine.setSoundscape({ music: 'theme', ambience: null });
+    engine.unlock();
+    const context = Context.instances[0];
+    await context.suspend();
+    release(response(audioAssets.theme));
+    await flush();
+    expect(context.sources).toHaveLength(0);
+    await context.resume();
+    await flush();
+    expect(context.sources.map((source) => source.buffer?.id)).toEqual([ids[audioAssets.theme]]);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    engine.unlock();
+    await flush();
+    expect(context.sources).toHaveLength(1);
+  });
+
+  it('resumes only the latest enabled soundscape and drops effects delayed across a device interruption', async () => {
+    engine.setSoundscape({ music: 'theme', ambience: 'rain' });
+    engine.unlock();
+    await flush();
+    const context = Context.instances[0];
+    let release!: (value: ReturnType<typeof response>) => void;
+    vi.mocked(fetch).mockImplementationOnce(() => new Promise((resolve) => { release = resolve as typeof release; }));
+    engine.play('paper');
+    await context.suspend();
+    engine.setSoundscape({ music: 'tension', ambience: 'water' });
+    engine.updateSettings({ musicEnabled: false });
+    await context.resume();
+    release(response(audioAssets.paper));
+    await flush();
+    expect(context.sources.map((source) => source.buffer?.id))
+      .toEqual([ids[audioAssets.theme], ids[audioAssets.rain], ids[audioAssets.water]]);
+    expect(fetch).not.toHaveBeenCalledWith(audioAssets.tension);
+    expect(context.gains[0].gain.value).toBe(0);
+    expect(context.sources[0].stop).toHaveBeenCalled();
+    expect(context.sources[1].stop).toHaveBeenCalledWith(1.8);
+    engine.dispose();
+    expect(context.onstatechange).toBeNull();
+  });
+
   it('does not load audio or create a context until a user gesture', async () => {
     engine.setSoundscape({ music: 'theme', ambience: 'rain' });
     await flush();

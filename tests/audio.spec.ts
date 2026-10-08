@@ -3,6 +3,75 @@ import { readFileSync } from 'node:fs';
 
 const manifest = JSON.parse(readFileSync('assets/audio/manifest.json', 'utf8')) as Array<{ file: string; seconds: number }>;
 
+test('loops decoded while the audio device is suspended become audible on device resume without another tap', async ({ page }) => {
+  await page.addInitScript(() => {
+    const OriginalContext = window.AudioContext;
+    const probe = {
+      context: null as AudioContext | null,
+      analysers: [] as AnalyserNode[],
+      held: [] as Array<() => void>,
+      holdLoops: true,
+      loopStarts: 0,
+    };
+    (window as Window & { audioResumeProbe?: typeof probe }).audioResumeProbe = probe;
+    window.AudioContext = class extends OriginalContext {
+      constructor() { super(); probe.context = this; }
+      createGain() {
+        const gain = super.createGain();
+        const analyser = super.createAnalyser();
+        gain.connect(analyser);
+        probe.analysers.push(analyser);
+        return gain;
+      }
+      decodeAudioData(data: ArrayBuffer): Promise<AudioBuffer> {
+        return super.decodeAudioData(data).then(buffer => {
+          // Delay the real decoded theme/rain, keeping short interface sounds untouched.
+          if (!probe.holdLoops || buffer.duration <= 2) return buffer;
+          return new Promise<AudioBuffer>(resolve => { probe.held.push(() => resolve(buffer)); });
+        });
+      }
+      createBufferSource() {
+        const source = super.createBufferSource();
+        const start = source.start.bind(source);
+        source.start = (...args) => { if (source.loop) probe.loopStarts++; start(...args); };
+        return source;
+      }
+    };
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByRole('button', { name: '声音设置', exact: true }).click();
+  const output = () => page.evaluate(() => {
+    const probe = (window as Window & { audioResumeProbe?: {
+      context: AudioContext; analysers: AnalyserNode[]; held: Array<() => void>; loopStarts: number;
+    } }).audioResumeProbe!;
+    const rms = probe.analysers.slice(0, 2).map(analyser => {
+      const data = new Float32Array(analyser.fftSize);
+      analyser.getFloatTimeDomainData(data);
+      return Math.sqrt(data.reduce((sum, sample) => sum + sample * sample, 0) / data.length);
+    });
+    return { state: probe.context.state, held: probe.held.length, loops: probe.loopStarts, music: rms[0], ambience: rms[1] };
+  });
+  await expect.poll(async () => (await output()).held).toBe(2);
+  await page.evaluate(async () => {
+    const probe = (window as Window & { audioResumeProbe?: {
+      context: AudioContext; held: Array<() => void>; holdLoops: boolean;
+    } }).audioResumeProbe!;
+    await probe.context.suspend();
+    probe.holdLoops = false;
+    probe.held.splice(0).forEach(release => release());
+    for (let index = 0; index < 16; index++) await Promise.resolve();
+  });
+  expect(await output()).toMatchObject({ state: 'suspended', loops: 0, music: 0 });
+  await page.evaluate(async () => {
+    const probe = (window as Window & { audioResumeProbe?: { context: AudioContext } }).audioResumeProbe!;
+    await probe.context.resume();
+  });
+  await expect.poll(async () => (await output()).loops).toBe(2);
+  await expect.poll(async () => (await output()).music).toBeGreaterThan(0.0001);
+  await expect.poll(async () => (await output()).ambience).toBeGreaterThan(0.0001);
+});
+
 test('real output is audible after interaction, music mute leaves ambience, hidden tabs suspend', async ({ page }) => {
   await page.addInitScript(() => {
     const OriginalContext = window.AudioContext;

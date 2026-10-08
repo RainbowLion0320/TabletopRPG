@@ -47,6 +47,13 @@ export class AudioEngine {
         const Context = window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
         if (!Context) return;
         this.context = new Context();
+        const context = this.context;
+        context.onstatechange = () => {
+          if (this.context !== context) return;
+          if (context.state !== 'running') this.stopEffects();
+          else if (this.visible) this.sync();
+          else void context.suspend().catch(() => undefined);
+        };
         this.musicBus = this.context.createGain();
         this.effectsBus = this.context.createGain();
         this.musicBus.connect(this.context.destination);
@@ -106,7 +113,10 @@ export class AudioEngine {
   dispose(): void {
     this.stopAllLoops();
     this.stopEffects();
-    if (this.context) void this.context.close().catch(() => undefined);
+    if (this.context) {
+      this.context.onstatechange = null;
+      void this.context.close().catch(() => undefined);
+    }
     this.context = null;
     this.musicBus = null;
     this.effectsBus = null;

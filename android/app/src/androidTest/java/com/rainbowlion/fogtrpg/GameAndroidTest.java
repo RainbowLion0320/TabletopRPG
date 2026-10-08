@@ -800,11 +800,16 @@ public class GameAndroidTest {
         fresh();
         try {
             viewport(390, 844);
-            js("window.AudioContext=class extends window.AudioContext { constructor(...args){super(...args);window.qaAudio=this;} decodeAudioData(...args){return super.decodeAudioData(...args).then(b=>{window.qaDecoded=(window.qaDecoded||0)+1;return b;})} createBufferSource(){const s=super.createBufferSource(),start=s.start.bind(s);s.start=(...args)=>{if(s.loop)window.qaLoopStarts=(window.qaLoopStarts||0)+1;return start(...args)};return s;} }");
+            js("window.qaHoldAudio=true;window.qaAudioHolds=[];window.AudioContext=class extends window.AudioContext { constructor(...args){super(...args);window.qaAudio=this;} decodeAudioData(...args){return super.decodeAudioData(...args).then(b=>{window.qaDecoded=(window.qaDecoded||0)+1;if(window.qaHoldAudio&&b.duration>2)return new Promise(resolve=>window.qaAudioHolds.push(()=>resolve(b)));return b;})} createBufferSource(){const s=super.createBufferSource(),start=s.start.bind(s);s.start=(...args)=>{if(s.loop)window.qaLoopStarts=(window.qaLoopStarts||0)+1;return start(...args)};return s;} }");
             nativeTap("button[aria-label='声音设置']");
             until("window.qaAudio && window.qaAudio.state === 'running'");
-            until("window.qaDecoded > 0");
+            until("window.qaAudioHolds.length === 2");
             until("document.querySelector('#audio-settings-title')");
+            js("window.qaAudio.suspend()"); until("window.qaAudio.state === 'suspended'");
+            js("window.qaAudioReleased=false;(async()=>{window.qaHoldAudio=false;window.qaAudioHolds.splice(0).forEach(release=>release());for(let i=0;i<16;i++)await Promise.resolve();window.qaAudioReleased=true})()");
+            until("window.qaAudioReleased");
+            assertEquals("Loops loaded during device suspension do not start yet", "0", js("window.qaLoopStarts||0"));
+            js("window.qaAudio.resume()");
             until("window.qaLoopStarts === 2");
             fill("input[aria-label='音乐音量']", "38"); fill("input[aria-label='音效音量']", "23");
             until("document.querySelector('input[aria-label=音乐音量]').getAttribute('aria-valuetext')==='38%' && document.querySelector('input[aria-label=音效音量]').getAttribute('aria-valuetext')==='23%'");
