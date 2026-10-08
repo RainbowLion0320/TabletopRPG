@@ -19,12 +19,13 @@ import type { GameController } from './useGameController';
 
 interface GameScreenProps {
   autoFocusInput?: boolean;
+  portrait?: boolean;
   controller: GameController;
   onHome: () => void;
   onRestart: () => void;
 }
 
-export function GameScreen({ controller, onHome, onRestart, autoFocusInput = true }: GameScreenProps) {
+export function GameScreen({ controller, onHome, onRestart, autoFocusInput = true, portrait = false }: GameScreenProps) {
   const { state } = controller;
   const [narrativeDetail, setNarrativeDetail] = useState<EntityDetail | null>(null);
   const [inspectedPlayerId, setInspectedPlayerId] = useState<string | null>(null);
@@ -84,6 +85,7 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
       <NarrativePanel state={state} onMarkOpen={handleNarrativeMarkOpen} />
       <ActionDock
         autoFocusInput={autoFocusInput}
+        portrait={portrait}
         isDiceRolling={Boolean(controller.diceRoll)}
         state={state}
         onDeclarationChange={controller.setDeclaration}

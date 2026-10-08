@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { Expand, Shrink } from 'lucide-react';
+import { useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { ChevronDown, Expand, Shrink } from 'lucide-react';
 import type { GameState, NarrativeMessage } from '../../types/game';
 import { storyData } from '../../data/storyData';
 import {
@@ -66,15 +66,48 @@ function RichNarrativeText({ message, onMarkOpen, state }: RichNarrativeTextProp
 export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
   const ref = useRef<HTMLDivElement>(null);
   const latestMessageRef = useRef<HTMLDivElement>(null);
+  const followLatestRef = useRef(true);
+  const previousLatestId = useRef<string | undefined>(undefined);
+  const scrollId = useId();
   const [expanded, setExpanded] = useState(false);
+  const [hasNewContent, setHasNewContent] = useState(false);
   const visibleMessages = state.messages.filter(isPlayerVisibleMessage);
+  const latestId = visibleMessages[visibleMessages.length - 1]?.id;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const panel = ref.current;
     const latest = latestMessageRef.current;
+    if (!panel || !latest || previousLatestId.current === latestId) return;
+    // Replacing the history (loading a save) starts reading its latest entry.
+    if (previousLatestId.current && !visibleMessages.some(message => message.id === previousLatestId.current)) {
+      followLatestRef.current = true;
+    }
+    previousLatestId.current = latestId;
+    if (followLatestRef.current) {
+      panel.scrollTo({ top: latest.offsetTop, behavior: 'auto' });
+      setHasNewContent(false);
+    } else {
+      setHasNewContent(true);
+    }
+  }, [latestId, visibleMessages]);
+
+  function handleScroll() {
+    const panel = ref.current, latest = latestMessageRef.current;
     if (!panel || !latest) return;
-    panel.scrollTo({ top: latest.offsetTop, behavior: 'smooth' });
-  }, [state.messages.length]);
+    // A long latest reply is followed from its beginning, not its final line.
+    const latestStart = Math.min(latest.offsetTop, Math.max(0, panel.scrollHeight - panel.clientHeight));
+    followLatestRef.current = panel.scrollTop >= latestStart - 12;
+    if (followLatestRef.current) setHasNewContent(false);
+  }
+
+  function readNewContent() {
+    const panel = ref.current, latest = latestMessageRef.current;
+    if (!panel || !latest) return;
+    followLatestRef.current = true;
+    panel.scrollTo({ top: latest.offsetTop, behavior: 'auto' });
+    setHasNewContent(false);
+    panel.focus({ preventScroll: true });
+  }
 
   const activeNpc = state.activeNpcName ? storyData.npcs[state.activeNpcName] : null;
 
@@ -100,21 +133,26 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
         ) : (
           <div className="narrative-title">对话记录</div>
         )}
-        <button
-          className="narrative-toggle-btn"
-          aria-expanded={expanded}
-          onClick={() => setExpanded(!expanded)}
-          title={expanded ? '收起' : '展开'}
-          type="button"
-        >
-          {expanded ? <Shrink size={16} /> : <Expand size={16} />}
-        </button>
+        <div className="narrative-tools">
+          {hasNewContent && <button className="narrative-new-content" onClick={readNewContent} aria-label="查看新剧情" aria-controls={scrollId} type="button"><ChevronDown size={14} />新内容</button>}
+          <button
+            className="narrative-toggle-btn"
+            aria-expanded={expanded}
+            aria-controls={scrollId}
+            onClick={() => setExpanded(!expanded)}
+            title={expanded ? '收起' : '展开'}
+            type="button"
+          >
+            {expanded ? <Shrink size={16} /> : <Expand size={16} />}
+          </button>
+        </div>
       </div>
-      <div className="narrative-scroll" ref={ref} role="region" aria-label="剧情记录" tabIndex={0}>
+      <div className="narrative-scroll" id={scrollId} ref={ref} role="region" aria-label="剧情记录" onScroll={handleScroll} tabIndex={0}>
         {visibleMessages.map((message, index) => (
           <div
             className={`story-message ${message.type}`}
             key={message.id}
+            data-message-id={message.id}
             ref={index === visibleMessages.length - 1 ? latestMessageRef : undefined}
           >
             {message.type === 'dm' ? <div className="message-label">AI DM</div> : null}

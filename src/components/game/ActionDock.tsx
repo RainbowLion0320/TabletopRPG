@@ -1,3 +1,4 @@
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { Dice5, Flag, Send } from 'lucide-react';
 import type { GameState } from '../../types/game';
 import { getScenarioDefinition, getScenarioProgressForState } from '../../scenario/engine';
@@ -5,6 +6,7 @@ import { pendingDmFailureText } from '../../services/narrativeVisibility';
 
 interface ActionDockProps {
   autoFocusInput?: boolean;
+  portrait?: boolean;
   isDiceRolling: boolean;
   state: GameState;
   onDeclarationChange: (playerId: string, text: string) => void;
@@ -17,6 +19,7 @@ interface ActionDockProps {
 
 export function ActionDock({
   autoFocusInput = true,
+  portrait = false,
   isDiceRolling,
   onDeclarationChange,
   onRoll,
@@ -27,17 +30,41 @@ export function ActionDock({
   state
 }: ActionDockProps) {
   const currentActor = state.players[state.currentActorIndex] ?? state.players[0];
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const declaration = state.declarations[currentActor?.id ?? ''] ?? '';
   const isLastActor = state.currentActorIndex >= state.players.length - 1;
   const currentSuggestions = currentActor
     ? state.suggestionsByPlayerId[currentActor.id] ?? state.suggestions
     : state.suggestions;
 
-  const allFilled = Boolean(state.declarations[currentActor?.id ?? '']?.trim());
+  const allFilled = Boolean(declaration.trim());
   const submitLabel = isLastActor ? '提交' : '下一位';
   const scenario = getScenarioDefinition();
   const progress = getScenarioProgressForState(state);
   const ending = scenario.progression.endings.find((item) => item.id === progress.endingId);
   const hasPendingTurn = Boolean(state.pendingDmActions?.length);
+  const canDeclare = !isDiceRolling && !state.isThinking && !hasPendingTurn && !state.pendingCheck;
+
+  useLayoutEffect(() => {
+    if (inputRef.current) fitActionInput(inputRef.current);
+  }, [declaration, currentActor?.id, portrait]);
+
+  useEffect(() => {
+    const input = inputRef.current;
+    if (!input) return;
+    const resize = () => fitActionInput(input);
+    window.addEventListener('resize', resize);
+    let width = input.clientWidth;
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => {
+      // Height changes are our own work; only a new wrapping width needs a refit.
+      if (input.clientWidth > 0 && input.clientWidth !== width) {
+        width = input.clientWidth;
+        fitActionInput(input);
+      }
+    });
+    observer?.observe(input);
+    return () => { observer?.disconnect(); window.removeEventListener('resize', resize); };
+  }, [currentActor?.id]);
 
   if (ending) {
     return (
@@ -93,16 +120,19 @@ export function ActionDock({
               </button>
               <span>{currentActor.name}</span>
             </div>
-            <input
+            <textarea
               className="dock-input"
+              ref={inputRef}
+              rows={1}
               aria-label={`${currentActor.name}的行动`}
+              enterKeyHint={portrait ? 'enter' : 'send'}
               autoFocus={autoFocusInput}
-              disabled={isDiceRolling || state.isThinking || hasPendingTurn || Boolean(state.pendingCheck)}
-              value={state.declarations[currentActor.id] ?? ''}
+              disabled={!canDeclare}
+              value={declaration}
               placeholder={`${currentActor.name} 想要做什么...`}
               onChange={(event) => onDeclarationChange(currentActor.id, event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.nativeEvent.isComposing && event.keyCode !== 229
+                if (!portrait && event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229
                   && !event.repeat && allFilled && !isDiceRolling && !state.isThinking && !hasPendingTurn && !state.pendingCheck) {
                   event.preventDefault();
                   onSubmit();
@@ -111,7 +141,10 @@ export function ActionDock({
             />
           </>
         ) : null}
-        <button className="primary-action dock-submit" disabled={!allFilled || state.isThinking || hasPendingTurn || isDiceRolling || Boolean(state.pendingCheck)} onClick={onSubmit}>
+        <button className="primary-action dock-submit" disabled={!allFilled || !canDeclare} onClick={() => {
+          if (!isLastActor) inputRef.current?.focus({ preventScroll: true });
+          onSubmit();
+        }}>
           <Send size={16} />
           {submitLabel}
         </button>
@@ -122,20 +155,22 @@ export function ActionDock({
         {state.players.map((player, index) => {
           const hpPct = player.hp > 0 ? Math.round((player.currentHp / player.hp) * 100) : 0;
           const sanPct = player.san > 0 ? Math.round((player.currentSan / player.san) * 100) : 0;
-          const isActiveActor = index === state.currentActorIndex;
-          const hasActed = index < state.currentActorIndex;
+          const isActiveActor = canDeclare && index === state.currentActorIndex;
+          const hasActed = canDeclare && index < state.currentActorIndex;
+          const status = state.players.length > 1 ? (isActiveActor ? '行动中' : hasActed ? '已提交' : '') : '';
           const cardClass = `party-compact${isActiveActor ? ' active' : ''}${hasActed ? ' acted' : ''}`;
           return (
             <button
               className={cardClass}
               key={player.id}
               type="button"
-              aria-label={`查看${player.name}的属性，HP ${player.currentHp}/${player.hp}，SAN ${player.currentSan}/${player.san}`}
+              aria-label={`查看${player.name}的属性，HP ${player.currentHp}/${player.hp}，SAN ${player.currentSan}/${player.san}${status ? `，${status}` : ''}`}
               aria-haspopup="dialog"
+              aria-current={status === '行动中' ? 'step' : undefined}
               onClick={(event) => { event.currentTarget.focus({ preventScroll: true }); onInspectPlayer(player.id); }}
               title={`${player.name} ${player.job} | HP ${player.currentHp}/${player.hp} | SAN ${player.currentSan}/${player.san}`}
             >
-              <strong>{player.name}</strong>
+              <span className="party-compact-heading"><strong>{player.name}</strong>{status && <span className="party-action-status">{status}</span>}</span>
               <span className="party-compact-bars">
                 <span className="bar-label hp">HP</span>
                 <span className="mini-bar"><i style={{ width: `${hpPct}%` }} /></span>
@@ -150,4 +185,15 @@ export function ActionDock({
       </div>
     </section>
   );
+}
+
+/** Keep short actions compact and long descriptions scrollable within the dock. */
+function fitActionInput(input: HTMLTextAreaElement) {
+  const style = getComputedStyle(input);
+  const border = (parseFloat(style.borderTopWidth) || 0) + (parseFloat(style.borderBottomWidth) || 0);
+  const minHeight = parseFloat(style.minHeight) || 44;
+  const maxHeight = parseFloat(style.maxHeight) || 104;
+  if (!input.value) { input.style.height = `${minHeight}px`; return; }
+  input.style.height = '0px';
+  input.style.height = `${Math.min(maxHeight, Math.max(minHeight, input.scrollHeight + border))}px`;
 }

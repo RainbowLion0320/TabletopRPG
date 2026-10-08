@@ -11,9 +11,9 @@ html.portrait-ui {
   -webkit-tap-highlight-color: transparent; touch-action: manipulation;
 }
 html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; overscroll-behavior: none; }
-.portrait-ui button, .portrait-ui input, .portrait-ui select { font-size: inherit; }
+.portrait-ui button, .portrait-ui input, .portrait-ui select, .portrait-ui textarea { font-size: inherit; }
 .portrait-ui button { touch-action: manipulation; }
-.portrait-ui input, .portrait-ui select { min-width: 0; max-width: 100%; }
+.portrait-ui input, .portrait-ui select, .portrait-ui textarea { min-width: 0; max-width: 100%; }
 .portrait-ui .primary-btn, .portrait-ui .ghost-btn, .portrait-ui .icon-text-btn, .portrait-ui .primary-action, .portrait-ui .secondary-action { min-height: 44px; padding: 0 14px; gap: 6px; font-size: 13px; }
 .portrait-ui .dm-debug-fab, .portrait-ui .dm-debug-drawer { display: none; }
 .portrait-ui .android-start-error { display: grid; place-content: center; height: 100%; overflow: auto; padding: 16px; text-align: center; }
@@ -66,7 +66,7 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 .portrait-ui .dock-input-row { flex-wrap: nowrap; gap: 6px; }
 .portrait-ui .dock-actor-label > span { display: none; }
 .portrait-ui .dock-actor-avatar { width: 26px; height: 32px; }
-.portrait-ui .dock-input { min-height: 44px; font-size: 14px; padding: 0 9px; }
+.portrait-ui .dock-input { min-height: 44px; max-height: 96px; font-size: 14px; padding: 10px 9px; }
 .portrait-ui .dock-submit { min-height: 44px !important; font-size: 13px !important; padding: 0 12px !important; }
 .portrait-ui .suggestion-row { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 6px; margin-bottom: 3px; }
 .portrait-ui .suggestion-row::-webkit-scrollbar { display: none; }
@@ -79,6 +79,7 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 /* Two columns keep 2–4 investigators readable on a narrow portrait screen. */
 .portrait-ui .party-strip-compact:has(.party-compact:nth-child(2)) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow-x: hidden; }
 .portrait-ui .party-strip-compact:has(.party-compact:nth-child(2)) .party-compact { min-width: 0; flex-direction: column; align-items: flex-start; gap: 2px; }
+.portrait-ui .party-strip-compact:has(.party-compact:nth-child(2)) .party-compact-heading { width: 100%; justify-content: space-between; gap: 3px; }
 .portrait-ui .party-strip-compact:has(.party-compact:nth-child(2)) .mini-bar { display: none; }
 .portrait-ui .check-card { align-items: center; padding: 3px 7px; gap: 10px; margin-bottom: 3px; }
 .portrait-ui .check-card > div { min-width: 0; gap: 2px; }
@@ -214,6 +215,7 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
   .portrait-ui .game-screen { --game-top: 0px; }
   .portrait-ui .game-top, .portrait-ui .drawer-tab, .portrait-ui .suggestion-row, .portrait-ui .party-strip-compact { display: none; }
   .portrait-ui .action-dock { max-height: 55dvh; }
+  .portrait-ui .dock-input { max-height: 66px; }
   .portrait-ui .title-content { padding: 8px 0; }
   .portrait-ui .title-kicker, .portrait-ui .title-subtitle { display: none; }
   .portrait-ui .title-content h1 { font-size: 28px; margin-bottom: 10px; }

@@ -272,7 +272,7 @@
 :root.fog-ui.portrait-ui .narrative-panel .npc-nameplate { min-height: 40px; }
 :root.fog-ui.portrait-ui .audio-settings .audio-preview { min-height: 40px; }
 /* Browser form fields avoid automatic input zoom on mobile WebKit. */
-:root.fog-ui.portrait-ui:not(.android-app) :is(input, select) { font-size: 16px; }
+:root.fog-ui.portrait-ui:not(.android-app) :is(input, select, textarea) { font-size: 16px; }
 @media (prefers-reduced-motion: reduce) {
   :root.fog-ui *, :root.fog-ui *::before, :root.fog-ui *::after { scroll-behavior: auto; transition: none; }
 }

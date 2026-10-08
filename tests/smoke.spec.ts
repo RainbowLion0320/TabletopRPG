@@ -147,8 +147,8 @@ function createDynamicCaseBoardSave(): GameState {
   };
 }
 
-async function gotoWithSave(page: Page, gameState: GameState) {
-  await page.addInitScript((serializedState) => {
+async function gotoWithSave(page: Page, gameState: GameState, apiConfig?: Record<string, string>) {
+  await page.addInitScript(({ serializedState, apiConfig }) => {
     window.localStorage.clear();
     window.localStorage.setItem('trpg-saves-v2', JSON.stringify([{
       id: 1718400000000,
@@ -161,8 +161,127 @@ async function gotoWithSave(page: Page, gameState: GameState) {
       contentHash: serializedState.scenarioProgress?.contentHash,
       version: serializedState.scenarioProgress ? 8 : 6
     }]));
-  }, gameState);
+    if (apiConfig) window.localStorage.setItem('trpg-api', JSON.stringify(apiConfig));
+  }, { serializedState: gameState, apiConfig });
   await page.goto('/');
+}
+
+for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390, height: 844, party: 2 as const }]) {
+  test(`phone multiline actions stay compact and retain the correct actor at ${size.width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize(size);
+    await startNewGame(page, size.party);
+    const input = page.locator('.dock-input');
+    await expect(input).toHaveJSProperty('tagName', 'TEXTAREA');
+    await expect(input).toHaveAttribute('enterkeyhint', 'enter');
+    await input.fill('侦查门廊');
+    await input.press('Enter');
+    await expect(input).toHaveValue('侦查门廊\n');
+    await expect(input).toHaveAttribute('aria-label', '亨利·格雷的行动');
+    const longAction = '查看门槛与窗框，再询问失踪前发生的事情。\n'.repeat(8);
+    await input.fill(longAction);
+    const geometry = await input.evaluate((element) => {
+      const r = element.getBoundingClientRect(), dock = document.querySelector('.action-dock')!.getBoundingClientRect();
+      return { height: r.height, scrollable: element.scrollHeight > element.clientHeight, inside: r.top >= dock.top && r.bottom <= dock.bottom,
+        storyHeight: document.querySelector('.narrative-panel')!.clientHeight,
+        overflow: Array.from(document.querySelectorAll('.party-compact')).some(card => card.scrollWidth > card.clientWidth + 1) };
+    });
+    expect(geometry.height).toBeGreaterThan(44);
+    expect(geometry.height).toBeLessThanOrEqual(96);
+    expect(geometry.scrollable).toBe(true);
+    expect(geometry.inside).toBe(true);
+    expect(geometry.storyHeight).toBeGreaterThanOrEqual(140);
+    expect(geometry.overflow).toBe(false);
+    await page.screenshot({ path: testInfo.outputPath('multiline-action.png') });
+    await page.getByRole('button', { name: '下一位', exact: true }).click();
+    await expect(input).toHaveAttribute('aria-label', '艾达·华莱士的行动');
+    await expect(input).toHaveValue('');
+    await expect(input).toBeFocused();
+    await expect(page.locator('.party-compact').first()).toContainText('已提交');
+    await expect(page.locator('.party-compact').nth(1)).toHaveAttribute('aria-current', 'step');
+    await input.fill(longAction);
+    await page.setViewportSize({ width: size.width, height: 300 });
+    await expect.poll(() => input.evaluate(element => element.getBoundingClientRect().height)).toBeLessThanOrEqual(66);
+    await expect(input).toBeInViewport();
+    await expect(page.locator('.dock-submit')).toBeInViewport();
+    await expect(page.locator('.narrative-toggle-btn')).toBeInViewport();
+    await page.setViewportSize(size);
+    await expect.poll(() => input.evaluate(element => element.getBoundingClientRect().height)).toBe(96);
+    await expect(input).toHaveValue(longAction);
+    await page.getByRole('button', { name: '菜单', exact: true }).click();
+    await page.getByRole('button', { name: '保存游戏', exact: true }).click();
+    await page.getByRole('button', { name: '菜单', exact: true }).click();
+    await page.getByRole('button', { name: '读取存档', exact: true }).click();
+    await expect(input).toHaveValue(longAction);
+    await expect(input).toHaveAttribute('aria-label', '艾达·华莱士的行动');
+  });
+}
+
+test('desktop keeps Enter confirmation and Shift Enter multiline without advancing the wrong actor', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await startNewGame(page, 2);
+  const input = page.locator('.dock-input');
+  await expect(input).toHaveAttribute('enterkeyhint', 'send');
+  await input.fill('检查门锁');
+  await input.press('Shift+Enter');
+  await expect(input).toHaveValue('检查门锁\n');
+  await expect(input).toHaveAttribute('aria-label', '亨利·格雷的行动');
+  await input.press('Enter');
+  await expect(input).toHaveAttribute('aria-label', '艾达·华莱士的行动');
+  await expect(page.locator('.story-message.player')).toHaveCount(1);
+});
+
+for (const size of [{ width: 320, height: 568 }, { width: 1440, height: 900 }]) {
+  test(`new DM replies preserve older reading and can be opened from their beginning at ${size.width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize(size);
+    let releaseReply!: () => void;
+    const replyGate = new Promise<void>(resolve => { releaseReply = resolve; });
+    let narratorCalls = 0;
+    const reply = '雨声仍在窗外回响。伊莎贝拉等你说完，轻轻点头，将目光投向门廊。\n\n'.repeat(18);
+    await page.route('https://ui-dm.test/v1/**', async route => {
+      const body = route.request().postDataJSON();
+      const narrator = body.text?.format?.name === 'narrator_response';
+      if (narrator) { narratorCalls++; await replyGate; }
+      const content = JSON.stringify(narrator
+        ? { narrative: reply, activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}, keywords: [] }
+        : { facts: [], nodes: [], edges: [] });
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ output_text: content }) });
+    });
+    const state = createDynamicCaseBoardSave();
+    state.players = [state.players[0]];
+    state.scenarioProgress = createSmokeScenarioProgress();
+    state.messages = Array.from({ length: 12 }, (_, index) => ({ id: `old-${index}`, type: 'dm' as const, text: '以前的谈话记录，调查员回忆来到门廊时听到的雨声。\n\n'.repeat(4) }));
+    await gotoWithSave(page, state, { provider: 'custom', protocol: 'responses', endpoint: 'https://ui-dm.test/v1', apiKey: 'ui-qa-only-token', model: 'test-model' });
+    await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+    await page.locator('.narrative-toggle-btn').click();
+    await page.locator('.dock-input').fill('原地思考');
+    await page.getByRole('button', { name: '提交', exact: true }).click();
+    await expect.poll(() => narratorCalls).toBe(1);
+    const scroll = page.getByRole('region', { name: '剧情记录', exact: true });
+    await scroll.evaluate(element => element.scrollTo({ top: 100, behavior: 'instant' }));
+    await expect.poll(() => scroll.evaluate(element => element.scrollTop)).toBe(100);
+    releaseReply();
+    await expect(page.locator('.story-message.dm').last()).toContainText('雨声仍在窗外回响。');
+    await expect(scroll).toHaveJSProperty('scrollTop', 100);
+    const newContent = page.getByRole('button', { name: '查看新剧情', exact: true });
+    await expect(newContent).toBeInViewport();
+    await expect(page.locator('.narrative-toggle-btn')).toBeInViewport();
+    await page.screenshot({ path: testInfo.outputPath('older-reading-new-reply.png') });
+    await newContent.click();
+    await expect(newContent).toHaveCount(0);
+    await expect(scroll).toBeFocused();
+    const position = await scroll.evaluate(element => {
+      const latest = element.querySelector<HTMLElement>('.story-message.dm:last-child')!;
+      return { difference: Math.abs(element.scrollTop - latest.offsetTop), remaining: element.scrollHeight - element.clientHeight - element.scrollTop };
+    });
+    expect(position.difference).toBeLessThanOrEqual(1);
+    expect(position.remaining).toBeGreaterThan(200);
+    await page.locator('.dock-input').fill('原地思考');
+    await page.getByRole('button', { name: '提交', exact: true }).click();
+    await expect.poll(() => narratorCalls).toBe(2);
+    await expect(page.locator('.dock-input')).toBeEnabled();
+    await expect(newContent).toHaveCount(0);
+    await expect.poll(() => scroll.evaluate(element => Math.abs(element.scrollTop - element.querySelector<HTMLElement>('.story-message.dm:last-child')!.offsetTop))).toBeLessThanOrEqual(1);
+  });
 }
 
 function createV8EndingSave(): GameState {

@@ -189,7 +189,7 @@ test('free-action narration opens real dice when the model omits its check tool'
   });
   await startGameWithApi(page, undefined, 1);
   await page.locator('.dock-input').fill('伸手拿走纸条，不引起灰风衣男人注意。');
-  await page.getByRole('button', { name: '提交' }).click();
+  await page.getByRole('button', { name: '提交', exact: true }).click();
   await expect(page.getByRole('button', { name: '掷骰', exact: true })).toBeVisible();
   await expect(page.locator('.check-card strong')).toContainText('亨利·格雷 · 潜行');
   expect(attempts).toBe(1);
@@ -215,7 +215,7 @@ test('repeated semantic failures retain correction and show one safe retry notic
   });
   await startGameWithApi(page, undefined, 1);
   await page.locator('.dock-input').fill('伸手拿走纸条，不引起灰风衣男人注意。');
-  await page.getByRole('button', { name: '提交' }).click();
+  await page.getByRole('button', { name: '提交', exact: true }).click();
   for (const expected of [3, 6]) {
     await expect(page.getByRole('button', { name: '重试本轮' })).toBeVisible();
     expect(attempts).toBe(expected);
@@ -269,7 +269,7 @@ test('AI DM retries malformed model output instead of returning raw text as narr
   await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the study.');
   await page.getByRole('button', { name: '下一位' }).click();
   await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the hallway.');
-  await page.getByRole('button', { name: '提交' }).click();
+  await page.getByRole('button', { name: '提交', exact: true }).click();
 
   await expect.poll(() => narratorAttempts).toBe(2);
   expect(narratorRequestBodies[1]).toContain('JSON');
@@ -312,7 +312,7 @@ test('AI DM recovers an exhausted malformed turn without duplicating player hist
   await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the study.');
   await page.getByRole('button', { name: '下一位' }).click();
   await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the hallway.');
-  await page.getByRole('button', { name: '提交' }).click();
+  await page.getByRole('button', { name: '提交', exact: true }).click();
 
   await expect(page.getByText('The turn recovered without asking the players to submit twice.')).toBeVisible();
   expect(narratorAttempts).toBe(3);
@@ -347,7 +347,7 @@ test('an exhausted turn can be saved, loaded and retried without duplicating dec
   await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the study.');
   await page.getByRole('button', { name: '下一位' }).click();
   await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the hallway.');
-  await page.getByRole('button', { name: '提交' }).click();
+  await page.getByRole('button', { name: '提交', exact: true }).click();
   await expect(page.getByRole('button', { name: '重试本轮' })).toBeVisible();
   expect(attempts).toBe(3);
   await page.getByRole('button', { name: /菜单/ }).click();
@@ -387,7 +387,7 @@ test('AI DM repairs unescaped dialogue quotes locally without interrupting the t
   await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('追问那句话。');
   await page.getByRole('button', { name: '下一位' }).click();
   await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('记录她的反应。');
-  await page.getByRole('button', { name: '提交' }).click();
+  await page.getByRole('button', { name: '提交', exact: true }).click();
 
   await expect(page.getByText('伊莎贝拉说父亲总提到"水里的东西"，随后沉默下来。')).toBeVisible();
   await expect(page.getByText(/AI DM 返回格式无效/)).toHaveCount(0);
@@ -458,13 +458,13 @@ test('AI DM scene changes update the chapter, backdrop, party location, and resi
   await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('我们接受这份委托。');
   await page.getByRole('button', { name: '下一位' }).click();
   await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('确认接受伊莎贝拉的委托。');
-  await page.getByRole('button', { name: '提交' }).click();
+  await page.getByRole('button', { name: '提交', exact: true }).click();
   await expect(page.getByText('你们正式接受了伊莎贝拉的委托。')).toBeVisible();
 
   await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('搜查书桌抽屉，寻找埃里克留下的合影照片。');
   await page.getByRole('button', { name: '下一位' }).click();
   await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('为亨利照明并记录抽屉中实际发现的物品。');
-  await page.getByRole('button', { name: '提交' }).click();
+  await page.getByRole('button', { name: '提交', exact: true }).click();
   await expect(page.getByText('亨利·格雷 · 侦查')).toBeVisible();
   await page.evaluate(() => {
     Math.random = () => 0.41;
@@ -478,7 +478,7 @@ test('AI DM scene changes update the chapter, backdrop, party location, and resi
   await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('我们前往上城区第二分局。');
   await page.getByRole('button', { name: '下一位' }).click();
   await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('一起前往上城区第二分局。');
-  await page.getByRole('button', { name: '提交' }).click();
+  await page.getByRole('button', { name: '提交', exact: true }).click();
 
   await expect(page.locator('.brand-title')).toHaveText('第二幕：街区调查');
   await expect(page.locator('.brand-scene')).toHaveText('上城区第二分局');
@@ -635,7 +635,7 @@ test('narrative highlights remain safe, clickable and stable across desktop and 
   await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('询问伊莎贝拉父亲的近况。');
   await page.getByRole('button', { name: '下一位' }).click();
   await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('记录伊莎贝拉的反应。');
-  await page.getByRole('button', { name: '提交' }).click();
+  await page.getByRole('button', { name: '提交', exact: true }).click();
 
   await expect.poll(() => narratorAttempts).toBe(1);
   const response = page.locator('.story-message.dm', { hasText: '水里的东西' });
@@ -703,7 +703,7 @@ test('AI DM handles first player action through a chat-compatible provider', asy
   await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the dock.');
   await page.getByRole('button', { name: '下一位' }).click();
   await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the fog.');
-  await page.getByRole('button', { name: '提交' }).click();
+  await page.getByRole('button', { name: '提交', exact: true }).click();
 
   await expect.poll(() => narratorAttempts).toBe(1);
   await expect(page.locator('.story-message.dm p', { hasText: 'The chat-compatible narrator response is shown.' })).toBeVisible();
@@ -756,7 +756,7 @@ test('AI DM shows the narrator response before background memory synthesis finis
   await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the study.');
   await page.getByRole('button', { name: '下一位' }).click();
   await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the street.');
-  await page.getByRole('button', { name: '提交' }).click();
+  await page.getByRole('button', { name: '提交', exact: true }).click();
 
   await expect.poll(() => factsStarted).toBe(true);
   await expect(page.locator('.story-message.dm p', {
@@ -806,7 +806,7 @@ test('case board records a meaningful fact when the AI proposes an empty patch',
   await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('留意门廊。');
   await page.getByRole('button', { name: '下一位' }).click();
   await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('守在一旁。');
-  await page.getByRole('button', { name: '提交' }).click();
+  await page.getByRole('button', { name: '提交', exact: true }).click();
   await expect(page.getByText('亨利在门廊发现几道新鲜的拖拽刮痕，像是有人搬运过重物。')).toBeVisible();
 
   await page.getByRole('button', { name: '资料', exact: true }).click();
@@ -826,7 +826,7 @@ test('AI DM opens settings when a chat-compatible provider is missing its endpoi
   await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the study.');
   await page.getByRole('button', { name: '下一位' }).click();
   await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the hallway.');
-  await page.getByRole('button', { name: '提交' }).click();
+  await page.getByRole('button', { name: '提交', exact: true }).click();
 
   const configDialog = page.getByRole('dialog', { name: 'AI DM 配置' });
   await expect(configDialog).toBeVisible();
@@ -871,7 +871,7 @@ test('AI DM thinking state shows an inline animated indicator while the turn is 
   await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the locked drawer.');
   await page.getByRole('button', { name: '下一位' }).click();
   await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the street.');
-  await page.getByRole('button', { name: '提交' }).click();
+  await page.getByRole('button', { name: '提交', exact: true }).click();
 
   await expect.poll(() => narratorAttempts).toBe(1);
   const indicator = page.getByRole('status', { name: 'AI DM 正在推演下一幕' });
@@ -927,7 +927,7 @@ test('an aborted narrator request cannot write into a restarted game session', a
   await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the study.');
   await page.getByRole('button', { name: '下一位' }).click();
   await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the street.');
-  await page.getByRole('button', { name: '提交' }).click();
+  await page.getByRole('button', { name: '提交', exact: true }).click();
   await expect.poll(() => narratorAttempts).toBe(1);
 
   await page.getByTitle('菜单').click();

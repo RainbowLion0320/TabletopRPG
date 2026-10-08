@@ -50,7 +50,7 @@ public class GameAndroidTest {
         until(match + " && !" + match + ".disabled"); js(match + ".click()");
     }
     private void fill(String selector, String value) throws Exception {
-        js("(()=>{const e=document.querySelector(" + JSONObject.quote(selector) + ");Object.getOwnPropertyDescriptor(e.tagName==='SELECT'?HTMLSelectElement.prototype:HTMLInputElement.prototype,'value').set.call(e," + JSONObject.quote(value) + ");e.dispatchEvent(new Event(e.tagName==='SELECT'?'change':'input',{bubbles:true}));})()");
+        js("(()=>{const e=document.querySelector(" + JSONObject.quote(selector) + ");Object.getOwnPropertyDescriptor(e.tagName==='SELECT'?HTMLSelectElement.prototype:e.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype,'value').set.call(e," + JSONObject.quote(value) + ");e.dispatchEvent(new Event(e.tagName==='SELECT'?'change':'input',{bubbles:true}));})()");
     }
     private void screenshot(String name) throws Exception {
         // DOM updates can precede WebView's next compositor frame on a background emulator.
@@ -188,6 +188,8 @@ public class GameAndroidTest {
                 assertEquals("Scene framing is independent of NPC presence", "true", js("(()=>{const n=document.querySelector('.scene-npc'),parent=n.parentNode,p=document.querySelector('.narrative-panel'),top=p.getBoundingClientRect().top;n.remove();try{return p.getBoundingClientRect().top===top&&document.querySelector('.scene-backdrop-img').getBoundingClientRect().height>100}finally{parent.appendChild(n)}})()"));
                 screenshot(prefix + "-game");
                 fill(".dock-input", "查看属性时保留这段行动草稿");
+                assertEquals("Phone action input supports multiline even on wide portrait devices", "true", js("document.querySelector('.dock-input').tagName==='TEXTAREA'&&document.querySelector('.dock-input').enterKeyHint==='enter'"));
+                assertEquals("Phone Enter never confirms an action", "true", js("document.querySelector('.dock-input').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}))"));
                 reachable(".dock-actor-avatar"); nativeTap(".dock-actor-avatar");
                 until("document.querySelector('.investigator-sheet')"); reachable(".investigator-close");
                 assertEquals("Character sheet reads the selected investigator", "true", js("document.querySelector('.investigator-identity h2').textContent==='亨利·格雷'&&document.querySelectorAll('.investigator-attributes>div').length===8"));
@@ -377,19 +379,26 @@ public class GameAndroidTest {
                 screenshot("party-" + party);
                 assertEquals("Readable narrative", "true", js("document.querySelector('.narrative-panel').clientHeight > 90"));
                 for (int i = 0; i < party; i++) {
-                    fill(".dock-input", "接受委托并询问失踪经过");
+                    fill(".dock-input", "接受委托\n询问失踪经过");
                     click(i == party - 1 ? "提交" : "下一位");
+                    if (i < party - 1) {
+                        assertEquals("Next investigator can keep typing immediately", "true", js("document.activeElement===document.querySelector('.dock-input')"));
+                        assertEquals("Completed actor is indicated", "true", js("document.querySelectorAll('.party-compact')[" + i + "].textContent.includes('已提交')"));
+                    }
                 }
                 until("document.body.innerText.includes('Android 调查继续')");
                 assertEquals(1, narratorCalls.get());
                 until("document.querySelectorAll('.story-message.player').length === " + party);
+                assertEquals("Multiline player action is preserved in the actual turn", "true", js("document.querySelector('.story-message.player .player-message-text').textContent.includes('接受委托'+String.fromCharCode(10)+'询问失踪经过')"));
                 assertEquals("No API token in WebView storage", "null", js("localStorage.getItem('trpg-api')"));
                 assertFalse(context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE).getAll().toString().contains("android-qa-only-token"));
                 assertTrue(context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE).contains("trpg-api"));
+                fill(".dock-input", "下轮先观察门廊\n再询问雨夜访客");
                 SystemClock.sleep(300);
                 activity.recreate(); until("document.querySelector('.title-screen')"); click("继续游戏");
                 until("document.body.innerText.includes('Android 调查继续')");
                 assertEquals("No repeated API prompt", "false", js("Boolean(document.querySelector('#api-config-modal-title'))"));
+                assertEquals("Encrypted session recovery keeps every line of the draft", "true", js("document.querySelector('.dock-input').value.split(String.fromCharCode(10)).join('|')==='下轮先观察门廊|再询问雨夜访客'"));
                 screenshot("restored-" + party);
                 if (party == 1) {
                     js("document.querySelector('.drawer-tab').click()");

@@ -39,6 +39,7 @@ export function App() {
         {game.toast ? <div className="toast" role="status">{game.toast}</div> : null}
       </> : screen === 'setup' ? <CharacterSetup portrait={portrait} onBack={() => setScreen('title')} onStart={startGame} /> : <GameScreen
         autoFocusInput={!portrait}
+        portrait={portrait}
         controller={game}
         onHome={() => setScreen('title')}
         onRestart={() => setScreen('setup')}

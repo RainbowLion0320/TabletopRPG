@@ -31,6 +31,40 @@ describe('ActionDock player-specific suggestions', () => {
     expect(onSubmit).toHaveBeenCalledOnce();
   });
 
+  it('keeps phone Enter as a newline and preserves multiline declarations until the explicit confirmation', () => {
+    const state = makeState();
+    state.declarations[state.players[0].id] = '沿门廊查看\n询问失踪经过';
+    const onSubmit = vi.fn(), onChange = vi.fn();
+    render(<ActionDock portrait autoFocusInput={false} onInspectPlayer={vi.fn()} isDiceRolling={false} state={state} onDeclarationChange={onChange} onSubmit={onSubmit} onRoll={vi.fn()} onSuggestion={vi.fn()} />);
+    const input = screen.getByRole('textbox');
+    expect(input.tagName).toBe('TEXTAREA');
+    expect(input).toHaveAttribute('enterkeyhint', 'enter');
+    expect(input).toHaveValue('沿门廊查看\n询问失踪经过');
+    expect(fireEvent.keyDown(input, { key: 'Enter' })).toBe(true);
+    expect(onSubmit).not.toHaveBeenCalled();
+    fireEvent.change(input, { target: { value: '沿门廊查看\n询问失踪经过\n观察窗框' } });
+    expect(onChange).toHaveBeenCalledWith(state.players[0].id, '沿门廊查看\n询问失踪经过\n观察窗框');
+    fireEvent.click(screen.getByRole('button', { name: '提交', exact: true }));
+    expect(onSubmit).toHaveBeenCalledOnce();
+  });
+
+  it('allows Shift Enter on desktop and indicates the current and completed actors only during declaration', () => {
+    const state = makeState({ players: [makeInvestigator({ id: 'henry', name: '亨利' }), makeInvestigator({ id: 'ada', name: '艾达' })] });
+    state.currentActorIndex = 1;
+    state.declarations = { henry: '侦查门廊', ada: '观察窗框' };
+    const onSubmit = vi.fn();
+    const props = { isDiceRolling: false, onInspectPlayer: vi.fn(), onDeclarationChange: vi.fn(), onSubmit, onRoll: vi.fn(), onSuggestion: vi.fn() };
+    const { rerender } = render(<ActionDock state={state} {...props} />);
+    expect(fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter', shiftKey: true })).toBe(true);
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /查看艾达的属性，HP/ })).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByRole('button', { name: /查看亨利的属性，HP/ })).toHaveTextContent('已提交');
+    rerender(<ActionDock state={{ ...state, isThinking: true }} {...props} />);
+    expect(screen.queryByText('行动中')).not.toBeInTheDocument();
+    expect(screen.queryByText('已提交')).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox')).toBeDisabled();
+  });
+
   it('offers retry for preserved actions and prevents another round from overwriting them', () => {
     const state = makeState();
     state.pendingDmActions = [{ player: state.players[0].name, action: '询问情况' }];

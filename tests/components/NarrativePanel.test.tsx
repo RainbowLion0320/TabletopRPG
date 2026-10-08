@@ -104,4 +104,54 @@ describe('NarrativePanel', () => {
     expect(screen.queryByText('推进提示：检查书桌抽屉。')).not.toBeInTheDocument();
     expect(container.querySelector('.story-message.system')?.textContent).toBe('检定结果：普通成功（42）');
   });
+
+  it('preserves a reader in older history, ignores internal updates, and lets them jump to the start of the new reply', () => {
+    const state = makeState();
+    state.messages = [{ id: 'old', type: 'dm', text: '以前的谈话。' }, { id: 'current', type: 'dm', text: '当前的谈话。' }];
+    const { rerender } = render(<NarrativePanel state={state} />);
+    const panel = screen.getByRole('region', { name: '剧情记录' });
+    Object.defineProperties(panel, { clientHeight: { configurable: true, value: 200 }, scrollHeight: { configurable: true, value: 1600 } });
+    Object.defineProperty(panel.querySelector('[data-message-id="current"]'), 'offsetTop', { configurable: true, value: 1000 });
+    panel.scrollTop = 80;
+    fireEvent.scroll(panel);
+    const scrollTo = vi.mocked(panel.scrollTo);
+    scrollTo.mockClear();
+    const internalState = { ...state, messages: [...state.messages, { id: 'internal', type: 'system' as const, text: 'AI DM 返回格式无效：内部恢复' }] };
+    rerender(<NarrativePanel state={internalState} />);
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: '查看新剧情' })).not.toBeInTheDocument();
+    const next = { ...internalState, messages: [...internalState.messages, { id: 'new', type: 'dm' as const, text: '新的长回复。' }] };
+    rerender(<NarrativePanel state={next} />);
+    expect(panel.scrollTop).toBe(80);
+    expect(scrollTo).not.toHaveBeenCalled();
+    Object.defineProperty(panel.querySelector('[data-message-id="new"]'), 'offsetTop', { configurable: true, value: 1300 });
+    fireEvent.click(screen.getByRole('button', { name: '查看新剧情' }));
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 1300, behavior: 'auto' });
+    expect(panel).toHaveFocus();
+    expect(screen.queryByRole('button', { name: '查看新剧情' })).not.toBeInTheDocument();
+  });
+
+  it('follows new entries when reading the latest reply, and resumes from a replacement save without an unread badge', () => {
+    const state = makeState();
+    state.messages = [{ id: 'old', type: 'dm', text: '以前。' }, { id: 'latest', type: 'dm', text: '当前。' }];
+    const { rerender } = render(<NarrativePanel state={state} />);
+    const panel = screen.getByRole('region', { name: '剧情记录' });
+    Object.defineProperties(panel, { clientHeight: { configurable: true, value: 200 }, scrollHeight: { configurable: true, value: 1600 } });
+    Object.defineProperty(panel.querySelector('[data-message-id="latest"]'), 'offsetTop', { configurable: true, value: 1000 });
+    panel.scrollTop = 1100;
+    fireEvent.scroll(panel);
+    const scrollTo = vi.mocked(panel.scrollTo);
+    scrollTo.mockClear();
+    const next = { ...state, messages: [...state.messages, { id: 'new', type: 'dm' as const, text: '继续。' }] };
+    rerender(<NarrativePanel state={next} />);
+    expect(scrollTo).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('button', { name: '查看新剧情' })).not.toBeInTheDocument();
+    Object.defineProperty(panel.querySelector('[data-message-id="new"]'), 'offsetTop', { configurable: true, value: 1300 });
+    panel.scrollTop = 0;
+    fireEvent.scroll(panel);
+    scrollTo.mockClear();
+    rerender(<NarrativePanel state={{ ...state, messages: [{ id: 'save', type: 'dm', text: '另一份存档。' }] }} />);
+    expect(scrollTo).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('button', { name: '查看新剧情' })).not.toBeInTheDocument();
+  });
 });

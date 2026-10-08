@@ -78,7 +78,7 @@ export function AndroidApp() {
         onLoadLatest={resume} onNewGame={() => setScreen('setup')} onOpenApi={game.openApiSettings} />
       <ApiConfigModal open={game.apiOpen} onClose={() => game.setApiOpen(false)} onSave={game.saveApi} />
     </> : screen === 'setup' ? <CharacterSetup portrait onBack={() => setScreen('title')} onStart={start} /> :
-      <GameScreen controller={game} autoFocusInput={false} onHome={() => setScreen('title')} onRestart={() => setScreen('setup')} />}
+      <GameScreen controller={game} portrait autoFocusInput={false} onHome={() => setScreen('title')} onRestart={() => setScreen('setup')} />}
     {notice && <div className="android-notice" role="alert"><span>{notice}</span><button onClick={() => setNotice('')}>知道了</button></div>}
     {screen !== 'game' && game.toast && <div className="toast" role="status">{game.toast}</div>}
     {exitOpen && <div className="modal-backdrop"><div ref={exitRef} className="modal-card" role="dialog" aria-modal="true" aria-labelledby="exit-title" tabIndex={-1}>
