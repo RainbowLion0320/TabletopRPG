@@ -8,6 +8,8 @@
 
 ### Android companion build — 2026-09-09
 
+Version 0.4.16 keeps the fixed phone information icon a normal tap target: a small finger drift no longer swallows the tap or leaves a dragging state. Desktop keeps optional vertical repositioning through local pointer capture; release, cancellation and switching to phone layout reset the gesture, while keyboard activation remains available. Obsolete manual case-board styles are removed without adding assets or changing known information.
+
 Version 0.4.15 keeps the desktop relationship graph readable when details open or filters change: the selected record and nearby context fit the actual pane, closing details restores the player's previous view, and ordinary browsing does not undo manual pan/zoom. The graph reuses the same photographed dossier art as the phone archive, with Chinese 44px zoom and overview controls. Phone and native portrait continue to use the compact archive without constructing the graph; no additional bitmap resources are introduced.
 
 Version 0.4.14 presents entity and case details as photographed dossiers with fixed identity/close controls, full scene paintings and readable, independently scrolling known information. Related known records open directly and can return without changing list filters or action drafts; phone system Back first returns within a chain, while desktop Escape closes the detail and leaves the archive open. Sources expand on demand and undiscovered-secret counts stay out of the UI. Desktop graph records are native buttons with Enter/Space activation. It reuses existing art and preserves reviewed facts, player state and the free-action loop.

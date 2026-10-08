@@ -1,7 +1,8 @@
-import { lazy, Suspense, useId, useRef, useState, useCallback, useEffect, type KeyboardEvent } from 'react';
+import { lazy, Suspense, useId, useRef, useState, useCallback, useEffect, type KeyboardEvent, type PointerEvent } from 'react';
 import { BookOpen, Clock3, GripVertical, Target, X } from 'lucide-react';
 import type { GameState } from '../../types/game';
 import { useDialogFocus } from '../shared/useDialogFocus';
+import { usePortraitLayout } from '../../platform/layout';
 import { storyData } from '../../data/storyData';
 import { isPlayerVisibleLogEntry } from '../../services/narrativeVisibility';
 import { getScenarioDefinition, getScenarioProgressForState, getVisibleScenarioObjectives } from '../../scenario/engine';
@@ -19,6 +20,7 @@ interface InfoDrawerProps {
 
 export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
   const [activeTab, setActiveTab] = useState<'progress' | 'board' | 'log'>('board');
+  const portrait = usePortraitLayout();
   const id = useId();
   const scenario = getScenarioDefinition();
   const progress = getScenarioProgressForState(state);
@@ -26,70 +28,46 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
   const visibleClocks = Object.entries(progress.clocks).filter(([, clock]) => clock.visible);
   const clockPresentation = new Map((scenario.presentation.clocks ?? []).map((clock) => [clock.id, clock]));
 
-  // 拖拽状态
   const tabRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLElement>(null);
-  const [tabTop, setTabTop] = useState(43); // 百分比
-  const dragState = useRef<{ startY: number; startTop: number } | null>(null);
-  const isDragging = useRef(false);
+  const [tabTop, setTabTop] = useState(43);
+  const [dragging, setDragging] = useState(false);
+  const dragState = useRef<{ pointerId: number; startY: number; startTop: number; moved: boolean } | null>(null);
+  const suppressClick = useRef(false);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    dragState.current = { startY: e.clientY, startTop: tabTop };
-    isDragging.current = false;
-  }, [tabTop]);
+  function startDrag(event: PointerEvent<HTMLButtonElement>) {
+    suppressClick.current = false;
+    if (portrait || event.button !== 0 || !event.isPrimary) return;
+    dragState.current = { pointerId: event.pointerId, startY: event.clientY, startTop: tabTop, moved: false };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function moveDrag(event: PointerEvent<HTMLButtonElement>) {
+    const drag = dragState.current;
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const deltaY = event.clientY - drag.startY;
+    if (!drag.moved && Math.abs(deltaY) <= 6) return;
+    drag.moved = true;
+    setDragging(true);
+    setTabTop(Math.max(8, Math.min(85, drag.startTop + deltaY / window.innerHeight * 100)));
+  }
+
+  function endDrag(event: PointerEvent<HTMLButtonElement>, cancelled = false) {
+    const drag = dragState.current;
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    suppressClick.current = drag.moved || cancelled;
+    dragState.current = null;
+    setDragging(false);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+  }
 
   useEffect(() => {
-    function handleMouseMove(e: MouseEvent) {
-      if (!dragState.current) return;
-      const deltaY = e.clientY - dragState.current.startY;
-      if (Math.abs(deltaY) > 3) isDragging.current = true;
-      if (!isDragging.current) return;
-
-      const vh = window.innerHeight;
-      const newTop = dragState.current.startTop + (deltaY / vh) * 100;
-      setTabTop(Math.max(8, Math.min(85, newTop)));
-    }
-
-    function handleMouseUp() {
-      if (dragState.current && !isDragging.current) {
-        onOpen();
-      }
-      dragState.current = null;
-      isDragging.current = false;
-    }
-
-    function handleTouchMove(e: TouchEvent) {
-      if (!dragState.current || !e.touches[0]) return;
-      const deltaY = e.touches[0].clientY - dragState.current.startY;
-      if (Math.abs(deltaY) > 3) isDragging.current = true;
-      if (!isDragging.current) return;
-      e.preventDefault();
-
-      const vh = window.innerHeight;
-      const newTop = dragState.current.startTop + (deltaY / vh) * 100;
-      setTabTop(Math.max(8, Math.min(85, newTop)));
-    }
-
-    function handleTouchEnd() {
-      if (dragState.current && !isDragging.current) {
-        onOpen();
-      }
-      dragState.current = null;
-      isDragging.current = false;
-    }
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    window.addEventListener('touchmove', handleTouchMove, { passive: false });
-    window.addEventListener('touchend', handleTouchEnd);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, [onOpen]);
+    const pointerId = dragState.current?.pointerId;
+    if (pointerId !== undefined) suppressClick.current = true;
+    dragState.current = null;
+    setDragging(false);
+    if (pointerId !== undefined && tabRef.current?.hasPointerCapture(pointerId)) tabRef.current.releasePointerCapture(pointerId);
+  }, [portrait]);
 
   useEffect(() => {
     if (open) setActiveTab('board');
@@ -99,12 +77,6 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
     if (drawerRef.current) drawerRef.current.inert = !open;
   }, [open]);
   useDialogFocus(open, drawerRef, onClose, tabRef);
-
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (!e.touches[0]) return;
-    dragState.current = { startY: e.touches[0].clientY, startTop: tabTop };
-    isDragging.current = false;
-  }, [tabTop]);
 
   const handleClose = useCallback(() => {
     tabRef.current?.focus({ preventScroll: true });
@@ -127,20 +99,27 @@ export function InfoDrawer({ onClose, onOpen, open, state }: InfoDrawerProps) {
         aria-controls="game-info-drawer"
         aria-label="资料"
         aria-expanded={open}
+        aria-haspopup="dialog"
+        type="button"
         ref={tabRef}
-        className={`drawer-tab${isDragging.current ? ' dragging' : ''}`}
-        style={{ top: `${tabTop}%` }}
-        onMouseDown={handleMouseDown}
-        onTouchStart={handleTouchStart}
+        className={`drawer-tab${portrait ? '' : ' draggable'}${dragging ? ' dragging' : ''}`}
+        style={portrait ? undefined : { top: `${tabTop}%` }}
+        onPointerDown={startDrag}
+        onPointerMove={moveDrag}
+        onPointerUp={(event) => endDrag(event)}
+        onPointerCancel={(event) => endDrag(event, true)}
+        onLostPointerCapture={(event) => endDrag(event, true)}
         onClick={(event) => {
-          // Pointer activation is handled by the drag gesture; keyboard and
-          // accessibility activation dispatch a click without a pointer press.
-          if (event.detail === 0) onOpen();
+          const suppressed = event.detail !== 0 && suppressClick.current;
+          suppressClick.current = false;
+          if (suppressed) return;
+          event.currentTarget.focus({ preventScroll: true });
+          onOpen();
         }}
-        title="资料（可拖拽）"
+        title={portrait ? '资料' : '资料（可拖动位置）'}
         data-sound="paper"
       >
-        <GripVertical size={12} className="drawer-grip" />
+        {!portrait && <GripVertical size={12} className="drawer-grip" aria-hidden="true" />}
         <BookOpen size={16} />
         <span>资料</span>
       </button>

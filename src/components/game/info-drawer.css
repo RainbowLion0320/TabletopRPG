@@ -1,4 +1,6 @@
 /* The archive header stays outside all scrolling pages. */
+.drawer-tab.draggable { touch-action: none; }
+.drawer-tab.dragging { cursor: grabbing; }
 .info-drawer-react.fullscreen { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .info-drawer-react > header { flex: 0 0 auto; }
 .info-drawer-page { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }

@@ -66,11 +66,20 @@ public class GameAndroidTest {
         until("document.querySelector('.title-screen')");
     }
     private void nativeTap(String selector) throws Exception {
-        org.json.JSONArray point = new org.json.JSONArray(js("(()=>{const r=document.querySelector(" + JSONObject.quote(selector) + ").getBoundingClientRect();return [(r.x+r.width/2)*devicePixelRatio,(r.y+r.height/2)*devicePixelRatio]})()"));
+        nativeTap(selector, 0);
+    }
+    private void nativeTap(String selector, int driftCssY) throws Exception {
+        org.json.JSONArray point = new org.json.JSONArray(js("(()=>{const r=document.querySelector(" + JSONObject.quote(selector) + ").getBoundingClientRect();return [(r.x+r.width/2)*devicePixelRatio,(r.y+r.height/2)*devicePixelRatio,devicePixelRatio]})()"));
         long now = SystemClock.uptimeMillis();
         MotionEvent down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, (float) point.getDouble(0), (float) point.getDouble(1), 0);
-        MotionEvent up = MotionEvent.obtain(now, now + 80, MotionEvent.ACTION_UP, (float) point.getDouble(0), (float) point.getDouble(1), 0);
+        float endY = (float) (point.getDouble(1) + driftCssY * point.getDouble(2));
+        MotionEvent up = MotionEvent.obtain(now, now + 80, MotionEvent.ACTION_UP, (float) point.getDouble(0), endY, 0);
         InstrumentationRegistry.getInstrumentation().sendPointerSync(down);
+        if (driftCssY != 0) {
+            MotionEvent move = MotionEvent.obtain(now, now + 40, MotionEvent.ACTION_MOVE, (float) point.getDouble(0), endY, 0);
+            InstrumentationRegistry.getInstrumentation().sendPointerSync(move);
+            move.recycle();
+        }
         InstrumentationRegistry.getInstrumentation().sendPointerSync(up);
         down.recycle(); up.recycle();
     }
@@ -277,8 +286,9 @@ public class GameAndroidTest {
                 js("document.querySelector('.entity-detail-body').scrollTop=99999");
                 assertEquals("Entity title stays outside the long body scroll", entityHeaderTop, js("document.querySelector('.entity-detail-header').getBoundingClientRect().top"));
                 reachable(".entity-detail-close"); js("document.querySelector('.entity-detail-close').click()");
-                js("document.querySelector('.drawer-tab').click()");
+                reachable(".drawer-tab"); nativeTap(".drawer-tab", 6);
                 until("document.querySelector('.case-board-mobile-card')"); reachable("[aria-label='关闭资料']");
+                assertEquals("Native portrait entry stays a fixed button after slight touch drift", "true", js("document.querySelector('.drawer-tab').style.top===''&&!document.querySelector('.drawer-tab').classList.contains('dragging')&&document.querySelector('.drawer-tab').title==='资料'"));
                 assertEquals("Phone archive does not construct a hidden graph", "true", js("!document.querySelector('.react-flow')&&!document.querySelector('.case-board-flow-wrap')"));
                 until("Array.from(document.querySelectorAll('.case-record-photo img')).every(i=>i.complete&&i.naturalWidth>0)");
                 assertEquals("Archive tabs announce the active page", "true", js("document.querySelector('[role=tab][aria-selected=true]').textContent==='案件板'&&document.querySelector('[role=tabpanel]').getAttribute('aria-labelledby')===document.querySelector('[role=tab][aria-selected=true]').id"));

@@ -1151,6 +1151,40 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
   });
 }
 
+for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height: 844, party: 4 }] as const) {
+  test(`fixed phone reference entry tolerates a small pointer drift with ${size.party} player(s)`, async ({ page }, testInfo) => {
+    await page.setViewportSize(size); await startNewGame(page, size.party);
+    const draft = page.locator('.dock-input'); await draft.fill('打开资料后继续这段行动。');
+    const entry = page.getByRole('button', { name: '资料', exact: true });
+    const box = (await entry.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down(); await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + 6, { steps: 3 }); await page.mouse.up();
+    const drawer = page.getByRole('dialog', { name: '资料', exact: true }); await expect(drawer).toBeVisible();
+    await expect(entry).not.toHaveClass(/dragging|draggable/); await expect(entry).toHaveAttribute('title', '资料');
+    expect(await entry.evaluate((element) => (element as HTMLElement).style.top)).toBe('');
+    await page.screenshot({ path: testInfo.outputPath('fixed-reference-entry.png') });
+    await page.keyboard.press('Escape'); await expect(drawer).toBeHidden(); await expect(entry).toBeFocused();
+    await expect(draft).toHaveValue('打开资料后继续这段行动。');
+    await page.keyboard.press('Enter'); await expect(drawer).toBeVisible();
+    await page.keyboard.press('Escape'); await expect(entry).toBeFocused();
+  });
+}
+
+test('desktop reference drag moves its tab without opening and resets before click or keyboard activation', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 }); await startNewGame(page);
+  const entry = page.getByRole('button', { name: '资料', exact: true });
+  const box = (await entry.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down(); await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + 100, { steps: 10 });
+  await expect(entry).toHaveClass(/dragging/); await page.mouse.up();
+  const drawer = page.getByRole('dialog', { name: '资料', exact: true }); await expect(drawer).toHaveCount(0);
+  await expect(entry).not.toHaveClass(/dragging/);
+  expect((await entry.boundingBox())!.y).toBeGreaterThan(box.y + 80);
+  await entry.click(); await expect(drawer).toBeVisible();
+  await page.keyboard.press('Escape'); await expect(entry).toBeFocused();
+  await page.keyboard.press('Space'); await expect(drawer).toBeVisible();
+});
+
 test('moving the desktop case board to a phone preserves search and removes the hidden thread filter', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await gotoWithSave(page, createDynamicCaseBoardSave());

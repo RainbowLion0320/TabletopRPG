@@ -180,7 +180,7 @@
 :root.fog-ui .modal-error { border-left: 2px solid #c07669; padding: 7px 10px; background: #40231d; }
 
 :root.fog-ui :is(.party-compact, .check-card,
-  .case-board-mobile-card, .case-board-compact-card, .case-board-node, .case-board-threads button) { border-radius: 2px; }
+  .case-board-mobile-card, .case-board-threads button) { border-radius: 2px; }
 :root.fog-ui .party-compact strong { font-family: var(--ui-font); }
 
 /* Story and tools are one desk, with the full scene painting left untouched. */

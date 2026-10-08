@@ -1,17 +1,74 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { InfoDrawer } from '../../src/components/game/InfoDrawer';
 import { storyData } from '../../src/data/storyData';
 import { makeState } from '../dm/fixtures';
 import { createScenarioProgress } from '../../src/scenario/engine';
 
-vi.mock('../../src/platform/layout', () => ({ useCaseBoardListLayout: () => true }));
+const { layout } = vi.hoisted(() => ({ layout: { portrait: false } }));
+vi.mock('../../src/platform/layout', () => ({ useCaseBoardListLayout: () => true, usePortraitLayout: () => layout.portrait }));
+beforeEach(() => { layout.portrait = false; });
 
 function renderDrawer(state = makeState({ activeNpcName: '伊莎贝拉·摩勒' })) {
   return render(<InfoDrawer open onClose={vi.fn()} onOpen={vi.fn()} state={state} />);
 }
 
 describe('InfoDrawer v7 investigation workspace', () => {
+  it('keeps the fixed phone entry a normal button despite small pointer movement', () => {
+    layout.portrait = true;
+    const onOpen = vi.fn();
+    render(<InfoDrawer open={false} onClose={vi.fn()} onOpen={onOpen} state={makeState()} />);
+    const entry = screen.getByRole('button', { name: '资料', exact: true });
+    const capture = vi.fn(); entry.setPointerCapture = capture;
+    fireEvent.pointerDown(entry, { pointerId: 1, isPrimary: true, button: 0, clientY: 28 });
+    fireEvent.pointerMove(entry, { pointerId: 1, isPrimary: true, clientY: 34 });
+    fireEvent.pointerUp(entry, { pointerId: 1, isPrimary: true, clientY: 34 });
+    fireEvent.click(entry, { detail: 1 });
+    expect(onOpen).toHaveBeenCalledOnce(); expect(entry).toHaveFocus();
+    expect(capture).not.toHaveBeenCalled(); expect(entry).not.toHaveClass('dragging', 'draggable');
+    expect(entry.style.top).toBe(''); expect(entry).toHaveAttribute('title', '资料');
+  });
+  it('moves the desktop entry without opening it, clears the drag state and still allows keyboard opening', () => {
+    const onOpen = vi.fn();
+    render(<InfoDrawer open={false} onClose={vi.fn()} onOpen={onOpen} state={makeState()} />);
+    const entry = screen.getByRole('button', { name: '资料', exact: true });
+    entry.setPointerCapture = vi.fn(); entry.hasPointerCapture = vi.fn(() => true); entry.releasePointerCapture = vi.fn();
+    fireEvent.pointerDown(entry, { pointerId: 3, isPrimary: true, button: 0, clientY: 100 });
+    fireEvent.pointerMove(entry, { pointerId: 3, isPrimary: true, clientY: 160 });
+    expect(entry).toHaveClass('dragging'); expect(parseFloat(entry.style.top)).toBeGreaterThan(43);
+    fireEvent.pointerUp(entry, { pointerId: 3, isPrimary: true, clientY: 160 });
+    fireEvent.lostPointerCapture(entry, { pointerId: 3 });
+    fireEvent.click(entry, { detail: 1 });
+    expect(onOpen).not.toHaveBeenCalled(); expect(entry).not.toHaveClass('dragging');
+    expect(entry.releasePointerCapture).toHaveBeenCalledWith(3);
+    fireEvent.click(entry, { detail: 0 }); expect(onOpen).toHaveBeenCalledOnce();
+  });
+  it('recovers from cancelled desktop drags so the next ordinary click opens once', () => {
+    const onOpen = vi.fn();
+    render(<InfoDrawer open={false} onClose={vi.fn()} onOpen={onOpen} state={makeState()} />);
+    const entry = screen.getByRole('button', { name: '资料', exact: true });
+    entry.setPointerCapture = vi.fn(); entry.hasPointerCapture = vi.fn(() => true); entry.releasePointerCapture = vi.fn();
+    fireEvent.pointerDown(entry, { pointerId: 2, isPrimary: true, button: 0, clientY: 100 });
+    fireEvent.pointerMove(entry, { pointerId: 2, isPrimary: true, clientY: 180 });
+    fireEvent.pointerCancel(entry, { pointerId: 2 }); expect(entry).not.toHaveClass('dragging');
+    fireEvent.pointerDown(entry, { pointerId: 4, isPrimary: true, button: 0, clientY: 180 });
+    fireEvent.pointerUp(entry, { pointerId: 4, isPrimary: true, clientY: 180 });
+    fireEvent.click(entry, { detail: 1 }); expect(onOpen).toHaveBeenCalledOnce();
+  });
+  it('cancels an active desktop drag when switching to the fixed phone layout', () => {
+    const onOpen = vi.fn(); const state = makeState();
+    const view = render(<InfoDrawer open={false} onClose={vi.fn()} onOpen={onOpen} state={state} />);
+    const entry = screen.getByRole('button', { name: '资料', exact: true });
+    entry.setPointerCapture = vi.fn(); entry.hasPointerCapture = vi.fn(() => true); entry.releasePointerCapture = vi.fn();
+    fireEvent.pointerDown(entry, { pointerId: 5, isPrimary: true, button: 0, clientY: 100 });
+    fireEvent.pointerMove(entry, { pointerId: 5, isPrimary: true, clientY: 180 });
+    layout.portrait = true;
+    view.rerender(<InfoDrawer open={false} onClose={vi.fn()} onOpen={onOpen} state={state} />);
+    expect(entry.releasePointerCapture).toHaveBeenCalledWith(5);
+    expect(entry).not.toHaveClass('dragging', 'draggable'); expect(entry.style.top).toBe('');
+    fireEvent.click(entry, { detail: 1 }); expect(onOpen).not.toHaveBeenCalled();
+    fireEvent.click(entry, { detail: 0 }); expect(onOpen).toHaveBeenCalledOnce();
+  });
   it('follows only known related records, returns within the detail and preserves the list filter and opener', async () => {
     renderDrawer();
     const type = await screen.findByRole('combobox', { name: '资料类型' });
