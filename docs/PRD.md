@@ -8,7 +8,7 @@
 
 ## 1. Product Positioning
 
-Version 0.4.30 keeps known case records available with the base interface, while only the desktop graph and layout worker load on demand. A failed desktop graph switches to the existing photo dossiers instead of unmounting the game. Search, type and hypothesis filters, visible sources, relation navigation, focus return, drafts and the party remain usable. Closed archives still do not build the case model; no narrative, visibility or gameplay rules change.
+Version 0.4.31 keeps known case records available with the base interface and excludes unused desktop graph files from the APK. The web graph still loads on demand and switches to the existing photo dossiers if it fails. Search, type and hypothesis filters, visible sources, relation navigation, focus return, drafts and the party remain usable. Closed archives still do not build the case model; no narrative, visibility or gameplay rules change.
 
 Version 0.4.29 keeps action restoration and window changes free of recursive resize errors. Changes in the input wrapping width are refitted once after observation delivery; typing and viewport height changes retain their existing immediate fitting and size limits. Drafts, turn order, retry requests and input focus remain unchanged.
 

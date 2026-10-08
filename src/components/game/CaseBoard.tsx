@@ -16,7 +16,8 @@ interface CaseBoardProps {
   state: GameState;
 }
 
-const DesktopBoard = lazy(() => import('./CaseBoardFlow').then((module) => ({ default: module.CaseBoardFlow })));
+const DesktopBoard = import.meta.env.ANDROID_PUBLIC_NATIVE_BUNDLE ? null
+  : lazy(() => import('./CaseBoardFlow').then((module) => ({ default: module.CaseBoardFlow })));
 
 class GraphLoadBoundary extends Component<{ children: ReactNode; onFailure: () => void }, { failed: boolean }> {
   state = { failed: false };
@@ -39,7 +40,7 @@ const TYPE_OPTIONS: Array<{ value: 'all' | CaseBoardDisplayNodeType; label: stri
 
 export function CaseBoard({ state }: CaseBoardProps) {
   const [flowFailed, setFlowFailed] = useState(false);
-  const archive = useCaseBoardListLayout() || flowFailed;
+  const archive = useCaseBoardListLayout() || import.meta.env.ANDROID_PUBLIC_NATIVE_BUNDLE || flowFailed;
   const model = useMemo(() => buildCaseBoardGraphModel(state), [state]);
   const [query, setQuery] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
@@ -123,7 +124,7 @@ export function CaseBoard({ state }: CaseBoardProps) {
             ))}
           </nav>}
 
-          {!archive && <GraphLoadBoundary onFailure={() => setFlowFailed(true)}><Suspense fallback={<div className="case-board-flow-wrap"><p className="empty-note">正在整理关系图...</p></div>}><DesktopBoard model={filtered} selectedId={selectedId} onSelect={(id) => { const node = model.nodes.find((item) => item.id === id); if (node) selectNode(node); }} /></Suspense></GraphLoadBoundary>}
+          {!archive && DesktopBoard && <GraphLoadBoundary onFailure={() => setFlowFailed(true)}><Suspense fallback={<div className="case-board-flow-wrap"><p className="empty-note">正在整理关系图...</p></div>}><DesktopBoard model={filtered} selectedId={selectedId} onSelect={(id) => { const node = model.nodes.find((item) => item.id === id); if (node) selectNode(node); }} /></Suspense></GraphLoadBoundary>}
 
           {archive && <div className="case-board-mobile-list" aria-label="案件资料列表">
             {model.threads.map((thread) => {

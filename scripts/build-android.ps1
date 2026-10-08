@@ -72,6 +72,7 @@ $archive = [IO.Compression.ZipFile]::OpenRead($apk)
 try {
     foreach ($entry in $archive.Entries) {
         if ($entry.FullName -match '\.map$|(^|/)\.env') { throw "Unexpected development file in APK: $($entry.FullName)" }
+        if ($entry.FullName -match '^assets/public/assets/(?:CaseBoardFlow-[\w-]+\.(?:js|css)|caseBoardLayout-[\w-]+\.js|elk-worker\.min-[\w-]+\.js)$') { throw 'APK contains desktop-only case graph output.' }
     }
     $entry = $archive.GetEntry('assets/capacitor.config.json')
     $reader = New-Object IO.StreamReader($entry.Open())

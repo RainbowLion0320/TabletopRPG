@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  /** Compile-time flag for the APK's list-only case archive. */
+  readonly ANDROID_PUBLIC_NATIVE_BUNDLE?: boolean;
   /** AI provider id. Defaults to openai when empty. */
   readonly VITE_AI_PROVIDER?: string;
   /** AI wire protocol. Defaults from provider when empty. */
