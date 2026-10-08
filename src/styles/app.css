@@ -574,57 +574,6 @@ button {
   color: rgba(255, 255, 255, 0.68);
 }
 
-.scenario-progress h3 {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: 18px;
-}
-
-.objective-list {
-  display: grid;
-  gap: 8px;
-}
-
-.objective-row {
-  display: grid;
-  grid-template-columns: 54px 1fr;
-  gap: 10px;
-  align-items: start;
-  padding: 10px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.objective-row span {
-  font-size: 11px;
-  color: #d8b56a;
-}
-
-.objective-row.completed strong {
-  color: rgba(255, 255, 255, 0.52);
-  text-decoration: line-through;
-}
-
-.objective-row.failed span {
-  color: #bf8d75;
-}
-
-.objective-row.failed strong {
-  color: rgba(255, 255, 255, 0.58);
-}
-
-.progress-stat,
-.clock-row {
-  color: rgba(255, 255, 255, 0.76);
-}
-
-.clock-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
 .ending-dock {
   display: flex;
   align-items: center;
@@ -1130,8 +1079,7 @@ button {
 
 .info-drawer-react header,
 .info-drawer-tabs,
-.case-board-view,
-.drawer-section {
+.case-board-view {
   width: min(100%, 1480px);
   margin-left: auto;
   margin-right: auto;
@@ -1150,7 +1098,7 @@ button {
   font-size: 11px;
 }
 
-.info-drawer-react h2, .drawer-section h3 {
+.info-drawer-react h2 {
   color: var(--gold);
   font-weight: 400;
   margin: 0;
@@ -1333,33 +1281,10 @@ button {
   color: var(--gold);
 }
 
-.drawer-section {
-  border: 1px solid var(--line-soft);
-  border-radius: 7px;
-  padding: 14px;
-  margin-bottom: 16px;
-  background: rgba(255,255,255,0.03);
-}
-
-.drawer-section h3 {
-  font-size: 15px;
-  margin-bottom: 12px;
-}
-
-.empty-note, .log-list-modern p {
+.empty-note {
   color: var(--muted);
   line-height: 1.6;
   font-size: 13px;
-}
-
-.log-list-modern p {
-  border-bottom: 1px solid var(--line-soft);
-  padding-bottom: 8px;
-}
-
-.log-list-modern span {
-  color: var(--gold);
-  margin-right: 8px;
 }
 
 .case-board-view {

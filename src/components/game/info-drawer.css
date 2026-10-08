@@ -9,9 +9,4 @@
 .info-drawer-page .case-board-heading, .info-drawer-page .case-board-toolbar { flex: 0 0 auto; }
 .info-drawer-page .case-board-workspace { flex: 1; height: auto; min-height: 0; }
 .info-drawer-tabs [role='tab']:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: -2px; }
-.portrait-ui .info-drawer-page > .drawer-section { min-height: 0; margin: 0; padding: 8px 10px; }
 .portrait-ui .info-drawer-page .case-board-view { padding: 0 2px; }
-.portrait-ui .info-drawer-page .objective-row strong { font-weight: 400; line-height: 1.7; color: #ded0b8; }
-.portrait-ui .info-drawer-page .progress-stat { padding: 8px 0; margin: 0; border-top: 1px solid #5a4932; line-height: 1.7; }
-.portrait-ui .info-drawer-page .log-list-modern p { display: grid; gap: 4px; padding: 10px 6px; margin: 0; color: #d2c5ae; }
-.portrait-ui .info-drawer-page .log-list-modern span { font-size: 11px; color: #bda06a; }

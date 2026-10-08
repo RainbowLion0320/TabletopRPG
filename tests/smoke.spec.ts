@@ -870,9 +870,82 @@ test('progress tab shows authored objectives, clue counts, and world time', asyn
   await page.getByRole('tab', { name: '进度' }).click();
   await expect(page.getByRole('heading', { name: '调查目标' })).toBeVisible();
   await expect(page.getByText('与伊莎贝拉确认委托和埃里克失踪的基本情况。')).toBeVisible();
-  await expect(page.locator('.progress-stat')).toHaveText('已发现 0 · 已分析 0');
-  await expect(page.locator('.progress-stat')).not.toContainText('/ 8');
+  await expect(page.locator('.progress-stat')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: '线索进度' })).toHaveCount(0);
 });
+
+for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height: 844, party: 4 }, { width: 1440, height: 900, party: 2 }]) {
+  test(`investigation records preserve readable goals and searchable log position at ${size.width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize(size);
+    const state = createDynamicCaseBoardSave();
+    state.players = ['亨利·格雷', '艾达·华莱士', '托马斯·贝尔', '罗伯特·肖'].slice(0, size.party)
+      .map((name, index) => makeInvestigator({ name, id: `records-player-${index}` }));
+    state.scenarioProgress = createSmokeScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed'; state.scenarioProgress.beatStates.B02 = 'active';
+    state.scenarioProgress.objectiveStates.O01 = 'completed'; state.scenarioProgress.objectiveStates.O02 = 'active';
+    state.scenarioProgress.variables.commissionAccepted = true;
+    state.scenarioProgress.clueStates.I04 = 'analyzed'; state.scenarioProgress.clueStates.I05 = 'discovered';
+    state.actionLog = Array.from({ length: 60 }, (_, index) => ({ time: `21:${String(59 - index).padStart(2, '0')}`,
+      text: `调查记录${index + 1}：查看门槛与窗框，再询问失踪前发生的事情。\n把看到的痕迹记在随身本上。` }));
+    state.actionLog.splice(1, 0, { time: '21:58', text: '剧情事件：EV_HIDDEN_RECORD' },
+      { time: '21:58', text: 'AI DM 返回格式无效：未解锁地点的内部诊断' });
+    await gotoWithSave(page, state); await page.getByRole('button', { name: '继续游戏' }).click();
+    const draft = page.locator('.dock-input'); await draft.fill('继续查看门廊上的痕迹。');
+    await page.getByRole('button', { name: '资料', exact: true }).click();
+    await page.getByRole('tab', { name: '进度' }).click();
+    const current = page.getByText('在摩勒住宅寻找能指向下一处调查地点的证据。');
+    await expect(current).toBeVisible();
+    expect(await current.evaluate(el => Number.parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(15);
+    await expect(page.locator('.progress-stat')).toHaveText('已发现 2 · 已分析 1');
+    await expect(page.locator('.investigation-history')).not.toHaveAttribute('open');
+    await expect(page.getByText('与伊莎贝拉确认委托和埃里克失踪的基本情况。')).not.toBeVisible();
+    await expect(page.getByText('先听懂对方诉求，再说服其释放埃里克。')).toHaveCount(0);
+    await page.locator('.investigation-history summary').click();
+    await expect(page.getByText('与伊莎贝拉确认委托和埃里克失踪的基本情况。')).toBeVisible();
+    await page.getByRole('tab', { name: '日志' }).click();
+    const list = page.getByRole('list', { name: '行动记录' });
+    await expect(list.locator('li')).toHaveCount(60);
+    await expect(list.locator('li').first()).toContainText('调查记录1：');
+    const header = page.locator('.info-drawer-react > header'); const headerTop = (await header.boundingBox())!.y;
+    await list.evaluate(el => { el.scrollTop = 720; });
+    await expect.poll(() => list.evaluate(el => el.scrollTop)).toBeGreaterThan(500);
+    const position = await list.evaluate(el => el.scrollTop);
+    await page.getByRole('tab', { name: '进度' }).click(); await expect(current).toBeVisible();
+    await page.getByRole('tab', { name: '日志' }).click();
+    await expect.poll(() => list.evaluate(el => el.scrollTop)).toBeCloseTo(position, 0);
+    expect((await header.boundingBox())!.y).toBeCloseTo(headerTop, 0);
+    const search = page.getByRole('searchbox', { name: '搜索行动日志' });
+    await search.fill('调查记录60'); await expect(list.locator('li')).toHaveCount(1);
+    await expect(list.locator('p')).toContainText('把看到的痕迹记在随身本上。');
+    expect(await list.locator('p').evaluate(el => getComputedStyle(el).whiteSpace)).toBe('pre-wrap');
+    expect(await list.locator('p').evaluate(el => Number.parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(15);
+    await expect.poll(() => list.evaluate(el => el.scrollTop)).toBe(0);
+    await page.getByRole('tab', { name: '进度' }).click(); await page.getByRole('tab', { name: '日志' }).click();
+    await expect(search).toHaveValue('调查记录60');
+    await search.fill('EV_HIDDEN_RECORD'); await expect(page.getByRole('status')).toHaveText('没有找到相关记录。');
+    await expect(page.getByText('剧情事件：EV_HIDDEN_RECORD')).toHaveCount(0);
+    await expect(page.getByText('AI DM 返回格式无效：未解锁地点的内部诊断')).toHaveCount(0);
+    await page.getByRole('button', { name: '清空日志搜索' }).click(); await expect(search).toBeFocused();
+    await expect(list.locator('li')).toHaveCount(60); await expect.poll(() => list.evaluate(el => el.scrollTop)).toBe(0);
+    await search.fill('21:00'); await expect(list.locator('li')).toHaveCount(1);
+    await page.screenshot({ path: testInfo.outputPath('investigation-records.png') });
+    await page.setViewportSize({ width: Math.min(size.width, 390), height: 300 });
+    await expect(page.getByRole('button', { name: '关闭资料' })).toBeVisible();
+    const bounds = () => list.evaluate(el => {
+      const listRect = el.getBoundingClientRect(), inputRect = document.querySelector('.record-log-search')!.getBoundingClientRect();
+      const closeRect = document.querySelector('[aria-label="关闭资料"]')!.getBoundingClientRect();
+      return { listInside: listRect.y >= inputRect.bottom && listRect.bottom <= innerHeight + 1 && listRect.height > 60,
+        inputInside: inputRect.x >= 0 && inputRect.right <= innerWidth && inputRect.height >= 44,
+        closeInside: closeRect.y >= 0 && closeRect.bottom <= innerHeight && closeRect.width >= 44,
+        noOverflow: document.documentElement.scrollWidth <= innerWidth };
+    });
+    await expect.poll(bounds).toEqual({ listInside: true, inputInside: true, closeInside: true, noOverflow: true });
+    await page.getByRole('button', { name: '关闭资料' }).click(); await expect(draft).toHaveValue('继续查看门廊上的痕迹。');
+    await page.setViewportSize(size); await page.getByRole('button', { name: '资料', exact: true }).click();
+    await page.getByRole('tab', { name: '日志' }).click(); await expect(search).toHaveValue('');
+    await expect(list.locator('li')).toHaveCount(60);
+  });
+}
 
 test('v8 ending save locks the action area and preserves the authored ending', async ({ page }) => {
   await gotoWithSave(page, createV8EndingSave());

@@ -14,6 +14,75 @@ function renderDrawer(state = makeState({ activeNpcName: '伊莎贝拉·摩勒' 
 }
 
 describe('InfoDrawer v7 investigation workspace', () => {
+  it('puts the current objective before a collapsible review without showing locked objectives', () => {
+    const state = makeState(); state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.objectiveStates.O01 = 'completed'; state.scenarioProgress.objectiveStates.O02 = 'active';
+    renderDrawer(state); fireEvent.click(screen.getByRole('tab', { name: '进度' }));
+    expect(screen.getByText('在摩勒住宅寻找能指向下一处调查地点的证据。')).toBeVisible();
+    const history = screen.getByText('调查回顾').closest('details')!;
+    expect(history).not.toHaveAttribute('open');
+    expect(screen.getByText('与伊莎贝拉确认委托和埃里克失踪的基本情况。')).not.toBeVisible();
+    expect(screen.queryByText(/说服老赫特酒保/)).toBeNull();
+    fireEvent.click(screen.getByText('调查回顾'));
+    expect(history).toHaveAttribute('open');
+    expect(screen.getByText('与伊莎贝拉确认委托和埃里克失踪的基本情况。')).toBeVisible();
+    expect(state.scenarioProgress.objectiveStates.O01).toBe('completed');
+  });
+  it('shows only known clue counts and authored visible clocks, with no empty or internal clock heading', () => {
+    const state = makeState(); state.scenarioProgress = createScenarioProgress();
+    state.scenarioProgress.clueStates.I04 = 'discovered'; state.scenarioProgress.clueStates.I05 = 'analyzed';
+    state.scenarioProgress.clocks.fusangEscape = { value: 6, active: true, visible: false };
+    state.scenarioProgress.clocks.internal = { value: 99, active: true, visible: true };
+    const view = render(<InfoDrawer open onClose={vi.fn()} onOpen={vi.fn()} state={state} />);
+    fireEvent.click(screen.getByRole('tab', { name: '进度' }));
+    expect(screen.getByText(/已发现/)).toHaveTextContent('已发现 2 · 已分析 1');
+    expect(screen.queryByRole('heading', { name: '局势' })).toBeNull();
+    const revealed = { ...state, scenarioProgress: { ...state.scenarioProgress, clocks: {
+      ...state.scenarioProgress.clocks, fusangEscape: { value: 6, active: true, visible: true }
+    } } };
+    view.rerender(<InfoDrawer open onClose={vi.fn()} onOpen={vi.fn()} state={revealed} />);
+    const meter = screen.getByRole('progressbar', { name: '扶桑花号离港' });
+    expect(meter).toHaveAttribute('value', '6'); expect(meter).toHaveAttribute('max', '7');
+    expect(screen.queryByText('internal')).toBeNull();
+  });
+  it('searches visible log text and time while preserving order, full multiline text and the saved records', () => {
+    const state = makeState(); state.actionLog = [
+      { time: '21:02', text: 'Henry · 侦查：普通成功\n门槛上有划痕。' },
+      { time: '21:01', text: '剧情事件：EV_HIDDEN_TRACE' },
+      { time: '21:00', text: '检查窗框' }
+    ];
+    const original = JSON.stringify(state.actionLog);
+    renderDrawer(state); fireEvent.click(screen.getByRole('tab', { name: '日志' }));
+    const list = screen.getByRole('list', { name: '行动记录' });
+    expect(within(list).getAllByRole('listitem')[0]).toHaveTextContent('Henry · 侦查');
+    const input = screen.getByRole('searchbox', { name: '搜索行动日志' });
+    fireEvent.change(input, { target: { value: ' HENRY ' } });
+    expect(within(list).getAllByRole('listitem')).toHaveLength(1);
+    expect(within(list).getByText(/门槛上有划痕/).textContent).toContain('\n');
+    fireEvent.change(input, { target: { value: '21:00' } }); expect(screen.getByText('检查窗框')).toBeInTheDocument();
+    fireEvent.change(input, { target: { value: 'EV_HIDDEN_TRACE' } });
+    expect(screen.getByRole('status')).toHaveTextContent('没有找到相关记录。');
+    expect(screen.queryByText('剧情事件：EV_HIDDEN_TRACE')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '清空日志搜索' })); expect(input).toHaveFocus();
+    expect(within(list).getAllByRole('listitem')).toHaveLength(2);
+    expect(JSON.stringify(state.actionLog)).toBe(original);
+  });
+  it('keeps a log search and reading position when switching tabs but starts fresh after closing', () => {
+    const state = makeState(); state.actionLog = [{ time: '21:00', text: '检查窗框' }];
+    const view = render(<InfoDrawer open onClose={vi.fn()} onOpen={vi.fn()} state={state} />);
+    fireEvent.click(screen.getByRole('tab', { name: '日志' }));
+    fireEvent.change(screen.getByRole('searchbox', { name: '搜索行动日志' }), { target: { value: '窗框' } });
+    const list = screen.getByRole('list', { name: '行动记录' }); list.scrollTop = 72; fireEvent.scroll(list);
+    fireEvent.click(screen.getByRole('tab', { name: '进度' })); fireEvent.click(screen.getByRole('tab', { name: '日志' }));
+    expect(screen.getByRole('searchbox', { name: '搜索行动日志' })).toHaveValue('窗框');
+    expect(screen.getByRole('list', { name: '行动记录' }).scrollTop).toBe(72);
+    view.rerender(<InfoDrawer open={false} onClose={vi.fn()} onOpen={vi.fn()} state={state} />);
+    expect(screen.queryByRole('searchbox', { name: '搜索行动日志' })).toBeNull();
+    view.rerender(<InfoDrawer open onClose={vi.fn()} onOpen={vi.fn()} state={state} />);
+    fireEvent.click(screen.getByRole('tab', { name: '日志' }));
+    expect(screen.getByRole('searchbox', { name: '搜索行动日志' })).toHaveValue('');
+    expect(screen.getByRole('list', { name: '行动记录' }).scrollTop).toBe(0);
+  });
   it('keeps the fixed phone entry a normal button despite small pointer movement', () => {
     layout.portrait = true;
     const onOpen = vi.fn();
@@ -92,7 +161,8 @@ describe('InfoDrawer v7 investigation workspace', () => {
     const progress = screen.getByRole('tab', { name: '进度' });
     expect(progress).toHaveFocus(); expect(progress).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tabpanel')).toHaveAccessibleName('进度');
-    expect(screen.getByText(/已发现 0/)).toHaveTextContent('已发现 0 · 已分析 0');
+    expect(screen.queryByText(/已发现 0/)).toBeNull();
+    expect(screen.queryByRole('heading', { name: '线索进度' })).toBeNull();
     expect(screen.queryByText(/\/\s*8/)).toBeNull();
     fireEvent.keyDown(progress, { key: 'End' });
     expect(screen.getByRole('tab', { name: '日志' })).toHaveFocus();
@@ -226,8 +296,9 @@ describe('InfoDrawer v7 investigation workspace', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: '进度' }));
     expect(screen.getByRole('heading', { name: '调查目标' })).toBeInTheDocument();
-    expect(screen.getByText(/已发现 0/)).toBeInTheDocument();
+    expect(screen.queryByText(/已发现 0/)).toBeNull();
     fireEvent.click(screen.getByRole('tab', { name: '日志' }));
     expect(screen.getByRole('heading', { name: '行动日志' })).toBeInTheDocument();
+    expect(screen.getByText('暂无行动记录。')).toBeInTheDocument();
   });
 });

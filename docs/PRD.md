@@ -8,6 +8,8 @@
 
 ### Android companion build — 2026-09-09
 
+Version 0.4.17 gives progress and action logs the existing illustrated dossier surfaces and readable 15px body text. Current objectives lead, past objectives expand on demand, and an ended investigation opens its review. Zero clue statistics disappear; authored visible clocks show their real labels and values. Log search finds known text or time in the existing latest-first order, retains the query and reading position between tabs, and clears on leaving the archive. Only the log body scrolls below fixed controls, including keyboard-reduced layouts. Internal diagnostics remain excluded and game/save/AI rules stay unchanged.
+
 Version 0.4.16 keeps the fixed phone information icon a normal tap target: a small finger drift no longer swallows the tap or leaves a dragging state. Desktop keeps optional vertical repositioning through local pointer capture; release, cancellation and switching to phone layout reset the gesture, while keyboard activation remains available. Obsolete manual case-board styles are removed without adding assets or changing known information.
 
 Version 0.4.15 keeps the desktop relationship graph readable when details open or filters change: the selected record and nearby context fit the actual pane, closing details restores the player's previous view, and ordinary browsing does not undo manual pan/zoom. The graph reuses the same photographed dossier art as the phone archive, with Chinese 44px zoom and overview controls. Phone and native portrait continue to use the compact archive without constructing the graph; no additional bitmap resources are introduced.
