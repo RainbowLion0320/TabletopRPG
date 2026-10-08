@@ -1171,6 +1171,75 @@ test('moving the desktop case board to a phone preserves search and removes the 
   await expect(drawer.locator('.case-flow-node.npc', { hasText: '伊莎贝拉·摩勒' })).toBeVisible();
 });
 
+for (const size of [{ width: 980, height: 640 }, { width: 1440, height: 900 }]) {
+  test(`desktop case camera fits details and filters while restoring the player's view at ${size.width}px`, async ({ page }, testInfo) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.setViewportSize(size);
+    await gotoWithSave(page, createDynamicCaseBoardSave());
+    await page.getByRole('button', { name: '继续游戏' }).click();
+    await page.getByRole('button', { name: '资料', exact: true }).click();
+    const drawer = page.getByRole('dialog', { name: '资料', exact: true });
+    const graph = drawer.locator('.case-board-flow-wrap');
+    const viewport = graph.locator('.react-flow__viewport');
+    const view = () => viewport.evaluate((element) => (element as HTMLElement).style.transform);
+    const inside = (selector: string) => graph.locator(selector).evaluate((element) => {
+      const card = element.getBoundingClientRect();
+      const pane = element.closest('.case-board-flow-wrap')!.getBoundingClientRect();
+      return card.left >= pane.left + 4 && card.top >= pane.top + 4 && card.right <= pane.right - 4 && card.bottom <= pane.bottom - 4;
+    });
+    const node = drawer.getByRole('button', { name: '人物 伊莎贝拉·摩勒', exact: true });
+    await expect.poll(view).not.toBe('translate(0px, 0px) scale(1)');
+    const firstView = await view();
+    const zoomOut = drawer.getByRole('button', { name: '缩小关系图', exact: true });
+    const tools = drawer.getByRole('group', { name: '关系图视角', exact: true });
+    for (const button of await tools.getByRole('button').all()) {
+      const box = (await button.boundingBox())!;
+      expect(box.width).toBeGreaterThanOrEqual(44); expect(box.height).toBeGreaterThanOrEqual(44);
+    }
+    await zoomOut.click(); await expect.poll(view).not.toBe(firstView);
+    const originalView = await view();
+    await node.focus(); await page.keyboard.press('Enter');
+    const detail = drawer.getByRole('dialog', { name: '伊莎贝拉·摩勒详情', exact: true });
+    await expect(detail).toBeVisible();
+    await expect.poll(() => inside('.case-flow-node.npc.selected')).toBe(true);
+    await detail.getByRole('button', { name: '查看摩勒住宅资料' }).click();
+    const scene = drawer.getByRole('dialog', { name: '摩勒住宅详情', exact: true });
+    await expect.poll(() => inside('.case-flow-node.scene.selected')).toBe(true);
+    await scene.getByRole('button', { name: '返回上一份资料' }).click();
+    await expect(detail).toBeVisible();
+    await expect.poll(() => inside('.case-flow-node.npc.selected')).toBe(true);
+    await page.keyboard.press('Escape'); await expect(detail).toHaveCount(0);
+    await expect.poll(view).toBe(originalView); await expect(node).toBeFocused();
+    const paneBox = (await graph.boundingBox())!;
+    await page.mouse.move(paneBox.x + 20, paneBox.y + 20);
+    await page.mouse.down(); await page.mouse.move(paneBox.x + 180, paneBox.y + 90, { steps: 8 }); await page.mouse.up();
+    await expect.poll(view).not.toBe(originalView);
+    const pannedView = await view();
+    await drawer.getByRole('searchbox', { name: '搜索案件资料' }).focus();
+    await viewport.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    expect(await view()).toBe(pannedView);
+    await drawer.getByRole('button', { name: '查看全部关系', exact: true }).click();
+    await expect.poll(() => graph.locator('.case-flow-node').evaluateAll((elements) => elements.every((element) => {
+      const card = element.getBoundingClientRect(); const pane = element.closest('.case-board-flow-wrap')!.getBoundingClientRect();
+      return card.left >= pane.left && card.top >= pane.top && card.right <= pane.right && card.bottom <= pane.bottom;
+    }))).toBe(true);
+    await drawer.getByRole('combobox', { name: '资料类型' }).selectOption('npc');
+    const search = drawer.getByRole('searchbox', { name: '搜索案件资料' }); await search.fill('伊莎贝拉');
+    await expect(graph.locator('.case-flow-node')).toHaveCount(1);
+    await expect.poll(() => inside('.case-flow-node.npc')).toBe(true);
+    await search.fill('没有这种资料'); await expect(graph.getByText('当前筛选条件下没有匹配资料。')).toBeVisible();
+    await search.fill('伊莎贝拉'); await expect(graph.locator('.case-flow-node')).toHaveCount(1);
+    await expect.poll(() => inside('.case-flow-node.npc')).toBe(true);
+    await node.click();
+    await page.setViewportSize({ width: size.width - 40, height: size.height - 30 });
+    await expect.poll(() => inside('.case-flow-node.npc.selected')).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('case-camera.png') });
+    await page.keyboard.press('Escape'); await expect(detail).toHaveCount(0);
+    await expect(search).toHaveValue('伊莎贝拉');
+    await expect(drawer.getByRole('combobox', { name: '资料类型' })).toHaveValue('npc');
+  });
+}
+
 test('desktop case details own Escape while keyboard navigation stays in the enclosing archive', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await gotoWithSave(page, createDynamicCaseBoardSave());
