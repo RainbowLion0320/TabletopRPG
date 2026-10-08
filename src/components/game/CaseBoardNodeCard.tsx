@@ -1,6 +1,7 @@
 import { FileText, Lightbulb, MapPin, UserRound } from 'lucide-react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { CaseBoardDisplayNode } from './caseBoardGraph';
+import { CASE_RECORD_LABEL } from './caseBoardPresentation';
 
 export interface CaseBoardFlowNodeData extends Record<string, unknown> {
   node: CaseBoardDisplayNode;
@@ -15,25 +16,18 @@ function icon(type: CaseBoardDisplayNode['type']) {
   return <FileText size={15} />;
 }
 
-const TYPE_LABEL: Record<CaseBoardDisplayNode['type'], string> = {
-  npc: '人物',
-  scene: '地点',
-  item: '物证',
-  event: '事件',
-  theory: '推理'
-};
-
 export function CaseBoardNodeCard({ data, selected }: NodeProps) {
   const { node, faded, recent } = data as CaseBoardFlowNodeData;
   return (
-    <article
-      aria-label={`${TYPE_LABEL[node.type]} ${node.title}`}
+    <button
+      type="button"
+      aria-label={`${CASE_RECORD_LABEL[node.type]} ${node.title}`}
       className={`case-flow-node ${node.type} ${node.certainty}${selected ? ' selected' : ''}${faded ? ' faded' : ''}${recent ? ' recent' : ''}`}
     >
       <Handle className="case-flow-handle" position={Position.Left} type="target" />
       {node.portrait ? <img src={node.portrait} alt="" /> : null}
       <div className="case-flow-node-body">
-        <span className="case-flow-node-meta">{icon(node.type)}{TYPE_LABEL[node.type]}</span>
+        <span className="case-flow-node-meta">{icon(node.type)}{CASE_RECORD_LABEL[node.type]}</span>
         <strong>{node.title}</strong>
         {node.subtitle ? <small>{node.subtitle}</small> : null}
         <div className="case-flow-node-foot">
@@ -42,6 +36,6 @@ export function CaseBoardNodeCard({ data, selected }: NodeProps) {
         </div>
       </div>
       <Handle className="case-flow-handle" position={Position.Right} type="source" />
-    </article>
+    </button>
   );
 }

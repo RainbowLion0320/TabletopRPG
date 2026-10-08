@@ -26,7 +26,7 @@
 /* A quiet surface underneath the art is also the missing-image fallback. */
 :root.fog-ui :where(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
   .dice-roll-confirm, .menu-button, .drawer-tab, .narrative-toggle-btn, .audio-close,
-  .entity-detail-close, .info-drawer-react header > button, .case-board-inspector header button,
+  .entity-detail-close, .info-drawer-react header > button, .case-board-inspector header button, .case-related-record,
   .case-board-toolbar > button, .preset-attrs-toggle, .menu-list button, .info-drawer-tabs button,
   .suggestion-row button) {
   isolation: isolate;
@@ -45,7 +45,7 @@
 }
 
 /* Raised bronze plate for the current primary action and compact tool icons. */
-:root.fog-ui :is(.primary-btn, .primary-action, .secondary-action, .dice-roll-confirm, .menu-button, .audio-icon-button, .game-menu .menu-list button, .game-menu-close, .api-config-close, .api-key-reveal) { position: relative; }
+:root.fog-ui :is(.primary-btn, .primary-action, .secondary-action, .dice-roll-confirm, .menu-button, .audio-icon-button, .game-menu .menu-list button, .game-menu-close, .api-config-close, .api-key-reveal, .case-related-record) { position: relative; }
 :root.fog-ui :is(.primary-btn, .primary-action, .dice-roll-confirm) {
   background: #aa8952;
   border-color: #b99559;
@@ -54,7 +54,8 @@
   box-shadow: inset 0 0 0 2px #15110b, 0 2px 0 #080706, 0 0 14px #bb8d3620;
 }
 :root.fog-ui :where(.primary-btn, .primary-action, .secondary-action, .dice-roll-confirm,
-  .menu-button, .drawer-tab, .audio-icon-button, .game-menu .menu-list button, .game-menu-close, .api-config-close, .api-key-reveal)::before {
+  .menu-button, .drawer-tab, .audio-icon-button, .game-menu .menu-list button, .game-menu-close, .api-config-close, .api-key-reveal,
+  .entity-detail-close, .case-board-inspector header button, .case-related-record)::before {
   content: '';
   position: absolute;
   inset: -1px;
@@ -84,7 +85,7 @@
   :root.fog-ui :where(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
     .dice-roll-confirm, .menu-button, .drawer-tab, .narrative-toggle-btn, .audio-close,
     .entity-detail-close, .menu-list button, .suggestion-row button, .info-drawer-tabs button,
-    .preset-attrs-toggle, .case-board-toolbar > button):enabled:hover {
+    .preset-attrs-toggle, .case-board-toolbar > button, .case-board-inspector header button, .case-related-record):enabled:hover {
     border-color: #e4c181;
     background-color: #51402a;
     color: #fff2d4;
@@ -99,7 +100,7 @@
 }
 :root.fog-ui :where(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
   .dice-roll-confirm, .menu-button, .drawer-tab, .narrative-toggle-btn, .menu-list button,
-  .suggestion-row button, .info-drawer-tabs button):enabled:active {
+  .suggestion-row button, .info-drawer-tabs button, .entity-detail-close, .case-board-inspector header button, .case-related-record):enabled:active {
   transform: translateY(1px);
   background-color: #15120d;
   box-shadow: inset 0 2px 5px #000c;
@@ -130,7 +131,7 @@
 :root.fog-ui .title-actions > :nth-child(-n+2) { font-size: 17px; }
 
 /* Ledger surfaces: ornamental outer rim, restrained interiors for long reading. */
-:root.fog-ui :is(.modal-card, .entity-detail-card) {
+:root.fog-ui .modal-card {
   position: relative;
   isolation: isolate;
   border-color: #79603c;
@@ -139,7 +140,7 @@
   background-image: linear-gradient(#191610ee, #12110fed), var(--ui-grain);
   box-shadow: inset 0 0 0 3px #0b0a08, inset 0 0 0 4px #58452b, 0 18px 55px #000a;
 }
-:root.fog-ui :is(.modal-card, .entity-detail-card)::before {
+:root.fog-ui .modal-card::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -178,7 +179,7 @@
 :root.fog-ui :is(.modal-card input, .dock-input):disabled { color: #9e927d; border-color: #443b2e; }
 :root.fog-ui .modal-error { border-left: 2px solid #c07669; padding: 7px 10px; background: #40231d; }
 
-:root.fog-ui :is(.party-compact, .check-card, .entity-detail-known, .entity-detail-unknown,
+:root.fog-ui :is(.party-compact, .check-card,
   .case-board-mobile-card, .case-board-compact-card, .case-board-node, .case-board-threads button) { border-radius: 2px; }
 :root.fog-ui .party-compact strong { font-family: var(--ui-font); }
 
@@ -228,7 +229,7 @@
 :root.fog-ui .menu-list button { justify-content: flex-start; box-shadow: inset 0 -1px #57452d; padding-inline: 12px; }
 
 /* Archive tabs and cards carry the same file-tab selection language. */
-:root.fog-ui :is(.info-drawer-react, .case-board-inspector) { background: #15130f; }
+:root.fog-ui .info-drawer-react { background: #15130f; }
 :root.fog-ui :is(.info-drawer-tabs button.active, .case-board-toolbar > button.active,
   .case-board-threads button[aria-pressed='true']) {
   border-color: #bc9b5d;

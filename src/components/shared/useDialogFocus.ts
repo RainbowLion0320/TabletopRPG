@@ -1,18 +1,25 @@
 import { useEffect, useRef, type RefObject } from 'react';
 
-const dialogs: HTMLElement[] = [];
+interface DialogEntry { element: HTMLElement; trapFocus: boolean }
+const dialogs: DialogEntry[] = [];
 const focusableSelector = 'button:not(:disabled), a[href], input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), summary, [tabindex]:not([tabindex="-1"])';
 
 /** Keep keyboard actions in the topmost dialog and restore its opener on close. */
-export function useDialogFocus(open: boolean, ref: RefObject<HTMLElement>, onClose: () => void, returnFocusRef?: RefObject<HTMLElement>) {
+export function useDialogFocus(open: boolean, ref: RefObject<HTMLElement>, onClose: () => void, returnFocusRef?: RefObject<HTMLElement>, options?: { trapFocus?: boolean }) {
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
+  const trapFocus = options?.trapFocus ?? true;
   useEffect(() => {
-    const dialog = ref.current;
-    if (!open || !dialog) return;
+    const element = ref.current;
+    if (!open || !element) return;
+    const dialog = element;
     const previous = returnFocusRef?.current
       ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
-    dialogs.push(dialog);
+    const entry = { element: dialog, trapFocus };
+    // Child effects may register first when a nested dialog mounts with its parent.
+    const descendant = dialogs.findIndex((item) => dialog.contains(item.element));
+    if (descendant < 0) dialogs.push(entry);
+    else dialogs.splice(descendant, 0, entry);
     const controls = () => Array.from(dialog.querySelectorAll<HTMLElement>(focusableSelector))
       .filter((element) => element.tabIndex >= 0 && !element.hidden && !element.closest('[inert], [aria-hidden="true"]'))
       .filter((element) => {
@@ -20,14 +27,18 @@ export function useDialogFocus(open: boolean, ref: RefObject<HTMLElement>, onClo
         return !collapsed || collapsed.querySelector('summary') === element;
       })
       .sort((left, right) => left.compareDocumentPosition(right) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
-    (dialog.querySelector<HTMLElement>('[aria-label^="关闭"]') ?? controls()[0] ?? dialog).focus();
+    if (dialogs[dialogs.length - 1] === entry) {
+      (dialog.querySelector<HTMLElement>('[aria-label^="关闭"]') ?? controls()[0] ?? dialog).focus({ preventScroll: true });
+    }
     function handleKeyDown(event: KeyboardEvent) {
-      if (dialogs[dialogs.length - 1] !== dialog) return;
       if (event.key === 'Escape') {
+        if (dialogs[dialogs.length - 1] !== entry) return;
         event.preventDefault();
-        event.stopPropagation();
+        event.stopImmediatePropagation();
         closeRef.current();
       } else if (event.key === 'Tab') {
+        // A desktop side panel owns Escape; Tab still belongs to its enclosing modal.
+        if ([...dialogs].reverse().find((item) => item.trapFocus) !== entry) return;
         const elements = controls();
         const first = elements[0] ?? dialog;
         const last = elements[elements.length - 1] ?? dialog;
@@ -41,10 +52,13 @@ export function useDialogFocus(open: boolean, ref: RefObject<HTMLElement>, onClo
     document.addEventListener('keydown', handleKeyDown, true);
     return () => {
       document.removeEventListener('keydown', handleKeyDown, true);
-      const wasTopmost = dialogs[dialogs.length - 1] === dialog;
-      const index = dialogs.lastIndexOf(dialog);
+      const wasTopmost = dialogs[dialogs.length - 1] === entry;
+      const index = dialogs.indexOf(entry);
       if (index >= 0) dialogs.splice(index, 1);
-      if (wasTopmost && previous?.isConnected) previous.focus({ preventScroll: true });
+      const target = returnFocusRef?.current ?? previous;
+      const active = document.activeElement;
+      const restore = active === document.body || dialog.contains(active);
+      if (wasTopmost && restore && target?.isConnected && !target.closest('[inert], [aria-hidden="true"]')) target.focus({ preventScroll: true });
     };
-  }, [open, ref, returnFocusRef]);
+  }, [open, ref, returnFocusRef, trapFocus]);
 }

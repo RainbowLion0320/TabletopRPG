@@ -1,17 +1,23 @@
-import { useRef } from 'react';
-import { X } from 'lucide-react';
+import { useEffect, useRef, type RefObject } from 'react';
+import { ArrowLeft, ChevronRight, X } from 'lucide-react';
 import { useDialogFocus } from '../shared/useDialogFocus';
 import { useCaseBoardListLayout } from '../../platform/layout';
 import { storyData } from '../../data/storyData';
 import { getClueDetail, getNpcDetail } from '../../dm/entityDetail';
 import type { GameState } from '../../types/game';
 import type { CaseBoardDisplayEdge, CaseBoardDisplayNode, CaseBoardGraphModel } from './caseBoardGraph';
+import { caseRecordImage } from './caseBoardPresentation';
+import { RecordDetailMedia } from './RecordDetailMedia';
+import './record-detail.css';
 
 interface CaseBoardInspectorProps {
   model: CaseBoardGraphModel;
   node: CaseBoardDisplayNode;
   state: GameState;
   onClose: () => void;
+  onSelect: (id: string) => void;
+  onBack?: () => void;
+  returnFocusRef: RefObject<HTMLElement>;
 }
 
 function nodeBaseInfo(node: CaseBoardDisplayNode, state: GameState) {
@@ -38,10 +44,9 @@ function nodeBaseInfo(node: CaseBoardDisplayNode, state: GameState) {
   return { role: node.type === 'theory' ? '案件推理' : '案件记录', description: node.subtitle ?? node.title, secrets: [] as string[] };
 }
 
-function relationText(edge: CaseBoardDisplayEdge, node: CaseBoardDisplayNode, model: CaseBoardGraphModel) {
+function relatedNode(edge: CaseBoardDisplayEdge, node: CaseBoardDisplayNode, model: CaseBoardGraphModel) {
   const otherId = edge.from === node.id ? edge.to : edge.from;
-  const other = model.nodes.find((candidate) => candidate.id === otherId);
-  return `${edge.label ?? '存在关联'} · ${other?.title ?? '相关资料'}`;
+  return model.nodes.find((candidate) => candidate.id === otherId);
 }
 
 function sourceLines(
@@ -72,10 +77,18 @@ const INSIGHT_LABEL = {
   status: '状态'
 } as const;
 
-export function CaseBoardInspector({ model, node, onClose, state }: CaseBoardInspectorProps) {
+export function CaseBoardInspector({ model, node, onClose, onSelect, onBack, returnFocusRef, state }: CaseBoardInspectorProps) {
   const mobile = useCaseBoardListLayout();
   const dialogRef = useRef<HTMLElement>(null);
-  useDialogFocus(mobile, dialogRef, onClose);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const previousNode = useRef<string | null>(null);
+  useDialogFocus(true, dialogRef, mobile && onBack ? onBack : onClose, returnFocusRef, { trapFocus: mobile });
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+    if (previousNode.current && previousNode.current !== node.id) headingRef.current?.focus({ preventScroll: true });
+    previousNode.current = node.id;
+  }, [node.id]);
   const base = nodeBaseInfo(node, state);
   const relations = model.edges.filter((edge) => edge.from === node.id || edge.to === node.id);
   const insights = model.insights
@@ -91,18 +104,21 @@ export function CaseBoardInspector({ model, node, onClose, state }: CaseBoardIns
     <aside
       aria-label={`${node.title}详情`}
       aria-modal={mobile ? 'true' : undefined}
-      className="case-board-inspector"
+      className={`case-board-inspector${mobile ? ' modal' : ''}`}
       ref={dialogRef}
-      role={mobile ? 'dialog' : undefined}
+      role="dialog"
+      tabIndex={-1}
     >
       <header>
-        <div>
+        {onBack && <button aria-label="返回上一份资料" className="record-detail-back" onClick={onBack} title="返回上一份资料" type="button"><ArrowLeft size={18} /></button>}
+        <div className="record-detail-identity">
           <span>{base.role}</span>
-          <h4>{node.title}</h4>
+          <h4 ref={headingRef} tabIndex={-1} title={node.title}>{node.title}</h4>
         </div>
         <button aria-label="关闭资料详情" onClick={onClose} title="关闭" type="button"><X size={17} /></button>
       </header>
-      <div className="case-board-inspector-scroll">
+      <div className="case-board-inspector-scroll" ref={scrollRef}>
+        <RecordDetailMedia src={caseRecordImage(node)} kind={node.type === 'scene' ? 'scene' : 'portrait'} name={node.title} />
         <section>
           <h5>已知信息</h5>
           <p>{base.description}</p>
@@ -111,16 +127,22 @@ export function CaseBoardInspector({ model, node, onClose, state }: CaseBoardIns
         {relations.length ? (
           <section>
             <h5>相关关系</h5>
-            <ul>{relations.map((edge) => <li key={edge.id}>{relationText(edge, node, model)}</li>)}</ul>
+            <ul className="case-related-list">{relations.map((edge) => {
+              const other = relatedNode(edge, node, model);
+              if (!other) return null;
+              return <li key={edge.id}><button className="case-related-record" type="button" aria-label={`查看${other.title}资料`} onClick={() => onSelect(other.id)}>
+                <span><small>{edge.label ?? '存在关联'}</small><strong>{other.title}</strong></span><ChevronRight size={17} aria-hidden="true" />
+              </button></li>;
+            })}</ul>
           </section>
         ) : null}
         {insights.length ? (
           <section>
-            <h5>实体档案</h5>
+            <h5>调查记录</h5>
             <div className="case-board-insight-list">
               {insights.map((insight) => (
                 <article className={insight.certainty} key={insight.id}>
-                  <span>{INSIGHT_LABEL[insight.kind]} · 第 {insight.updatedTurn} 回合</span>
+                  <span>{INSIGHT_LABEL[insight.kind]}{insight.certainty === 'hypothesis' ? ' · 待验证' : ''} · 第 {insight.updatedTurn} 回合</span>
                   <p>{insight.text}</p>
                 </article>
               ))}
@@ -128,10 +150,10 @@ export function CaseBoardInspector({ model, node, onClose, state }: CaseBoardIns
           </section>
         ) : null}
         {sources.length ? (
-          <section>
-            <h5>信息来源</h5>
+          <details className="case-record-sources" key={node.id}>
+            <summary>信息来源</summary>
             <ul>{sources.map((source) => <li key={source}>{source}</li>)}</ul>
-          </section>
+          </details>
         ) : null}
       </div>
     </aside>

@@ -35,7 +35,9 @@ export function CaseBoard({ state }: CaseBoardProps) {
   const [type, setType] = useState<'all' | CaseBoardDisplayNodeType>('all');
   const [showHypotheses, setShowHypotheses] = useState(true);
   const [threadId, setThreadId] = useState('all');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<string[]>([]);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const selectedId = selection[selection.length - 1] ?? null;
   const filtered = useMemo(() => filterCaseBoardGraph(model, {
     query, type, showHypotheses, threadId
   }), [model, query, showHypotheses, threadId, type]);
@@ -43,26 +45,28 @@ export function CaseBoard({ state }: CaseBoardProps) {
   useEffect(() => { if (archive) setThreadId('all'); }, [archive]);
 
   useEffect(() => {
-    if (selectedId && !filtered.nodes.some((node) => node.id === selectedId)) setSelectedId(null);
-  }, [filtered.nodes, selectedId]);
+    if (selection.some((id) => !model.nodes.some((node) => node.id === id))) {
+      setSelection((current) => current.filter((id) => model.nodes.some((node) => node.id === id)));
+    }
+  }, [model.nodes, selection]);
 
   useEffect(() => {
     if (threadId !== 'all' && !model.threads.some((thread) => thread.id === threadId)) setThreadId('all');
   }, [model.threads, threadId]);
 
-  useEffect(() => {
-    if (!selectedId) return;
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') setSelectedId(null);
-    }
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [selectedId]);
-
   const selectedNode = model.nodes.find((node) => node.id === selectedId) ?? null;
 
   function selectNode(node: CaseBoardDisplayNode) {
-    setSelectedId(node.id);
+    returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setSelection([node.id]);
+  }
+
+  function followRelation(id: string) {
+    if (!model.nodes.some((node) => node.id === id)) return;
+    setSelection((current) => {
+      const index = current.indexOf(id);
+      return index >= 0 ? current.slice(0, index + 1) : [...current, id];
+    });
   }
 
   return (
@@ -76,17 +80,17 @@ export function CaseBoard({ state }: CaseBoardProps) {
       <div className="case-board-toolbar">
         <label className="case-board-search">
           <Search size={15} />
-          <input ref={searchRef} type="search" aria-label="搜索案件资料" onChange={(event) => setQuery(event.target.value)} placeholder="搜索人物、地点或线索" value={query} />
-          {query && <button type="button" className="case-search-clear" aria-label="清除案件搜索" onClick={() => { setQuery(''); searchRef.current?.focus(); }}><X size={16} /></button>}
+          <input ref={searchRef} type="search" aria-label="搜索案件资料" onChange={(event) => { setSelection([]); setQuery(event.target.value); }} placeholder="搜索人物、地点或线索" value={query} />
+          {query && <button type="button" className="case-search-clear" aria-label="清除案件搜索" onClick={() => { setSelection([]); setQuery(''); searchRef.current?.focus(); }}><X size={16} /></button>}
         </label>
-        <select aria-label="资料类型" onChange={(event) => setType(event.target.value as typeof type)} value={type}>
+        <select aria-label="资料类型" onChange={(event) => { setSelection([]); setType(event.target.value as typeof type); }} value={type}>
           {TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </select>
         {model.nodes.some((node) => node.certainty === 'hypothesis') && <button
           aria-label="显示推测"
           aria-pressed={showHypotheses}
           className={showHypotheses ? 'active' : ''}
-          onClick={() => setShowHypotheses((value) => !value)}
+          onClick={() => { setSelection([]); setShowHypotheses((value) => !value); }}
           type="button"
         >
           {showHypotheses ? <Eye size={15} /> : <EyeOff size={15} />}
@@ -98,17 +102,17 @@ export function CaseBoard({ state }: CaseBoardProps) {
         <div className={`case-board-workspace${selectedNode ? ' has-inspector' : ''}`}>
           {!archive && <nav className="case-board-threads" aria-label="调查脉络">
             <h4>调查脉络</h4>
-            <button aria-pressed={threadId === 'all'} onClick={() => setThreadId('all')} type="button">
+            <button aria-pressed={threadId === 'all'} onClick={() => { setSelection([]); setThreadId('all'); }} type="button">
               <strong>全部资料</strong><span>{model.nodes.length}</span>
             </button>
             {model.threads.map((thread) => (
-              <button aria-pressed={threadId === thread.id} key={thread.id} onClick={() => setThreadId(thread.id)} type="button">
+              <button aria-pressed={threadId === thread.id} key={thread.id} onClick={() => { setSelection([]); setThreadId(thread.id); }} type="button">
                 <strong>{thread.title}</strong><span>{thread.nodeIds.length}</span>
               </button>
             ))}
           </nav>}
 
-          {!archive && <Suspense fallback={<div className="case-board-flow-wrap"><p className="empty-note">正在整理关系图...</p></div>}><DesktopBoard model={filtered} selectedId={selectedId} onSelect={setSelectedId} /></Suspense>}
+          {!archive && <Suspense fallback={<div className="case-board-flow-wrap"><p className="empty-note">正在整理关系图...</p></div>}><DesktopBoard model={filtered} selectedId={selectedId} onSelect={(id) => { const node = model.nodes.find((item) => item.id === id); if (node) selectNode(node); }} /></Suspense>}
 
           {archive && <div className="case-board-mobile-list" aria-label="案件资料列表">
             {model.threads.map((thread) => {
@@ -129,7 +133,8 @@ export function CaseBoard({ state }: CaseBoardProps) {
             {!filtered.nodes.length ? <p className="empty-note">当前筛选条件下没有匹配资料。</p> : null}
           </div>}
 
-          {selectedNode ? <CaseBoardInspector model={model} node={selectedNode} onClose={() => setSelectedId(null)} state={state} /> : null}
+          {selectedNode ? <CaseBoardInspector model={model} node={selectedNode} onClose={() => setSelection([])} state={state}
+            onSelect={followRelation} onBack={selection.length > 1 ? () => setSelection((current) => current.slice(0, -1)) : undefined} returnFocusRef={returnFocusRef} /> : null}
         </div>
       ) : <p className="empty-note">案件板还没有足够资料，先调查现场或询问 NPC。</p>}
     </section>

@@ -17,6 +17,8 @@ export interface EntityDetail {
   role: string;
   /** 立绘 URL（可选） */
   portrait?: string;
+  /** 已到访场景的公开画面（可选） */
+  image?: string;
   /** 始终可见的基础描述（NPC: appearance / 线索: desc） */
   baseInfo: string;
   /** 已解锁的真相文本数组 */
@@ -188,6 +190,7 @@ function sceneDetail(sceneId: string, state: GameState): EntityDetail | null {
   return {
     name: layered.public.name,
     role: layered.public.chapterTitle,
+    image: visited ? layered.public.image : undefined,
     baseInfo: layered.public.desc,
     knownSecrets,
     unknownCount: 0

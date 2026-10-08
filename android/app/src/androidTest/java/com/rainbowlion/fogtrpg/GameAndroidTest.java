@@ -272,7 +272,10 @@ public class GameAndroidTest {
                 js("document.querySelector('.narrative-toggle-btn').click();document.querySelector('.npc-nameplate').click()");
                 reachable(".entity-detail-close"); screenshot(prefix + "-entity");
                 // Long unlocked descriptions scroll without moving the close control.
-                js("document.querySelector('.entity-detail-known p').textContent='长篇调查记录。'.repeat(150);document.querySelector('.entity-detail-body').scrollTop=99999");
+                js("document.querySelector('.entity-detail-known p').textContent='长篇调查记录。'.repeat(150)");
+                String entityHeaderTop = js("document.querySelector('.entity-detail-header').getBoundingClientRect().top");
+                js("document.querySelector('.entity-detail-body').scrollTop=99999");
+                assertEquals("Entity title stays outside the long body scroll", entityHeaderTop, js("document.querySelector('.entity-detail-header').getBoundingClientRect().top"));
                 reachable(".entity-detail-close"); js("document.querySelector('.entity-detail-close').click()");
                 js("document.querySelector('.drawer-tab').click()");
                 until("document.querySelector('.case-board-mobile-card')"); reachable("[aria-label='关闭资料']");
@@ -292,8 +295,18 @@ public class GameAndroidTest {
                     viewport(size[0], size[1]);
                 }
                 reachable(".case-board-mobile-card"); screenshot(prefix + "-board");
-                js("document.querySelector('.case-board-mobile-card').click()"); reachable("[aria-label='关闭资料详情']");
+                js("document.querySelector(\"[aria-label='人物 伊莎贝拉·摩勒']\").click()"); reachable("[aria-label='关闭资料详情']");
                 until("document.querySelector('.case-board-inspector').contains(document.activeElement)");
+                until("document.querySelector('.case-board-inspector .record-detail-media img').complete&&document.querySelector('.case-board-inspector .record-detail-media img').naturalWidth>0");
+                js("document.querySelector(\"[aria-label='查看摩勒住宅资料']\").click()");
+                until("document.querySelector('.case-board-inspector h4').textContent==='摩勒住宅'");
+                assertEquals("Scene archive preserves its full painting", "true", js("getComputedStyle(document.querySelector('.case-board-inspector .record-detail-media img')).objectFit==='contain'"));
+                reachable("[aria-label='返回上一份资料']");
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                until("document.querySelector('.case-board-inspector h4').textContent==='伊莎贝拉·摩勒'");
+                viewport(size[0], 300); reachable("[aria-label='关闭资料详情']");
+                assertEquals("A short viewport gives room to known text instead of the photo", "true", js("getComputedStyle(document.querySelector('.case-board-inspector .record-detail-media')).display==='none'"));
+                viewport(size[0], size[1]);
                 screenshot(prefix + "-inspector");
                 InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
                 until("!document.querySelector('.case-board-inspector') && document.querySelector('.info-drawer-react.open')"); click("进度");

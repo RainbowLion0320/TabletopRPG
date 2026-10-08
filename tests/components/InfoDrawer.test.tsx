@@ -12,6 +12,20 @@ function renderDrawer(state = makeState({ activeNpcName: '伊莎贝拉·摩勒' 
 }
 
 describe('InfoDrawer v7 investigation workspace', () => {
+  it('follows only known related records, returns within the detail and preserves the list filter and opener', async () => {
+    renderDrawer();
+    const type = await screen.findByRole('combobox', { name: '资料类型' });
+    fireEvent.change(type, { target: { value: 'npc' } });
+    const opener = await screen.findByRole('button', { name: '人物 伊莎贝拉·摩勒' }); fireEvent.click(opener);
+    fireEvent.click(screen.getByRole('button', { name: '查看摩勒住宅资料' }));
+    expect(screen.getByRole('dialog', { name: '摩勒住宅详情' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '查看卡森其药店资料' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '返回上一份资料' }));
+    expect(screen.getByRole('dialog', { name: '伊莎贝拉·摩勒详情' })).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.getByRole('dialog', { name: '资料', exact: true })).toBeInTheDocument();
+    expect(type).toHaveValue('npc'); expect(opener).toHaveFocus();
+  });
   it('uses keyboard tabs and keeps script-wide clue totals out of player progress', async () => {
     renderDrawer();
     const board = screen.getByRole('tab', { name: '案件板' });

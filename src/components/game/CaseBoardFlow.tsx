@@ -51,7 +51,8 @@ export function CaseBoardFlow({ model, selectedId, onSelect }: CaseBoardFlowProp
   });
   return <div className="case-board-flow-wrap" aria-label="案件线索关系图">
     {flowNodes.length ? <ReactFlow edges={flowEdges} nodes={flowNodes} nodeTypes={NODE_TYPES} fitView maxZoom={1.5} minZoom={.35}
-      nodesConnectable={false} nodesDraggable={false} onInit={(instance) => { flowRef.current = instance; }} onNodeClick={(_, node) => onSelect(node.id)} proOptions={{ hideAttribution: true }}>
+      nodesConnectable={false} nodesDraggable={false} nodesFocusable={false} onInit={(instance) => { flowRef.current = instance; }}
+      onNodeClick={(event, node) => { event.currentTarget.querySelector<HTMLButtonElement>('.case-flow-node')?.focus({ preventScroll: true }); onSelect(node.id); }} proOptions={{ hideAttribution: true }}>
       <Background color="rgba(216,189,122,.12)" gap={24} size={1} /><Controls position="bottom-right" showInteractive={false} />
     </ReactFlow> : <p className="empty-note">{failed ? '暂时无法整理关系图，请重新打开资料。' : model.nodes.length ? '正在整理关系图...' : '当前筛选条件下没有匹配资料。'}</p>}
   </div>;

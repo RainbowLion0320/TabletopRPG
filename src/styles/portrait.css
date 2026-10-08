@@ -124,19 +124,6 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 .portrait-ui .dm-journal-events { max-height: none; overflow: visible; }
 .portrait-ui .dm-journal-events li { grid-template-columns: minmax(0, 1fr); gap: 4px; }
 .portrait-ui .dm-journal-pending li { padding: 6px 8px; }
-.portrait-ui .entity-detail-card { width: min(480px, 100%); max-width: 100%; height: min(680px, var(--mobile-dialog-height)); max-height: var(--mobile-dialog-height); padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); overflow: hidden; border-radius: 8px; }
-.portrait-ui .entity-detail-card:has(.entity-detail-portrait-wrap) { grid-template-rows: clamp(100px, 20dvh, 160px) minmax(0, 1fr); gap: 12px; }
-.portrait-ui .entity-detail-close { top: 4px; right: 4px; width: 44px; height: 44px; }
-.portrait-ui .entity-detail-portrait-wrap { margin: 0; min-height: 0; align-items: center; justify-content: center; }
-.portrait-ui .entity-detail-portrait { width: 100%; height: 100%; max-height: 100%; object-fit: contain; }
-.portrait-ui .entity-detail-body { min-height: 0; min-width: 0; overflow-y: auto; padding-right: 4px; }
-.portrait-ui .entity-detail-header { min-height: 36px; padding: 0 44px 8px 0; margin-bottom: 10px; flex-wrap: wrap; gap: 4px 10px; }
-.portrait-ui .entity-detail-header h3 { font-size: 18px; letter-spacing: 0; }
-.portrait-ui .entity-detail-header span { font-size: 11px; }
-.portrait-ui .entity-detail-section { margin-bottom: 10px; }
-.portrait-ui .entity-detail-section h4 { font-size: 11px; margin-bottom: 6px; }
-.portrait-ui .entity-detail-known, .portrait-ui .entity-detail-unknown { padding: 7px 10px; }
-.portrait-ui .entity-detail-known p { font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
 
 /* Shallow archive header; lists and inspector take the remaining height. */
 .portrait-ui .info-drawer-react { position: fixed; width: 100%; height: var(--mobile-height); max-height: var(--mobile-height); display: flex; flex-direction: column; overflow: hidden; padding: var(--mobile-top) var(--mobile-right) var(--mobile-bottom) var(--mobile-left); }
@@ -160,13 +147,6 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 .portrait-ui .case-board-search input { font-size: 14px; min-height: 44px; }
 .portrait-ui .case-board-toolbar select, .portrait-ui .case-board-toolbar > button { min-width: 0; min-height: 44px; font-size: 13px; padding: 0 10px; }
 .portrait-ui .case-board-workspace, .portrait-ui .case-board-workspace.has-inspector { min-height: 0; height: auto; flex: 1; overflow: auto; }
-.portrait-ui .case-board-inspector[role='dialog'] { position: fixed; inset: 0; z-index: 220; height: var(--mobile-height); display: flex; flex-direction: column; background: #100e0c; padding: var(--mobile-top) var(--mobile-right) var(--mobile-bottom) var(--mobile-left); }
-.portrait-ui .case-board-inspector > header { flex: 0 0 auto; flex-wrap: nowrap; gap: 8px; padding: 0 0 6px; margin: 0; }
-.portrait-ui .case-board-inspector header button { width: 44px; height: 44px; flex: 0 0 44px; }
-.portrait-ui .case-board-inspector-scroll { min-height: 0; height: auto; flex: 1; padding: 0 8px 8px; }
-.portrait-ui .case-board-inspector section { padding: 10px 0; }
-.portrait-ui .case-board-inspector h4 { font-size: 16px; }
-.portrait-ui .case-board-inspector p, .portrait-ui .case-board-inspector li { font-size: 13px; overflow-wrap: anywhere; }
 
 /* Vertical dice composition preserves the supplied art and its font. */
 .portrait-ui .dice-roll-card { width: min(360px, 100%); max-height: var(--mobile-dialog-height); display: flex; flex-direction: column; align-items: center; gap: 8px; }
@@ -185,8 +165,6 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
   .portrait-ui .scene-stage { visibility: hidden; }
   .portrait-ui .scene-npc { visibility: hidden; }
   .portrait-ui .game-screen:has(.dock-input:focus) .suggestion-row { display: none; }
-  .portrait-ui .entity-detail-card:has(.entity-detail-portrait-wrap) { grid-template-rows: minmax(0, 1fr); }
-  .portrait-ui .entity-detail-portrait-wrap { display: none; }
   .portrait-ui .modal-card { padding: 12px; }
 }
 @media (max-height: 300px) {

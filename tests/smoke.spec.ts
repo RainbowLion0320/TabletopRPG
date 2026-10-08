@@ -851,7 +851,7 @@ test('reference panel opens a fullscreen case board and keeps the log tab', asyn
   await expect(board.locator('.case-flow-node.npc', { hasText: '埃里克·摩勒' })).toBeVisible();
   await expect(board.getByText('卡森其药店')).toHaveCount(0);
   await expect(page.getByRole('button', { name: '线索' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: '人物' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '人物', exact: true })).toHaveCount(0);
 
   await page.getByRole('tab', { name: '日志' }).click();
   await expect(page.getByRole('heading', { name: '行动日志' })).toBeVisible();
@@ -1047,6 +1047,7 @@ test('reference panel renders saved dynamic case board hypotheses', async ({ pag
   await board.locator('.case-flow-node.theory.hypothesis', { hasText: '可能有内应协助' }).click();
   const inspector = page.getByLabel('可能有内应协助详情');
   await expect(inspector).toBeVisible();
+  await inspector.getByText('信息来源', { exact: true }).click();
   await expect(inspector.getByText('第 1 回合：玩家发现药店后门有被撬痕迹')).toBeVisible();
   await expect(inspector.getByText(/e1/)).toHaveCount(0);
 });
@@ -1119,12 +1120,29 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     await drawer.getByRole('button', { name: '清除案件搜索' }).click();
     await expect(search).toHaveValue(''); await expect(search).toBeFocused();
     await page.setViewportSize(size);
+    await drawer.getByRole('combobox', { name: '资料类型' }).selectOption('npc');
     await card.click();
     const detail = page.getByRole('dialog', { name: '伊莎贝拉·摩勒详情', exact: true });
     await expect(detail.getByRole('button', { name: '关闭资料详情' })).toBeFocused();
     await expect(detail).not.toContainText(/I0[1-8]|鸦片运输/);
+    await expect.poll(() => detail.locator('.record-detail-media img').evaluate((element) => (element as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+    await expect(drawer.getByRole('combobox', { name: '资料类型' })).toHaveValue('npc');
+    await detail.getByRole('button', { name: '查看摩勒住宅资料' }).click();
+    const sceneDetail = page.getByRole('dialog', { name: '摩勒住宅详情', exact: true });
+    await expect(sceneDetail.locator('.record-detail-media img')).toHaveCSS('object-fit', 'contain');
+    await sceneDetail.getByRole('button', { name: '返回上一份资料' }).click();
+    await expect(detail).toBeVisible();
+    await detail.getByRole('button', { name: '查看摩勒住宅资料' }).click();
+    await page.keyboard.press('Escape'); await expect(detail).toBeVisible();
+    await page.setViewportSize({ width: size.width, height: 300 });
+    await expect(detail.getByRole('button', { name: '关闭资料详情' })).toBeInViewport();
+    await expect(detail.locator('.record-detail-media')).toBeHidden();
+    await page.setViewportSize(size);
     await page.keyboard.press('Escape');
     await expect(detail).toHaveCount(0); await expect(drawer).toBeVisible(); await expect(card).toBeFocused();
+    await expect(drawer.getByRole('combobox', { name: '资料类型' })).toHaveValue('npc');
+    await expect(search).toHaveValue('');
+    await drawer.getByRole('combobox', { name: '资料类型' }).selectOption('all');
     await drawer.getByRole('tab', { name: '进度' }).click();
     await expect(drawer.getByRole('tabpanel')).not.toContainText(/已发现\s+0\s*\/\s*8/);
     await drawer.getByRole('tab', { name: '案件板' }).click();
@@ -1152,6 +1170,53 @@ test('moving the desktop case board to a phone preserves search and removes the 
   await page.setViewportSize({ width: 1440, height: 900 });
   await expect(drawer.locator('.case-flow-node.npc', { hasText: '伊莎贝拉·摩勒' })).toBeVisible();
 });
+
+test('desktop case details own Escape while keyboard navigation stays in the enclosing archive', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await gotoWithSave(page, createDynamicCaseBoardSave());
+  await page.getByRole('button', { name: '继续游戏' }).click();
+  const draft = page.locator('.dock-input'); await draft.fill('查看资料时保留这段行动。');
+  const opener = page.getByRole('button', { name: '资料', exact: true }); await opener.click();
+  const drawer = page.getByRole('dialog', { name: '资料', exact: true });
+  const node = drawer.getByRole('button', { name: '人物 伊莎贝拉·摩勒', exact: true });
+  await node.focus(); await page.keyboard.press('Enter');
+  const detail = drawer.getByRole('dialog', { name: '伊莎贝拉·摩勒详情', exact: true });
+  await expect(detail).not.toHaveAttribute('aria-modal', 'true');
+  await expect(detail.getByRole('button', { name: '关闭资料详情' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(detail).toHaveCount(0); await expect(drawer).toBeVisible(); await expect(node).toBeFocused();
+  await node.focus(); await page.keyboard.press('Space');
+  const search = drawer.getByRole('searchbox', { name: '搜索案件资料' }); await search.focus();
+  await page.keyboard.press('Escape'); await expect(detail).toHaveCount(0); await expect(search).toBeFocused();
+  await page.keyboard.press('Escape'); await expect(drawer).toBeHidden(); await expect(opener).toBeFocused();
+  await expect(draft).toHaveValue('查看资料时保留这段行动。');
+});
+
+for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height: 844, party: 2 }, { width: 1440, height: 900, party: 4 }] as const) {
+  test(`entity record title and close stay fixed above long known information at ${size.width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize(size); await startNewGame(page, size.party);
+    const draft = page.locator('.dock-input'); await draft.fill('阅读档案不会改变行动。');
+    await page.locator('.npc-nameplate').click();
+    const detail = page.getByRole('dialog', { name: '伊莎贝拉·摩勒', exact: true });
+    await expect.poll(() => detail.locator('.record-detail-media img').evaluate((element) => (element as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+    const header = detail.locator('.entity-detail-header');
+    await detail.locator('.entity-detail-known p').first().evaluate((element) => { element.textContent = '长篇公开调查记录，门廊下留有雨水与细微划痕。'.repeat(160); });
+    const top = (await header.boundingBox())!.y;
+    const body = detail.locator('.entity-detail-body'); await body.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+    expect((await header.boundingBox())!.y).toBe(top);
+    await expect.poll(() => body.evaluate((element) => element.scrollTop > 0)).toBe(true);
+    expect(await detail.evaluate((element) => element.scrollTop)).toBe(0);
+    await expect(detail.getByRole('button', { name: '关闭详情', exact: true })).toBeInViewport();
+    expect(await detail.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
+    await page.screenshot({ path: testInfo.outputPath('entity-record.png') });
+    if (size.width < 700) {
+      await page.setViewportSize({ width: size.width, height: 300 });
+      await expect(detail.getByRole('button', { name: '关闭详情', exact: true })).toBeInViewport();
+      await expect(detail.locator('.record-detail-media')).toBeHidden();
+    }
+    await page.keyboard.press('Escape'); await expect(detail).toHaveCount(0); await expect(draft).toHaveValue('阅读档案不会改变行动。');
+  });
+}
 
 test('submitting an action without an API key opens configuration and keeps validation local to the form', async ({ page }) => {
   test.skip(hasEnvDefaultApiKey, 'requires no default API key from process env or .env.local');

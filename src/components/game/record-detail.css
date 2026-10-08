@@ -1,0 +1,41 @@
+/* Known records use the same drawn dossier mount as selection and save records. */
+:root .entity-detail-overlay { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: var(--mobile-top, 16px) var(--mobile-right, 16px) var(--mobile-bottom, 16px) var(--mobile-left, 16px); background: #000b; backdrop-filter: blur(4px); }
+:root .entity-detail-card, :root .case-board-inspector { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; border: 9px solid transparent; border-image: url('../../../assets/ui/chrome/dossier-mount.webp') 64 fill / 9px / 0 stretch; border-radius: 0; color: var(--text); background: #191610; box-shadow: 0 12px 40px #0007; }
+:root .entity-detail-card { width: min(520px, 100%); max-width: 100%; max-height: min(720px, var(--mobile-dialog-height, calc(100dvh - 32px))); padding: 4px 7px; }
+:root .case-board-inspector { height: 100%; padding: 4px 6px; }
+:root .case-board-inspector.modal { position: fixed; inset: 0; z-index: 220; width: 100%; height: var(--mobile-height, 100dvh); padding: max(4px, env(safe-area-inset-top, 0px)) max(6px, env(safe-area-inset-right, 0px)) max(6px, env(safe-area-inset-bottom, 0px)) max(6px, env(safe-area-inset-left, 0px)); }
+:root .entity-detail-header, :root .case-board-inspector > header { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; flex-wrap: nowrap; gap: 10px; margin: 0; padding: 6px 0 10px; border-bottom: 1px solid #6e5635; }
+.record-detail-identity { flex: 1; min-width: 0; }
+:root .entity-detail-header span, :root .case-board-inspector > header span { display: block; color: #c6b493; font-size: 12px; line-height: 1.5; }
+:root .entity-detail-header h3, :root .case-board-inspector h4 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; margin: 3px 0 0; color: #edd5a3; font: 400 20px/1.4 var(--ui-font); letter-spacing: .02em; overflow-wrap: anywhere; }
+:root .case-board-inspector > header > button, :root .entity-detail-close { position: relative; display: grid; place-items: center; flex: 0 0 44px; order: 0; width: 44px; height: 44px; margin: 0; padding: 0; cursor: pointer; }
+:root .entity-detail-body, :root .case-board-inspector-scroll { flex: 1; min-width: 0; min-height: 0; height: auto; overflow-y: auto; overscroll-behavior: contain; padding: 0 3px 8px; }
+.record-detail-media { position: relative; display: grid; place-items: center; overflow: hidden; margin: 12px 0; border: 1px solid #86683f; background: radial-gradient(ellipse at center, #423625 0%, #13120e 80%); box-shadow: inset 0 0 0 3px #0e0c08, 0 2px 4px #0006; }
+.record-detail-media.portrait { width: min(180px, 60%); height: clamp(150px, 24dvh, 220px); margin-inline: auto; }
+.record-detail-media.scene { aspect-ratio: 1896 / 1080; max-height: 230px; }
+.record-detail-media img { display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+.record-detail-media[hidden] { display: none; }
+:root .case-board-inspector section, :root .entity-detail-section { margin: 0; padding: 14px 0; border-bottom: 1px solid #493d2b; }
+:root .case-board-inspector h5, :root .entity-detail-section h4 { margin: 0 0 10px; color: #c8aa71; font: 400 13px/1.5 var(--ui-font); letter-spacing: .08em; }
+:root .case-board-inspector p, :root .case-board-inspector li, :root .entity-detail-known p { margin: 0; color: #e0d4bc; font-size: 15px; line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; }
+:root .entity-detail-known { margin: 0; padding: 0; background: none; border: 0; border-radius: 0; }
+:root .entity-detail-secret, :root .case-board-known-secret { margin-top: 12px; padding: 6px 10px; background: #d6b77b08; border-left: 2px solid #9d7741; }
+.case-related-list { display: grid; gap: 8px; padding: 0; margin: 0; list-style: none; }
+:root .case-related-record { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 52px; padding: 7px 12px; text-align: left; }
+.case-related-record > span { display: grid; gap: 2px; min-width: 0; }
+.case-related-record small { color: #bda989; font: 12px/1.5 Georgia, 'Noto Serif SC', serif; }
+.case-related-record strong { color: #ead2a2; font: 400 16px/1.5 var(--ui-font); overflow-wrap: anywhere; }
+.case-related-record svg { flex: 0 0 auto; }
+.case-board-insight-list { display: grid; gap: 14px; }
+.case-board-insight-list article { border-left: 2px solid #a48959; padding-left: 10px; }
+.case-board-insight-list article.hypothesis { border-left-style: dashed; border-left-color: #c17d6f; }
+.case-board-insight-list span { display: block; margin-bottom: 4px; font-size: 12px; color: #b7a88e; }
+.case-record-sources { margin: 0; border-bottom: 1px solid #493d2b; }
+.case-record-sources summary { display: flex; align-items: center; gap: 8px; min-height: 44px; list-style: none; color: #c8b186; font-size: 13px; cursor: pointer; }
+.case-record-sources summary::-webkit-details-marker { display: none; }
+.case-record-sources summary::before { content: '›'; font: 18px/1 Georgia, serif; transform: rotate(0); }
+.case-record-sources[open] summary::before { transform: rotate(90deg); }
+.case-record-sources summary:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: -2px; }
+.case-record-sources ul { display: grid; gap: 10px; margin: 0; padding: 0 0 12px 18px; }
+:root .case-record-sources li { color: #c3b599; font-size: 13px; }
+@media (max-height: 420px) { .record-detail-media { display: none; } }

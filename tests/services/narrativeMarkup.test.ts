@@ -8,6 +8,14 @@ import { getNarrativeMarkDetail } from '../../src/dm/entityDetail';
 import { makeInvestigator, makeState } from '../dm/fixtures';
 
 describe('narrative markup', () => {
+  it('attaches a public scene image only after the location has been visited', () => {
+    const state = makeState();
+    const target: NarrativeMarkTarget = { kind: 'location', id: 'S01', label: '摩勒住宅', source: 'deterministic' };
+    const visited = getNarrativeMarkDetail(target, state, '摩勒住宅门口。');
+    expect(visited?.image).toBeTruthy();
+    const future = getNarrativeMarkDetail({ ...target, id: 'S05', label: '码头' }, state, '雾中的码头。');
+    expect(future?.image).toBeUndefined(); expect(future?.knownSecrets).toEqual([]);
+  });
   it('prefers full deterministic entities over aliases and overlapping LLM hints', () => {
     const state = makeState({ clueIds: ['I04'] });
     const text = '伊莎贝拉·摩勒握着小册子，要求进行心理学检定。';
