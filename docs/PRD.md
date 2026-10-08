@@ -8,6 +8,8 @@
 
 ### Android companion build — 2026-09-09
 
+Version 0.4.11 presents local saves as compact investigation records, with scene, time, party portraits and a single load action. The list scrolls independently while the title and exits stay visible on phones and desktop. Deletion asks within the selected card, defaults focus to Keep, and waits for persistence; cancellation keeps the save. Failed native writes restore the previous library, repeated save taps do not create duplicates, and compatibility notices omit internal hashes and migration diagnostics.
+
 Version 0.4.10 lets new APK players start with the user-authorized MiMo Token Plan default, using `mimo-v2.6-pro`; their own saved connections still take priority. Provider compatibility retains private reasoning and real tool calls without exposing technical diagnostics. Dodge now starts at half of percentile DEX, preserving authored allocations, saved investments and locked rolls. Switching teammates keeps the skill search for easy comparison.
 
 Version 0.4.9 supports multiline actions on phones: Enter inserts a newline and the explicit Submit/Next button confirms. The field grows within a compact limit and scrolls for long descriptions; switching to the next investigator retains typing focus. Desktop keeps Enter confirmation and Shift Enter for a newline. Multiplayer cards identify the current and completed actors while declarations are open. Reading older story entries keeps its position when a reply arrives, with a small new-content action to open the latest reply from its beginning; internal diagnostics do not move or badge the story.

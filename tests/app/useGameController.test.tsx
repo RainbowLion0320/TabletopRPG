@@ -38,6 +38,28 @@ function declareParty(result: ReturnType<typeof renderHook<ReturnType<typeof use
 }
 
 describe('game controller round recovery', () => {
+  it('saves once on repeated clicks and allows a later separate save', async () => {
+    const { result } = renderHook(useGameController);
+    act(() => result.current.startGame([players[0]]));
+    act(() => { result.current.saveCurrentGame(); result.current.saveCurrentGame(); });
+    await waitFor(() => expect(result.current.toast).toBe('已保存'));
+    expect(readSaves()).toHaveLength(1);
+    act(() => result.current.saveCurrentGame());
+    await waitFor(() => expect(readSaves()).toHaveLength(2));
+  });
+
+  it('shows one readable incompatibility notice when no saved game can load', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const state = createInitialGameState([players[0]]);
+    state.scenarioProgress.moduleVersion = '99.99.99';
+    state.scenarioProgress.contentHash = 'INTERNAL_HASH';
+    localStorage.setItem('trpg-saves-v2', JSON.stringify([{ id: 10, scene: '摩勒住宅', players: '亨利', savedAt: '2026/10/8', gameState: state }]));
+    const { result } = renderHook(useGameController);
+    act(() => result.current.loadCurrentLatest());
+    expect(result.current.toast).toBe('存档与当前剧情版本不兼容，请在存档管理中查看。');
+    expect(result.current.state.players).toHaveLength(0);
+  });
+
   it('keeps every declaration when the API has not been configured', async () => {
     const { result } = renderHook(useGameController);
     declareParty(result);
@@ -84,6 +106,7 @@ describe('game controller round recovery', () => {
     const { result } = renderHook(useGameController);
     declareParty(result);
     act(() => result.current.saveCurrentGame());
+    await waitFor(() => expect(readSaves()).toHaveLength(1));
     expect(readSaves()[0].gameState.pendingDmActions).toHaveLength(2);
     act(() => result.current.loadCurrentLatest());
     expect(result.current.state.isThinking).toBe(false);

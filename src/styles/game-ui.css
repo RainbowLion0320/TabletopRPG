@@ -178,11 +178,9 @@
 :root.fog-ui :is(.modal-card input, .dock-input):disabled { color: #9e927d; border-color: #443b2e; }
 :root.fog-ui .modal-error { border-left: 2px solid #c07669; padding: 7px 10px; background: #40231d; }
 
-:root.fog-ui :is(.party-compact, .check-card, .save-slot-card, .entity-detail-known, .entity-detail-unknown,
+:root.fog-ui :is(.party-compact, .check-card, .entity-detail-known, .entity-detail-unknown,
   .case-board-mobile-card, .case-board-compact-card, .case-board-node, .case-board-threads button) { border-radius: 2px; }
 :root.fog-ui .party-compact strong { font-family: var(--ui-font); }
-:root.fog-ui .save-slot-card { background: #211c14; border-color: #59462e; }
-:root.fog-ui .save-slot-incompatible { border-color: #734c42; }
 
 /* Story and tools are one desk, with the full scene painting left untouched. */
 :root.fog-ui .game-top { background: #11100e; border-bottom: 1px solid #534129; }

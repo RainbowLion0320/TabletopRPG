@@ -139,6 +139,38 @@ export function deleteSave(id: number) {
   return readSaveLibrary();
 }
 
+let saveWrites: Promise<void> = Promise.resolve();
+
+/** Serialize manual saves/deletes and roll back their cache if native persistence fails. */
+function persistSaveChange<T>(change: () => T): Promise<T> {
+  const operation = saveWrites.then(async () => {
+    const previous = gameStorage.getItem(SAVE_KEY);
+    try {
+      const result = change();
+      await flushGameStorage();
+      return result;
+    } catch (error) {
+      // Native storage updates its read cache before writing to disk. Restore it so
+      // a later lifecycle flush cannot silently retry an unconfirmed deletion.
+      if (gameStorage.getItem(SAVE_KEY) !== previous) {
+        if (previous === null) gameStorage.removeItem(SAVE_KEY);
+        else gameStorage.setItem(SAVE_KEY, previous);
+      }
+      throw error;
+    }
+  });
+  saveWrites = operation.then(() => undefined, () => undefined);
+  return operation;
+}
+
+export function saveGameStateAndPersist(gameState: GameState): Promise<SaveSlot> {
+  return persistSaveChange(() => saveGameState(gameState));
+}
+
+export function deleteSaveAndPersist(id: number): Promise<SaveLibrary> {
+  return persistSaveChange(() => deleteSave(id));
+}
+
 /**
  * Build an API config from build-time env vars (VITE_AI_*). These come from the
  * developer's shell environment (or .env.local) and provide a default so the game

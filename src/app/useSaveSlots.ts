@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { deleteSave, readSaveLibrary, saveGameState } from '../services/storage';
+import { useRef, useState } from 'react';
+import { deleteSaveAndPersist, readSaveLibrary, saveGameStateAndPersist } from '../services/storage';
 import type { GameState } from '../types/game';
-import { flushGameStorage } from '../platform/storage';
 
 export function useSaveSlots(notify: (text: string) => void) {
   const [library, setLibrary] = useState(() => readSaveLibrary());
+  const savingRef = useRef(false);
 
   function refreshSaves() {
     const latestLibrary = readSaveLibrary();
@@ -14,31 +14,36 @@ export function useSaveSlots(notify: (text: string) => void) {
 
   function getLatestSave() {
     const latestLibrary = refreshSaves();
-    if (!latestLibrary.saves.length && latestLibrary.incompatible.length) {
-      notify(`存档无法载入：${latestLibrary.incompatible[0].reason}`);
+    if (!latestLibrary.saves.length) {
+      notify(latestLibrary.incompatible.length
+        ? '存档与当前剧情版本不兼容，请在存档管理中查看。'
+        : '暂无存档');
     }
     return latestLibrary.saves[0] ?? null;
   }
 
   async function saveCurrentGame(gameState: GameState) {
+    if (savingRef.current) return;
+    savingRef.current = true;
     try {
-      saveGameState(gameState);
-      await flushGameStorage();
+      await saveGameStateAndPersist(gameState);
       refreshSaves();
       notify('已保存');
     } catch {
-      notify('保存失败：浏览器存储不可用或空间不足，请清理空间后重试。');
+      notify('未能保存，请检查设备存储空间后重试。');
+    } finally {
+      savingRef.current = false;
     }
   }
 
   async function deleteSaveSlot(id: number) {
     try {
-      const updated = deleteSave(id);
-      await flushGameStorage();
+      const updated = await deleteSaveAndPersist(id);
       setLibrary(updated);
       notify('已删除存档');
+      return true;
     } catch {
-      notify('删除失败：浏览器存储不可用，请稍后重试。');
+      return false;
     }
   }
 

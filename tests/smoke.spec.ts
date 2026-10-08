@@ -1210,8 +1210,64 @@ test('save manager can load and delete explicit save slots', async ({ page }) =>
   await page.getByRole('button', { name: /菜单/ }).click();
   await page.getByRole('button', { name: /存档管理/ }).click();
   await page.getByRole('button', { name: /删除存档/ }).click();
+  await expect(page.getByRole('button', { name: '保留存档' })).toBeFocused();
+  await page.getByRole('button', { name: '保留存档' }).click();
+  await expect(saveManager.getByText('摩勒住宅')).toBeVisible();
+  await page.getByRole('button', { name: /删除存档/ }).click();
+  await page.getByRole('button', { name: '确认删除' }).click();
   await expect(page.getByRole('dialog', { name: '存档管理' }).getByText('暂无存档')).toBeVisible();
+  await expect(page.getByRole('button', { name: '关闭', exact: true })).toBeFocused();
 });
+
+for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390, height: 844, party: 2 as const }, { width: 1440, height: 900, party: 1 as const }]) {
+  test(`save records scroll independently and confirm deletion at ${size.width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: size.width, height: size.height });
+    await startNewGame(page, size.party);
+    await page.getByRole('button', { name: '菜单', exact: true }).click();
+    await page.getByRole('button', { name: '保存游戏', exact: true }).click();
+    await expect(page.getByText('已保存', { exact: true })).toBeVisible();
+    await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('trpg-saves-v2')!)[0];
+      localStorage.setItem('trpg-saves-v2', JSON.stringify(Array.from({ length: 12 }, (_, index) => ({ ...saved, id: saved.id - index, savedAt: `2026/10/8 12:00:${String(59 - index).padStart(2, '0')}` }))));
+    });
+    await page.getByRole('button', { name: '菜单', exact: true }).click();
+    await page.getByRole('button', { name: '存档管理', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: '存档管理' });
+    await expect(dialog.getByRole('article')).toHaveCount(12);
+    await expect(dialog.getByText('最近保存', { exact: true })).toHaveCount(1);
+    const last = dialog.getByRole('article').last();
+    await last.getByRole('button', { name: /^删除存档/ }).click();
+    await expect(last.getByRole('button', { name: '保留存档' })).toBeFocused();
+    async function verifyLayout() {
+      const layout = await dialog.evaluate((element) => {
+        const card = element.getBoundingClientRect(), header = element.querySelector('header')!.getBoundingClientRect();
+        const list = element.querySelector('.save-list')!.getBoundingClientRect(), footer = element.querySelector('footer')!.getBoundingClientRect();
+        const button = element.querySelector('.save-delete-confirmation .danger')!.getBoundingClientRect();
+        const center = document.elementFromPoint(button.x + button.width / 2, button.y + button.height / 2);
+        return { inside: card.left >= 0 && card.right <= innerWidth && card.top >= 0 && card.bottom <= innerHeight,
+          ordered: header.bottom <= list.top + 1 && list.bottom <= footer.top + 1,
+          reachable: button.top >= list.top && button.bottom <= list.bottom + 1 && !!center?.closest('.save-delete-confirmation'),
+          touch: button.height >= 44, horizontalOverflow: element.scrollWidth > element.clientWidth };
+      });
+      expect(layout).toEqual({ inside: true, ordered: true, reachable: true, touch: true, horizontalOverflow: false });
+    }
+    await verifyLayout();
+    await page.screenshot({ path: testInfo.outputPath('save-records-confirmation.png') });
+    if (size.width < 700) {
+      await page.setViewportSize({ width: size.width, height: 300 });
+      // Refocus the confirmation after reducing the usable viewport.
+      await last.getByRole('button', { name: '保留存档' }).click();
+      await last.getByRole('button', { name: /^删除存档/ }).click();
+      await verifyLayout();
+    }
+    await last.getByRole('button', { name: '确认删除' }).click();
+    await expect(dialog.getByRole('article')).toHaveCount(11);
+    await expect(dialog.getByRole('article').last().getByRole('button', { name: '载入存档' })).toBeFocused();
+    await page.setViewportSize({ width: size.width, height: size.height });
+    await dialog.getByRole('button', { name: '关闭', exact: true }).click();
+    await expect(page.getByRole('button', { name: '菜单', exact: true })).toBeFocused();
+  });
+}
 
 test('invalid save payloads are ignored on the title screen', async ({ page }) => {
   await page.addInitScript(() => {

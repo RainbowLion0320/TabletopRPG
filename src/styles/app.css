@@ -1905,10 +1905,6 @@ button.case-board-node:hover {
   margin-top: 22px;
 }
 
-.save-manager-card {
-  width: min(720px, calc(100vw - 32px));
-}
-
 .dm-journal-card {
   width: min(760px, calc(100vw - 32px));
   max-height: calc(100vh - 64px);
@@ -2001,60 +1997,6 @@ button.case-board-node:hover {
   color: var(--text);
   font-size: 13px;
   line-height: 1.5;
-}
-
-.save-list {
-  display: grid;
-  gap: 10px;
-  max-height: min(52vh, 420px);
-  margin-top: 18px;
-  overflow: auto;
-  padding-right: 4px;
-}
-
-.save-slot-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 16px;
-  align-items: center;
-  border: 1px solid var(--line-soft);
-  border-radius: 8px;
-  background: rgba(0,0,0,0.24);
-  padding: 14px;
-}
-
-.save-slot-card strong,
-.save-slot-card span,
-.save-slot-card small {
-  display: block;
-}
-
-.save-slot-card strong {
-  color: var(--gold);
-  font-weight: 500;
-}
-
-.save-slot-card span {
-  margin-top: 5px;
-  color: var(--text);
-}
-
-.save-slot-card small {
-  margin-top: 5px;
-  color: var(--muted);
-}
-
-.save-slot-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.save-slot-incompatible {
-  border-color: rgba(194, 91, 75, 0.55);
-}
-
-.save-slot-incompatible strong {
-  color: #d99b8e;
 }
 
 /* ---------- DmDebugDrawer (DEV only) ---------- */

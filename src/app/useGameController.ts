@@ -117,10 +117,7 @@ export function useGameController() {
 
   function loadCurrentLatest() {
     const latest = saveSlots.getLatestSave();
-    if (!latest) {
-      notify('暂无存档');
-      return;
-    }
+    if (!latest) return;
     cancelDiceRoll();
     dmCoordinatorRef.current.invalidate();
     dispatch({ type: 'restore', state: latest.gameState });

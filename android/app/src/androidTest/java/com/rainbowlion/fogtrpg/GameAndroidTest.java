@@ -295,7 +295,19 @@ public class GameAndroidTest {
                 for (int i = 0; i < 4; i++) { menu("保存游戏"); SystemClock.sleep(100); }
                 menu("存档管理"); reachable(".save-manager-card footer button");
                 js("document.querySelector('.save-list').scrollTop=99999");
-                reachable(".save-slot-card:last-child .danger"); screenshot(prefix + "-saves"); click("关闭");
+                reachable(".save-slot-card:last-child .save-slot-delete"); screenshot(prefix + "-saves");
+                js("document.querySelector('.save-slot-card:last-child .save-slot-delete').click()");
+                until("document.querySelector('.save-delete-confirmation')");
+                reachable(".save-delete-confirmation .danger");
+                assertEquals("Deletion first focuses the safe choice", "true", js("document.activeElement.innerText==='保留存档'"));
+                click("保留存档");
+                assertEquals("Cancelling keeps every save", "4", js("document.querySelectorAll('.save-slot-card').length"));
+                js("document.querySelector('.save-slot-card:last-child .save-slot-delete').click()");
+                until("document.querySelector('.save-delete-confirmation')");
+                click("确认删除");
+                until("document.querySelectorAll('.save-slot-card').length===3");
+                assertEquals("Deleting a record focuses a remaining Load action", "true", js("document.activeElement.classList.contains('save-slot-load')"));
+                click("关闭");
                 js("document.querySelector('.menu-button').click()");
                 until("document.querySelector('.game-menu')");
                 assertEquals("KP notes are not in the player menu", "false", js("document.querySelector('.game-menu').innerText.includes('KP 笔记')"));
