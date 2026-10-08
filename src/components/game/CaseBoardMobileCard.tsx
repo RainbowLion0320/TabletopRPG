@@ -15,7 +15,7 @@ export function CaseBoardMobileCard({ node, relations, selected, onSelect }: Car
       <span className="case-record-meta">{CASE_RECORD_LABEL[node.type]}{node.certainty === 'hypothesis' && node.type !== 'theory' && <em>待验证</em>}</span>
       <strong>{node.title}</strong>
       {node.subtitle && node.subtitle !== CASE_RECORD_LABEL[node.type] && <small>{node.subtitle}</small>}
-      {relationLabels && <small className="case-record-relation"><Link2 size={12} aria-hidden="true" />{relationLabels}</small>}
+      {relationLabels && <small className="case-record-relation"><Link2 size={14} aria-hidden="true" />{relationLabels}</small>}
     </span>
     <ChevronRight className="case-record-arrow" size={16} aria-hidden="true" />
   </button>;

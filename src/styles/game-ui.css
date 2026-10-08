@@ -158,8 +158,7 @@
 }
 :root.fog-ui .modal-card footer { border-top: 1px solid #55432c; padding-top: 10px; }
 :root.fog-ui .modal-card label { color: #cbbda3; }
-:root.fog-ui :is(.modal-card input:not([type='range']), .modal-card select, .dock-input,
-  .case-board-search, .case-board-toolbar select) {
+:root.fog-ui :is(.modal-card input:not([type='range']), .modal-card select, .dock-input) {
   border: 1px solid #655238;
   border-bottom-color: #927044;
   border-radius: 2px;
@@ -170,8 +169,7 @@
   caret-color: #f0ce8b;
 }
 :root.fog-ui :is(input, textarea)::placeholder { color: #a99b82; opacity: 1; }
-:root.fog-ui :is(.modal-card input:not([type='range']), .modal-card select, .dock-input,
-  .case-board-search, .case-board-toolbar select):focus-within {
+:root.fog-ui :is(.modal-card input:not([type='range']), .modal-card select, .dock-input):focus-within {
   border-color: var(--ui-focus);
   outline: 1px solid var(--ui-focus);
   outline-offset: -3px;
@@ -226,9 +224,6 @@
 }
 :root.fog-ui .case-board-mobile-card { border-color: #625036; background: #211d15; }
 :root.fog-ui .case-board-mobile-card:active { border-color: #d3ae6d; background: #382d1d; }
-:root.fog-ui .case-board-search { padding-inline: 9px; }
-:root.fog-ui .case-board-search input { background: transparent; color: var(--text); }
-:root.fog-ui .case-board-toolbar select { padding-inline: 10px; }
 
 /* Art never increases the frame allocations proven on the smallest phones. */
 :root.fog-ui.portrait-ui .title-actions > button { min-height: 48px; }

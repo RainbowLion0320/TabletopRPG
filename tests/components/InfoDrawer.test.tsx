@@ -211,7 +211,7 @@ describe('InfoDrawer v7 investigation workspace', () => {
     expect(screen.getAllByText('伊莎贝拉·摩勒').length).toBeGreaterThan(0);
     expect(screen.queryByText('卡森其药店')).not.toBeInTheDocument();
     expect(screen.queryByText(/鸦片运输|泰晤士港货船|蒙特利尔关系网/)).not.toBeInTheDocument();
-    expect(screen.getByText(/调查刚刚开始/)).toBeInTheDocument();
+    expect(screen.queryByText(/调查刚刚开始/)).not.toBeInTheDocument();
   });
 
   it('keeps the fullscreen shell and compact header tabs', async () => {

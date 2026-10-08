@@ -1,5 +1,5 @@
 import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Eye, EyeOff, Search, X } from 'lucide-react';
+import { ChevronDown, Eye, EyeOff, Search, X } from 'lucide-react';
 import type { GameState } from '../../types/game';
 import { CaseBoardInspector } from './CaseBoardInspector';
 import { CaseBoardMobileCard } from './CaseBoardMobileCard';
@@ -86,18 +86,21 @@ export function CaseBoard({ state }: CaseBoardProps) {
       <div className="case-board-heading">
         <div>
           <h3 id="case-board-title">案件板</h3>
-          <p>{model.summary}</p>
+          {!archive && <p>{model.summary}</p>}
         </div>
       </div>
       <div className="case-board-toolbar">
         <label className="case-board-search">
-          <Search size={15} />
+          <Search size={16} aria-hidden="true" />
           <input ref={searchRef} type="search" aria-label="搜索案件资料" onChange={(event) => { setSelection([]); setQuery(event.target.value); }} placeholder="搜索人物、地点或线索" value={query} />
           {query && <button type="button" className="case-search-clear" aria-label="清除案件搜索" onClick={() => { setSelection([]); setQuery(''); searchRef.current?.focus(); }}><X size={16} /></button>}
         </label>
-        <select aria-label="资料类型" onChange={(event) => { setSelection([]); setType(event.target.value as typeof type); }} value={type}>
-          {TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-        </select>
+        <label className="case-board-type">
+          <select aria-label="资料类型" onChange={(event) => { setSelection([]); setType(event.target.value as typeof type); }} value={type}>
+            {TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+          <ChevronDown size={16} aria-hidden="true" />
+        </label>
         {model.nodes.some((node) => node.certainty === 'hypothesis') && <button
           aria-label="显示推测"
           aria-pressed={showHypotheses}

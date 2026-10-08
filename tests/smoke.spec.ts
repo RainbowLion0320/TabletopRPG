@@ -1649,7 +1649,15 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     await search.fill('不存在的调查记录');
     await expect(drawer.getByText('当前筛选条件下没有匹配资料。')).toBeVisible();
     await expect(drawer.getByRole('button', { name: '关闭资料', exact: true })).toBeInViewport();
-    await drawer.getByRole('button', { name: '清除案件搜索' }).click();
+    const clear = drawer.getByRole('button', { name: '清除案件搜索' });
+    const clearBox = (await clear.boundingBox())!;
+    expect(clearBox.width).toBeGreaterThanOrEqual(44);
+    expect(clearBox.height).toBeGreaterThanOrEqual(44);
+    expect(await clear.evaluate(element => {
+      const box = element.getBoundingClientRect();
+      return element.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
+    })).toBe(true);
+    await clear.click();
     await expect(search).toHaveValue(''); await expect(search).toBeFocused();
     await page.setViewportSize(size);
     await drawer.getByRole('combobox', { name: '资料类型' }).selectOption('npc');

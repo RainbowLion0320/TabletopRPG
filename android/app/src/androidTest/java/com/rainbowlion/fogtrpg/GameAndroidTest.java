@@ -378,6 +378,9 @@ public class GameAndroidTest {
                 until("document.querySelectorAll('.case-board-mobile-card').length===2");
                 assertEquals("Search keeps the matched person and related scene without unrelated records", "true", js("Array.from(document.querySelectorAll('.case-board-mobile-card')).map(e=>e.textContent).join(',').includes('伊莎贝拉')&&document.querySelector('.case-board-mobile-card.scene')&&!Array.from(document.querySelectorAll('.case-board-mobile-card')).some(e=>e.textContent.includes('埃里克'))"));
                 viewport(size[0], 300); reachable("[aria-label='关闭资料']"); reachable(".case-search-clear");
+                until("(()=>{const r=document.querySelector('.case-search-clear').getBoundingClientRect();return r.width>=44&&r.height>=44})()");
+                JSONObject clearSize = new JSONObject(js("(()=>{const e=document.querySelector('.case-search-clear'),r=e.getBoundingClientRect(),s=getComputedStyle(e);return {width:r.width,height:r.height,cssWidth:s.width,minHeight:s.minHeight,viewport:[innerWidth,innerHeight]}})()"));
+                assertTrue("Search can be cleared with a full phone touch target: " + clearSize, clearSize.getDouble("width") >= 44 && clearSize.getDouble("height") >= 44);
                 js("document.querySelector('.case-search-clear').click()");
                 assertEquals("Clearing search keeps typing focus", "true", js("document.activeElement===document.querySelector('.case-board-search input')&&document.activeElement.value===''") );
                 viewport(size[0], size[1]);
