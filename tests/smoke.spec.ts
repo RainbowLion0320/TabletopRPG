@@ -1273,6 +1273,11 @@ for (const size of [{ width: 320, height: 568, party: 4 }, { width: 390, height:
   for (const mode of ['check', 'retry'] as const) {
     test(`turn prompt stays readable and actionable at ${size.width}px with ${size.party} players and ${mode}`, async ({ page }, testInfo) => {
       await page.setViewportSize(size);
+      await page.addInitScript(() => {
+        const errors: string[] = [];
+        (window as Window & { __qaResizeErrors: string[] }).__qaResizeErrors = errors;
+        window.addEventListener('error', event => { if (event.message.includes('ResizeObserver')) errors.push(event.message); });
+      });
       const state = createPendingCheckSave();
       const names = ['亨利·格雷', '艾达·华莱士', '托马斯·贝尔', '罗伯特·肖'];
       const ids = ['inspector', 'nurse', 'reporter', 'constable'];
@@ -1321,7 +1326,22 @@ for (const size of [{ width: 320, height: 568, party: 4 }, { width: 390, height:
       expect(narratorCalls).toBe(0);
       await action.click();
       if (mode === 'check') await expect(page.getByRole('dialog', { name: '命运检定' })).toHaveClass(/rolling/);
-      else { await expect(page.getByText('回应恢复，原行动已得到回应。')).toBeVisible(); expect(narratorCalls).toBe(1); }
+      else {
+        await expect(page.getByText('回应恢复，原行动已得到回应。')).toBeVisible(); expect(narratorCalls).toBe(1);
+        const input = page.locator('.dock-input');
+        const draft = '查看恢复后的行动区域。\n继续询问细节。';
+        await input.fill(draft);
+        await page.setViewportSize({ width: size.width + 20, height: size.height });
+        await expect(input).toHaveValue(draft);
+        await expect(input).toBeInViewport();
+        await page.setViewportSize(size);
+        await expect.poll(() => input.evaluate(e => {
+          const r = e.getBoundingClientRect(), dock = document.querySelector('.action-dock')!.getBoundingClientRect();
+          return r.height >= 44 && r.height <= (innerWidth <= 700 ? 96 : 104) && r.top >= dock.top && r.bottom <= dock.bottom;
+        })).toBe(true);
+      }
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve(null)))));
+      expect(await page.evaluate(() => (window as Window & { __qaResizeErrors: string[] }).__qaResizeErrors)).toEqual([]);
     });
   }
 }

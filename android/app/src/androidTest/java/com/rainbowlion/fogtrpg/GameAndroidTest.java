@@ -74,6 +74,12 @@ public class GameAndroidTest {
         context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE).edit().clear().commit();
         activity = ActivityScenario.launch(MainActivity.class);
         until("document.querySelector('.title-screen')");
+        js("window.__qaResizeErrors=[];window.addEventListener('error',e=>{if(e.message.includes('ResizeObserver'))window.__qaResizeErrors.push(e.message)})");
+    }
+    private void assertNoResizeErrors() throws Exception {
+        js("window.__qaResizeSettled=false;requestAnimationFrame(()=>requestAnimationFrame(()=>window.__qaResizeSettled=true))");
+        until("window.__qaResizeSettled");
+        assertEquals("Viewport and action restoration do not recurse during observation", "0", js("window.__qaResizeErrors.length"));
     }
     private void nativeTap(String selector) throws Exception {
         nativeTap(selector, 0);
@@ -484,6 +490,7 @@ public class GameAndroidTest {
                 menu("AI 设置");
                 assertEquals("Closing an invalid edit retains the saved connection and masked credential", "true", js("document.querySelector('#api-model').value==='android-qa-model'&&document.querySelector('#api-endpoint').value==='http://127.0.0.1:1/v1'&&document.querySelector('#api-key').type==='password'&&!document.querySelector('.api-config-card [role=alert]')"));
                 nativeTap(".api-config-close");
+                assertNoResizeErrors();
             } finally { activity.close(); }
         }
     }
@@ -526,6 +533,7 @@ public class GameAndroidTest {
             assertEquals(7, calls.get()); assertEquals(2, retainedCorrections.get());
             assertEquals("Original declaration appears once", "1", js("document.querySelectorAll('.story-message.player').length"));
             click("掷骰"); until("document.querySelector('.dice-roll-overlay')"); screenshot("free-action-dice");
+            assertNoResizeErrors();
         } finally { if (activity != null) activity.close(); }
     }
 
@@ -619,6 +627,7 @@ public class GameAndroidTest {
                 assertEquals(1, narratorCalls.get());
                 until("document.querySelectorAll('.story-message.player').length === " + party);
                 assertEquals("Multiline player action is preserved in the actual turn", "true", js("document.querySelector('.story-message.player .player-message-text').textContent.includes('接受委托'+String.fromCharCode(10)+'询问失踪经过')"));
+                assertNoResizeErrors();
                 assertEquals("No API token in WebView storage", "null", js("localStorage.getItem('trpg-api')"));
                 assertFalse(context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE).getAll().toString().contains("android-qa-only-token"));
                 assertTrue(context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE).contains("trpg-api"));

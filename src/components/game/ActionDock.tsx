@@ -59,18 +59,26 @@ export function ActionDock({
   useEffect(() => {
     const input = inputRef.current;
     if (!input) return;
-    const resize = () => fitActionInput(input);
-    window.addEventListener('resize', resize);
     let width = input.clientWidth;
+    let resizeFrame: number | undefined;
+    const resize = () => { fitActionInput(input); width = input.clientWidth; };
+    window.addEventListener('resize', resize);
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => {
-      // Height changes are our own work; only a new wrapping width needs a refit.
+      // Refit a changed wrapping width after observation, not inside its delivery.
       if (input.clientWidth > 0 && input.clientWidth !== width) {
         width = input.clientWidth;
-        fitActionInput(input);
+        resizeFrame ??= requestAnimationFrame(() => {
+          resizeFrame = undefined;
+          if (input.isConnected && input.clientWidth > 0) resize();
+        });
       }
     });
     observer?.observe(input);
-    return () => { observer?.disconnect(); window.removeEventListener('resize', resize); };
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', resize);
+      if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame);
+    };
   }, [currentActor?.id]);
 
   if (ending) {
