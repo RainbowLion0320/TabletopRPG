@@ -1,8 +1,10 @@
-import { ChevronDown, Music2, Volume2, X } from 'lucide-react';
+import { ChevronDown, X } from 'lucide-react';
 import { useId, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { gameAudio } from '../../audio/audio';
 import { useDialogFocus } from './useDialogFocus';
+import { AudioEmblemArt } from './AudioEmblemArt';
+import { TuningDialArt } from './TuningDialArt';
 import './audio-settings.css';
 
 export function AudioSettingsButton({ className, iconOnly = false }: { className?: string; iconOnly?: boolean }) {
@@ -15,7 +17,7 @@ export function AudioSettingsButton({ className, iconOnly = false }: { className
   return <>
     <button ref={openerRef} type="button" className={className} aria-label="声音设置"
       title={iconOnly ? '声音设置' : undefined} onClick={() => setOpen(true)}>
-      <Volume2 size={iconOnly ? 18 : 16} aria-hidden="true" />{!iconOnly && '声音设置'}
+      <AudioEmblemArt size={iconOnly ? 24 : 20} />{!iconOnly && '声音设置'}
     </button>
     {open && createPortal(
       <div className="modal-backdrop audio-settings-backdrop" onClick={(event) => {
@@ -23,13 +25,13 @@ export function AudioSettingsButton({ className, iconOnly = false }: { className
       }}>
         <div className="modal-card audio-settings" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="audio-settings-title" tabIndex={-1}>
           <header>
-            <h2 id="audio-settings-title">声音设置</h2>
+            <h2 id="audio-settings-title"><TuningDialArt size={24} />声音设置</h2>
             <button className="audio-close" aria-label="关闭声音设置" onClick={() => setOpen(false)}><X size={20} /></button>
           </header>
           <div className="audio-settings-body">
           <section className="audio-channel" aria-label="背景音乐设置">
             <div className="audio-channel-heading">
-              <span><Music2 size={18} />背景音乐</span>
+              <span><AudioEmblemArt kind="music" size={24} />背景音乐</span>
               <button type="button" className="audio-switch" role="switch" aria-label="背景音乐" aria-checked={settings.musicEnabled} data-sound="none"
                 onClick={() => { gameAudio.updateSettings({ musicEnabled: !settings.musicEnabled }); gameAudio.unlock(); }}>
                 <span aria-hidden="true" className="audio-switch-track"><i /></span>{settings.musicEnabled ? '开启' : '关闭'}
@@ -43,7 +45,7 @@ export function AudioSettingsButton({ className, iconOnly = false }: { className
           </section>
           <section className="audio-channel" aria-label="音效设置">
             <div className="audio-channel-heading">
-              <span><Volume2 size={18} />游戏音效</span>
+              <span><AudioEmblemArt size={24} />游戏音效</span>
               <button type="button" className="audio-switch" role="switch" aria-label="游戏音效" aria-checked={settings.effectsEnabled} data-sound="none"
                 onClick={() => { gameAudio.updateSettings({ effectsEnabled: !settings.effectsEnabled }); gameAudio.unlock(); }}>
                 <span aria-hidden="true" className="audio-switch-track"><i /></span>{settings.effectsEnabled ? '开启' : '关闭'}

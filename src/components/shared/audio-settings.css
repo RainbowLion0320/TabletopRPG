@@ -2,14 +2,13 @@
 .audio-settings-backdrop { z-index: 400; padding: 16px; }
 :root.fog-ui .audio-settings { display: flex; flex-direction: column; width: min(480px, 100%); min-width: 0; max-height: calc(100dvh - 32px); padding: 18px; overflow: clip; }
 .audio-settings > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: 0 0 auto; padding-bottom: 10px; }
-:root.fog-ui .audio-settings header h2 { margin: 0; font-size: 21px; }
+:root.fog-ui .audio-settings header h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 21px; }
 :root.fog-ui .audio-close { position: relative; display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; padding: 0; color: var(--ui-ink); }
 .audio-settings-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1px; scroll-padding: 5px; }
 :root.fog-ui .audio-channel { min-width: 0; padding: 8px; border: 4px solid transparent; border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 4px / 0 stretch; background: var(--panel); }
 .audio-channel-heading, .audio-channel-heading > span, .audio-switch { display: flex; align-items: center; gap: 8px; }
 .audio-channel-heading { justify-content: space-between; }
 .audio-channel-heading > span { min-width: 0; color: var(--text); font: 400 16px/1.4 var(--ui-font); }
-.audio-channel-heading svg { flex: 0 0 auto; color: var(--accent); }
 :root.fog-ui .audio-switch { flex: 0 0 auto; min-height: 44px; padding: 0 7px; border: 1px solid transparent; border-radius: 8px; background: transparent; box-shadow: none; color: var(--text); font: 400 15px/1.4 var(--ui-font); cursor: pointer; touch-action: manipulation; }
 :root.fog-ui .audio-switch[aria-checked='true'] { color: var(--text); }
 .audio-switch-track { flex: 0 0 42px; width: 42px; height: 24px; padding: 3px; border: 1px solid transparent; border-image: var(--ui-input-frame) 90 100 90 100 fill / 4px 6px / 0 stretch; border-radius: 4px; background: var(--panel-strong); }
@@ -40,7 +39,6 @@
 .audio-credit-links a { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0 4px; color: var(--accent); font: 400 15px/1.5 var(--ui-font); text-decoration: underline; text-underline-offset: 3px; }
 :root.fog-ui .audio-credits p { margin: 0; color: var(--muted); overflow-wrap: anywhere; font: 400 15px/1.7 var(--ui-font); }
 .icon-text-btn.audio-icon-button { width: 44px; height: 44px; flex: 0 0 44px; padding: 0; justify-content: center; }
-.audio-icon-button > svg { flex-shrink: 0; }
 :root.fog-ui.portrait-ui .audio-settings { max-height: var(--mobile-dialog-height); padding: 16px; }
 :root.fog-ui.portrait-ui .audio-settings header h2 { font-size: 19px; }
 @media (max-height: 500px) {
