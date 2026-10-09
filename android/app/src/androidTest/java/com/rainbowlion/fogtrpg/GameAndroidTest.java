@@ -1,6 +1,7 @@
 package com.rainbowlion.fogtrpg;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.os.SystemClock;
 import android.util.Base64;
@@ -721,6 +722,25 @@ public class GameAndroidTest {
                     click("继续游戏"); until("document.querySelectorAll('.story-message.dm').length===200");
                     nativeTap(".narrative-toggle-btn");
                     js("window.qaHistoryText=JSON.stringify(Array.from(document.querySelectorAll('.story-message.dm p'),e=>e.textContent));window.qaHistoryColors=JSON.stringify(Array.from(document.querySelector('.story-message.dm').querySelectorAll('.narrative-mark-person'),e=>e.style.getPropertyValue('--person-color')));document.querySelector('.narrative-scroll').scrollTop=100");
+                    SharedPreferences preferences = context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE);
+                    AtomicInteger draftCommits = new AtomicInteger();
+                    SharedPreferences.OnSharedPreferenceChangeListener commitListener = (store, key) -> {
+                        if ("trpg-android-session-v1".equals(key)) draftCommits.incrementAndGet();
+                    };
+                    preferences.registerOnSharedPreferenceChangeListener(commitListener);
+                    String rapidDraft = "先记录信的日期，然后观察门锁和窗台。";
+                    try {
+                        for (int length = 1; length <= rapidDraft.length(); length++) {
+                            fill(".dock-input", rapidDraft.substring(0, length)); SystemClock.sleep(40);
+                        }
+                        js("window.qaRapidDraftSaved=false;const probe=setInterval(()=>Capacitor.Plugins.GameStorage.readAll().then(({values})=>{"
+                            + "const record=JSON.parse(values['trpg-android-session-v1']);const actor=record.state.players[record.state.currentActorIndex];"
+                            + "if(record.state.declarations[actor.id]===" + JSONObject.quote(rapidDraft) + "){window.qaRapidDraftSaved=true;clearInterval(probe);}}),100);");
+                        until("window.qaRapidDraftSaved");
+                        int writes = draftCommits.get();
+                        assertTrue("Rapid typing commits fewer full encrypted sessions than individual characters", writes > 0 && writes < rapidDraft.length() / 2);
+                        System.out.println("DRAFT_AUTOSAVE: inputEvents=" + rapidDraft.length() + ", encryptedCommits=" + writes);
+                    } finally { preferences.unregisterOnSharedPreferenceChangeListener(commitListener); }
                     fill(".dock-input", "记下求助信日期\n然后检查门廊");
                     assertEquals("Long history input keeps all prose, colors and reading position", "true", js("JSON.stringify(Array.from(document.querySelectorAll('.story-message.dm p'),e=>e.textContent))===window.qaHistoryText&&JSON.stringify(Array.from(document.querySelector('.story-message.dm').querySelectorAll('.narrative-mark-person'),e=>e.style.getPropertyValue('--person-color')))===window.qaHistoryColors&&document.querySelector('.narrative-scroll').scrollTop===100"));
                     nativeTap(".npc-nameplate"); until("document.querySelector('.entity-detail-card')");
@@ -729,6 +749,22 @@ public class GameAndroidTest {
                     nativeTap(".dock-submit"); until("document.querySelector('.dock-input').getAttribute('aria-label')==='艾达·华莱士的行动'");
                     assertEquals("Changing actor retains the entire long history without calling the model", "true", js("document.querySelectorAll('.story-message.dm').length===200&&document.querySelectorAll('.story-message.player').length===1&&document.querySelector('.narrative-scroll').scrollTop===100&&!!document.querySelector('.narrative-new-content')"));
                     assertEquals(1, narratorCalls.get()); screenshot("long-history-input");
+                    CountDownLatch backgroundCommit = new CountDownLatch(1);
+                    SharedPreferences.OnSharedPreferenceChangeListener backgroundListener = (store, key) -> {
+                        if ("trpg-android-session-v1".equals(key)) backgroundCommit.countDown();
+                    };
+                    preferences.registerOnSharedPreferenceChangeListener(backgroundListener);
+                    String backgroundDraft = "切后台前继续记录日期\n下一位的最后一笔";
+                    try {
+                        fill(".dock-input", backgroundDraft);
+                        activity.moveToState(androidx.lifecycle.Lifecycle.State.CREATED);
+                        assertTrue("Backgrounding durably flushes the latest draft", backgroundCommit.await(5, TimeUnit.SECONDS));
+                    } finally { preferences.unregisterOnSharedPreferenceChangeListener(backgroundListener); }
+                    activity.recreate(); activity.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED);
+                    until("document.querySelector('.title-continue')"); viewport(390,844); click("继续游戏");
+                    assertEquals("The real encrypted background checkpoint restores the final multiline edit", JSONObject.quote(backgroundDraft), js("document.querySelector('.dock-input').value"));
+                    assertEquals("Background recovery keeps the complete investigation", "true", js("document.querySelectorAll('.story-message.dm').length===200&&document.querySelectorAll('.story-message.player').length===1"));
+                    assertEquals(1, narratorCalls.get()); screenshot("draft-background-restored");
                 }
             } finally { if (activity != null) activity.close(); }
         }

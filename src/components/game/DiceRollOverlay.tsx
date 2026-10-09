@@ -27,14 +27,16 @@ function percentileFaces(value: number) {
   };
 }
 
-function RollingDice() {
+function RollingDice({ revealed }: { revealed: boolean }) {
   const [ready, setReady] = useState(false);
   return (
     <>
-      <img className={`dice-roll-idle${ready ? ' animation-ready' : ''}`} src={idleArt} alt="" draggable={false} />
-      <div className={`dice-roll-sprite${ready ? ' ready' : ''}`}>
-        <img src={rollArt} alt="" draggable={false} onLoad={() => setReady(true)} onError={() => setReady(false)} />
-      </div>
+      <img className={`dice-roll-idle${ready && !revealed ? ' animation-ready' : ''}`} src={idleArt} alt="" draggable={false} />
+      {!revealed && (
+        <div className={`dice-roll-sprite${ready ? ' ready' : ''}`}>
+          <img src={rollArt} alt="" draggable={false} onLoad={() => setReady(true)} onError={() => setReady(false)} />
+        </div>
+      )}
     </>
   );
 }
@@ -95,7 +97,7 @@ export function DiceRollOverlay({ onConfirm, roll }: DiceRollOverlayProps) {
           </div>
 
           <div className="dice-roll-stage" aria-hidden="true">
-            {revealed ? <img className="dice-roll-idle" src={idleArt} alt="" draggable={false} /> : <RollingDice />}
+            <RollingDice revealed={revealed} />
             {revealed && (
               <>
                 <span className="dice-face tens-die">{faces.tens}</span>
