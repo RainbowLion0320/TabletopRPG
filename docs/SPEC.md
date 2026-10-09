@@ -4,7 +4,7 @@
 > Updated: 2026-10-09
 > Scope: current React/Vite implementation
 
-In 0.5.17, the generic hypothesis light-bulb icon uses dedicated painted silver-blue artwork. It shares the existing 42x58px phone and 16x16px desktop contained icon slots with the evidence/event folder, through one record-art component; original card/node sizes, NPC/scene photos and hypothesis labels remain. Type artwork adds no story fact. Existing empty searches, bounded controls and responsive dossier focus/draft protection remain. No case projection, data, model rule, storage or player step changes.
+In 0.5.18, failed desktop case-record photos hide their whole photo slot, leaving existing classification and text readable within the original node size. Phone records retain their type fallback. Picture elements reset only when the actual picture URL changes, so a replacement can load while ordinary text updates do not repeatedly retry a failed URL. Record-detail media already had the correct behavior and remains unchanged. The eleven painted assets, record projection, case rules, player steps, storage and API configuration remain.
 
 In 0.5.14, empty logs, unmatched log searches and empty saves use one dedicated painted silver-blue investigator ledger, faithful to the approved artist palette and motifs. The new 14,954-byte WebP is displayed proportionally within 112 by 72 pixels, with the existing state text at 15px. The decorative image receives no pointer input or accessible name. Empty logs center within their existing reading area; saves keep their existing space. Windows at most 500px high hide the illustration so status, search and exit remain reachable. Queries, focus, action drafts and save operations are preserved, with no added model rule, stored field or player step.
 

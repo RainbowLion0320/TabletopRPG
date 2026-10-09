@@ -27,7 +27,7 @@ export function CaseBoardNodeCard({ data, selected }: NodeProps) {
       className={`case-flow-node ${node.type} ${node.certainty}${selected ? ' selected' : ''}${faded ? ' faded' : ''}${recent ? ' recent' : ''}`}
     >
       <Handle className="case-flow-handle" position={Position.Left} type="target" isConnectable={false} aria-hidden="true" />
-      {picture ? <span className="case-flow-photo" aria-hidden="true"><img src={picture} alt="" loading="lazy" onError={(event) => { event.currentTarget.hidden = true; }} /></span> : null}
+      {picture ? <span className="case-flow-photo" aria-hidden="true" key={picture}><img src={picture} alt="" loading="lazy" onError={(event) => { event.currentTarget.parentElement!.hidden = true; }} /></span> : null}
       <div className="case-flow-node-body">
         <span className="case-flow-node-meta">{icon(node.type)}{CASE_RECORD_LABEL[node.type]}</span>
         <strong>{node.title}</strong>

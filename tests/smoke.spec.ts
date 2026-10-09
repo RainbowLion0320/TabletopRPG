@@ -1059,7 +1059,7 @@ test('player action messages keep the player name and action on one line', async
   expect(messageLayout.sameLine).toBe(true);
 });
 
-test('reference panel opens a fullscreen case board and keeps the log tab', async ({ page }) => {
+test('reference panel opens a fullscreen case board and keeps the log tab', async ({ page }, testInfo) => {
   await startNewGame(page);
 
   await page.getByRole('button', { name: '资料', exact: true }).click();
@@ -1081,12 +1081,32 @@ test('reference panel opens a fullscreen case board and keeps the log tab', asyn
   await expect(page.getByRole('button', { name: '线索' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: '人物', exact: true })).toHaveCount(0);
 
+  const person = board.getByRole('button', { name: '人物 伊莎贝拉·摩勒', exact: true });
+  const portrait = person.locator('.case-flow-photo img');
+  await expect.poll(() => portrait.evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+  const portraitUrl = new URL((await portrait.getAttribute('src'))!, page.url()).href;
+  const draft = '查看资料时保留行动。\n再核对记录。';
+  await page.route(portraitUrl, route => route.abort());
+  await startNewGame(page);
+  await page.locator('.dock-input').fill(draft);
+  await page.getByRole('button', { name: '资料', exact: true }).click();
+  await expect.poll(() => portrait.evaluate(image => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth === 0)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath('case-photo-failed.png') });
+  await expect(person.locator('.case-flow-photo')).toBeHidden();
+  await person.click();
+  const detail = page.getByRole('dialog', { name: '伊莎贝拉·摩勒详情', exact: true });
+  await expect(detail.locator('.record-detail-media')).toBeHidden();
+  await detail.getByRole('button', { name: '关闭资料详情', exact: true }).click();
+  await expect(person).toBeFocused();
+
   await page.getByRole('tab', { name: '日志' }).click();
   await expect(page.getByRole('heading', { name: '行动日志' })).toBeVisible();
 
   await page.getByRole('button', { name: '关闭资料' }).click();
   await expect(page.locator('.info-drawer-react')).not.toHaveClass(/open/);
   await expect(page.getByRole('button', { name: '资料', exact: true })).toBeFocused();
+  await expect(page.locator('.dock-input')).toHaveValue(draft);
+  await page.unroute(portraitUrl);
   await expect.poll(() => page.locator('.game-screen').evaluate((element) => element.scrollLeft)).toBe(0);
   await expect.poll(() => page.locator('.scene-stage').evaluate((element) => element.getBoundingClientRect().left)).toBe(0);
 });
