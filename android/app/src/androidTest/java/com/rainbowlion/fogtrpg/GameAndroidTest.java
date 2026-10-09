@@ -478,6 +478,10 @@ public class GameAndroidTest {
                 InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
                 until("!document.querySelector('.game-menu') && document.activeElement===document.querySelector('.menu-button')");
                 String currentDraft = js("document.querySelector('.dock-input').value");
+                menu("AI 设置"); until("document.querySelector('.api-config-card')"); viewport(size[0], 300);
+                nativeTap(".api-config-close"); until("!document.querySelector('.api-config-card')&&document.activeElement===document.querySelector('.dock-actor-avatar')");
+                assertEquals("Closing short-window AI settings keeps the action draft", currentDraft, js("document.querySelector('.dock-input').value"));
+                screenshot(prefix + "-api-focus-restored"); viewport(size[0], size[1]);
                 String currentActor = js("document.querySelector('.party-compact.active strong').textContent");
                 menu("返回首页"); until("document.querySelector('.title-resume-preview')");
                 assertEquals("Artist navigation retains focused one-tap continuation", "true", js("document.querySelector('.title-resume-preview').textContent.includes('当前调查')&&document.querySelector('.title-actions button:first-child').getAttribute('aria-label')==='开始游戏'&&document.activeElement===document.querySelector('.title-continue')"));
@@ -974,6 +978,8 @@ public class GameAndroidTest {
                 viewport(size[0], size[1]); menu("读取存档"); until("document.querySelector('.save-slot-card')"); viewport(size[0], 300);
                 nativeTap(".save-manager-close"); until("!document.querySelector('.save-manager-card')");
                 assertEquals("Closing short-window saves returns to the read-only ending", "true", js("document.activeElement===document.querySelector('.ending-actions button:first-child')&&!document.querySelector('.dock-input')&&!document.querySelector('.thinking-line')"));
+                viewport(size[0], size[1]); menu("AI 设置"); until("document.querySelector('.api-config-card')"); viewport(size[0], 300);
+                nativeTap(".api-config-card footer .ghost-btn"); until("!document.querySelector('.api-config-card')&&document.activeElement===document.querySelector('.ending-actions button:first-child')");
                 viewport(size[0], size[1]); screenshot("ending-" + size[0] + "-return");
             } finally { activity.close(); }
         }

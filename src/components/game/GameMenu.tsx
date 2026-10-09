@@ -1,6 +1,7 @@
-import { Home, RotateCcw, Settings, X } from 'lucide-react';
+import { Home, RotateCcw, X } from 'lucide-react';
 import { ArchiveRecordArt } from '../shared/ArchiveRecordArt';
 import { JournalArt } from '../shared/JournalArt';
+import { TuningDialArt } from '../shared/TuningDialArt';
 import { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AudioSettingsButton } from '../shared/AudioSettingsButton';
@@ -41,7 +42,7 @@ export function GameMenu({ onClose, onHome, onLoad, onOpenApi, onRestart, onSave
       <section aria-labelledby="game-menu-settings">
         <h3 id="game-menu-settings">设置</h3>
         <div className="menu-list">
-        <button onClick={onOpenApi}><Settings size={16} />AI 设置</button>
+        <button onClick={onOpenApi}><TuningDialArt />AI 设置</button>
         <AudioSettingsButton />
         </div>
       </section>

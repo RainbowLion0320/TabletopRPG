@@ -1,7 +1,7 @@
 /* Connection setup shares the dossier shell; only its fields scroll under an IME. */
 :root .modal-card.api-config-card { display: flex; flex-direction: column; min-height: 0; max-height: calc(100dvh - 48px); overflow: clip; }
 .api-config-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-shrink: 0; }
-.api-config-header h2 { margin: 0; }
+.api-config-header h2 { display: flex; align-items: center; gap: 8px; margin: 0; }
 .api-config-close { flex: 0 0 44px; width: 44px; min-height: 44px; padding: 0; display: grid; place-items: center; }
 :root .api-config-card .api-storage-note { margin: 4px 0 16px; font-size: 14px; line-height: 1.5; }
 .api-config-card .api-config-fields { margin: 0; padding: 1px 3px 3px; min-height: 0; min-width: 0; overflow-y: auto; overscroll-behavior: contain; scroll-padding: 8px; }

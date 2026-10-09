@@ -1281,6 +1281,13 @@ for (const size of [{ width: 320, height: 568, party: 1, endingId: 'END_C' }, { 
       await expect(review).toBeFocused();
       await expect(ending).toContainText(outcome.summary);
       await page.setViewportSize(size);
+      await page.getByRole('button', { name: '菜单', exact: true }).click();
+      await page.getByRole('button', { name: 'AI 设置', exact: true }).click();
+      await page.setViewportSize({ width: size.width, height: 300 });
+      await page.getByRole('dialog', { name: 'AI DM 配置' }).getByRole('button', { name: '取消', exact: true }).click();
+      await expect(review).toBeFocused();
+      await expect(ending).toContainText(outcome.summary);
+      await page.setViewportSize(size);
       expect(aiCalls).toBe(0);
     }
   });
@@ -2302,6 +2309,14 @@ for (const size of [{ width: 320, height: 300 }, { width: 390, height: 844 }, { 
     await opener.click();
     await page.getByRole('dialog', { name: '调查菜单', exact: true }).getByRole('button', { name: 'AI 设置', exact: true }).click();
     await expect(model).not.toHaveValue('待确认的模型'); await expect(key).not.toHaveValue('ui-qa-only-draft');
+    if (size.width < 600) {
+      await page.setViewportSize({ width: size.width, height: 300 });
+      await dialog.getByRole('button', { name: '关闭 AI DM 配置' }).click();
+      await expect(dialog).toHaveCount(0);
+      await expect(page.locator('.dock-actor-avatar')).toBeFocused();
+      await expect(draft).toHaveValue('查看信件，稍后继续描述。');
+      await page.setViewportSize(fullSize);
+    }
   });
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ChevronDown, Eye, EyeOff, Settings2, X } from 'lucide-react';
+import { ChevronDown, Eye, EyeOff, X } from 'lucide-react';
 import { useDialogFocus } from './useDialogFocus';
+import { TuningDialArt } from './TuningDialArt';
 import { usingNativeStorage } from '../../platform/storage';
 import {
   defaultEndpointForProvider,
@@ -30,7 +31,9 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
   const dialogRef = useRef<HTMLFormElement>(null);
   const feedbackFocus = useRef<ApiConfigField | 'storage' | null>(null);
   const close = () => { if (!savingRef.current) onClose(); };
-  useDialogFocus(open, dialogRef, close);
+  useDialogFocus(open, dialogRef, close, undefined, {
+    getFallbackFocus: () => document.querySelector<HTMLButtonElement>('.dock-actor-avatar, .ending-actions button')
+  });
 
   useEffect(() => {
     if (open) {
@@ -127,7 +130,7 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
       <form ref={dialogRef} noValidate tabIndex={-1} className="modal-card api-config-card" role="dialog" aria-modal="true" aria-labelledby={titleId} aria-busy={saving}
         onSubmit={(event) => { event.preventDefault(); void save(); }}>
         <header className="api-config-header">
-          <h2 id={titleId}>AI DM 配置</h2>
+          <h2 id={titleId}><TuningDialArt size={24} />AI DM 配置</h2>
           <button type="button" className="ghost-btn api-config-close" aria-label="关闭 AI DM 配置" disabled={saving} onClick={close}><X size={20} aria-hidden="true" /></button>
         </header>
         <p className="api-storage-note">{usingNativeStorage() ? '设置加密保存在本机，下次打开自动生效。' : '设置保存在当前浏览器，下次打开自动生效。'}</p>
@@ -173,7 +176,7 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
           {errorFor('model')}
         </div>
         <details className="api-connection" open={connectionOpen} onToggle={(event) => setConnectionOpen(event.currentTarget.open)}>
-          <summary><Settings2 size={16} aria-hidden="true" /><span>连接设置</span><ChevronDown size={16} aria-hidden="true" /></summary>
+          <summary><TuningDialArt /><span>连接设置</span><ChevronDown size={16} aria-hidden="true" /></summary>
           <div className="api-connection-fields">
           <div className="api-field">
             <label htmlFor="api-endpoint">服务地址（Endpoint）</label>

@@ -4,7 +4,7 @@
 > Updated: 2026-10-10
 > Scope: current React/Vite implementation
 
-In 0.5.23, a neutral painted 28px archive seal replaces the ending flag for all three outcomes; outcome text and review/home actions remain unchanged. The existing save-manager/game-menu focus fallback now also resolves to the ending review button when a short viewport hides the original opener and no action avatar exists. Normal focus restoration, read-only endings, party resources, once-only settlement and drafts remain intact. Fourteen painted assets are adopted, without new player steps or model restrictions.
+In 0.5.24, one painted silver-blue adjustment dial is reused at 20px for AI settings/connection controls and 24px in the configuration heading. The existing focus hook receives an actor-avatar/ending-review fallback for a hidden original opener after a short-window AI dialog closes. Normal return focus, IME composition, validation, cancelled edits, game drafts and custom connection precedence remain intact. Fifteen painted assets are adopted, without new player steps, config fields or model restrictions.
 
 In 0.5.14, empty logs, unmatched log searches and empty saves use one dedicated painted silver-blue investigator ledger, faithful to the approved artist palette and motifs. The new 14,954-byte WebP is displayed proportionally within 112 by 72 pixels, with the existing state text at 15px. The decorative image receives no pointer input or accessible name. Empty logs center within their existing reading area; saves keep their existing space. Windows at most 500px high hide the illustration so status, search and exit remain reachable. Queries, focus, action drafts and save operations are preserved, with no added model rule, stored field or player step.
 
