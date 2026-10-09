@@ -462,6 +462,12 @@ public class GameAndroidTest {
                 fill(".case-board-search input", "伊莎贝拉");
                 until("document.querySelectorAll('.case-board-mobile-card').length===2");
                 assertEquals("Search keeps the matched person and related scene without unrelated records", "true", js("Array.from(document.querySelectorAll('.case-board-mobile-card')).map(e=>e.textContent).join(',').includes('伊莎贝拉')&&document.querySelector('.case-board-mobile-card.scene')&&!Array.from(document.querySelectorAll('.case-board-mobile-card')).some(e=>e.textContent.includes('埃里克'))"));
+                fill(".case-board-type select", "npc"); until("document.querySelectorAll('.case-board-mobile-card').length===1");
+                nativeTap(".info-drawer-tabs button[id$='-log']"); until("document.querySelector('.record-log-search input')");
+                nativeTap(".info-drawer-tabs button[id$='-board']"); until("document.querySelector('.case-board-search input')");
+                assertEquals("Case query and type survive real tab taps without exposing unrelated records", "true", js("document.querySelector('.case-board-search input').value==='伊莎贝拉'&&document.querySelector('.case-board-type select').value==='npc'&&document.querySelectorAll('.case-board-mobile-card').length===1"));
+                screenshot(prefix + "-board-retained");
+                fill(".case-board-type select", "all"); until("document.querySelectorAll('.case-board-mobile-card').length===2");
                 viewport(size[0], 300); reachable("[aria-label='关闭资料']"); reachable(".case-search-clear");
                 until("(()=>{const r=document.querySelector('.case-search-clear').getBoundingClientRect();return r.width>=44&&r.height>=44})()");
                 JSONObject clearSize = new JSONObject(js("(()=>{const e=document.querySelector('.case-search-clear'),r=e.getBoundingClientRect(),s=getComputedStyle(e);return {width:r.width,height:r.height,cssWidth:s.width,minHeight:s.minHeight,viewport:[innerWidth,innerHeight]}})()"));
@@ -512,6 +518,9 @@ public class GameAndroidTest {
                 until("!document.querySelector('.info-drawer-react.open')&&document.activeElement===document.querySelector('.dock-actor-avatar')");
                 assertEquals("Closing short-window references keeps the action draft", referenceDraft, js("document.querySelector('.dock-input').value"));
                 screenshot(prefix + "-reference-focus-restored"); viewport(size[0], size[1]);
+                nativeTap(".drawer-tab"); until("document.querySelector('.case-board-mobile-card')");
+                assertEquals("A new reference visit starts with all known records", "true", js("document.querySelector('.case-board-search input').value===''&&document.querySelector('.case-board-type select').value==='all'&&document.querySelectorAll('.case-board-mobile-card').length===3"));
+                nativeTap("[aria-label='关闭资料']"); until("!document.querySelector('.info-drawer-react.open')");
                 menu("声音设置"); reachable("[role='switch'][aria-label='背景音乐']"); reachable("[role='switch'][aria-label='游戏音效']");
                 screenshot(prefix + "-audio");
                 js("document.querySelector('.audio-credits').open=true;document.querySelector('.audio-settings-body').scrollTop=99999");

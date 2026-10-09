@@ -6,7 +6,7 @@ import { useDialogFocus } from '../shared/useDialogFocus';
 import { usePortraitLayout } from '../../platform/layout';
 import { storyData } from '../../data/storyData';
 import { ActionLogArchive, InvestigationProgress } from './InvestigationRecords';
-import { CaseBoard } from './CaseBoard';
+import { CaseBoard, type CaseBoardReadingState } from './CaseBoard';
 import './info-drawer.css';
 
 const drawerTabs = [['progress', '进度'], ['board', '案件板'], ['log', '日志']] as const;
@@ -24,6 +24,7 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
   const [activeTab, setActiveTab] = useState<InfoDrawerTab>(initialTab);
   const [logQuery, setLogQuery] = useState('');
   const logScrollPosition = useRef(0);
+  const caseReadingState = useRef<CaseBoardReadingState | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const portrait = usePortraitLayout();
   const id = useId();
@@ -73,7 +74,7 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
 
   useEffect(() => {
     if (open) setActiveTab(initialTab);
-    else { setLogQuery(''); logScrollPosition.current = 0; }
+    else { setLogQuery(''); logScrollPosition.current = 0; caseReadingState.current = null; }
   }, [open, initialTab]);
 
   useLayoutEffect(() => { if (pageRef.current) pageRef.current.scrollTop = 0; }, [activeTab]);
@@ -152,7 +153,7 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
         {open && activeTab === 'progress' ? <InvestigationProgress state={state} /> : null}
 
         {open && activeTab === 'board' ? (
-          <CaseBoard state={state} />
+          <CaseBoard state={state} readingState={caseReadingState} />
         ) : null}
 
         {open && activeTab === 'log' ? <ActionLogArchive entries={state.actionLog} query={logQuery}

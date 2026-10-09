@@ -1,4 +1,4 @@
-import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Component, lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from 'react';
 import { ChevronDown, Eye, EyeOff, X } from 'lucide-react';
 import type { GameState } from '../../types/game';
 import { CaseBoardInspector } from './CaseBoardInspector';
@@ -16,6 +16,15 @@ import './case-board-archive.css';
 
 interface CaseBoardProps {
   state: GameState;
+  readingState: MutableRefObject<CaseBoardReadingState | null>;
+}
+
+export interface CaseBoardReadingState {
+  query: string;
+  type: 'all' | CaseBoardDisplayNodeType;
+  showHypotheses: boolean;
+  threadId: string;
+  scrollTop: number;
 }
 
 const DesktopBoard = import.meta.env.ANDROID_PUBLIC_NATIVE_BUNDLE ? null
@@ -40,21 +49,39 @@ const TYPE_OPTIONS: Array<{ value: 'all' | CaseBoardDisplayNodeType; label: stri
   { value: 'theory', label: '推测' }
 ];
 
-export function CaseBoard({ state }: CaseBoardProps) {
+export function CaseBoard({ state, readingState }: CaseBoardProps) {
   const [flowFailed, setFlowFailed] = useState(false);
   const archive = useCaseBoardListLayout() || import.meta.env.ANDROID_PUBLIC_NATIVE_BUNDLE || flowFailed;
   const model = useMemo(() => buildCaseBoardGraphModel(state), [state]);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(() => readingState.current?.query ?? '');
   const searchRef = useRef<HTMLInputElement>(null);
-  const [type, setType] = useState<'all' | CaseBoardDisplayNodeType>('all');
-  const [showHypotheses, setShowHypotheses] = useState(true);
-  const [threadId, setThreadId] = useState('all');
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const scrollPosition = useRef(readingState.current?.scrollTop ?? 0);
+  const [type, setType] = useState<'all' | CaseBoardDisplayNodeType>(() => readingState.current?.type ?? 'all');
+  const [showHypotheses, setShowHypotheses] = useState(() => readingState.current?.showHypotheses ?? true);
+  const [threadId, setThreadId] = useState(() => archive ? 'all' : readingState.current?.threadId ?? 'all');
   const [selection, setSelection] = useState<string[]>([]);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const selectedId = selection[selection.length - 1] ?? null;
   const filtered = useMemo(() => filterCaseBoardGraph(model, {
     query, type, showHypotheses, threadId
   }), [model, query, showHypotheses, threadId, type]);
+
+  // Keep only the reading choices while another reference page is mounted.
+  // Closing the enclosing drawer releases this snapshot and all page content.
+  useLayoutEffect(() => {
+    const workspace = workspaceRef.current;
+    if (!archive || !workspace) return;
+    workspace.scrollTop = scrollPosition.current;
+    return () => {
+      scrollPosition.current = workspace.scrollTop;
+      if (readingState.current) readingState.current.scrollTop = workspace.scrollTop;
+    };
+  }, [archive, readingState]);
+
+  useLayoutEffect(() => {
+    readingState.current = { query, type, showHypotheses, threadId, scrollTop: scrollPosition.current };
+  }, [query, type, showHypotheses, threadId, readingState]);
 
   useEffect(() => { if (archive) setThreadId('all'); }, [archive]);
 
@@ -116,7 +143,12 @@ export function CaseBoard({ state }: CaseBoardProps) {
       </div>
 
       {model.nodes.length ? (
-        <div className={`case-board-workspace${selectedNode ? ' has-inspector' : ''}`}>
+        <div className={`case-board-workspace${selectedNode ? ' has-inspector' : ''}`} ref={workspaceRef}
+          onScroll={(event) => {
+            if (!archive) return;
+            scrollPosition.current = event.currentTarget.scrollTop;
+            if (readingState.current) readingState.current.scrollTop = scrollPosition.current;
+          }}>
           {!archive && <nav className="case-board-threads" aria-label="调查脉络">
             <h4>调查脉络</h4>
             <button aria-pressed={threadId === 'all'} onClick={() => { setSelection([]); setThreadId('all'); }} type="button">

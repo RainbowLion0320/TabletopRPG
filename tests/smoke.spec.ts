@@ -2046,11 +2046,26 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     await expect(detail).toHaveCount(0); await expect(drawer).toBeVisible(); await expect(card).toBeFocused();
     await expect(drawer.getByRole('combobox', { name: '资料类型' })).toHaveValue('npc');
     await expect(search).toHaveValue('');
-    await drawer.getByRole('combobox', { name: '资料类型' }).selectOption('all');
+    await drawer.getByRole('combobox', { name: '资料类型' }).selectOption('event');
+    await search.fill('现场');
+    await expect(drawer.locator('.case-board-mobile-card')).toHaveCount(15);
+    await workspace.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+    const casePosition = await workspace.evaluate(element => element.scrollTop);
+    expect(casePosition).toBeGreaterThan(0);
     await drawer.getByRole('tab', { name: '进度' }).click();
     await expect(drawer.getByRole('tabpanel')).not.toContainText(/已发现\s+0\s*\/\s*8/);
+    await drawer.getByRole('tab', { name: '日志' }).click();
     await drawer.getByRole('tab', { name: '案件板' }).click();
+    await expect(search).toHaveValue('现场');
+    await expect(drawer.getByRole('combobox', { name: '资料类型' })).toHaveValue('event');
+    await expect(drawer.locator('.case-board-mobile-card')).toHaveCount(15);
+    await expect.poll(() => workspace.evaluate(element => element.scrollTop)).toBe(casePosition);
     await page.screenshot({ path: testInfo.outputPath('case-archive.png') });
+    await drawer.getByRole('button', { name: '关闭资料', exact: true }).click(); await expect(opener).toBeFocused();
+    await opener.click();
+    await expect(search).toHaveValue('');
+    await expect(drawer.getByRole('combobox', { name: '资料类型' })).toHaveValue('all');
+    expect(await workspace.evaluate(element => element.scrollTop)).toBe(0);
     await drawer.getByRole('button', { name: '关闭资料', exact: true }).click(); await expect(opener).toBeFocused();
   });
 }
@@ -2211,6 +2226,10 @@ for (const size of [{ width: 980, height: 640 }, { width: 1440, height: 900 }]) 
     const drawer = page.getByRole('dialog', { name: '资料', exact: true });
     const graph = drawer.locator('.case-board-flow-wrap');
     const viewport = graph.locator('.react-flow__viewport');
+    expect(await drawer.locator(':scope > header > button, .info-drawer-tabs button').evaluateAll(elements => elements.every(e => {
+      const r = e.getBoundingClientRect();
+      return r.width >= 44 && r.height >= 44 && e.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+    }))).toBe(true);
     const view = () => viewport.evaluate((element) => (element as HTMLElement).style.transform);
     const inside = (selector: string) => graph.locator(selector).evaluate((element) => {
       const card = element.getBoundingClientRect();
@@ -2323,6 +2342,16 @@ for (const size of [{ width: 980, height: 640 }, { width: 1440, height: 900 }]) 
     await allRecords.click(); await expect(allRecords).toHaveAttribute('aria-pressed', 'true');
     await expect(search).toHaveValue('伊莎贝拉');
     await expect(drawer.getByRole('combobox', { name: '资料类型' })).toHaveValue('npc');
+    await expect(node).toBeVisible();
+    await drawer.getByRole('button', { name: '显示推测', exact: true }).click();
+    await threads.getByRole('button').last().click();
+    await drawer.getByRole('tab', { name: '日志' }).click();
+    await drawer.getByRole('tab', { name: '案件板' }).click();
+    await expect(search).toHaveValue('伊莎贝拉');
+    await expect(drawer.getByRole('combobox', { name: '资料类型' })).toHaveValue('npc');
+    await expect(drawer.getByRole('button', { name: '显示推测', exact: true })).toHaveAttribute('aria-pressed', 'false');
+    await expect(threads.getByRole('button').last()).toHaveAttribute('aria-pressed', 'true');
+    await allRecords.click();
     await expect(node).toBeVisible();
   });
 }
