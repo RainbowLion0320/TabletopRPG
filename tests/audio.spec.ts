@@ -286,6 +286,7 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     await effects.fill('23'); await preview.click();
     await credits.focus(); await page.keyboard.press('Tab'); await expect(close).toBeFocused();
     await credits.click(); await expect(dialog.getByRole('link', { name: 'Kevin MacLeod' })).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
     const headerBefore = await close.boundingBox();
     for (const name of ['Kevin MacLeod', 'CC BY 4.0', 'Kenney', 'CC0']) await reachable(dialog.getByRole('link', { name, exact: true }));
     const headerAfter = await close.boundingBox(); expect(headerAfter!.y).toBeCloseTo(headerBefore!.y, 1);

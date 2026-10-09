@@ -822,10 +822,34 @@ for (const size of [{ width: 390, height: 844, party: 1 }, { width: 1440, height
     await expect(sheet.getByRole('button', { name: '关闭调查员档案' })).toBeInViewport();
     await page.screenshot({ path: testInfo.outputPath('sheet-skills.png') });
     const readingPosition = await sheet.locator('.investigator-body').evaluate(e => e.scrollTop);
+    if (size.party > 1) {
+      const teammate = size.party === 4 ? '罗伯特·肖' : '艾达·华莱士';
+      await sheet.getByRole('button', { name: teammate, exact: true }).click();
+      expect(await sheet.locator('.investigator-body').evaluate(e => e.scrollTop)).toBe(0);
+      await sheet.locator('.investigator-body').evaluate(e => { e.scrollTop = (e.scrollHeight - e.clientHeight) / 2; });
+      const teammatePosition = await sheet.locator('.investigator-body').evaluate(e => e.scrollTop);
+      expect(teammatePosition).toBeGreaterThan(0);
+      await sheet.getByRole('button', { name: '亨利·格雷', exact: true }).click();
+      await expect.poll(() => sheet.locator('.investigator-body').evaluate(e => e.scrollTop)).toBe(readingPosition);
+      await sheet.getByRole('button', { name: teammate, exact: true }).click();
+      await expect.poll(() => sheet.locator('.investigator-body').evaluate(e => e.scrollTop)).toBe(teammatePosition);
+      await sheet.getByRole('button', { name: '亨利·格雷', exact: true }).click();
+    }
     await sheet.getByRole('tab', { name: '随身与背景' }).click();
     await expect(sheet).toContainText('苏格兰场徽章');
     await sheet.getByRole('tab', { name: '技能', exact: true }).click();
     await expect.poll(() => sheet.locator('.investigator-body').evaluate(e => e.scrollTop)).toBe(readingPosition);
+    if (size.party > 1) {
+      const teammate = size.party === 4 ? '罗伯特·肖' : '艾达·华莱士';
+      await search.fill('侦查');
+      await sheet.getByRole('button', { name: teammate, exact: true }).click();
+      await expect(search).toHaveValue('侦查');
+      expect(await sheet.locator('.investigator-body').evaluate(e => e.scrollTop)).toBe(0);
+      await clear.click();
+      expect(await sheet.locator('.investigator-body').evaluate(e => e.scrollTop)).toBe(0);
+      await sheet.getByRole('button', { name: '亨利·格雷', exact: true }).click();
+      expect(await sheet.locator('.investigator-body').evaluate(e => e.scrollTop)).toBe(0);
+    }
     if (size.width <= 700) {
       await search.fill('侦查');
       expect(await sheet.locator('.investigator-body').evaluate(e => e.scrollTop)).toBe(0);

@@ -405,11 +405,44 @@ public class GameAndroidTest {
                 js("document.querySelector('.investigator-body').scrollTop=99999");
                 String skillsReadingPosition = js("document.querySelector('.investigator-body').scrollTop");
                 reachable(".investigator-search input"); reachable(".investigator-close"); screenshot(prefix + "-skills");
+                if (partySize > 1) {
+                    js("document.querySelector('.investigator-party button:last-child').scrollIntoView({block:'nearest',inline:'nearest'})");
+                    nativeTap(".investigator-party button:last-child");
+                    until("document.querySelector('.investigator-party button:last-child').getAttribute('aria-pressed')==='true'");
+                    assertEquals("First teammate visit starts at the list beginning", "0", js("document.querySelector('.investigator-body').scrollTop"));
+                    js("(()=>{const b=document.querySelector('.investigator-body');b.scrollTop=(b.scrollHeight-b.clientHeight)/2})()");
+                    String teammateReadingPosition = js("document.querySelector('.investigator-body').scrollTop");
+                    assertTrue("Teammate skill list has a distinct reading position", Double.parseDouble(teammateReadingPosition) > 0);
+                    js("document.querySelector('.investigator-party button:first-child').scrollIntoView({block:'nearest',inline:'nearest'})");
+                    nativeTap(".investigator-party button:first-child");
+                    until("document.querySelector('.investigator-party button:first-child').getAttribute('aria-pressed')==='true'");
+                    assertEquals("Returning to the actor retains that member's reading position", skillsReadingPosition, js("document.querySelector('.investigator-body').scrollTop"));
+                    screenshot(prefix + "-skills-member-return");
+                    js("document.querySelector('.investigator-party button:last-child').scrollIntoView({block:'nearest',inline:'nearest'})");
+                    nativeTap(".investigator-party button:last-child");
+                    until("document.querySelector('.investigator-party button:last-child').getAttribute('aria-pressed')==='true'");
+                    assertEquals("Returning to the teammate retains its own reading position", teammateReadingPosition, js("document.querySelector('.investigator-body').scrollTop"));
+                    js("document.querySelector('.investigator-party button:first-child').scrollIntoView({block:'nearest',inline:'nearest'})");
+                    nativeTap(".investigator-party button:first-child");
+                    until("document.querySelector('.investigator-party button:first-child').getAttribute('aria-pressed')==='true'");
+                }
                 click("随身与背景");
                 js("document.querySelector('.investigator-background dd').textContent='长篇角色背景记录。'.repeat(150);document.querySelector('.investigator-body').scrollTop=99999");
                 reachable(".investigator-close");
                 click("技能");
                 assertEquals("Returning to skills restores the reading position", skillsReadingPosition, js("document.querySelector('.investigator-body').scrollTop"));
+                if (partySize > 1) {
+                    fill(".investigator-search input", "侦查");
+                    js("document.querySelector('.investigator-party button:last-child').scrollIntoView({block:'nearest',inline:'nearest'})");
+                    nativeTap(".investigator-party button:last-child");
+                    until("document.querySelector('.investigator-party button:last-child').getAttribute('aria-pressed')==='true'");
+                    assertEquals("Changing the shared skill query resets each teammate's result position", "true", js("document.querySelector('.investigator-search input').value==='侦查'&&document.querySelector('.investigator-body').scrollTop===0"));
+                    nativeTap("[aria-label='清除技能搜索']");
+                    js("document.querySelector('.investigator-party button:first-child').scrollIntoView({block:'nearest',inline:'nearest'})");
+                    nativeTap(".investigator-party button:first-child");
+                    until("document.querySelector('.investigator-party button:first-child').getAttribute('aria-pressed')==='true'");
+                    assertEquals("Clearing a comparison starts all members' unfiltered lists at the beginning", "true", js("document.querySelector('.investigator-search input').value===''&&document.querySelector('.investigator-body').scrollTop===0"));
+                }
                 // Real focus and settled insets make both system-return steps deterministic.
                 nativeTap(".investigator-search input"); awaitSettledIme(true);
                 InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
@@ -663,8 +696,10 @@ public class GameAndroidTest {
             click("开始游戏"); click("进入游戏"); configure(server.url("/v1").toString(), "responses");
             fill(".dock-input", "伸手拿走纸条，不引起灰风衣男人注意。"); click("提交");
             for (int expected : new int[] {3, 6}) {
+                long recoveryDeadline = SystemClock.elapsedRealtime() + 20000;
+                while (calls.get() < expected && SystemClock.elapsedRealtime() < recoveryDeadline) SystemClock.sleep(100);
+                assertEquals("This recovery completes its expected requests before inspecting the notice", expected, calls.get());
                 until("document.querySelector('.action-dock [role=status]')");
-                assertEquals(expected, calls.get());
                 assertEquals("One recovery notice", "1", js("document.querySelectorAll('.action-dock [role=status]').length"));
                 assertEquals("No leaked rules or hidden scene names", "false", js("/贝尔街|request_check|返回格式无效/.test(document.body.innerText)"));
                 assertEquals("No error history spam", "0", js("document.querySelectorAll('.story-message.system').length"));

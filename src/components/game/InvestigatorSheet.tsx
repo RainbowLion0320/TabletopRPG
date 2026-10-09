@@ -25,8 +25,7 @@ export function InvestigatorSheet({ players, selectedId, onSelect, onClose }: In
   const dialogRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-  const readingPositions = useRef<Partial<Record<SheetTab, number>>>({});
-  const previousPlayer = useRef(selectedId);
+  const readingPositions = useRef(new Map<string, Partial<Record<SheetTab, number>>>());
   const id = useId();
   const [tab, setTab] = useState<SheetTab>('overview');
   const [query, setQuery] = useState('');
@@ -35,22 +34,32 @@ export function InvestigatorSheet({ players, selectedId, onSelect, onClose }: In
     getFallbackFocus: () => document.querySelector<HTMLButtonElement>('.dock-actor-avatar, .ending-actions button')
   });
   useLayoutEffect(() => {
-    if (previousPlayer.current !== selectedId) {
-      previousPlayer.current = selectedId;
-      readingPositions.current = {};
-    }
-    if (bodyRef.current) bodyRef.current.scrollTop = readingPositions.current[tab] ?? 0;
+    if (bodyRef.current) bodyRef.current.scrollTop = readingPositions.current.get(selectedId)?.[tab] ?? 0;
   }, [selectedId, tab]);
 
   if (!player) return null;
 
+  function rememberReadingPosition() {
+    if (!bodyRef.current) return;
+    readingPositions.current.set(selectedId, {
+      ...readingPositions.current.get(selectedId),
+      [tab]: bodyRef.current.scrollTop
+    });
+  }
+
   function selectPlayer(playerId: string) {
+    rememberReadingPosition();
     onSelect(playerId);
+  }
+
+  function selectTab(nextTab: SheetTab) {
+    rememberReadingPosition();
+    setTab(nextTab);
   }
 
   function searchSkills(value: string) {
     setQuery(value);
-    readingPositions.current.skills = 0;
+    for (const positions of readingPositions.current.values()) positions.skills = 0;
     if (tab === 'skills' && bodyRef.current) bodyRef.current.scrollTop = 0;
   }
 
@@ -60,7 +69,7 @@ export function InvestigatorSheet({ players, selectedId, onSelect, onClose }: In
         : event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : -1;
     if (next < 0) return;
     event.preventDefault();
-    setTab(tabs[next][0]);
+    selectTab(tabs[next][0]);
     dialogRef.current?.querySelector<HTMLButtonElement>(`[id="${id}-${tabs[next][0]}"]`)?.focus();
   }
 
@@ -95,7 +104,7 @@ export function InvestigatorSheet({ players, selectedId, onSelect, onClose }: In
         </nav>}
 
         <div className="investigator-tabs" role="tablist" aria-label="档案分类">
-          {tabs.map(([key, label], index) => <button type="button" key={key} id={`${id}-${key}`} role="tab" aria-selected={tab === key} aria-controls={`${id}-body`} tabIndex={tab === key ? 0 : -1} onClick={() => setTab(key)} onKeyDown={(event) => handleTabKey(event, index)}>{label}</button>)}
+          {tabs.map(([key, label], index) => <button type="button" key={key} id={`${id}-${key}`} role="tab" aria-selected={tab === key} aria-controls={`${id}-body`} tabIndex={tab === key ? 0 : -1} onClick={() => selectTab(key)} onKeyDown={(event) => handleTabKey(event, index)}>{label}</button>)}
         </div>
 
         {tab === 'skills' && <div className="investigator-search">
@@ -105,7 +114,7 @@ export function InvestigatorSheet({ players, selectedId, onSelect, onClose }: In
         </div>}
 
         <div className={`investigator-body${tab === 'skills' ? ' skills-page' : ''}`} ref={bodyRef} id={`${id}-body`} role="tabpanel" aria-labelledby={`${id}-${tab}`} tabIndex={0}
-          onScroll={(event) => { readingPositions.current[tab] = event.currentTarget.scrollTop; }}>
+          onScroll={rememberReadingPosition}>
           {tab === 'overview' && <>
             <dl className="investigator-vitals" aria-label="当前状态">
               <div data-stat="hp"><dt>生命 HP</dt><dd>{player.currentHp}<small> / {player.hp}</small></dd></div>
