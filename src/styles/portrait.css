@@ -21,17 +21,11 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 /* All current scene paintings are 1896 × 1080. Reserve their own wide frame
    instead of cropping them to fill the portrait screen behind the reading UI. */
 /* Let the scene yield space before reading drops below 140px (plus the frame border). */
-.portrait-ui .game-screen { --game-top: calc(48px + var(--mobile-top)); --scene-height: min(calc(100vw * 1080 / 1896), calc(50dvh - var(--game-top))); --game-bottom: max(10px, env(safe-area-inset-bottom, 0px)); height: var(--mobile-height); min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: var(--game-top) minmax(0, var(--scene-height)) minmax(142px, 1fr) max-content; padding: 0 var(--mobile-right) var(--game-bottom) var(--mobile-left); }
+.portrait-ui .game-screen { --game-top: calc(48px + var(--mobile-top)); --scene-height: min(calc(100vw * 1080 / 1896), calc(50dvh - var(--game-top))); --game-bottom: max(10px, env(safe-area-inset-bottom, 0px)); height: var(--mobile-height); min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: max-content minmax(0, var(--scene-height)) minmax(142px, 1fr) max-content; padding: 0 var(--mobile-right) var(--game-bottom) var(--mobile-left); }
 .portrait-ui .scene-stage { position: relative; grid-column: 1; grid-row: 2; top: auto; left: calc(0px - var(--mobile-left)); right: auto; width: calc(100% + var(--mobile-left) + var(--mobile-right)); height: 100%; min-height: 0; overflow: hidden; isolation: isolate; }
 .portrait-ui .scene-backdrop-img { object-fit: contain; object-position: center; filter: saturate(.85) brightness(.86); }
 .portrait-ui .scene-shade { background: linear-gradient(to bottom, rgba(5,5,5,.08), transparent 45%, rgba(5,5,5,.4)); }
 .portrait-ui .scene-npc { top: auto; bottom: 0; left: var(--mobile-left); right: auto; width: calc(100% - var(--mobile-left) - var(--mobile-right)); height: calc(100% - 8px); max-height: none; object-fit: contain; object-position: center bottom; transform: none; opacity: 1; filter: saturate(.9) brightness(.96) drop-shadow(0 8px 20px rgba(0,0,0,.55)); -webkit-mask-image: linear-gradient(#000 86%, transparent); mask-image: linear-gradient(#000 86%, transparent); }
-.portrait-ui .game-top { padding: var(--mobile-top) var(--mobile-right) 0 var(--mobile-left); align-items: center; }
-.portrait-ui .brand-block { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; gap: 3px 8px; max-width: calc(100% - 100px); min-width: 0; }
-.portrait-ui .brand-title { grid-column: 1 / -1; font-size: 14px; line-height: 1.3; }
-.portrait-ui .brand-scene { font-size: 11px; margin: 0; }
-.portrait-ui .brand-scene::before, .portrait-ui .brand-scene::after { display: none; }
-.portrait-ui .world-time { font-size: 10px; margin: 0; white-space: nowrap; }
 .portrait-ui .menu-button { width: 44px; height: 44px; flex: 0 0 44px; }
 .portrait-ui .drawer-tab { top: var(--mobile-top) !important; right: calc(var(--mobile-right) + 50px); width: 44px; height: 44px; min-height: 44px; padding: 0; display: grid; place-items: center; border-radius: 8px; border: 1px solid var(--line-soft); }
 .portrait-ui .drawer-tab span, .portrait-ui .drawer-tab .drawer-grip { display: none; }
@@ -100,6 +94,9 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
   .portrait-ui .game-screen:has(.dock-input:focus) .suggestion-row { display: none; }
   .portrait-ui .modal-card { padding: 12px; }
 }
+@media (max-height: 420px) {
+  .portrait-ui .game-screen .suggestion-row { display: none; }
+}
 @media (max-height: 300px) {
   .portrait-ui .game-screen { --game-top: 0px; }
   .portrait-ui .game-top, .portrait-ui .drawer-tab, .portrait-ui .suggestion-row { display: none; }
@@ -111,6 +108,8 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 @media (max-width: 360px) {
   .portrait-ui .setup-header { gap: 6px; }
   .portrait-ui .setup-header h1 { font-size: 18px; letter-spacing: 0; }
-  .portrait-ui .brand-block { gap: 2px 5px; }
-  .portrait-ui .world-time { font-size: 9px; }
+}
+/* Narrow phones reserve room for three metadata lines; keyboard-only layout stays separate. */
+@media (max-width: 360px) and (min-height: 301px) {
+  .portrait-ui .game-screen { --game-top: calc(60px + var(--mobile-top)); }
 }

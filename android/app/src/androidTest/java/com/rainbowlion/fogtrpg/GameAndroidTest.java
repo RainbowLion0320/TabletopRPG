@@ -167,8 +167,20 @@ public class GameAndroidTest {
     }
 
     private void readablePartyDossiers() throws Exception {
-        reachable(".party-compact:last-child");
-        assertEquals("Every investigator remains readable, drawn and reachable", "true", js("(()=>{const d=document.querySelector('.action-dock').getBoundingClientRect();return Array.from(document.querySelectorAll('.party-compact')).every(e=>{const r=e.getBoundingClientRect();return r.width>=44&&r.height>=44&&r.top>=d.top&&r.bottom<=Math.min(d.bottom,innerHeight)+.5&&e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))&&getComputedStyle(e).borderImageSource.includes('panel-frame')&&getComputedStyle(e).opacity==='1'&&e.scrollWidth<=e.clientWidth+1&&Array.from(e.querySelectorAll('strong,.party-action-status,.bar-label,.bar-value')).every(t=>{const b=t.getBoundingClientRect(),s=parseFloat(getComputedStyle(t).fontSize);return s>=(t.tagName==='STRONG'?14:t.classList.contains('bar-value')?13:12)&&b.left>=r.left&&b.right<=r.right})})})()"));
+        String scroll = js("document.querySelector('.party-strip-compact').scrollLeft");
+        int count = Integer.parseInt(js("document.querySelectorAll('.party-compact').length"));
+        for (int player = 1; player <= count; player++) {
+            String selector = ".party-compact:nth-child(" + player + ")";
+            js("document.querySelector('" + selector + "').scrollIntoView({block:'nearest',inline:'nearest'})");
+            reachable(selector);
+            assertEquals("Every investigator remains readable, drawn and reachable", "true", js("(()=>{const d=document.querySelector('.action-dock').getBoundingClientRect(),e=document.querySelector('" + selector + "'),r=e.getBoundingClientRect();return r.width>=44&&r.height>=44&&r.top>=d.top&&r.bottom<=Math.min(d.bottom,innerHeight)+.5&&getComputedStyle(e).borderImageSource.includes('panel-frame')&&getComputedStyle(e).opacity==='1'&&e.scrollWidth<=e.clientWidth+1&&Array.from(e.querySelectorAll('strong,.party-action-status,.bar-label,.bar-value')).every(t=>{const b=t.getBoundingClientRect(),s=parseFloat(getComputedStyle(t).fontSize);return s>=(t.tagName==='STRONG'?14:t.classList.contains('bar-value')?13:12)&&b.left>=r.left&&b.right<=r.right})})()"));
+        }
+        js("document.querySelector('.party-strip-compact').scrollLeft=" + scroll);
+    }
+
+    private void readableNavigation() throws Exception {
+        assertEquals("Phone location and full date remain readable inside their navigation row", "true", js("(()=>{const t=document.querySelector('.game-top'),r=t.getBoundingClientRect(),b=document.querySelector('.drawer-tab').getBoundingClientRect();return parseFloat(getComputedStyle(t.querySelector('.brand-scene')).fontSize)>=13&&parseFloat(getComputedStyle(t.querySelector('.world-time')).fontSize)>=12&&Array.from(t.querySelectorAll('.brand-title,.brand-scene,.world-time')).every(e=>{const q=e.getBoundingClientRect();return q.left>=r.left&&q.right<=b.left-4&&q.top>=r.top&&q.bottom<=r.bottom&&e.scrollWidth<=e.clientWidth+1})&&document.documentElement.scrollWidth<=innerWidth})()"));
+        reachable(".menu-button"); reachable(".drawer-tab");
     }
 
     private void menu(String label) throws Exception {
@@ -305,9 +317,24 @@ public class GameAndroidTest {
                     assertEquals("Smallest four-player reading area remains usable", "true", js("document.querySelector('.narrative-panel').clientHeight>=140"));
                     assertEquals("Smallest four-player empty action hint is not clipped", "true", js("(()=>{const e=document.querySelector('.dock-input');return e.value===''&&e.scrollHeight<=e.clientHeight+1})()"));
                     screenshot("portrait-320x568-four-game");
+                    viewport(320, 360); readableNavigation();
+                    String shortDraft = "核对地点和时间。\n然后继续调查。";
+                    fill(".dock-input", shortDraft); reachable(".dock-input"); reachable(".dock-submit");
+                    readablePartyDossiers();
+                    for (int player = 0; player < 4; player++) {
+                        String card = "document.querySelectorAll('.party-compact')[" + player + "]";
+                        js(card + ".scrollIntoView({block:'nearest',inline:'nearest'})");
+                        assertEquals("Every short-window party card can be fully exposed", "true", js("(()=>{const r=" + card + ".getBoundingClientRect(),p=document.querySelector('.party-strip-compact').getBoundingClientRect();return r.left>=p.left-.5&&r.right<=p.right+.5&&r.top>=0&&r.bottom<=innerHeight})()"));
+                        nativeTap(".party-compact:nth-child(" + (player + 1) + ")"); until("document.querySelector('.investigator-sheet')");
+                        nativeTap(".investigator-close"); until("!document.querySelector('.investigator-sheet')&&document.activeElement===" + card);
+                        assertEquals("Inspecting each party member preserves the multiline action", JSONObject.quote(shortDraft), js("document.querySelector('.dock-input').value"));
+                    }
+                    js("document.querySelector('.party-strip-compact').scrollLeft=0"); screenshot("portrait-320x360-four-game");
+                    fill(".dock-input", "");
                     viewport(size[0], size[1]);
                 }
                 assertEquals("Reading area keeps at least 140 CSS pixels", "true", js("document.querySelector('.narrative-panel').clientHeight>=140"));
+                readableNavigation();
                 until("document.querySelector('.scene-npc').complete && document.querySelector('.scene-npc').naturalWidth>0");
                 assertEquals("NPC has its own visible stage above both panels", "true", js("(()=>{const n=document.querySelector('.scene-npc').getBoundingClientRect(),p=document.querySelector('.narrative-panel').getBoundingClientRect(),d=document.querySelector('.action-dock').getBoundingClientRect();return n.width>innerWidth*.9&&n.height>=110&&n.left>=0&&n.top>=44&&n.bottom<=p.top+.5&&d.top>=p.bottom-.5&&d.left===p.left&&d.right===p.right&&d.bottom<=innerHeight-8})()"));
                 until("document.querySelector('.scene-backdrop-img').complete && document.querySelector('.scene-backdrop-img').naturalWidth>0");
@@ -955,6 +982,7 @@ public class GameAndroidTest {
                 activity.recreate(); until("document.querySelector('.title-resume-preview')"); viewport(size[0], size[1]);
                 assertEquals("Completed records offer a review", "true", js("document.querySelector('.title-resume-preview').textContent.includes('已结案')&&document.querySelector('.title-continue').textContent==='回顾调查'"));
                 click("回顾调查"); until("document.querySelector('.ending-dock')");
+                readableNavigation();
                 assertEquals("The ending stays read-only with the original party", "true", js("!document.querySelector('.dock-input')&&!document.querySelector('.party-action-status')&&!document.querySelector('.scene-npc')&&document.querySelectorAll('.ending-dock .party-compact').length===" + size[2]));
                 assertEquals("Outcome uses the drawn record mount and readable text", "true", js("getComputedStyle(document.querySelector('.ending-copy')).borderImageSource.includes('panel-frame')&&parseFloat(getComputedStyle(document.querySelector('.ending-copy p')).fontSize)>=15"));
                 reachable(".ending-actions button:first-child"); reachable(".ending-actions button:last-child"); reachable(".ending-dock .party-compact:last-child");

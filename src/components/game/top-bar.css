@@ -1,0 +1,14 @@
+/* Preserve desktop siblings; phone metadata can wrap without shrinking text. */
+.brand-location-row { display: contents; }
+:root.fog-ui.portrait-ui .game-top {
+  position: relative; grid-column: 1; grid-row: 1; top: auto; right: auto;
+  left: calc(0px - var(--mobile-left)); width: calc(100% + var(--mobile-left) + var(--mobile-right));
+  min-height: calc(48px + var(--mobile-top));
+  padding: var(--mobile-top) var(--mobile-right) 3px var(--mobile-left); align-items: flex-start;
+}
+:root.fog-ui.portrait-ui .brand-block { display: grid; grid-template-columns: minmax(0, 1fr); align-self: center; gap: 3px; max-width: calc(100% - 100px); min-width: 0; }
+:root.fog-ui.portrait-ui .brand-title { font-size: 14px; line-height: 1.3; }
+:root.fog-ui.portrait-ui .brand-location-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+:root.fog-ui.portrait-ui .brand-scene { font-size: 13px; line-height: 1.25; margin: 0; white-space: nowrap; }
+:root.fog-ui.portrait-ui .brand-scene::before, :root.fog-ui.portrait-ui .brand-scene::after { display: none; }
+:root.fog-ui.portrait-ui .world-time { font-size: 12px; line-height: 1.25; margin: 0; white-space: nowrap; }

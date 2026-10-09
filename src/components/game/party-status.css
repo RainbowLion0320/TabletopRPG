@@ -37,6 +37,11 @@
 @media (min-width: 760px) {
   :root.portrait-ui .party-strip-compact:has(.party-compact:nth-child(3)) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+@media (max-height: 500px) and (min-height: 301px) {
+  :root.portrait-ui .party-strip-compact:has(.party-compact:nth-child(2)) { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  :root.portrait-ui .party-strip-compact:has(.party-compact:nth-child(2))::-webkit-scrollbar { display: none; }
+  :root.portrait-ui .party-strip-compact:has(.party-compact:nth-child(2)) .party-compact { flex: 0 0 184px; }
+}
 @media (max-height: 300px) {
   :root.portrait-ui .party-strip-compact { display: none; }
 }

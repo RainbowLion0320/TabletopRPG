@@ -646,11 +646,33 @@ for (const size of [{ width: 320, height: 568, party: 4 }, { width: 390, height:
     await page.setViewportSize(size);
     const state = createDynamicCaseBoardSave();
     state.players = Array.from({ length: size.party }, (_, index) => makeInvestigator({ id: `reader-${index}`, name: ['亨利·格雷', '艾达·华莱士', '托马斯·贝尔', '罗伯特·肖'][index] }));
+    if (size.width < 700) state.currentScene = 'S05';
     state.messages = Array.from({ length: 20 }, (_, index) => index % 2 === 0
       ? { id: `history-${index}`, type: 'player' as const, playerName: state.players[index % size.party].name, text: '仔细观察窗边的痕迹，向伊莎贝拉询问失踪前发生的事情。' }
       : { id: `history-${index}`, type: 'dm' as const, text: '浓雾压在摩勒住宅的窗外。伊莎贝拉停顿片刻，回忆起那天走廊里急促的脚步声。调查员沿着门廊仔细查看，斑驳的木板上留下了一道浅浅的划痕。\n\n'.repeat(4), npcName: null });
     await gotoWithSave(page, state);
     await page.getByRole('button', { name: '继续游戏' }).click();
+    if (size.width < 700) {
+      await expect(page.locator('.brand-scene')).toHaveText('泰晤士港·扶桑花号');
+      await expect(page.locator('.world-time')).toHaveText('1920-07-13 17:30');
+      const navigation = await page.locator('.game-top').evaluate(top => {
+        const nav = top.getBoundingClientRect(), book = document.querySelector('.drawer-tab')!.getBoundingClientRect();
+        return {
+          sceneFont: parseFloat(getComputedStyle(top.querySelector('.brand-scene')!).fontSize),
+          timeFont: parseFloat(getComputedStyle(top.querySelector('.world-time')!).fontSize),
+          fits: Array.from(top.querySelectorAll('.brand-title,.brand-scene,.world-time')).every(e => {
+            const r = e.getBoundingClientRect();
+            return r.left >= nav.left && r.right <= book.left - 4 && r.top >= nav.top && r.bottom <= nav.bottom
+              && e.scrollWidth <= e.clientWidth + 1;
+          }),
+          noOverflow: document.documentElement.scrollWidth <= innerWidth
+        };
+      });
+      expect(navigation.sceneFont).toBeGreaterThanOrEqual(13);
+      expect(navigation.timeFont).toBeGreaterThanOrEqual(12);
+      expect(navigation.fits).toBe(true);
+      expect(navigation.noOverflow).toBe(true);
+    }
     const toggle = page.locator('.narrative-toggle-btn');
     const scroll = page.getByRole('region', { name: '剧情记录', exact: true });
     await expect.poll(() => scroll.evaluate((element) => {
@@ -683,6 +705,24 @@ for (const size of [{ width: 320, height: 568, party: 4 }, { width: 390, height:
     await page.getByRole('button', { name: '继续调查', exact: true }).click();
     await page.getByRole('button', { name: '资料', exact: true }).click();
     await page.getByRole('button', { name: '关闭资料', exact: true }).click();
+    if (size.width === 320) {
+      await page.setViewportSize({ width: 320, height: 360 });
+      const draft = '核对地点和时间。\n然后继续调查。';
+      const input = page.locator('.dock-input');
+      await input.fill(draft);
+      await expect(input).toBeInViewport({ ratio: 1 });
+      await expect(page.locator('.narrative-panel')).toBeInViewport({ ratio: 1 });
+      for (const card of await page.locator('.party-compact').all()) {
+        await card.scrollIntoViewIfNeeded();
+        await expect(card).toBeInViewport({ ratio: 1 });
+        await card.click();
+        await expect(page.locator('.investigator-sheet')).toBeVisible();
+        await page.getByRole('button', { name: '关闭调查员档案', exact: true }).click();
+        await expect(card).toBeFocused();
+        await expect(input).toHaveValue(draft);
+      }
+      await page.setViewportSize(size);
+    }
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await expect(page.locator('.scene-stage')).toBeVisible();
