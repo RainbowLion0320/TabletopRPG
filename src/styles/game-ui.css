@@ -193,6 +193,11 @@
 :root.fog-ui :is(.investigator-portrait, .case-record-photo, .case-flow-node.npc .case-flow-photo, .save-party-portraits > span) {
   border-color: transparent; border-image: none; background: var(--panel-strong);
 }
+:root.fog-ui :is(.case-board-mobile-card.scene .case-record-photo, .case-flow-node.scene .case-flow-photo) {
+  border: 3px solid transparent;
+  border-image: var(--ui-panel-frame) var(--ui-panel-slice) / 3px / 0 stretch;
+  background: var(--panel-strong);
+}
 
 /* A painted rule lives in each header's existing gutter; scroll bounds stay fixed. */
 :root.fog-ui :is(.game-menu-header, .api-config-header, .audio-settings > header,

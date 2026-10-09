@@ -18,7 +18,7 @@
 .case-flow-photo { flex: 0 0 60px; align-self: stretch; display: grid; place-items: center; margin: 5px 0 5px 5px; overflow: hidden; border: 1px solid var(--line); background: radial-gradient(ellipse, var(--line-soft), var(--panel-strong)); }
 .case-flow-photo img { display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain; object-position: center bottom; }
 .case-flow-node.npc .case-flow-photo img { object-fit: cover; object-position: center top; }
-.case-flow-node.scene .case-flow-photo { flex-basis: 58px; }
+.case-flow-node.scene .case-flow-photo { flex-basis: 84px; align-self: center; width: 84px; height: 56px; }
 .case-flow-node.scene .case-flow-photo img { object-position: center; }
 .case-flow-node-body { display: flex; flex: 1; flex-direction: column; min-width: 0; padding: 8px; }
 .case-flow-node-meta { display: inline-flex; align-items: center; gap: 5px; align-self: flex-start; color: var(--record-accent); font-size: 13px; line-height: 1.4; }

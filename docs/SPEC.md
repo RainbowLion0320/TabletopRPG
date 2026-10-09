@@ -4,6 +4,8 @@
 > Updated: 2026-10-09
 > Scope: current React/Vite implementation
 
+In 0.5.11, case-board scene thumbnails use an 84×56px landscape mount with the existing painted dossier frame as a 3px border. The full scene remains centered with object-fit: contain. Mobile records, desktop graph cards and graph-failure fallback dossiers share this presentation. Text hierarchy, portrait thumbnails, full-image details and card minimum heights remain unchanged; no new image files or player actions.
+
 In 0.5.10, desktop relationship cards match the phone dossier hierarchy: 17px names, 14px identity subtitles, 13px type and relationship labels, and 12px status. Shared ELK/card dimensions reserve room for two-line names and the status row. NPC thumbnails fill the existing mount from the top; scene thumbnails remain fully contained and centered, and detail views retain the original full images. Painted frames, camera restoration, known-record filtering and the mobile archive remain intact; no new assets, actions or model constraints.
 
 In 0.5.9, long waits pair still 15px captions with a painted silver-blue fountain-pen nib. The decorative 24px container uses only a slow 3.6s opacity cycle, disabled for reduced motion; the row remains 36px. It sits outside the scrollable history as the panel footer, so long actions, resizing and reading earlier entries cannot hide it; completion releases the space without increasing the overall panel height. Existing 24 local captions, 8s non-repeating rotation, accessible status and timer cleanup remain intact. The alpha-preserving 4,778-byte WebP has recorded built-in Image Gen provenance; no new model requests, timers, rules or player actions.
