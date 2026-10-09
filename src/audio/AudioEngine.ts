@@ -13,8 +13,9 @@ export class AudioEngine {
   private musicBus: GainNode | null = null;
   private effectsBus: GainNode | null = null;
   private buffers = new Map<AudioAsset, Promise<AudioBuffer>>();
+  private longBuffers = new Set<AudioAsset>();
   private loops = new Map<Lane, Loop>();
-  private retiring = new Set<Voice>();
+  private retiring = new Set<Loop>();
   private effects = new Set<Voice>();
   private desired: Record<Lane, AudioAsset | null> = { music: null, ambience: null, dice: null };
   private generations: Record<Lane, number> = { music: 0, ambience: 0, dice: 0 };
@@ -121,6 +122,7 @@ export class AudioEngine {
     this.musicBus = null;
     this.effectsBus = null;
     this.buffers.clear();
+    this.longBuffers.clear();
     this.unlocked = false;
   }
 
@@ -139,6 +141,18 @@ export class AudioEngine {
 
   private sync(): void {
     for (const lane of ['music', 'ambience', 'dice'] as const) this.syncLane(lane);
+    this.pruneBuffers();
+  }
+
+  private pruneBuffers(): void {
+    // Retain current/muted scenes and crossfades; short interaction sounds stay reusable.
+    const retained = new Set(Object.values(this.desired));
+    this.loops.forEach(loop => retained.add(loop.asset));
+    this.retiring.forEach(loop => retained.add(loop.asset));
+    for (const asset of this.longBuffers) if (!retained.has(asset)) {
+      this.buffers.delete(asset);
+      this.longBuffers.delete(asset);
+    }
   }
 
   private syncLane(lane: Lane): void {
@@ -188,7 +202,11 @@ export class AudioEngine {
       return response.arrayBuffer();
     }).then((data) => context.decodeAudioData(data));
     this.buffers.set(asset, promise);
-    void promise.catch(() => { if (this.buffers.get(asset) === promise) this.buffers.delete(asset); });
+    void promise.then(buffer => {
+      if (this.buffers.get(asset) !== promise) return;
+      if (buffer.duration >= 5) this.longBuffers.add(asset);
+      this.pruneBuffers();
+    }, () => { if (this.buffers.get(asset) === promise) this.buffers.delete(asset); });
     return promise;
   }
 
@@ -203,13 +221,13 @@ export class AudioEngine {
     return { source, gain };
   }
 
-  private fadeOut(voice: Voice, seconds: number): void {
+  private fadeOut(voice: Loop, seconds: number): void {
     const time = this.context!.currentTime;
     if (typeof voice.gain.gain.cancelAndHoldAtTime === 'function') voice.gain.gain.cancelAndHoldAtTime(time);
     else voice.gain.gain.cancelScheduledValues(time);
     voice.gain.gain.linearRampToValueAtTime(0, time + seconds);
     this.retiring.add(voice);
-    voice.source.onended = () => { this.disconnect(voice); this.retiring.delete(voice); };
+    voice.source.onended = () => { this.disconnect(voice); this.retiring.delete(voice); this.pruneBuffers(); };
     voice.source.stop(time + seconds);
   }
 
@@ -230,5 +248,6 @@ export class AudioEngine {
     this.retiring.forEach((voice) => this.stop(voice));
     this.loops.clear();
     this.retiring.clear();
+    this.pruneBuffers();
   }
 }

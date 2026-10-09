@@ -35,7 +35,10 @@ class Context {
   constructor() { Context.instances.push(this); }
   createGain = () => { const gain = new Gain(); this.gains.push(gain); return gain; };
   createBufferSource = () => { const source = new Source(); this.sources.push(source); return source; };
-  decodeAudioData = vi.fn(async (data: ArrayBuffer) => ({ id: new Uint8Array(data)[0] }));
+  decodeAudioData = vi.fn(async (data: ArrayBuffer) => {
+    const id = new Uint8Array(data)[0];
+    return { id, duration: id <= 3 ? 60 : id <= 6 ? 20 : 1 };
+  });
   private changeState(state: string) {
     if (this.state === state) return;
     this.state = state;
@@ -77,6 +80,37 @@ describe('audio preferences', () => {
 });
 
 describe('audio lifetime and races', () => {
+  it('retains crossfading buffers for quick returns, then releases inactive long tracks while reusing short effects', async () => {
+    const cache = (engine as unknown as { buffers: Map<keyof typeof audioAssets, Promise<AudioBuffer>> }).buffers;
+    engine.setSoundscape({ music: 'theme', ambience: 'rain' }); engine.unlock(); await flush();
+    const context = Context.instances[0];
+    engine.play('paper'); await flush();
+    context.sources.find(source => source.buffer?.id === ids[audioAssets.paper])!.onended!();
+    engine.setSoundscape({ music: 'investigation', ambience: 'room' }); await flush();
+    expect(cache.has('theme')).toBe(true);
+    const fetches = vi.mocked(fetch).mock.calls.length;
+    engine.setSoundscape({ music: 'theme', ambience: 'rain' }); await flush();
+    expect(fetch).toHaveBeenCalledTimes(fetches);
+    context.sources.filter(source => source.stop.mock.calls.length).forEach(source => source.onended?.());
+    expect([...cache.keys()].sort()).toEqual(['paper', 'rain', 'theme']);
+    engine.setVisible(false); engine.setSoundscape({ music: 'tension', ambience: 'water' }); await flush();
+    expect([...cache.keys()]).toEqual(['paper']);
+    engine.setVisible(true); await flush();
+    expect(context.sources.slice(-2).map(source => source.buffer?.id)).toEqual([ids[audioAssets.tension], ids[audioAssets.water]]);
+    expect(vi.mocked(fetch).mock.calls.filter(([url]) => url === audioAssets.paper)).toHaveLength(1);
+  });
+
+  it('does not keep an obsolete long decode after a pending scene is abandoned', async () => {
+    let release!: (value: ReturnType<typeof response>) => void;
+    vi.mocked(fetch).mockImplementationOnce(() => new Promise(resolve => { release = resolve as typeof release; }));
+    engine.setSoundscape({ music: 'theme', ambience: null }); engine.unlock();
+    engine.setSoundscape({ music: 'tension', ambience: null }); await flush();
+    release(response(audioAssets.theme)); await flush();
+    const cache = (engine as unknown as { buffers: Map<keyof typeof audioAssets, Promise<AudioBuffer>> }).buffers;
+    expect([...cache.keys()]).toEqual(['tension']);
+    expect(Context.instances[0].sources.map(source => source.buffer?.id)).toEqual([ids[audioAssets.tension]]);
+  });
+
   it('starts a track decoded during device suspension when the device resumes without another gesture', async () => {
     let release!: (value: ReturnType<typeof response>) => void;
     vi.mocked(fetch).mockImplementationOnce(() => new Promise((resolve) => { release = resolve as typeof release; }));

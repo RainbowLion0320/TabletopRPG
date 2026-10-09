@@ -3,6 +3,45 @@ import { readFileSync } from 'node:fs';
 
 const manifest = JSON.parse(readFileSync('assets/audio/manifest.json', 'utf8')) as Array<{ file: string; seconds: number }>;
 
+test('releases inactive decoded music while retaining current loops and cached short effects', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByRole('button', { name: '声音设置', exact: true }).click();
+  const inspect = () => page.evaluate(async () => {
+    const { gameAudio } = await import('/src/audio/audio.ts');
+    const engine = gameAudio as unknown as {
+      buffers: Map<string, Promise<AudioBuffer>>; loops: Map<string, { asset: string }>; retiring: Set<unknown>;
+    };
+    const buffers = await Promise.all([...engine.buffers].map(async ([asset, value]) => {
+      const buffer = await value;
+      return { asset, duration: buffer.duration, bytes: buffer.length * buffer.numberOfChannels * 4, sampleRate: buffer.sampleRate };
+    }));
+    return { playing: [...engine.loops.values()].map(loop => loop.asset).sort(), retiring: engine.retiring.size,
+      long: buffers.filter(buffer => buffer.duration >= 5), short: buffers.filter(buffer => buffer.duration < 5) };
+  });
+  const samples = [];
+  for (const soundscape of [
+    { music: 'theme', ambience: 'rain' },
+    { music: 'investigation', ambience: 'room' },
+    { music: 'tension', ambience: 'water' },
+    { music: 'theme', ambience: 'rain' },
+  ]) {
+    await page.evaluate(async soundscape => {
+      const { gameAudio } = await import('/src/audio/audio.ts');
+      gameAudio.setSoundscape(soundscape);
+    }, soundscape);
+    await expect.poll(async () => (await inspect()).playing).toEqual([soundscape.music, soundscape.ambience].sort());
+    await expect.poll(async () => (await inspect()).retiring).toBe(0);
+    samples.push(await inspect());
+  }
+  await testInfo.attach('decoded-loop-cache', { body: JSON.stringify(samples, null, 2), contentType: 'application/json' });
+  console.log('Decoded audio cache:', JSON.stringify(samples.map(sample => ({ playing: sample.playing,
+    longTracks: sample.long.length, longBytes: sample.long.reduce((sum, buffer) => sum + buffer.bytes, 0),
+    sampleRates: [...new Set(sample.long.map(buffer => buffer.sampleRate))] }))));
+  for (const sample of samples) expect(sample.long.map(buffer => buffer.asset).sort()).toEqual(sample.playing);
+  expect(samples.at(-1)!.short.map(buffer => buffer.asset)).toContain('click');
+});
+
 test('loops decoded while the audio device is suspended become audible on device resume without another tap', async ({ page }) => {
   await page.addInitScript(() => {
     const OriginalContext = window.AudioContext;

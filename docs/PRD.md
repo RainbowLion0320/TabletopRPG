@@ -8,7 +8,7 @@
 
 ## 1. Product Positioning
 
-Version 0.4.33 resumes the current enabled music and ambience when an already-unlocked audio device returns to running, including tracks decoded while it was suspended. Delayed short effects are discarded across the interruption. Background silence, independent mute/volume preferences, gesture-based startup and existing scene transitions remain intact; players need no extra tap to restore these loops.
+Version 0.4.39 retains decoded long audio only for the current soundscape, playing tracks and unfinished crossfades. Finished inactive tracks and obsolete downloads are released; short effects remain reusable. Returning during a fade reuses the existing buffer, and revisiting a released track decodes the locally bundled file. Device recovery still resumes current enabled loops without another tap, while delayed short effects are discarded. Background silence, independent mute/volume preferences, gesture-based startup and existing scene transitions remain intact.
 
 Version 0.4.32 gives case search and type selection the existing illustrated brass frame, with 16px input text, 15px hypothesis actions and a full 44px clear-search target. Dossier type labels use 13px text and identities/relations 14px, retaining 17px names and original photographs. Phone archives omit the repeated count summary, keep the accessible heading, and scroll records beneath fixed controls. Known sources, filters, relation return, drafts and the party remain usable. The APK continues to exclude unused desktop graph files; web graphs still load on demand and fall back to these dossiers if they fail. No narrative, visibility or gameplay rules change.
 

@@ -864,7 +864,7 @@ public class GameAndroidTest {
         fresh();
         try {
             viewport(390, 844);
-            js("window.qaHoldAudio=true;window.qaAudioHolds=[];window.AudioContext=class extends window.AudioContext { constructor(...args){super(...args);window.qaAudio=this;} decodeAudioData(...args){return super.decodeAudioData(...args).then(b=>{window.qaDecoded=(window.qaDecoded||0)+1;if(window.qaHoldAudio&&b.duration>2)return new Promise(resolve=>window.qaAudioHolds.push(()=>resolve(b)));return b;})} createBufferSource(){const s=super.createBufferSource(),start=s.start.bind(s);s.start=(...args)=>{if(s.loop)window.qaLoopStarts=(window.qaLoopStarts||0)+1;return start(...args)};return s;} }");
+            js("window.qaThemeFetches=0;window.qaFetch=window.fetch;window.fetch=function(...args){if(String(args[0]).includes('fog-theme'))window.qaThemeFetches++;return window.qaFetch.apply(this,args)};window.qaHoldAudio=true;window.qaAudioHolds=[];window.qaActiveLoops=0;window.AudioContext=class extends window.AudioContext { constructor(...args){super(...args);window.qaAudio=this;} decodeAudioData(...args){return super.decodeAudioData(...args).then(b=>{window.qaDecoded=(window.qaDecoded||0)+1;if(window.qaHoldAudio&&b.duration>2)return new Promise(resolve=>window.qaAudioHolds.push(()=>resolve(b)));return b;})} createBufferSource(){const s=super.createBufferSource(),start=s.start.bind(s);s.start=(...args)=>{if(s.loop){window.qaLoopStarts=(window.qaLoopStarts||0)+1;window.qaActiveLoops++;s.addEventListener('ended',()=>{window.qaActiveLoops--},{once:true});}return start(...args)};return s;} }");
             nativeTap("button[aria-label='声音设置']");
             until("window.qaAudio && window.qaAudio.state === 'running'");
             until("window.qaAudioHolds.length === 2");
@@ -878,6 +878,12 @@ public class GameAndroidTest {
             fill("input[aria-label='音乐音量']", "38"); fill("input[aria-label='音效音量']", "23");
             until("document.querySelector('input[aria-label=音乐音量]').getAttribute('aria-valuetext')==='38%' && document.querySelector('input[aria-label=音效音量]').getAttribute('aria-valuetext')==='23%'");
             assertEquals("Changing volumes keeps the two current loops running", "2", js("window.qaLoopStarts"));
+            nativeTap(".audio-close"); until("!document.querySelector('.audio-settings')"); click("开始游戏"); click("进入游戏");
+            until("document.querySelector('.dock-input')&&window.qaLoopStarts>=4&&window.qaActiveLoops===2");
+            assertEquals("The first theme load is reused through character selection", "1", js("window.qaThemeFetches"));
+            menu("返回首页"); until("document.querySelector('.title-screen')&&window.qaThemeFetches===2&&window.qaActiveLoops===2");
+            click("声音设置"); until("document.querySelector('.audio-settings')");
+            assertEquals("Returning home reloads the released theme without changing channel preferences", "true", js("document.querySelector('input[aria-label=音乐音量]').value==='38'&&document.querySelector('input[aria-label=音效音量]').value==='23'&&document.querySelector('[aria-label=背景音乐]').getAttribute('aria-checked')==='true'"));
             nativeTap("button[role='switch'][aria-label='背景音乐']");
             until("document.querySelector('[aria-label=背景音乐]').getAttribute('aria-checked') === 'false'");
             assertEquals("Music mute leaves the effects channel enabled", "true", js("document.querySelector('[aria-label=游戏音效]').getAttribute('aria-checked')==='true'"));
