@@ -6,6 +6,35 @@ import { makeInvestigator, makeState } from '../dm/fixtures';
 import { createInvestigatorFromPreset, presets } from '../../src/data/presets';
 
 describe('Android encrypted storage queue', () => {
+  for (const next of ['latest-draft', null]) it(`waits for a concurrent ${next === null ? 'removal' : 'update'} before confirming durable storage`, async () => {
+    const disk = new Map<string, string>(), finish: Array<() => void> = [];
+    const store = createNativeStorage({}, { readAll: async () => ({ values: {} }), write: ({ key, value }) => new Promise<void>(resolve => {
+      finish.push(() => { if (value === null) disk.delete(key); else disk.set(key, value); resolve(); });
+    }) });
+    store.setItem('trpg-session', 'old-draft'); await Promise.resolve();
+    let settled = false;
+    const saving = store.flush!().then(() => { settled = true; });
+    if (next === null) store.removeItem('trpg-session'); else store.setItem('trpg-session', next);
+    finish.shift()!();
+    for (let index = 0; index < 8; index++) await Promise.resolve();
+    expect(settled).toBe(false);
+    expect(disk.get('trpg-session')).toBe('old-draft');
+    expect(store.getItem('trpg-session')).toBe(next);
+    finish.shift()!(); await saving;
+    expect(disk.get('trpg-session') ?? null).toBe(next);
+  });
+  it('reports a later write failure rather than confirming only the earlier saved value', async () => {
+    let finish!: () => void;
+    const write = vi.fn<NativeStore['write']>()
+      .mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; }))
+      .mockRejectedValue(new Error('Disk full'));
+    const store = createNativeStorage({}, { readAll: async () => ({ values: {} }), write });
+    store.setItem('trpg-session', 'old-draft'); await Promise.resolve();
+    const saving = store.flush!();
+    store.setItem('trpg-session', 'latest-draft'); finish();
+    await expect(saving).rejects.toThrow('保存失败');
+    expect(store.getItem('trpg-session')).toBe('latest-draft');
+  });
   it('coalesces pending writes and persists removal without resurrecting old data', async () => {
     const disk = new Map<string, string>();
     const native: NativeStore = { readAll: async () => ({ values: {} }), write: vi.fn(async ({ key, value }) => {

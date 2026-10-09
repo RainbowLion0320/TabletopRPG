@@ -3,6 +3,7 @@ package com.rainbowlion.fogtrpg;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.SystemClock;
+import android.util.Base64;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.ViewGroup;
@@ -744,6 +745,22 @@ public class GameAndroidTest {
                 InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
                 until("!document.querySelector('.android-exit-card')");
                 assertEquals("Cancelling exit retains the current continuation", "true", js("Boolean(document.querySelector('.title-resume-preview'))"));
+            }
+            byte[] tampered = Base64.decode(context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE).getString("trpg-android-session-v1", ""), Base64.DEFAULT);
+            assertTrue("Automatic record has a real encrypted payload", tampered.length >= 29);
+            tampered[tampered.length - 1] ^= 1;
+            for (String corruptCiphertext : new String[] { "NOT_BASE64_CIPHERTEXT_PRIVATE_HINT", Base64.encodeToString(tampered, Base64.NO_WRAP) }) {
+                context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE).edit().putString("trpg-android-session-v1", corruptCiphertext).commit();
+                activity.recreate(); until("document.querySelector('.title-screen') && document.querySelector('.android-notice')");
+                assertEquals("A damaged encrypted record does not block other records or reveal diagnostics", "true", js("(()=>{const t=document.querySelector('.android-notice').textContent;return t.includes('部分本机记录暂时无法读取')&&!/BASE64|CIPHERTEXT|PRIVATE|STORAGE_READ_FAILED|解密/.test(t)&&Boolean(document.querySelector('.title-resume-preview'))})()"));
+                assertEquals("Unreadable encrypted data remains on disk", corruptCiphertext, context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE).getString("trpg-android-session-v1", ""));
+                viewport(390, 844); screenshot("partial-storage-recovery"); click("知道了"); click("继续游戏");
+                until("document.querySelector('.dock-input')");
+                assertEquals("A damaged automatic ciphertext still permits the original manual continuation", "\"继续保留手动记录里的调查安排。\"", js("document.querySelector('.dock-input').value"));
+                js("window.qaHomeSavedAt=Date.now();window.qaHomeDurable=false");
+                menu("返回首页");
+                // Let the real home snapshot finish before injecting the next damaged payload.
+                until("(()=>{Capacitor.Plugins.GameStorage.readAll().then(r=>{const raw=r.values['trpg-android-session-v1'];if(raw&&JSON.parse(raw).savedAt>=window.qaHomeSavedAt)window.qaHomeDurable=true;});return window.qaHomeDurable})()");
             }
         } finally { if (activity != null) activity.close(); }
     }

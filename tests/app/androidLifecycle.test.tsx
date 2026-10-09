@@ -40,6 +40,21 @@ afterEach(() => { localStorage.clear(); vi.unstubAllEnvs(); vi.restoreAllMocks()
 function back() { act(() => listeners.get('backButton')!()); }
 
 describe('Android recovery and exit', () => {
+  for (const available of ['manual', 'automatic']) it(`retains the valid ${available} continuation when another encrypted record was unreadable`, () => {
+    localStorage.setItem('trpg-api', JSON.stringify({ apiKey: 'test-key', provider: 'openai', protocol: 'responses' }));
+    const manual = makeState(); manual.declarations = { [manual.players[0].id]: '从有效手动记录继续调查。' };
+    saveGameState(manual);
+    const state = available === 'automatic' ? { ...manual, declarations: { [manual.players[0].id]: '从当前自动记录继续调查。' } } : manual;
+    if (available === 'automatic') localStorage.setItem(SESSION_KEY, JSON.stringify({ version: 1, savedAt: Date.now(), state, roll: null }));
+    const records = localStorage.getItem('trpg-saves-v2');
+    expect(records).not.toBeNull();
+    render(<AndroidApp partialRecovery />);
+    expect(screen.getByRole('alert')).toHaveTextContent('部分本机记录暂时无法读取');
+    expect(localStorage.getItem('trpg-saves-v2')).toBe(records);
+    fireEvent.click(screen.getByRole('button', { name: '知道了' }));
+    fireEvent.click(screen.getByRole('button', { name: '继续游戏', exact: true }));
+    expect(screen.getByRole('textbox', { name: `${state.players[0].name}的行动` })).toHaveValue(state.declarations[state.players[0].id]);
+  });
   it('keeps corrupt automatic data private and intact, while manual continuation still works', () => {
     const corrupt = 'NOT_JSON_INTERNAL_PRIVATE_HINT';
     localStorage.setItem(SESSION_KEY, corrupt);

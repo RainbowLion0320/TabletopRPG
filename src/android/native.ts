@@ -4,7 +4,7 @@ import { installModelTransport, type ModelTransport } from '../dm/llm/transport'
 
 export const isNativeAndroid = () => Capacitor.getPlatform() === 'android';
 export interface NativeStore {
-  readAll(): Promise<{ values: Record<string, string> }>;
+  readAll(): Promise<{ values: Record<string, string>; unreadableRecords?: number }>;
   write(options: { key: string; value: string | null }): Promise<void>;
 }
 export interface NativeHttp {
@@ -33,15 +33,20 @@ export function createNativeStorage(initial: Record<string, string>, native: Nat
       } catch (error) { failure = error; }
     });
   };
+  const drain = async () => {
+    let current: Promise<void>;
+    // A background snapshot or another store can join the queue while we wait.
+    do { current = pending; await current; } while (current !== pending);
+  };
   return {
     getItem: (key) => values.get(key) ?? null,
     setItem: (key, value) => { queue(key, value); values.set(key, value); },
     removeItem: (key) => { queue(key, null); values.delete(key); },
     flush: async () => {
-      await pending;
+      await drain();
       if (failure) {
         for (const [key, value] of dirty) queue(key, value);
-        await pending;
+        await drain();
         if (failure) throw new Error('保存失败，请检查设备存储空间后重试。');
       }
     },
@@ -74,9 +79,10 @@ export function createNativeTransport(native: NativeHttp): ModelTransport {
   });
 }
 
-export async function initializeAndroidPlatform(): Promise<void> {
-  if (!isNativeAndroid()) return;
+export async function initializeAndroidPlatform(): Promise<boolean> {
+  if (!isNativeAndroid()) return false;
   const initial = await store.readAll();
   installGameStorage(createNativeStorage(initial.values, store));
   installModelTransport(createNativeTransport(http));
+  return Boolean(initial.unreadableRecords);
 }

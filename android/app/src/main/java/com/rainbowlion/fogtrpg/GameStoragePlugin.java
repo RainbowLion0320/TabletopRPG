@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.util.Map;
 import javax.crypto.Cipher;
+import javax.crypto.BadPaddingException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
@@ -59,11 +60,15 @@ public class GameStoragePlugin extends Plugin {
     public synchronized void readAll(PluginCall call) {
         try {
             JSObject values = new JSObject();
+            int unreadableRecords = 0;
             for (Map.Entry<String, ?> entry : preferences().getAll().entrySet()) {
-                if (entry.getKey().startsWith("trpg-") && entry.getValue() instanceof String)
-                    values.put(entry.getKey(), decrypt((String) entry.getValue()));
+                if (entry.getKey().startsWith("trpg-") && entry.getValue() instanceof String) {
+                    try { values.put(entry.getKey(), decrypt((String) entry.getValue())); }
+                    // Isolate damaged payloads. Device/key failures still reject the read below.
+                    catch (IllegalArgumentException | BadPaddingException error) { unreadableRecords++; }
+                }
             }
-            JSObject result = new JSObject(); result.put("values", values); call.resolve(result);
+            JSObject result = new JSObject(); result.put("values", values); result.put("unreadableRecords", unreadableRecords); call.resolve(result);
         } catch (Exception error) { call.reject("无法解密本机游戏数据，请重试。", "STORAGE_READ_FAILED"); }
     }
 

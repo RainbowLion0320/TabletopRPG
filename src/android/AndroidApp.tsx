@@ -17,10 +17,10 @@ import type { GameState, Investigator } from '../types/game';
 import './android-feedback.css';
 
 type Screen = 'title' | 'setup' | 'game';
-export function AndroidApp() {
+export function AndroidApp({ partialRecovery = false }: { partialRecovery?: boolean }) {
   const [screen, setScreen] = useState<Screen>('title');
   const [session, setSession] = useState<MobileSession | null>(null);
-  const [notice, setNotice] = useState('');
+  const [notice, setNotice] = useState(partialRecovery ? '部分本机记录暂时无法读取，其他有效存档仍可继续。' : '');
   const [exitOpen, setExitOpen] = useState(false);
   const [exitBusy, setExitBusy] = useState(false);
   const [exitError, setExitError] = useState('');
