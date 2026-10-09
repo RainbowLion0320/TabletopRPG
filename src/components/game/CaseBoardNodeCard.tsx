@@ -1,5 +1,5 @@
-import { Lightbulb, MapPin, UserRound } from 'lucide-react';
-import { ArchiveFileArt } from '../shared/ArchiveFileArt';
+import { MapPin, UserRound } from 'lucide-react';
+import { ArchiveRecordArt } from '../shared/ArchiveRecordArt';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { CaseBoardDisplayNode } from './caseBoardGraph';
 import { CASE_RECORD_LABEL, caseRecordImage } from './caseBoardPresentation';
@@ -13,8 +13,7 @@ export interface CaseBoardFlowNodeData extends Record<string, unknown> {
 function icon(type: CaseBoardDisplayNode['type']) {
   if (type === 'npc') return <UserRound size={16} aria-hidden="true" />;
   if (type === 'scene') return <MapPin size={16} aria-hidden="true" />;
-  if (type === 'theory') return <Lightbulb size={16} aria-hidden="true" />;
-  return <ArchiveFileArt />;
+  return <ArchiveRecordArt kind={type === 'theory' ? 'theory' : 'file'} />;
 }
 
 export function CaseBoardNodeCard({ data, selected }: NodeProps) {

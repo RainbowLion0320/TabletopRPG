@@ -151,6 +151,14 @@ Change only the OUTSIDE TRANSPARENCY cleanup: remove every stray blue, cyan or w
 Keep the actual square button COMPLETELY unchanged: same shape, complete uncut four corners, same light gray-blue matte textured icon center, same fine layered silver bevel rails, same tiny gold corner points, same paired pearls and four-point corner stars, same size and colors. The entire center surface inside the button stays fully opaque. Do not repaint, smooth, blur or remove the drawn frame. Do not add anything. No text, icon, digits, symbols in the center or backdrop.
 ```
 
+## archive-theory.webp
+
+唯一生成：`exec-24af29f1-76d2-4872-9ffc-72daacaaa717`，2026-10-10。使用内置 Image Gen 新图生成，无参考图、无后续编辑；原 PNG 保留本机生成目录，不提交。仅等比例缩放和 WebP 编码，采用图与哈希见 README.md。
+
+```text
+Create one finely hand-painted incandescent light-bulb emblem for a production game UI, used as the existing generic symbol for a hypothesis in a 1920s London mystery tabletop RPG. One complete classic rounded pear-shaped bulb with a short threaded brushed-silver base, opaque pale cool ivory-blue glass shading for clear small-size readability, one very subtle muted-gold filament mark within the glass. The base has layered fine silver bands, a tiny discreet four-point silver star engraved in one fitting, and two minute pearl rivet dots. Match cold midnight-blue archive panels, rainy navy cloth, controlled ivory-silver highlights and restrained gold details. Almost front-facing, compact vertical silhouette, broad recognizable shapes rather than delicate wire lines, rich but restrained hand-painted material details. This bulb must read as a light-bulb symbol at 16 pixels high and as an elegant painted UI object at 48 pixels high. Center the complete object with generous real transparent margin; tall aspect around 2:3. This is a generic idea/hypothesis emblem, not an illuminated prop from the story. A polished two-dimensional raster game asset, no thin web vector outline, no photograph or complete screen. One bulb only. No lettering, numbers, labels, rays, glow, shadow outside the object, people, scenery, panel, leather, sepia paper or ornate filigree. True native RGBA alpha 0 outside the clean complete silhouette, only narrow antialiased edge alpha; no colored background haze or drawn checkerboard. Keep the bulb and base visually solid enough to sit clearly on a dark blue panel.
+```
+
 ## archive-file.webp
 
 初始生成：`exec-318ed20b-40a8-43a5-a68d-d713b737dd83`；最终外部透明度编辑：`exec-e4fea1b8-4439-475d-bc61-2e131966e73c`，2026-10-10。均使用内置 Image Gen；初始新图无参考图，编辑只参考初始生成 PNG，原生成文件保留本机生成目录，不提交。

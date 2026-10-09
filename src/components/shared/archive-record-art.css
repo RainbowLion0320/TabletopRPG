@@ -1,0 +1,2 @@
+.archive-record-art { display: block; flex: 0 0 auto; width: 16px; height: 16px; object-fit: contain; pointer-events: none; }
+.case-record-photo > .archive-record-art { position: static; width: 42px; height: 58px; object-fit: contain; background: transparent; }
