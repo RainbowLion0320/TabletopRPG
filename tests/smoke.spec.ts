@@ -2062,6 +2062,45 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
   });
 }
 
+for (const size of [{ width: 320, height: 300 }, { width: 390, height: 844 }, { width: 1440, height: 900 }]) {
+  test(`composing dialog keys preserve settings and the game draft at ${size.width}px`, async ({ page }, testInfo) => {
+    const fullSize = { ...size, height: Math.max(size.height, 568) };
+    await page.setViewportSize(fullSize);
+    await startNewGame(page);
+    const draft = page.locator('.dock-input');
+    await draft.fill('查看信件，稍后继续描述。');
+    const opener = page.getByRole('button', { name: '菜单', exact: true });
+    await opener.click();
+    await page.getByRole('dialog', { name: '调查菜单', exact: true }).getByRole('button', { name: 'AI 设置', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'AI DM 配置' });
+    const model = dialog.getByLabel('模型');
+    const key = dialog.getByLabel('API Key', { exact: true });
+    const save = dialog.getByRole('button', { name: '保存', exact: true });
+    await page.setViewportSize(size);
+    await key.fill('ui-qa-only-draft');
+    await model.fill('待确认的模型');
+    for (const composition of [{ isComposing: true }, { keyCode: 229 }]) {
+      await model.focus();
+      expect(await model.evaluate((element, flags) => element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true, ...flags })), composition)).toBe(true);
+      await expect(dialog).toBeVisible(); await expect(model).toBeFocused();
+      await expect(model).toHaveValue('待确认的模型'); await expect(key).toHaveValue('ui-qa-only-draft');
+      await save.focus();
+      expect(await save.evaluate((element, flags) => element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true, ...flags })), composition)).toBe(true);
+      await expect(save).toBeFocused();
+    }
+    await page.screenshot({ path: testInfo.outputPath('api-composition.png') });
+    await page.setViewportSize(fullSize);
+    await page.keyboard.press('Tab');
+    await expect(dialog.getByRole('button', { name: '关闭 AI DM 配置' })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0); await expect(opener).toBeFocused();
+    await expect(draft).toHaveValue('查看信件，稍后继续描述。');
+    await opener.click();
+    await page.getByRole('dialog', { name: '调查菜单', exact: true }).getByRole('button', { name: 'AI 设置', exact: true }).click();
+    await expect(model).not.toHaveValue('待确认的模型'); await expect(key).not.toHaveValue('ui-qa-only-draft');
+  });
+}
+
 for (const width of [320, 390, 562, 1440]) {
   test(`AI configuration repairs the relevant field within its body at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: width > 700 ? 900 : 844 });

@@ -24,6 +24,23 @@ describe('ApiConfigModal', () => {
     opener.remove();
   });
 
+  it.each([{ isComposing: true }, { keyCode: 229 }])('preserves an edited connection when Escape cancels composition (%j)', (composition) => {
+    const onClose = vi.fn();
+    render(<ApiConfigModal open onClose={onClose} onSave={vi.fn()} />);
+    const key = screen.getByLabelText('API Key');
+    const model = screen.getByLabelText('模型');
+    fireEvent.change(key, { target: { value: 'test-key-draft' } });
+    fireEvent.change(model, { target: { value: '待确认的模型' } });
+    model.focus();
+    expect(fireEvent.keyDown(model, { key: 'Escape', ...composition })).toBe(true);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(model).toHaveFocus();
+    expect(model).toHaveValue('待确认的模型');
+    expect(key).toHaveValue('test-key-draft');
+    fireEvent.keyDown(model, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it('keeps the modal open and explains a storage failure', async () => {
     render(<ApiConfigModal open onClose={() => undefined} onSave={async () => { throw new Error('quota'); }} />);
     fireEvent.change(screen.getByLabelText('API Key'), { target: { value: 'test-key' } });

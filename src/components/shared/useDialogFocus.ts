@@ -31,6 +31,8 @@ export function useDialogFocus(open: boolean, ref: RefObject<HTMLElement>, onClo
       (dialog.querySelector<HTMLElement>('[aria-label^="关闭"]') ?? controls()[0] ?? dialog).focus({ preventScroll: true });
     }
     function handleKeyDown(event: KeyboardEvent) {
+      // Escape and Tab can cancel or choose IME candidates without leaving the dialog.
+      if (event.isComposing || event.keyCode === 229) return;
       if (event.key === 'Escape') {
         if (dialogs[dialogs.length - 1] !== entry) return;
         event.preventDefault();

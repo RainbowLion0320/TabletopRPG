@@ -54,4 +54,20 @@ describe('nested dialog keyboard ownership', () => {
     expect(screen.getByRole('button', { name: '关闭详情' })).toHaveFocus();
     fireEvent.keyDown(document, { key: 'Escape' }); expect(innerClose).toHaveBeenCalledOnce(); expect(outerClose).not.toHaveBeenCalled();
   });
+  it.each([{ isComposing: true }, { keyCode: 229 }])('leaves composition Escape and Tab to the input method (%j)', (composition) => {
+    const outerClose = vi.fn(); const innerClose = vi.fn();
+    render(<Harness modal initial outerClose={outerClose} innerClose={innerClose} />);
+    const last = screen.getByRole('button', { name: '详情末项' });
+    last.focus();
+    expect(fireEvent.keyDown(last, { key: 'Tab', ...composition })).toBe(true);
+    expect(last).toHaveFocus();
+    expect(fireEvent.keyDown(last, { key: 'Escape', ...composition })).toBe(true);
+    expect(innerClose).not.toHaveBeenCalled();
+    expect(outerClose).not.toHaveBeenCalled();
+    fireEvent.keyDown(last, { key: 'Tab' });
+    expect(screen.getByRole('button', { name: '关闭详情' })).toHaveFocus();
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(innerClose).toHaveBeenCalledOnce();
+    expect(outerClose).not.toHaveBeenCalled();
+  });
 });

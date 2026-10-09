@@ -524,6 +524,17 @@ public class GameAndroidTest {
                 assertEquals("Model correction leaves unrelated connection fields collapsed", "false", js("document.querySelector('.api-connection').open"));
                 reachable("#api-model"); reachable(".api-config-close"); reachable(".api-config-card footer .primary-btn");
                 assertEquals("Model and its readable error fit within the keyboard body", "true", js("(()=>{const b=document.querySelector('.api-config-fields').getBoundingClientRect(),m=document.querySelector('#api-model').getBoundingClientRect(),e=document.querySelector('.api-field-error').getBoundingClientRect();return m.top>=b.top&&m.bottom<=b.bottom&&e.top>=b.top&&e.bottom<=b.bottom&&parseFloat(getComputedStyle(document.querySelector('.api-field-error')).fontSize)>=15&&document.querySelector('.api-config-card').scrollTop===0})()"));
+                fill("#api-model", "待确认的模型");
+                for (String composition : new String[] {"isComposing:true", "keyCode:229"}) {
+                    js("document.querySelector('#api-model').focus()");
+                    assertEquals("IME Escape is not consumed by a dialog", "true", js("document.querySelector('#api-model').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true," + composition + "}))"));
+                    assertEquals("IME Escape preserves the editable model and input focus", "true", js("!!document.querySelector('.api-config-card')&&document.querySelector('#api-model').value==='待确认的模型'&&document.activeElement===document.querySelector('#api-model')"));
+                    js("document.querySelector('.api-config-card footer .primary-btn').focus()");
+                    assertEquals("IME Tab is not consumed by a focus trap", "true", js("document.querySelector('.api-config-card footer .primary-btn').dispatchEvent(new KeyboardEvent('keydown',{key:'Tab',bubbles:true,cancelable:true," + composition + "}))"));
+                    assertEquals("IME Tab keeps its candidate focus", "true", js("document.activeElement===document.querySelector('.api-config-card footer .primary-btn')"));
+                }
+                js("document.querySelector('.api-config-card footer .primary-btn').dispatchEvent(new KeyboardEvent('keydown',{key:'Tab',bubbles:true,cancelable:true}))");
+                assertEquals("Ordinary Tab still wraps inside the dialog", "true", js("document.activeElement===document.querySelector('.api-config-close')"));
                 fill("#api-model", "edited-qa-model"); fill("#api-endpoint", "bad-address");
                 nativeTap(".api-config-card footer .primary-btn");
                 until("document.activeElement===document.querySelector('#api-endpoint')&&document.querySelector('.api-connection').open");
