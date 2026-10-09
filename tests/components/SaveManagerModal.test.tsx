@@ -15,7 +15,7 @@ describe('SaveManagerModal', () => {
     const onDelete = vi.fn().mockResolvedValue(true), onLoad = vi.fn(), saves = [save(2), save(1)];
     render(<SaveManagerModal open saves={saves} incompatibleSaves={[]} onClose={vi.fn()} onDelete={onDelete} onLoad={onLoad} />);
     const rows = screen.getAllByRole('article');
-    expect(screen.getByRole('button', { name: '关闭存档管理' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: '关闭存档列表' })).toHaveFocus();
     expect(screen.getAllByText('最近保存')).toHaveLength(1);
     const deleteButton = within(rows[1]).getByRole('button', { name: /^删除存档/ });
     fireEvent.click(deleteButton);
@@ -45,7 +45,7 @@ describe('SaveManagerModal', () => {
     const confirm = screen.getByRole('button', { name: '确认删除' });
     fireEvent.click(confirm); fireEvent.click(confirm);
     fireEvent.click(screen.getByRole('button', { name: '载入存档' }));
-    fireEvent.click(screen.getByRole('button', { name: '关闭存档管理' }));
+    fireEvent.click(screen.getByRole('button', { name: '关闭存档列表' }));
     fireEvent.keyDown(document, { key: 'Escape' });
     fireEvent.click(document.querySelector('.save-manager-backdrop')!);
     expect(onDelete).toHaveBeenCalledOnce();

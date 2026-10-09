@@ -56,8 +56,8 @@ describe('game controller round recovery', () => {
     state.scenarioProgress.contentHash = 'INTERNAL_HASH';
     localStorage.setItem('trpg-saves-v2', JSON.stringify([{ id: 10, scene: '摩勒住宅', players: '亨利', savedAt: '2026/10/8', gameState: state }]));
     const { result } = renderHook(useGameController);
-    act(() => result.current.loadCurrentLatest());
-    expect(result.current.toast).toBe('存档与当前剧情版本不兼容，请在存档管理中查看。');
+    act(() => result.current.loadLatest());
+    expect(result.current.toast).toBe('存档与当前剧情版本不兼容，记录仍保留在本机。');
     expect(result.current.state.players).toHaveLength(0);
   });
 
@@ -109,7 +109,7 @@ describe('game controller round recovery', () => {
     act(() => result.current.saveCurrentGame());
     await waitFor(() => expect(readSaves()).toHaveLength(1));
     expect(readSaves()[0].gameState.pendingDmActions).toHaveLength(2);
-    act(() => result.current.loadCurrentLatest());
+    act(() => result.current.loadSaveSlot(readSaves()[0].gameState));
     expect(result.current.state.isThinking).toBe(false);
     act(() => result.current.retryPendingTurn());
     await waitFor(() => expect(result.current.state.pendingDmActions).toBeUndefined());

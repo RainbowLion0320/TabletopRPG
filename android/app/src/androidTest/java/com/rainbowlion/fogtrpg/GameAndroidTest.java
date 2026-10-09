@@ -456,7 +456,10 @@ public class GameAndroidTest {
                     if (i == 1) screenshot(prefix + "-feedback");
                     if (i == 2) viewport(size[0], size[1]);
                 }
-                menu("存档管理"); reachable(".save-manager-card footer button");
+                menu("读取存档"); until("document.querySelector('.save-manager-card')");
+                reachable(".save-manager-card footer button");
+                assertEquals("Opening the reader keeps the current draft", currentDraft, js("document.querySelector('.dock-input').value"));
+                assertEquals("Save dates and party names remain readable", "true", js("Array.from(document.querySelectorAll('.save-slot-time,.save-slot-party>span')).every(e=>parseFloat(getComputedStyle(e).fontSize)>=14&&e.scrollWidth<=e.clientWidth+1)"));
                 js("document.querySelector('.save-list').scrollTop=99999");
                 reachable(".save-slot-card:last-child .save-slot-delete"); screenshot(prefix + "-saves");
                 js("document.querySelector('.save-slot-card:last-child .save-slot-delete').click()");
@@ -471,9 +474,11 @@ public class GameAndroidTest {
                 until("document.querySelectorAll('.save-slot-card').length===3");
                 assertEquals("Deleting a record focuses a remaining Load action", "true", js("document.activeElement.classList.contains('save-slot-load')"));
                 click("关闭");
+                assertEquals("Cancelling the reader keeps the current draft", currentDraft, js("document.querySelector('.dock-input').value"));
                 js("document.querySelector('.menu-button').click()");
                 until("document.querySelector('.game-menu')");
                 assertEquals("KP notes are not in the player menu", "false", js("document.querySelector('.game-menu').innerText.includes('KP 笔记')"));
+                assertEquals("The menu has one explicit reader instead of duplicate load entries", "false", js("document.querySelector('.game-menu').innerText.includes('存档管理')"));
                 click("继续调查");
                 viewport(size[0], 300); fill(".dock-input", "输入法占位后仍可完成输入。");
                 assertEquals("Keyboard space prioritizes reading and input", "true", js("document.querySelector('.narrative-panel').getBoundingClientRect().width>innerWidth*.9 && getComputedStyle(document.querySelector('.scene-stage')).visibility==='hidden' && document.querySelector('.scene-stage').getBoundingClientRect().height===0"));

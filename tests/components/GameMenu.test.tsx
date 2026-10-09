@@ -8,7 +8,7 @@ afterEach(() => vi.unstubAllEnvs());
 
 describe('player menu and developer notes', () => {
   it('keeps KP knowledge out of the player menu even in a development preview', () => {
-    render(<GameMenu open onClose={vi.fn()} onHome={vi.fn()} onLoad={vi.fn()} onManageSaves={vi.fn()} onOpenApi={vi.fn()} onRestart={vi.fn()} onSave={vi.fn()} />);
+    render(<GameMenu open onClose={vi.fn()} onHome={vi.fn()} onLoad={vi.fn()} onOpenApi={vi.fn()} onRestart={vi.fn()} onSave={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'AI 设置' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'KP 笔记' })).not.toBeInTheDocument();
   });
@@ -18,7 +18,7 @@ describe('player menu and developer notes', () => {
     function Harness() {
       const [open, setOpen] = useState(false);
       return <><button onClick={() => setOpen(true)}>菜单</button><GameMenu open={open} onClose={() => setOpen(false)}
-        onHome={vi.fn()} onLoad={vi.fn()} onManageSaves={vi.fn()} onOpenApi={vi.fn()} onRestart={vi.fn()} onSave={onSave} /></>;
+        onHome={vi.fn()} onLoad={vi.fn()} onOpenApi={vi.fn()} onRestart={vi.fn()} onSave={onSave} /></>;
     }
     render(<Harness />);
     const opener = screen.getByRole('button', { name: '菜单', exact: true });
@@ -39,7 +39,7 @@ describe('player menu and developer notes', () => {
 
   it('closes only the nested sound sheet first and retains the menu below it', () => {
     const onClose = vi.fn();
-    render(<GameMenu open onClose={onClose} onHome={vi.fn()} onLoad={vi.fn()} onManageSaves={vi.fn()} onOpenApi={vi.fn()} onRestart={vi.fn()} onSave={vi.fn()} />);
+    render(<GameMenu open onClose={onClose} onHome={vi.fn()} onLoad={vi.fn()} onOpenApi={vi.fn()} onRestart={vi.fn()} onSave={vi.fn()} />);
     const sound = screen.getByRole('button', { name: '声音设置' });
     sound.focus(); fireEvent.click(sound);
     expect(screen.getByRole('dialog', { name: '声音设置' })).toBeInTheDocument();

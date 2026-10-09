@@ -16,7 +16,7 @@ export function useSaveSlots(notify: (text: string) => void) {
     const latestLibrary = refreshSaves();
     if (!latestLibrary.saves.length) {
       notify(latestLibrary.incompatible.length
-        ? '存档与当前剧情版本不兼容，请在存档管理中查看。'
+        ? '存档与当前剧情版本不兼容，记录仍保留在本机。'
         : '暂无存档');
     }
     return latestLibrary.saves[0] ?? null;

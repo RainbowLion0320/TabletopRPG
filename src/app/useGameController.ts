@@ -114,16 +114,6 @@ export function useGameController() {
     setMenuOpen(false);
   }
 
-  function loadCurrentLatest() {
-    const latest = saveSlots.getLatestSave();
-    if (!latest) return;
-    cancelDiceRoll();
-    dmCoordinatorRef.current.invalidate();
-    dispatch({ type: 'restore', state: latest.gameState });
-    setMenuOpen(false);
-    notify('已载入最近存档');
-  }
-
   function openSaveManager() {
     saveSlots.refreshSaves();
     setMenuOpen(false);
@@ -429,7 +419,6 @@ export function useGameController() {
     handleRoll,
     incompatibleSaves: saveSlots.incompatibleSaves,
     journalOpen,
-    loadCurrentLatest,
     loadLatest,
     loadSaveSlot,
     menuOpen,

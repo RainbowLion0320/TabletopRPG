@@ -1,4 +1,4 @@
-import { BookOpen, FolderOpen, Home, RotateCcw, Save, Settings, X } from 'lucide-react';
+import { BookOpen, Home, RotateCcw, Save, Settings, X } from 'lucide-react';
 import { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AudioSettingsButton } from '../shared/AudioSettingsButton';
@@ -10,13 +10,12 @@ interface GameMenuProps {
   onClose: () => void;
   onSave: () => void;
   onLoad: () => void;
-  onManageSaves: () => void;
   onOpenApi: () => void;
   onRestart: () => void;
   onHome: () => void;
 }
 
-export function GameMenu({ onClose, onHome, onLoad, onManageSaves, onOpenApi, onRestart, onSave, open }: GameMenuProps) {
+export function GameMenu({ onClose, onHome, onLoad, onOpenApi, onRestart, onSave, open }: GameMenuProps) {
   const dialogRef = useRef<HTMLElement>(null);
   useDialogFocus(open, dialogRef, onClose);
   if (!open) return null;
@@ -33,7 +32,6 @@ export function GameMenu({ onClose, onHome, onLoad, onManageSaves, onOpenApi, on
         <div className="menu-list menu-records">
         <button onClick={onSave}><Save size={16} />保存游戏</button>
         <button onClick={onLoad}><BookOpen size={16} />读取存档</button>
-        <button onClick={onManageSaves}><FolderOpen size={16} />存档管理</button>
         </div>
       </section>
       <section aria-labelledby="game-menu-settings">

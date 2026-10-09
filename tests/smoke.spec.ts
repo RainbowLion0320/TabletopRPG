@@ -219,6 +219,7 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
     await page.getByRole('button', { name: '保存游戏', exact: true }).click();
     await page.getByRole('button', { name: '菜单', exact: true }).click();
     await page.getByRole('button', { name: '读取存档', exact: true }).click();
+    await page.getByRole('dialog', { name: '读取存档', exact: true }).getByRole('button', { name: '载入存档', exact: true }).click();
     await expect(input).toHaveValue(longAction);
     await expect(input).toHaveAttribute('aria-label', '艾达·华莱士的行动');
   });
@@ -1256,8 +1257,23 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
       });
       await page.getByRole('button', { name: '菜单', exact: true }).click();
       await page.getByRole('button', { name: '读取存档', exact: true }).click();
-      await expect(status).toHaveText('存档与当前剧情版本不兼容，请在存档管理中查看。');
-      await page.getByRole('button', { name: '关闭调查菜单' }).click();
+      const records = page.getByRole('dialog', { name: '读取存档', exact: true });
+      await expect(records.getByText('版本不兼容', { exact: true })).toBeVisible();
+      await expect(records.getByRole('button', { name: '载入存档' })).toHaveCount(0);
+      await expect(records).not.toContainText('INTERNAL_HASH');
+      await records.getByRole('button', { name: '关闭存档列表' }).click();
+      // Real save failure still needs a readable notice; opening the reader no longer
+      // emits a redundant incompatibility toast over the retained record.
+      await page.evaluate(() => {
+        const original = Storage.prototype.setItem;
+        Storage.prototype.setItem = function (key, value) {
+          if (key === 'trpg-saves-v2') throw new DOMException('test quota', 'QuotaExceededError');
+          return original.call(this, key, value);
+        };
+      });
+      await page.getByRole('button', { name: '菜单', exact: true }).click();
+      await page.getByRole('button', { name: '保存游戏', exact: true }).click();
+      await expect(status).toHaveText('未能保存，请检查设备存储空间后重试。');
       await verifyNotice();
       if (size.width < 600) {
         await page.setViewportSize({ width: size.width, height: 300 });
@@ -2133,31 +2149,50 @@ for (const party of [1, 2, 4] as const) {
 
 test('save manager can load and delete explicit save slots', async ({ page }) => {
   await startNewGame(page);
-
+  const input = page.locator('.dock-input');
+  await input.fill('先保存门廊的调查安排。');
   await page.getByRole('button', { name: /菜单/ }).click();
   await page.getByRole('button', { name: /保存游戏/ }).click();
   await expect(page.getByText('已保存')).toBeVisible();
 
-  await page.getByRole('button', { name: /菜单/ }).click();
-  await page.getByRole('button', { name: /存档管理/ }).click();
-  const saveManager = page.getByRole('dialog', { name: '存档管理' });
-  await expect(saveManager).toBeVisible();
-  await expect(saveManager.getByText('摩勒住宅')).toBeVisible();
-  await expect(saveManager.getByText('亨利·格雷', { exact: true })).toBeVisible();
+  await input.fill('随后安排与委托人谈话。');
+  await page.getByRole('button', { name: '菜单', exact: true }).click();
+  await page.getByRole('button', { name: '保存游戏', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('trpg-saves-v2')!).length)).toBe(2);
+  await input.fill('尚未保存的当前行动。');
 
-  await page.getByRole('button', { name: /载入存档/ }).click();
+  await page.getByRole('button', { name: /菜单/ }).click();
+  await expect(page.getByRole('button', { name: '存档管理', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: /读取存档/ }).click();
+  const saveManager = page.getByRole('dialog', { name: '读取存档' });
+  await expect(saveManager).toBeVisible();
+  await expect(saveManager.getByRole('article')).toHaveCount(2);
+  await expect(input).toHaveValue('尚未保存的当前行动。');
+  await saveManager.getByRole('button', { name: '关闭存档列表' }).click();
+  await expect(input).toHaveValue('尚未保存的当前行动。');
+  await expect(page.getByRole('button', { name: '菜单', exact: true })).toBeFocused();
+  await page.getByRole('button', { name: '菜单', exact: true }).click();
+  await page.getByRole('button', { name: '读取存档', exact: true }).click();
+
+  await saveManager.getByRole('article').last().getByRole('button', { name: '载入存档' }).click();
+  await expect(input).toHaveValue('先保存门廊的调查安排。');
   await expect(page.getByPlaceholder('亨利·格雷 想要做什么...')).toBeVisible();
   await expect(page.getByText('已载入存档')).toBeVisible();
 
   await page.getByRole('button', { name: /菜单/ }).click();
-  await page.getByRole('button', { name: /存档管理/ }).click();
-  await page.getByRole('button', { name: /删除存档/ }).click();
+  await page.getByRole('button', { name: /读取存档/ }).click();
+  const oldRecord = saveManager.getByRole('article').last();
+  await oldRecord.getByRole('button', { name: /删除存档/ }).click();
   await expect(page.getByRole('button', { name: '保留存档' })).toBeFocused();
   await page.getByRole('button', { name: '保留存档' }).click();
-  await expect(saveManager.getByText('摩勒住宅')).toBeVisible();
-  await page.getByRole('button', { name: /删除存档/ }).click();
+  await expect(saveManager.getByRole('article')).toHaveCount(2);
+  await oldRecord.getByRole('button', { name: /删除存档/ }).click();
   await page.getByRole('button', { name: '确认删除' }).click();
-  await expect(page.getByRole('dialog', { name: '存档管理' }).getByText('暂无存档')).toBeVisible();
+  await expect(saveManager.getByRole('article')).toHaveCount(1);
+  await expect(saveManager.getByRole('button', { name: '载入存档' })).toBeFocused();
+  await saveManager.getByRole('button', { name: /删除存档/ }).click();
+  await saveManager.getByRole('button', { name: '确认删除' }).click();
+  await expect(page.getByRole('dialog', { name: '读取存档' }).getByText('暂无存档')).toBeVisible();
   await expect(page.getByRole('button', { name: '关闭', exact: true })).toBeFocused();
 });
 
@@ -2173,8 +2208,8 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
       localStorage.setItem('trpg-saves-v2', JSON.stringify(Array.from({ length: 12 }, (_, index) => ({ ...saved, id: saved.id - index, savedAt: `2026/10/8 12:00:${String(59 - index).padStart(2, '0')}` }))));
     });
     await page.getByRole('button', { name: '菜单', exact: true }).click();
-    await page.getByRole('button', { name: '存档管理', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: '存档管理' });
+    await page.getByRole('button', { name: '读取存档', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: '读取存档' });
     await expect(dialog.getByRole('article')).toHaveCount(12);
     await expect(dialog.getByText('最近保存', { exact: true })).toHaveCount(1);
     const last = dialog.getByRole('article').last();
@@ -2189,9 +2224,11 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
         return { inside: card.left >= 0 && card.right <= innerWidth && card.top >= 0 && card.bottom <= innerHeight,
           ordered: header.bottom <= list.top + 1 && list.bottom <= footer.top + 1,
           reachable: button.top >= list.top && button.bottom <= list.bottom + 1 && !!center?.closest('.save-delete-confirmation'),
-          touch: button.height >= 44, horizontalOverflow: element.scrollWidth > element.clientWidth };
+          touch: button.height >= 44,
+          readable: Array.from(element.querySelectorAll('.save-slot-time, .save-slot-party > span')).every(e => parseFloat(getComputedStyle(e).fontSize) >= 14 && e.scrollWidth <= e.clientWidth + 1),
+          horizontalOverflow: element.scrollWidth > element.clientWidth };
       });
-      expect(layout).toEqual({ inside: true, ordered: true, reachable: true, touch: true, horizontalOverflow: false });
+      expect(layout).toEqual({ inside: true, ordered: true, reachable: true, touch: true, readable: true, horizontalOverflow: false });
     }
     await verifyLayout();
     await page.screenshot({ path: testInfo.outputPath('save-records-confirmation.png') });

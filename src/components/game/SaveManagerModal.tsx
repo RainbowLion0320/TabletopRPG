@@ -98,8 +98,8 @@ export function SaveManagerModal({ incompatibleSaves = [], onClose, onDelete, on
     <div className="save-manager-backdrop" onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
       <div ref={dialogRef} tabIndex={-1} aria-modal="true" aria-labelledby={`${id}-title`} className="save-manager-card" role="dialog">
         <header className="save-manager-heading">
-          <div><h2 id={`${id}-title`}><FolderOpen size={20} aria-hidden="true" />存档管理</h2><p>{slots.length ? `${slots.length} 份本地调查记录` : '在调查菜单中保存，随时从这里继续。'}</p></div>
-          <button type="button" className="ghost-btn save-manager-close" aria-label="关闭存档管理" disabled={busy} onClick={close}><X size={18} /></button>
+          <div><h2 id={`${id}-title`}><FolderOpen size={20} aria-hidden="true" />读取存档</h2><p>{slots.length ? `${slots.length} 份本地调查记录` : '保存调查后，可在这里选择记录继续。'}</p></div>
+          <button type="button" className="ghost-btn save-manager-close" aria-label="关闭存档列表" disabled={busy} onClick={close}><X size={18} aria-hidden="true" /></button>
         </header>
 
         {slots.length ? <div className="save-list" aria-label="本地存档" aria-busy={busy}>

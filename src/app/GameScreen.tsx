@@ -63,8 +63,7 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
         open={controller.menuOpen}
         onClose={() => controller.setMenuOpen(false)}
         onHome={handleHome}
-        onLoad={controller.loadCurrentLatest}
-        onManageSaves={controller.openSaveManager}
+        onLoad={controller.openSaveManager}
         onOpenApi={controller.openApiSettings}
         onRestart={handleRestart}
         onSave={controller.saveCurrentGame}
