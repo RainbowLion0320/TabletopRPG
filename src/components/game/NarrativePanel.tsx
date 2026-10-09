@@ -187,8 +187,8 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
             )}
           </div>
         ))}
-        {state.isThinking ? <ThinkingIndicator /> : null}
       </div>
+      {state.isThinking ? <ThinkingIndicator /> : null}
     </div>
   );
 }

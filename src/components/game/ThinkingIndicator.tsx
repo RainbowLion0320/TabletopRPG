@@ -1,4 +1,5 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useState } from 'react';
+import waitingNib from '../../../assets/ui/artist/waiting-nib.webp';
 import './thinking-indicator.css';
 
 export const THINKING_TEXT = 'AI DM 正在推演下一幕';
@@ -57,15 +58,9 @@ export function ThinkingIndicator() {
       className="thinking-line"
       role="status"
     >
+      <img className="thinking-line-nib" src={waitingNib} alt="" aria-hidden="true" draggable={false} width={24} height={24} />
       <div className="thinking-line-text" aria-hidden="true">
-        {Array.from(text).map((char, index) => (
-          <span
-            key={`${char}-${index}`}
-            style={{ '--delay': `${index * 0.055}s` } as CSSProperties}
-          >
-            {char === ' ' ? '\u00A0' : char}
-          </span>
-        ))}
+        {text}
       </div>
     </div>
   );

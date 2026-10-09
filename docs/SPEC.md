@@ -4,6 +4,8 @@
 > Updated: 2026-10-09
 > Scope: current React/Vite implementation
 
+In 0.5.9, long waits pair still 15px captions with a painted silver-blue fountain-pen nib. The decorative 24px container uses only a slow 3.6s opacity cycle, disabled for reduced motion; the row remains 36px. It sits outside the scrollable history as the panel footer, so long actions, resizing and reading earlier entries cannot hide it; completion releases the space without increasing the overall panel height. Existing 24 local captions, 8s non-repeating rotation, accessible status and timer cleanup remain intact. The alpha-preserving 4,778-byte WebP has recorded built-in Image Gen provenance; no new model requests, timers, rules or player actions.
+
 In 0.5.8, the AI connection disclosure reuses the painted silver-blue panel with a 15px label, 44px target and existing settings/chevron icons. Native details click and Enter toggling, field order, validation, custom connection priority and fixed close/save controls remain intact. Only the body scrolls in a short viewport. Hover/press use subtle brightness feedback; reduced motion removes transitions. No new assets, settings, dependencies or model behavior.
 
 In 0.5.7, save deletion reuses the original pale-blue secondary artwork, existing trash icon and deep-red text with 15px labels and at least 96 by 44px targets. Enabled danger buttons retain distinct ink at rest and on hover instead of inheriting ordinary button ink. Inline confirmation, Keep-first focus, cancellation, persistence guards, failure recovery and the current action remain unchanged. The existing 320px, 390px and desktop record flows still verify long-list scrolling, short windows and focus restoration; no new images, dependencies, storage fields or game rules.

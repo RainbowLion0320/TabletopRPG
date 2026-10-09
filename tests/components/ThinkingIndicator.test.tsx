@@ -5,17 +5,17 @@ import { THINKING_CHANGE_MS, THINKING_LINES, THINKING_TEXT, ThinkingIndicator } 
 afterEach(() => vi.useRealTimers());
 
 describe('ThinkingIndicator', () => {
-  it('announces the AI DM thinking state and renders animated inline characters', () => {
+  it('announces the AI DM thinking state once and keeps its painted ornament decorative', () => {
     render(<ThinkingIndicator />);
 
     const indicator = screen.getByRole('status', { name: THINKING_TEXT });
     expect(indicator).toHaveAttribute('aria-busy', 'true');
     expect(indicator).toHaveClass('thinking-line');
 
-    const animatedCharacters = indicator.querySelectorAll('.thinking-line-text span');
     expect(THINKING_LINES).toContain(indicator.textContent!.replaceAll('\u00a0', ' '));
-    expect(animatedCharacters).toHaveLength(Array.from(indicator.textContent!).length);
-    expect(animatedCharacters[0]).toHaveStyle({ '--delay': '0s' });
+    expect(indicator.querySelector('.thinking-line-text')).toHaveAttribute('aria-hidden', 'true');
+    expect(indicator.querySelector('img')).toHaveAttribute('alt', '');
+    expect(indicator.querySelector('img')).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('cycles without repetitions during a long wait, keeps one accessible announcement, and cancels its timer on completion', () => {

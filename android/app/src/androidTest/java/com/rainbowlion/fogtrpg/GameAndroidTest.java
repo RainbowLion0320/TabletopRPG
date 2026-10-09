@@ -694,9 +694,13 @@ public class GameAndroidTest {
                 }
                 if (party == 1) {
                     until("document.querySelector('.thinking-line-text')");
+                    until("document.querySelector('.thinking-line-nib').naturalHeight===128");
                     js("window.qaWaitingFirst=document.querySelector('.thinking-line-text').textContent;window.qaWaitingHeight=document.querySelector('.thinking-line').getBoundingClientRect().height");
                     until("document.querySelector('.thinking-line-text') && document.querySelector('.thinking-line-text').textContent!==window.qaWaitingFirst");
                     assertEquals("Waiting captions change without moving the story or exceeding the phone", "true", js("(()=>{const e=document.querySelector('.thinking-line-text'),r=e.getBoundingClientRect();return parseFloat(getComputedStyle(e).fontSize)>=15&&r.left>=0&&r.right<=innerWidth&&document.querySelector('.thinking-line').getBoundingClientRect().height===window.qaWaitingHeight})()"));
+                    assertEquals("Painted waiting nib remains decorative and the caption stays still", "true", js("(()=>{const n=document.querySelector('.thinking-line-nib'),t=document.querySelector('.thinking-line-text');return n.naturalWidth===55&&n.getBoundingClientRect().height===24&&n.alt===''&&n.getAttribute('aria-hidden')==='true'&&getComputedStyle(t).animationName==='none'})()"));
+                    js("document.querySelector('.narrative-scroll').scrollTop=0");
+                    assertEquals("Waiting remains visible when reading earlier messages", "true", js("(()=>{const w=document.querySelector('.thinking-line').getBoundingClientRect(),s=document.querySelector('.narrative-scroll').getBoundingClientRect(),p=document.querySelector('.narrative-panel').getBoundingClientRect();return w.height===36&&w.top>=s.bottom-.5&&w.bottom<=p.bottom&&s.height>=24&&w.left>=p.left&&w.right<=p.right})()"));
                     screenshot("varied-wait-phone");
                 }
                 until("document.body.innerText.includes('Android 调查继续')");

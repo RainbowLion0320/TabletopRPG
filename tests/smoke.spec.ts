@@ -18,10 +18,16 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     await page.evaluate(() => localStorage.setItem('trpg-api', JSON.stringify({
       apiKey: 'test-only', provider: 'custom', protocol: 'responses', endpoint: 'https://waiting.test/v1', model: 'test-only'
     })));
-    await page.locator('.dock-input').fill('礼貌地问好，请她继续讲述。');
+    await page.locator('.dock-input').fill(size.width === 320
+      ? Array.from({ length: 20 }, () => '礼貌地问好，把这段调查行动描述清楚。').join('\n')
+      : '礼貌地问好，请她继续讲述。');
     await page.getByRole('button', { name: '提交', exact: true }).click();
     const waiting = page.getByRole('status', { name: 'AI DM 正在推演下一幕', exact: true });
     await expect(waiting).toBeVisible();
+    await expect(waiting).toBeInViewport({ ratio: 1 });
+    await page.locator('.narrative-scroll').evaluate(element => { element.scrollTop = 0; });
+    await expect(waiting).toBeInViewport({ ratio: 1 });
+    await expect.poll(() => waiting.locator('img').evaluate(element => (element as HTMLImageElement).naturalHeight)).toBe(128);
     const caption = waiting.locator('.thinking-line-text');
     const first = await caption.innerText();
     await page.evaluate(() => document.fonts.ready);
@@ -29,16 +35,23 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
       const r = element.getBoundingClientRect();
       return { height: r.height, storyHeight: document.querySelector('.narrative-scroll')!.getBoundingClientRect().height };
     });
+    expect(before.height).toBe(36);
+    expect(before.storyHeight).toBeGreaterThanOrEqual(24);
     await expect.poll(() => caption.innerText(), { timeout: 11_000 }).not.toBe(first);
     expect(await waiting.evaluate(element => {
       const r = element.getBoundingClientRect(), text = element.querySelector('.thinking-line-text')!;
+      const nib = element.querySelector('img') as HTMLImageElement;
       return { height: r.height, storyHeight: document.querySelector('.narrative-scroll')!.getBoundingClientRect().height,
         readable: parseFloat(getComputedStyle(text).fontSize) >= 15,
         fits: text.getBoundingClientRect().left >= 0 && text.getBoundingClientRect().right <= innerWidth,
+        quietText: getComputedStyle(text).animationName === 'none',
+        nibDrawn: nib.currentSrc.includes('waiting-nib') && nib.naturalWidth === 55 && nib.getBoundingClientRect().height === 24,
         overflow: document.documentElement.scrollWidth > innerWidth };
-    })).toEqual({ ...before, readable: true, fits: true, overflow: false });
+    })).toEqual({ ...before, readable: true, fits: true, quietText: true, nibDrawn: true, overflow: false });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    expect(await waiting.locator('img').evaluate(element => getComputedStyle(element).animationName)).toBe('none');
     await page.screenshot({ path: testInfo.outputPath('varied-wait.png') });
-    if (size.width === 390) await page.screenshot({ path: 'output/ui-2026-10-08/84-varied-wait-phone.png' });
+    if (size.width === 390) await page.screenshot({ path: 'output/ui-2026-10-08/173-painted-wait-phone.png' });
     release();
     await expect(waiting).toHaveCount(0);
   });

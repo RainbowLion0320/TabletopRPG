@@ -1,6 +1,21 @@
-# 0.5.2 采用 UI 图的实际提示词
+# 采用 UI 图的实际提示词
 
 模式：全部使用内置 image_gen.imagegen。以下保留实际调用的完整提示词，供制作追溯；这些是离线美术制作提示词，不进入 AI DM，不增加游戏校验。PNG 位于本机忽略的 output/ui-2026-10-08/polished-assets/，采用的 WebP 位于本目录。技术导出尺寸/切片/哈希见 [README](README.md)。原稿与中间 PNG 不提交。
+
+## waiting-nib.webp（0.5.9）
+
+内置 Image Gen 生成：`exec-f41759d8-41c9-473c-bc5d-143751e7321d`；源 PNG：`C:/Users/Administrator/.codex/generated_images/01a08488-3b01-7e70-8cf1-5ced29f3478e/exec-f41759d8-41c9-473c-bc5d-143751e7321d.png`。参考图只用于继承银蓝材质，原按钮与方框不修改。运行时去除外部透明空边后等比例缩至 55×128，保留原 alpha；没有程序绘画、背景抠色或额外 AI DM 提示词。
+
+```text
+Use case: stylized-concept.
+Asset type: a single small painted game UI ornament, a fountain-pen nib for the AI storyteller's waiting caption in the 1920 London investigation game 雾中消逝.
+Input images: the square silver-blue frame and pale-blue button are STYLE REFERENCES ONLY. Preserve those existing assets; create one NEW standalone nib ornament that belongs to their visual family.
+Subject: one elegant 1920s silver fountain-pen nib, upright with its sharp tip pointing downward, seen straight-on. Recognizable tapered metal silhouette, central slit and small breather hole. Restrained engraved edge, cool pearl-silver face, slightly darker navy-steel edges, one very small warm-gold glint at the upper shoulder. A clean legible silhouette at a final 24px display size.
+Style: carefully painted fantasy-investigation game UI prop, polished silver and soft blue reflection, subtle hand-painted material detail. Match the references' layered silver highlights, cool blue and pearl sheen. Keep the design uncluttered and readable. This is a painted prop ornament, not a square action icon, and has no button frame.
+Composition: the nib alone centered, occupies roughly 82% of canvas height and 65% of width. Straight-on symmetric silhouette. Transparent negative space around it, no environment, no shadow plane, no glow cloud, no additional props or characters.
+Text: none. No lettering, numbers, logos or symbols unrelated to the nib's actual construction.
+Output: genuinely transparent RGBA background. Fine clean alpha edges; no checkerboard baked into pixels. One object only, no mockup, no alternate views, no UI screenshot.
+```
 
 ## dice-panel.webp
 
