@@ -312,7 +312,8 @@ public class GameAndroidTest {
                     assertEquals("All four status cards fit without horizontal scrolling", "true", js("document.querySelector('.party-strip-compact').scrollWidth<=document.querySelector('.party-strip-compact').clientWidth+1"));
                     viewport(320, 568);
                     readablePartyDossiers();
-                    assertEquals("Smallest four-player HUD keeps every value inside its card", "true", js("Array.from(document.querySelectorAll('.party-compact,.party-strip-compact')).every(e=>e.scrollWidth<=e.clientWidth+1)"));
+                    assertEquals("Smallest four-player HUD keeps readable values in a single horizontal row", "true", js("Array.from(document.querySelectorAll('.party-compact')).every(e=>e.scrollWidth<=e.clientWidth+1)&&getComputedStyle(document.querySelector('.party-strip-compact')).flexWrap==='nowrap'"));
+                    assertEquals("Compact four-player HUD gives the complete scene enough height", "true", js("document.querySelector('.scene-stage').getBoundingClientRect().height>=145"));
                     assertEquals("Smallest four-player reading area remains usable", "true", js("document.querySelector('.narrative-panel').clientHeight>=140"));
                     assertEquals("Smallest four-player empty action hint is not clipped", "true", js("(()=>{const e=document.querySelector('.dock-input');return e.value===''&&e.scrollHeight<=e.clientHeight+1})()"));
                     screenshot("portrait-320x568-four-game");
@@ -329,6 +330,14 @@ public class GameAndroidTest {
                         assertEquals("Inspecting each party member preserves the multiline action", JSONObject.quote(shortDraft), js("document.querySelector('.dock-input').value"));
                     }
                     js("document.querySelector('.party-strip-compact').scrollLeft=0"); screenshot("portrait-320x360-four-game");
+                    fill(".dock-input", shortDraft + "先保留当前的观察记录。先保留当前的观察记录。先保留当前的观察记录。");
+                    readablePartyDossiers(); reachable(".dock-input"); reachable(".dock-submit");
+                    screenshot("compact-short-long-action");
+                    viewport(320, 340);
+                    assertEquals("Very short windows keep dossiers available through the avatar", "true", js("getComputedStyle(document.querySelector('.party-strip-compact')).display==='none'"));
+                    nativeTap(".dock-actor-avatar"); until("document.querySelector('.investigator-party button')");
+                    assertEquals("The avatar still offers every teammate", "4", js("document.querySelectorAll('.investigator-party button').length"));
+                    nativeTap(".investigator-close"); until("!document.querySelector('.investigator-sheet')");
                     fill(".dock-input", "");
                     viewport(size[0], size[1]);
                 }
@@ -744,15 +753,23 @@ public class GameAndroidTest {
                 until("document.querySelectorAll('.party-compact').length === " + party);
                 screenshot("party-" + party);
                 assertEquals("Readable narrative", "true", js("document.querySelector('.narrative-panel').clientHeight > 90"));
+                if (party == 4) viewport(320, 568);
                 for (int i = 0; i < party; i++) {
+                    if (party == 4 && i == 0) js("document.querySelector('.party-strip-compact').scrollLeft=999;window.qaReviewedPartyPosition=document.querySelector('.party-strip-compact').scrollLeft");
                     fill(".dock-input", "接受委托\n询问失踪经过");
+                    if (party == 4 && i == 0) assertEquals("Typing preserves the manually reviewed teammate", "true", js("document.querySelector('.party-strip-compact').scrollLeft===window.qaReviewedPartyPosition"));
                     click(i == party - 1 ? "提交" : "下一位");
                     if (i < party - 1) {
                         assertEquals("Next investigator can keep typing immediately", "true", js("document.activeElement===document.querySelector('.dock-input')"));
                         assertEquals("Completed actor is indicated", "true", js("document.querySelectorAll('.party-compact')[" + i + "].textContent.includes('已提交')"));
+                        if (party == 4) {
+                            assertEquals("The next actor is fully exposed without scrolling the story", "true", js("(()=>{const a=document.querySelector('.party-compact[aria-current=step]'),r=a.getBoundingClientRect(),s=a.parentElement.getBoundingClientRect();return r.left>=s.left-.5&&r.right<=s.right+.5&&document.documentElement.scrollWidth<=innerWidth})()"));
+                            if (i == 2) screenshot("compact-four-last-actor");
+                        }
                         readablePartyDossiers();
                     }
                 }
+                if (party == 4) viewport(390, 844);
                 if (party == 1) {
                     until("document.querySelector('.thinking-line-text')");
                     until("document.querySelector('.thinking-line-nib').naturalHeight===128");
@@ -772,6 +789,7 @@ public class GameAndroidTest {
                 until("document.querySelectorAll('.suggestion-row button').length===3");
                 assertEquals("Distinct choices remain beside the existing story route", "true", js("Array.from(document.querySelectorAll('.suggestion-row button')).map(e=>e.textContent).join('|')==='前往老赫特酒吧继续调查|检查门锁|观察窗边'"));
                 nativeTap(".suggestion-row button:first-child");
+                until("document.querySelector('.dock-input').value==='前往老赫特酒吧继续调查'");
                 assertEquals("A suggestion only fills the current draft", "true", js("document.querySelector('.dock-input').value==='前往老赫特酒吧继续调查'"));
                 assertEquals("A suggestion never starts another model turn", 1, narratorCalls.get());
                 assertEquals("No additional action was submitted", String.valueOf(party), js("document.querySelectorAll('.story-message.player').length"));

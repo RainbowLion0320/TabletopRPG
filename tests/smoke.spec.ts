@@ -311,7 +311,7 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
     await expect(page.locator('.dock-submit')).toBeInViewport();
     await expect(page.locator('.narrative-toggle-btn')).toBeInViewport();
     await page.setViewportSize(size);
-    await expect.poll(() => input.evaluate(element => element.getBoundingClientRect().height)).toBe(96);
+    await expect.poll(() => input.evaluate(element => element.getBoundingClientRect().height)).toBe(size.height <= 600 ? 66 : 96);
     await expect(input).toHaveValue(longAction);
     await page.getByRole('button', { name: '菜单', exact: true }).click();
     await page.getByRole('button', { name: '保存游戏', exact: true }).click();
@@ -725,6 +725,34 @@ for (const size of [{ width: 320, height: 568, party: 4 }, { width: 390, height:
         await expect(card).toBeFocused();
         await expect(input).toHaveValue(draft);
       }
+      const strip = page.locator('.party-strip-compact');
+      const inspectedPosition = await strip.evaluate(element => element.scrollLeft);
+      await input.fill(draft + '先保留这条记录。'.repeat(20));
+      expect(await strip.evaluate(element => element.scrollLeft)).toBe(inspectedPosition);
+      await expect(page.locator('.party-compact').last()).toBeInViewport({ ratio: 1 });
+      for (let actor = 1; actor < size.party; actor++) {
+        await page.getByRole('button', { name: '下一位', exact: true }).click();
+        const active = page.locator('.party-compact[aria-current="step"]');
+        await expect(active.locator('strong')).toHaveText(state.players[actor].name);
+        await expect.poll(() => active.evaluate(element => {
+          const r = element.getBoundingClientRect(), s = element.parentElement!.getBoundingClientRect();
+          return r.left >= s.left - .5 && r.right <= s.right + .5;
+        })).toBe(true);
+        await input.fill(draft);
+      }
+      // A keyboard resize also reveals the actor after manually reviewing a teammate.
+      await strip.evaluate(element => { element.scrollLeft = 0; });
+      await page.setViewportSize(size);
+      await page.setViewportSize({ width: 320, height: 360 });
+      await expect(page.locator('.party-compact[aria-current="step"]')).toBeInViewport({ ratio: 1 });
+      await expect(input).toHaveValue(draft);
+      await page.setViewportSize({ width: 320, height: 340 });
+      await expect(strip).toBeHidden();
+      await expect(input).toBeInViewport({ ratio: 1 });
+      await page.locator('.dock-actor-avatar').click();
+      await expect(page.locator('.investigator-party button')).toHaveCount(size.party);
+      await page.getByRole('button', { name: '关闭调查员档案', exact: true }).click();
+      await expect(input).toHaveValue(draft);
       await page.setViewportSize(size);
     }
     await toggle.click();
@@ -732,6 +760,9 @@ for (const size of [{ width: 320, height: 568, party: 4 }, { width: 390, height:
     await expect(page.locator('.scene-stage')).toBeVisible();
     await expect(page.locator('.dock-input')).toBeInViewport();
     await expect(page.locator('.narrative-header')).toBeInViewport();
+    if (size.width === 320) {
+      expect(await page.locator('.scene-stage').evaluate(element => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(145);
+    }
   });
 }
 
@@ -1293,7 +1324,13 @@ for (const size of [{ width: 320, height: 568, party: 1, endingId: 'END_C' }, { 
       const controls = Array.from(el.querySelectorAll('button')).filter(b => b.getBoundingClientRect().height > 0);
       return { inside: r.top >= 0 && r.bottom <= innerHeight + 1, reading: story.height >= 140,
         noOverlap: story.bottom <= r.top + 1, noOverflow: document.documentElement.scrollWidth <= innerWidth,
-        controls: controls.every(b => { const r = b.getBoundingClientRect(); return r.width >= 44 && r.height >= 44 && r.bottom <= innerHeight + 1 && b.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)); }) };
+        controls: controls.every(b => {
+          const r = b.getBoundingClientRect(), s = b.parentElement!.getBoundingClientRect();
+          const exposed = b.matches('.party-compact')
+            ? r.right <= s.left || r.left >= s.right || b.contains(document.elementFromPoint((Math.max(r.left, s.left) + Math.min(r.right, s.right)) / 2, r.y + r.height / 2))
+            : b.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+          return r.width >= 44 && r.height >= 44 && r.bottom <= innerHeight + 1 && exposed;
+        }) };
     });
     await expect.poll(bounds).toEqual({ inside: true, reading: true, noOverlap: true, noOverflow: true, controls: true });
     await page.locator('.narrative-toggle-btn').click(); await expect(page.locator('.narrative-toggle-btn')).toHaveAttribute('aria-expanded', 'true');
@@ -1371,7 +1408,11 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
     await expect(cards).toHaveCount(size.party);
     await page.evaluate(() => document.fonts.ready);
     async function verifyParty() {
-      const bounds = await cards.evaluateAll(elements => elements.map(e => {
+      const strip = page.locator('.party-strip-compact');
+      const position = await strip.evaluate(element => element.scrollLeft);
+      for (const card of await cards.all()) {
+        await card.scrollIntoViewIfNeeded();
+        const bounds = await card.evaluate(e => {
         const r = e.getBoundingClientRect(), d = document.querySelector('.action-dock')!.getBoundingClientRect();
         const story = document.querySelector('.narrative-panel')!.getBoundingClientRect();
         const text = Array.from(e.querySelectorAll('strong, .party-action-status, .bar-label, .bar-value'));
@@ -1382,8 +1423,10 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
           opaque: getComputedStyle(e).opacity === '1',
           text: text.every(t => { const s = getComputedStyle(t); const size = parseFloat(s.fontSize); const b = t.getBoundingClientRect(); return size >= (t.tagName === 'STRONG' ? 14 : t.classList.contains('bar-value') ? 13 : 12) && b.left >= r.left && b.right <= r.right; }),
           noOverflow: e.scrollWidth <= e.clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth };
-      }));
-      for (const b of bounds) expect(b).toEqual({ target: true, inside: true, reading: true, drawn: true, opaque: true, text: true, noOverflow: true });
+        });
+        expect(bounds).toEqual({ target: true, inside: true, reading: true, drawn: true, opaque: true, text: true, noOverflow: true });
+      }
+      await strip.evaluate((element, position) => { element.scrollLeft = position; }, position);
     }
     const names = await cards.locator('strong').allTextContents();
     const resources = await cards.locator('.party-compact-bars').allTextContents();
@@ -1400,6 +1443,13 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
       await page.getByRole('button', { name: '关闭调查员档案' }).click();
       await expect(cards.nth(i)).toBeFocused();
       await expect(page.locator('.dock-input')).toHaveValue(draft);
+    }
+    if (size.width === 1440) {
+      await page.setViewportSize({ width: 320, height: 360 });
+      await expect(page.locator('.party-compact[aria-current="step"]')).toBeInViewport({ ratio: 1 });
+      await expect(page.locator('.dock-input')).toHaveValue(draft);
+      await page.setViewportSize(size);
+      await verifyParty();
     }
     if (size.party > 1) {
       await page.getByRole('button', { name: '下一位', exact: true }).click();
@@ -1455,7 +1505,11 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
             drawn: getComputedStyle(notice).borderImageSource.includes('panel-frame'),
             passive: getComputedStyle(element).pointerEvents === 'none',
             caption: !shortConfirmation || r.right <= caption.left || r.left >= caption.right || r.bottom <= caption.top || r.top >= caption.bottom,
-            party: visibleParty.every(e => { const b = e.getBoundingClientRect(); return b.bottom <= innerHeight && e.contains(document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2)); }),
+            party: visibleParty.every(e => {
+              const b = e.getBoundingClientRect(), s = e.parentElement!.getBoundingClientRect();
+              return b.bottom <= innerHeight && (b.right <= s.left || b.left >= s.right
+                || e.contains(document.elementFromPoint((Math.max(b.left, s.left) + Math.min(b.right, s.right)) / 2, b.y + b.height / 2)));
+            }),
             horizontalOverflow: document.documentElement.scrollWidth > innerWidth };
         });
         expect(bounds).toEqual({ inside: true, readable: true, drawn: true, passive: true, caption: true, party: true, horizontalOverflow: false });
@@ -1541,7 +1595,11 @@ for (const size of [{ width: 320, height: 568, party: 4 }, { width: 390, height:
           inside: r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight && br.bottom <= dock.bottom,
           touch: br.width >= 44 && br.height >= 44 && b.contains(document.elementFromPoint(br.x + br.width / 2, br.y + br.height / 2)),
           reading: story.height >= 140 && story.bottom <= dock.top + .5,
-          party: innerHeight <= 300 || Array.from(document.querySelectorAll('.party-compact')).every(e => { const r = e.getBoundingClientRect(); return r.top >= dock.top && r.bottom <= dock.bottom + .5 && e.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)); }),
+          party: innerHeight <= 300 || Array.from(document.querySelectorAll('.party-compact')).every(e => {
+            const r = e.getBoundingClientRect(), s = e.parentElement!.getBoundingClientRect();
+            return r.top >= dock.top && r.bottom <= dock.bottom + .5 && (r.right <= s.left || r.left >= s.right
+              || e.contains(document.elementFromPoint((Math.max(r.left, s.left) + Math.min(r.right, s.right)) / 2, r.y + r.height / 2)));
+          }),
           font: Array.from(el.querySelectorAll('strong, span, button')).every(e => parseFloat(getComputedStyle(e).fontSize) >= 15),
           drawn: getComputedStyle(el).borderImageSource.includes('panel-frame'),
           overflow: document.documentElement.scrollWidth <= innerWidth && el.scrollWidth <= el.clientWidth + 1
@@ -2052,7 +2110,7 @@ test('desktop reference stays fully reachable after a low drag and short-window 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(entry).not.toHaveClass(/draggable/);
   const phoneBounds = (await entry.boundingBox())!;
-  expect(phoneBounds.y).toBeLessThan(50); expect(phoneBounds.height).toBe(44);
+  expect(phoneBounds.y).toBeLessThan(50); expect(phoneBounds.height).toBeCloseTo(44, 3);
   await entry.click(); await expect(drawer).toBeVisible();
   await page.keyboard.press('Escape'); await expect(entry).toBeFocused();
   await page.setViewportSize({ width: 1440, height: 300 });

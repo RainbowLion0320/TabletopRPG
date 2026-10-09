@@ -4,7 +4,7 @@
 > Updated: 2026-10-10
 > Scope: current React/Vite implementation
 
-In 0.5.33, hydration retains an explicitly empty NPC focus rather than replacing it with the authored resident on continuation or load. Missing legacy focus metadata and offstage NPC references retain their compatibility fallback. Full scene framing, nineteen painted assets, single/multiplayer opening address, 12px story time, page feedback cleanup and multiline drafts remain intact; no story, rule, API or persisted-format changes are made.
+In 0.5.34, portrait multiplayer resources use one scrollable row at 341–600px viewport height to leave space for the full scene. Actor changes and window resize expose the current investigator within that strip only; drafting and teammate inspection preserve manual scroll position. Short-screen input height retains the full resource row; at 340px or less the avatar still opens all party dossiers. Taller grids and solo resources remain intact, as do nineteen painted assets, empty-focus recovery, full story time and multiline drafts; no story, rule, API or persisted-format changes are made.
 
 In 0.5.14, empty logs, unmatched log searches and empty saves use one dedicated painted silver-blue investigator ledger, faithful to the approved artist palette and motifs. The new 14,954-byte WebP is displayed proportionally within 112 by 72 pixels, with the existing state text at 15px. The decorative image receives no pointer input or accessible name. Empty logs center within their existing reading area; saves keep their existing space. Windows at most 500px high hide the illustration so status, search and exit remain reachable. Queries, focus, action drafts and save operations are preserved, with no added model rule, stored field or player step.
 

@@ -97,11 +97,19 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 @media (max-height: 420px) {
   .portrait-ui .game-screen .suggestion-row { display: none; }
 }
+/* Keep a long action from pushing the short-screen party row outside the dock. */
+@media (max-height: 600px) and (min-height: 341px) {
+  .portrait-ui .game-screen:has(.party-compact:nth-child(2)) .dock-input {
+    max-height: min(66px, calc(var(--mobile-height) - var(--game-top) - 142px - var(--game-bottom) - 66px));
+  }
+}
+@media (max-height: 340px) {
+  .portrait-ui .dock-input { max-height: 66px; }
+}
 @media (max-height: 300px) {
   .portrait-ui .game-screen { --game-top: 0px; }
   .portrait-ui .game-top, .portrait-ui .drawer-tab, .portrait-ui .suggestion-row { display: none; }
   .portrait-ui .action-dock { max-height: 55dvh; }
-  .portrait-ui .dock-input { max-height: 66px; }
   .portrait-ui .info-drawer-tabs { grid-column: 1; grid-row: 1; }
   .portrait-ui .info-drawer-title { display: none; }
 }

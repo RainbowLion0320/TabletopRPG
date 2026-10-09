@@ -93,7 +93,7 @@ export function ActionDock({
           {onReview && <button type="button" className="primary-action" aria-haspopup="dialog" onClick={(event) => { event.currentTarget.focus({ preventScroll: true }); onReview(); }}><JournalArt />调查回顾</button>}
           {onHome && <button type="button" className="secondary-action" onClick={onHome}><Home size={16} aria-hidden="true" />返回首页</button>}
         </nav>}
-        <PartyStatusStrip state={state} canDeclare={false} onInspectPlayer={onInspectPlayer} />
+        <PartyStatusStrip state={state} canDeclare={false} portrait={portrait} onInspectPlayer={onInspectPlayer} />
       </section>
     );
   }
@@ -174,13 +174,30 @@ export function ActionDock({
       </div>
 
       {/* Party resources also open each investigator's existing dossier. */}
-      <PartyStatusStrip state={state} canDeclare={canDeclare} onInspectPlayer={onInspectPlayer} />
+      <PartyStatusStrip state={state} canDeclare={canDeclare} portrait={portrait} onInspectPlayer={onInspectPlayer} />
     </section>
   );
 }
 
-function PartyStatusStrip({ state, canDeclare, onInspectPlayer }: Pick<ActionDockProps, 'state' | 'onInspectPlayer'> & { canDeclare: boolean }) {
-  return <div className="party-strip-compact">
+function PartyStatusStrip({ state, canDeclare, portrait, onInspectPlayer }: Pick<ActionDockProps, 'state' | 'onInspectPlayer'> & { canDeclare: boolean; portrait: boolean }) {
+  const stripRef = useRef<HTMLDivElement>(null);
+  const currentActorId = canDeclare ? state.players[state.currentActorIndex]?.id : undefined;
+  useLayoutEffect(() => {
+    const revealActor = () => {
+      const strip = stripRef.current;
+      const active = strip?.querySelector<HTMLElement>('.party-compact.active');
+      if (!strip || !active || !strip.clientWidth || strip.scrollWidth <= strip.clientWidth) return;
+      const card = active.getBoundingClientRect(), viewport = strip.getBoundingClientRect();
+      // Move only the horizontal strip; keep the story, input and manual reading in place.
+      if (card.left < viewport.left) strip.scrollLeft += card.left - viewport.left;
+      else if (card.right > viewport.right) strip.scrollLeft += card.right - viewport.right;
+    };
+    revealActor();
+    window.addEventListener('resize', revealActor);
+    return () => window.removeEventListener('resize', revealActor);
+  }, [currentActorId, portrait]);
+
+  return <div className="party-strip-compact" ref={stripRef}>
         {state.players.map((player, index) => {
           const hpPct = player.hp > 0 ? Math.round((player.currentHp / player.hp) * 100) : 0;
           const sanPct = player.san > 0 ? Math.round((player.currentSan / player.san) * 100) : 0;
