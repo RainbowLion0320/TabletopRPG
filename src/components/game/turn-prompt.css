@@ -1,6 +1,6 @@
 /* The current check or preserved turn belongs to one compact dossier strip. */
 :root .action-dock .check-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; min-width: 0; gap: 8px 10px; margin: 0 0 4px; padding: 6px 8px; border: 4px solid var(--line); border-radius: 2px; background: var(--panel); }
-:root.fog-ui .action-dock .check-card { border-color: transparent; border-image: var(--ui-panel-frame) 52 fill / 4px / 0 stretch; background: var(--panel); }
+:root.fog-ui .action-dock .check-card { border-color: transparent; border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 4px / 0 stretch; background: var(--panel); }
 :root .action-dock .check-card > div { display: grid; min-width: 0; gap: 3px; overflow-wrap: anywhere; }
 :root .action-dock .check-card strong { color: var(--ui-paper, var(--text)); font: 400 16px/1.4 var(--ui-font, serif); }
 :root .action-dock .check-card span { color: var(--text); font-size: 15px; line-height: 1.4; }

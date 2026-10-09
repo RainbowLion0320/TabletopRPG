@@ -1510,6 +1510,10 @@ test(`dice art remains readable and confirms once with ${mode}`, async ({ page }
   await expect(confirm).toBeFocused();
   const appearance = await dialog.evaluate(async element => {
     await document.fonts.ready;
+    const paintedPanel = getComputedStyle(element.querySelector('.dice-roll-panel-art')!).backgroundImage;
+    const panelImage = new Image();
+    panelImage.src = paintedPanel.match(/url\(["']?(.*?)["']?\)/)?.[1] ?? '';
+    await panelImage.decode();
     const card = element.querySelector('.dice-roll-card')!.getBoundingClientRect();
     const controls = element.querySelectorAll('header p, .dice-roll-target span, .dice-roll-total-label, .dice-roll-total, .dice-face, .dice-roll-hint, h3, button');
     return {
@@ -1517,18 +1521,54 @@ test(`dice art remains readable and confirms once with ${mode}`, async ({ page }
       allUseFont: Array.from(controls).every(control => getComputedStyle(control).fontFamily.startsWith('"Zihun Yunque"')),
       fits: card.left >= 0 && card.right <= innerWidth && card.top >= 0 && card.bottom <= innerHeight,
       backdrop: getComputedStyle(element).backdropFilter,
-      panelDrawn: getComputedStyle(element.querySelector('.dice-roll-panel-art')!).borderImageSource.includes('panel-frame'),
+      panelDrawn: paintedPanel.includes('dice-panel'),
+      panelLoaded: panelImage.naturalWidth > 0 && Math.abs(panelImage.naturalWidth / panelImage.naturalHeight - 639 / 890) < .01,
       diceLoaded: (element.querySelector('.dice-roll-idle') as HTMLImageElement).naturalWidth === 426,
       diceProportions: (() => { const r = element.querySelector('.dice-roll-stage')!.getBoundingClientRect(); return Math.abs(r.width / r.height - 426 / 246) < .01; })()
     };
   });
-  expect(appearance).toEqual({ fontLoaded: true, allUseFont: true, fits: true, backdrop: 'blur(4px)', panelDrawn: true, diceLoaded: true, diceProportions: true });
+  expect(appearance).toEqual({ fontLoaded: true, allUseFont: true, fits: true, backdrop: 'blur(4px)', panelDrawn: true, panelLoaded: true, diceLoaded: true, diceProportions: true });
   await page.screenshot({ path: `test-results/dice-${mode.replaceAll(' ', '-')}.png` });
   await confirm.click();
   await expect(dialog).toHaveCount(0);
   await expect(page.locator('.story-message.system').filter({ hasText: '艾达·华莱士 · 侦查：大失败（100）' })).toHaveCount(1);
 });
 }
+
+test('painted dice keeps normal results readable on phones, a short keyboard window and desktop', async ({ page }, testInfo) => {
+  await page.addInitScript(() => { Math.random = () => .549; });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await gotoWithSave(page, createPendingCheckSave());
+  await page.getByRole('button', { name: '继续游戏' }).click();
+  await page.getByRole('button', { name: '掷骰', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: '命运检定' });
+  await expect(dialog).toHaveClass(/revealed/, { timeout: 5_000 });
+  await expect(dialog.locator('.dice-roll-total')).toHaveText('55');
+  await expect(dialog.getByRole('heading', { name: '普通成功' })).toBeVisible();
+  const confirm = dialog.getByRole('button', { name: '确认结果' });
+  for (const size of [{ width: 390, height: 844 }, { width: 430, height: 932 }, { width: 320, height: 300 }, { width: 1440, height: 900 }]) {
+    await page.setViewportSize(size);
+    await expect.poll(() => dialog.evaluate(element => {
+      const card = element.querySelector('.dice-roll-card')!.getBoundingClientRect();
+      const panel = element.querySelector('.dice-roll-panel')!.getBoundingClientRect();
+      const outcome = element.querySelector('.dice-roll-outcome h3')!.getBoundingClientRect();
+      const confirm = element.querySelector('button')!.getBoundingClientRect();
+      const faces = Array.from(element.querySelectorAll('.dice-face'));
+      return {
+        cardFits: card.left >= 0 && card.right <= innerWidth && card.top >= 0 && card.bottom <= innerHeight,
+        resultFits: outcome.left >= panel.left && outcome.right <= panel.right && outcome.top >= panel.top && outcome.bottom <= panel.bottom,
+        digitsReadable: faces.every(face => parseFloat(getComputedStyle(face).fontSize) >= 14),
+        resultReadable: parseFloat(getComputedStyle(element.querySelector('.dice-roll-outcome h3')!).fontSize) >= 13,
+        confirmReachable: confirm.height >= 48 && confirm.top >= 0 && confirm.bottom <= innerHeight
+      };
+    })).toEqual({ cardFits: true, resultFits: true, digitsReadable: true, resultReadable: true, confirmReachable: true });
+    await expect(confirm).toBeFocused();
+    await page.screenshot({ path: testInfo.outputPath(`dice-${size.width}x${size.height}.png`) });
+  }
+  await confirm.click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator('.story-message.system').filter({ hasText: '艾达·华莱士 · 侦查：普通成功（55）' })).toHaveCount(1);
+});
 
 test('authored negotiation checks chain and settle the ending without another AI call', async ({ page }) => {
   await page.addInitScript(() => {

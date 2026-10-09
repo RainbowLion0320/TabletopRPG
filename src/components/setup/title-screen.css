@@ -14,7 +14,7 @@
 :root.fog-ui .title-actions > button:disabled { background: transparent; color: var(--ui-ink); box-shadow: none; opacity: .5; filter: saturate(.35); }
 .title-completed-label { display: grid; place-items: center; width: 100%; height: 100%; background: url('../../../assets/ui/artist/button-secondary.webp') center / 100% 100% no-repeat; font: 400 clamp(18px, 2.6vw, 53px)/1.2 var(--ui-font); }
 :root.fog-ui .title-screen .title-audio { position: absolute; top: max(16px, env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); }
-.title-resume-preview { position: absolute; right: 2%; bottom: 2.5%; width: min(370px, 28%); padding: 8px 14px; text-align: left; border: 8px solid transparent; border-image: var(--ui-panel-frame) 52 fill / 8px / 0 stretch; background: var(--panel); background-clip: padding-box; }
+.title-resume-preview { position: absolute; right: 2%; bottom: 2.5%; width: min(370px, 28%); padding: 8px 14px; text-align: left; border: 8px solid transparent; border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 8px / 0 stretch; background: var(--panel); background-clip: padding-box; }
 .title-resume-preview > div { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .title-resume-preview > strong { display: block; margin-top: 4px; color: var(--text); font: 400 17px/1.4 var(--ui-font); }
 .title-resume-preview > p { margin: 3px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }

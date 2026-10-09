@@ -1,6 +1,6 @@
 /* Drawn dossier surfaces, quiet text, and independently scrolling log records. */
 .investigation-progress { width: min(760px, 100%); margin-inline: auto; display: grid; align-content: start; gap: 12px; padding: 2px 2px 12px; }
-.investigation-card { min-width: 0; border: 8px solid transparent; border-image: var(--ui-panel-frame) 52 fill / 8px / 0 stretch; background: var(--panel); padding: 3px 8px 8px; }
+.investigation-card { min-width: 0; border: 8px solid transparent; border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 8px / 0 stretch; background: var(--panel); padding: 3px 8px 8px; }
 .investigation-card h3 { display: flex; align-items: center; gap: 8px; margin: 8px 0 12px; color: var(--accent); font: 400 16px/1.5 var(--ui-font); }
 .investigation-card h3 svg { flex: 0 0 auto; color: var(--muted); }
 .objective-list { display: grid; gap: 12px; list-style: none; margin: 0; padding: 0; }
@@ -31,7 +31,7 @@
 .action-log-archive { display: flex; flex: 1; flex-direction: column; min-height: 0; min-width: 0; max-width: 900px; margin-inline: auto; width: 100%; padding: 0 2px 3px; }
 .action-log-heading { flex: 0 0 auto; }
 .action-log-heading h3 { font: 400 16px/1.5 var(--ui-font); color: var(--accent); margin: 2px 4px 8px; }
-.record-log-search { flex: 0 0 auto; display: flex; align-items: center; min-width: 0; min-height: 46px; border: 1px solid var(--line); padding-left: 12px; margin-bottom: 10px; background: var(--panel-strong); color: var(--muted); box-shadow: inset 0 0 0 2px var(--panel-strong); }
+.record-log-search { flex: 0 0 auto; display: flex; align-items: center; min-width: 0; min-height: 46px; border: 1px solid transparent; border-image: var(--ui-input-frame) 90 100 90 100 fill / 7px 12px / 0 stretch; padding-left: 12px; margin-bottom: 10px; background: var(--panel-strong); color: var(--muted); box-shadow: none; }
 .record-log-search > svg { flex: 0 0 auto; }
 .record-log-search:focus-within { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--panel-strong), 0 0 0 1px var(--muted); }
 :root .record-log-search input { flex: 1; min-width: 0; width: 0; min-height: 44px; padding: 8px 10px; border: 0; border-radius: 0; background: transparent; color: var(--text); font: 400 16px/1.6 var(--ui-font); outline: none; box-shadow: none; }
@@ -39,7 +39,7 @@
 .record-log-search input::-webkit-search-cancel-button { display: none; }
 :root .record-log-search button { flex: 0 0 44px; display: grid; place-items: center; width: 44px; height: 44px; min-height: 44px; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--accent); cursor: pointer; }
 .record-log-search button:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: -3px; }
-.action-log-list { flex: 1; min-width: 0; min-height: 0; list-style: none; margin: 0; padding: 4px 10px 8px; overflow-y: auto; overscroll-behavior: contain; scroll-padding: 10px; border: 8px solid transparent; border-image: var(--ui-panel-frame) 52 fill / 8px / 0 stretch; background: var(--panel); }
+.action-log-list { flex: 1; min-width: 0; min-height: 0; list-style: none; margin: 0; padding: 4px 10px 8px; overflow-y: auto; overscroll-behavior: contain; scroll-padding: 10px; border: 8px solid transparent; border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 8px / 0 stretch; background: var(--panel); }
 .action-log-list > li { position: relative; padding: 12px 0 12px 13px; border-bottom: 1px solid rgb(var(--ui-line-soft-rgb) / 0.349); }
 .action-log-list > li::before { content: ''; position: absolute; top: 18px; left: 0; width: 4px; height: 4px; background: var(--muted); box-shadow: 0 0 0 2px rgb(var(--ui-muted-rgb) / 0.133); }
 .action-log-list > li:last-child { border-bottom: 0; }

@@ -246,6 +246,21 @@ public class GameAndroidTest {
                 reachable(".title-actions .primary-btn");
                 until("Array.from(document.querySelectorAll('.title-mark,.title-actions img')).every(e=>e.complete&&e.naturalWidth>0)");
                 assertEquals("Original artist logo and home buttons decode inside the APK", "true", js("document.querySelector('.title-mark').naturalWidth===674&&Array.from(document.querySelectorAll('.title-actions img')).every(e=>e.naturalWidth===498)"));
+                if (size[0] == 320) {
+                    js("window.qaPaintedArtReady=false;window.qaPaintedArtError=false;window.qaPaintedArtDiagnostics='';"
+                        + "Promise.all(['panel-frame','icon-frame','dice-panel','portrait-mount','input-frame','heading-rule','control-stud'].map(name=>new Promise((resolve,reject)=>{"
+                        + "const image=new Image(),probe=document.createElement('span');probe.style.cssText='position:fixed;width:0;height:0;pointer-events:none';"
+                        + "probe.style.backgroundImage='var(--ui-'+name+')';document.body.append(probe);const value=getComputedStyle(probe).backgroundImage;probe.remove();"
+                        + "image.onload=()=>resolve({name,image});image.onerror=()=>reject(name+' '+image.src);image.src=value.slice(4,-1).replaceAll(String.fromCharCode(34),'').replaceAll(String.fromCharCode(39),'');"
+                        + "}))).then(images=>{const alpha=entry=>{const canvas=document.createElement('canvas');canvas.width=entry.image.naturalWidth;canvas.height=entry.image.naturalHeight;"
+                        + "const context=canvas.getContext('2d');context.drawImage(entry.image,0,0);return context.getImageData(Math.floor(canvas.width/2),Math.floor(canvas.height/2),1,1).data[3];};"
+                        + "window.qaPaintedArtDiagnostics=JSON.stringify(images.map(entry=>({name:entry.name,width:entry.image.naturalWidth,height:entry.image.naturalHeight,alpha:alpha(entry)})));"
+                        + "window.qaPaintedArtReady=images.every(entry=>entry.image.naturalWidth>0&&entry.image.naturalHeight>0)"
+                        + "&&alpha(images.find(entry=>entry.name==='portrait-mount'))===0&&alpha(images.find(entry=>entry.name==='panel-frame'))===255;"
+                        + "}).catch(error=>{window.qaPaintedArtDiagnostics=String(error);window.qaPaintedArtError=true;})");
+                    until("window.qaPaintedArtReady||window.qaPaintedArtError");
+                    assertEquals("All seven painted assets decode, with a truly hollow portrait and opaque dossier: " + js("window.qaPaintedArtDiagnostics"), "true", js("window.qaPaintedArtReady&&!window.qaPaintedArtError"));
+                }
                 assertEquals("Home video does not create a page scrollbar", "true", js("document.querySelector('.title-screen').scrollHeight<=document.querySelector('.title-screen').clientHeight+1"));
                 click("AI 设置");
                 until("document.querySelector('.api-config-fields')");

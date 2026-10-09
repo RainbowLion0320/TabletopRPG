@@ -1,5 +1,5 @@
-/* The artist's rain-blue home artwork is the source for every shared surface.
-   Full button artwork is nine-sliced; long reading surfaces use the quiet panel. */
+/* Original artist buttons and specialized silver-blue painted surfaces.
+   Artwork owns material; live controls retain semantics, layout and input. */
 :root.fog-ui {
   --bg: #0d1725;
   --panel: #18283c;
@@ -22,7 +22,13 @@
   --ui-font: "Zihun Yunque", "Noto Serif SC", "Songti SC", serif;
   --ui-body-font: Georgia, "Noto Serif SC", "Songti SC", serif;
   --ui-panel-frame: url('../../assets/ui/artist/panel-frame.webp');
+  --ui-panel-slice: 96;
   --ui-icon-frame: url('../../assets/ui/artist/icon-frame.webp');
+  --ui-dice-panel: url('../../assets/ui/artist/dice-panel.webp');
+  --ui-portrait-mount: url('../../assets/ui/artist/portrait-mount.webp');
+  --ui-input-frame: url('../../assets/ui/artist/input-frame.webp');
+  --ui-heading-rule: url('../../assets/ui/artist/heading-rule.webp');
+  --ui-control-stud: url('../../assets/ui/artist/control-stud.webp');
   --ui-primary-frame: url('../../assets/ui/artist/button-primary.webp');
   --ui-secondary-frame: url('../../assets/ui/artist/button-secondary.webp');
   --ui-bg-rgb: 13 23 37;
@@ -49,7 +55,7 @@
   .case-board-tools button, .preset-attrs-toggle, .menu-list button, .info-drawer-tabs button,
   .investigator-party button, .investigator-tabs button, .investigator-search button,
   .suggestion-row button, .game-menu-close, .api-config-close, .api-key-reveal,
-  .investigator-close, .save-manager-close, .case-search-clear) {
+  .investigator-close, .save-manager-close, .case-search-clear, .record-log-search button) {
   --control-art: var(--ui-secondary-frame);
   position: relative; isolation: isolate;
   border: 1px solid transparent; border-radius: 18px;
@@ -65,7 +71,7 @@
   .case-board-tools button, .preset-attrs-toggle, .menu-list button, .info-drawer-tabs button,
   .investigator-party button, .investigator-tabs button, .investigator-search button,
   .suggestion-row button, .game-menu-close, .api-config-close, .api-key-reveal,
-  .investigator-close, .save-manager-close, .case-search-clear)::before {
+  .investigator-close, .save-manager-close, .case-search-clear, .record-log-search button)::before {
   content: ''; position: absolute; inset: -1px;
   border: 6px solid transparent;
   border-image: var(--control-art) 12 108 12 108 fill / 6px 18px / 0 stretch;
@@ -81,14 +87,14 @@
   .audio-close, .entity-detail-close, .info-drawer-react header > button,
   .case-board-inspector header button, .game-menu-close, .api-config-close, .api-key-reveal,
   .investigator-close, .save-manager-close, .investigator-search button,
-  .case-board-tools button, .case-search-clear) {
+  .case-board-tools button, .case-search-clear, .record-log-search button) {
   border-radius: 8px; color: var(--ui-ink);
 }
 :root.fog-ui :is(.menu-button, .drawer-tab, .audio-icon-button, .narrative-toggle-btn,
   .audio-close, .entity-detail-close, .info-drawer-react header > button,
   .case-board-inspector header button, .game-menu-close, .api-config-close, .api-key-reveal,
   .investigator-close, .save-manager-close, .investigator-search button,
-  .case-board-tools button, .case-search-clear)::before {
+  .case-board-tools button, .case-search-clear, .record-log-search button)::before {
   border: 0; border-image: none;
   background: var(--ui-icon-frame) center / 100% 100% no-repeat;
 }
@@ -118,10 +124,10 @@
 :root.fog-ui :is(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
   .dice-roll-confirm, .menu-list button, .suggestion-row button):disabled { opacity: .55; color: var(--ui-ink); }
 
-/* Opaque, softly drawn frames support readable text over the real scene art. */
+/* The layered paper mount keeps its hand-painted corners at every panel size. */
 :root.fog-ui .modal-card {
   position: relative; border: 1px solid transparent; border-radius: 12px;
-  border-image: var(--ui-panel-frame) 52 fill / 12px / 0 stretch;
+  border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 12px / 0 stretch;
   background: var(--panel); background-clip: padding-box;
   box-shadow: 0 18px 55px #0008;
 }
@@ -131,14 +137,15 @@
 :root.fog-ui .modal-card footer { border-top: 1px solid var(--line-soft); padding-top: 10px; }
 :root.fog-ui .modal-card label { color: var(--muted); }
 :root.fog-ui :is(.modal-card input:not([type='range']), .modal-card select, .dock-input) {
-  border: 1px solid var(--line); border-radius: 8px;
+  border: 1px solid transparent; border-radius: 6px;
+  border-image: var(--ui-input-frame) 90 100 90 100 fill / 7px 12px / 0 stretch;
   background: var(--panel-strong); color: var(--text);
-  box-shadow: inset 0 1px 4px #0003;
+  background-clip: padding-box; box-shadow: none;
   font-family: var(--ui-body-font); caret-color: var(--ui-focus);
 }
 :root.fog-ui :is(input, textarea)::placeholder { color: var(--muted); opacity: 1; }
 :root.fog-ui :is(.modal-card input:not([type='range']), .modal-card select, .dock-input):focus-within {
-  border-color: var(--ui-focus); outline: 1px solid var(--ui-focus); outline-offset: -2px;
+  border-color: transparent; outline: 1px solid var(--ui-focus); outline-offset: -3px;
 }
 :root.fog-ui :is(.modal-card input, .dock-input):disabled { color: var(--quiet); border-color: var(--line-soft); }
 :root.fog-ui .game-top { background: var(--panel-strong); border-bottom: 1px solid var(--line-soft); }
@@ -155,7 +162,7 @@
 :root.fog-ui:not(.portrait-ui) .scene-npc { height: calc(100% - 8px); }
 :root.fog-ui :is(.narrative-panel, .action-dock) {
   border-color: transparent; border-radius: 8px;
-  border-image: var(--ui-panel-frame) 52 fill / 8px / 0 stretch;
+  border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 8px / 0 stretch;
   background: var(--panel); background-clip: padding-box; box-shadow: none;
 }
 :root.fog-ui .narrative-panel { border-bottom: 0; }
@@ -164,14 +171,43 @@
 :root.fog-ui .story-message.dm { border-left: 2px solid var(--accent); background: rgb(var(--ui-surface-rgb) / .25); }
 :root.fog-ui .story-message.player { background: var(--surface); border-right: 2px solid var(--accent); }
 :root.fog-ui .message-label { color: var(--accent); letter-spacing: .06em; }
-:root.fog-ui .dock-actor-avatar { width: 44px; height: 44px; padding: 3px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-strong); cursor: pointer; }
-:root.fog-ui .dock-actor-avatar:active { border-color: var(--ui-focus); }
-@media (hover: hover) { :root.fog-ui .dock-actor-avatar:hover { border-color: var(--ui-focus); } }
-:root.fog-ui .info-drawer-react { background: var(--panel-strong); }
+:root.fog-ui .dock-actor-avatar { position: relative; isolation: isolate; width: 44px; height: 44px; padding: 4px; border: 1px solid transparent; border-radius: 3px; background: var(--panel-strong); cursor: pointer; }
+:root.fog-ui .dock-actor-avatar:active { outline: 1px solid var(--ui-focus); outline-offset: -3px; }
+@media (hover: hover) { :root.fog-ui .dock-actor-avatar:hover { outline: 1px solid var(--ui-focus); outline-offset: -3px; } }
+:root.fog-ui .info-drawer-react { border: 1px solid transparent; border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 10px / 0 stretch; background: var(--panel-strong); background-clip: padding-box; }
 :root.fog-ui .game-screen .drawer-tab { position: fixed; }
 :root.fog-ui :is(.case-board-mobile-card, .case-board-threads button) { border-radius: 8px; }
 :root.fog-ui .case-board-threads button[aria-pressed='true'] { border-color: var(--accent); background: var(--surface); color: var(--text); }
 :root.fog-ui.portrait-ui .narrative-panel.expanded { border-radius: 8px 8px 0 0; }
+
+/* Hollow portrait artwork sits above the original painting, never above input. */
+:root.fog-ui :is(.preset-portrait-frame, .investigator-portrait, .case-record-photo,
+  .record-detail-media.portrait, .save-party-portraits > span) { position: relative; isolation: isolate; }
+:root.fog-ui :is(.preset-portrait-frame, .investigator-portrait, .dock-actor-avatar,
+  .case-board-mobile-card:not(.scene) .case-record-photo,
+  .record-detail-media.portrait, .save-party-portraits > span)::after {
+  content: ''; position: absolute; inset: 0; z-index: 2;
+  background: var(--ui-portrait-mount) center / 100% 100% no-repeat;
+  pointer-events: none;
+}
+:root.fog-ui :is(.investigator-portrait, .case-record-photo, .save-party-portraits > span) {
+  border-color: transparent; border-image: none; background: var(--panel-strong);
+}
+
+/* A painted rule lives in each header's existing gutter; scroll bounds stay fixed. */
+:root.fog-ui :is(.game-menu-header, .api-config-header, .audio-settings > header,
+  .investigator-heading, .save-manager-heading, .entity-detail-header,
+  .case-board-inspector > header, .info-drawer-react > header) {
+  background-image: var(--ui-heading-rule); background-repeat: no-repeat;
+  background-position: left bottom; background-size: calc(100% - 58px) 7px;
+}
+:root.fog-ui :is(.modal-card > footer, .save-manager-card > footer) {
+  border-top-color: transparent; background: var(--ui-heading-rule) center top / min(100%, 340px) 7px no-repeat;
+}
+:root.fog-ui :is(.game-menu-header h2, .save-manager-heading h2, .api-config-header h2,
+  .audio-settings h2, .investigator-identity h2, .info-drawer-title h2) {
+  text-shadow: 0 1px 2px #07101a; letter-spacing: .06em;
+}
 @media (prefers-reduced-motion: reduce) {
   :root.fog-ui :is(button, a) { transition: none; }
 }

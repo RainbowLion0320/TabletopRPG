@@ -1,4 +1,4 @@
-/* Original D100 sprites and font, inside the shared rain-blue reading frame. */
+/* Original D100 sprites and font, inside a dedicated painted fate panel. */
 @font-face {
   font-family: "Zihun Yunque";
   src: url("../../assets/fonts/zihun-yunquesong.woff2") format("woff2");
@@ -61,10 +61,7 @@
   display: block;
   width: 100%;
   height: 100%;
-  border: 12px solid transparent;
-  border-image: var(--ui-panel-frame) 52 fill / 12px / 0 stretch;
-  background: var(--panel);
-  background-clip: padding-box;
+  background: var(--ui-dice-panel) center / 100% 100% no-repeat;
   pointer-events: none;
   user-select: none;
 }
@@ -75,7 +72,7 @@
   width: 54%;
   margin: 0;
   color: var(--muted);
-  font-size: 8cqw;
+  font-size: max(12px, 8cqw);
   font-weight: 400;
   line-height: 1;
   letter-spacing: 0.07em;
@@ -135,7 +132,7 @@
   transform: translate(-50%, -50%);
   top: 36%;
   font-family: inherit;
-  font-size: 9cqw;
+  font-size: max(14px, 9cqw);
   font-weight: 400;
   line-height: 1;
   color: #493225;
@@ -155,10 +152,10 @@
 }
 .dice-roll-outcome {
   position: absolute;
-  top: 78%;
-  left: 15%;
-  width: 70%;
-  height: 13%;
+  top: 78.5%;
+  left: 20%;
+  width: 60%;
+  height: 10%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -166,9 +163,9 @@
 .dice-roll-outcome h3 {
   margin: 0;
   color: var(--dice-accent);
-  font-size: 9cqw;
+  font-size: max(13px, 8cqw);
   font-weight: 400;
-  line-height: 1.2;
+  line-height: 1.05;
   letter-spacing: 0.06em;
   white-space: nowrap;
   text-shadow: 0 2px 2px var(--panel-strong);
@@ -180,6 +177,9 @@
 }
 .result-fail { --dice-accent: var(--muted); }
 .result-fumble { --dice-accent: #e9a092; }
+.result-crit { --dice-accent: #edd8ac; }
+.result-hard { --dice-accent: #d5e4f6; }
+.result-success { --dice-accent: #c6dfd0; }
 
 .dice-roll-card > footer {
   display: flex;

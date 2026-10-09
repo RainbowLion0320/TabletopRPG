@@ -1,6 +1,6 @@
 /* Known records use the same drawn dossier mount as selection and save records. */
 :root .entity-detail-overlay { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: var(--mobile-top, 16px) var(--mobile-right, 16px) var(--mobile-bottom, 16px) var(--mobile-left, 16px); background: #000b; backdrop-filter: blur(4px); }
-:root .entity-detail-card, :root .case-board-inspector { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; border: 9px solid transparent; border-image: var(--ui-panel-frame) 52 fill / 9px / 0 stretch; border-radius: 0; color: var(--text); background: var(--panel); box-shadow: 0 12px 40px #0007; }
+:root .entity-detail-card, :root .case-board-inspector { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; border: 9px solid transparent; border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 9px / 0 stretch; border-radius: 0; color: var(--text); background: var(--panel); box-shadow: 0 12px 40px #0007; }
 :root .entity-detail-card { width: min(520px, 100%); max-width: 100%; max-height: min(720px, var(--mobile-dialog-height, calc(100dvh - 32px))); padding: 4px 7px; }
 :root .case-board-inspector { height: 100%; padding: 4px 6px; }
 :root .case-board-inspector.modal { position: fixed; inset: 0; z-index: 220; width: 100%; height: var(--mobile-height, 100dvh); padding: max(4px, env(safe-area-inset-top, 0px)) max(6px, env(safe-area-inset-right, 0px)) max(6px, env(safe-area-inset-bottom, 0px)) max(6px, env(safe-area-inset-left, 0px)); }
@@ -10,7 +10,7 @@
 :root .entity-detail-header h3, :root .case-board-inspector h4 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; margin: 3px 0 0; color: var(--text); font: 400 20px/1.4 var(--ui-font); letter-spacing: .02em; overflow-wrap: anywhere; }
 :root .case-board-inspector > header > button, :root .entity-detail-close { position: relative; display: grid; place-items: center; flex: 0 0 44px; order: 0; width: 44px; height: 44px; margin: 0; padding: 0; cursor: pointer; }
 :root .entity-detail-body, :root .case-board-inspector-scroll { flex: 1; min-width: 0; min-height: 0; height: auto; overflow-y: auto; overscroll-behavior: contain; padding: 0 3px 8px; }
-.record-detail-media { position: relative; display: grid; place-items: center; overflow: hidden; margin: 12px 0; border: 7px solid transparent; border-image: var(--ui-panel-frame) 52 / 7px / 0 stretch; background: radial-gradient(ellipse at center, var(--line-soft) 0%, var(--panel-strong) 80%); box-shadow: 0 2px 4px #0006; }
+.record-detail-media { position: relative; display: grid; place-items: center; overflow: hidden; margin: 12px 0; border: 7px solid transparent; border-image: var(--ui-panel-frame) var(--ui-panel-slice) / 7px / 0 stretch; background: radial-gradient(ellipse at center, var(--line-soft) 0%, var(--panel-strong) 80%); box-shadow: 0 2px 4px #0006; }
 .record-detail-media.portrait { width: min(180px, 60%); height: clamp(150px, 24dvh, 220px); margin-inline: auto; }
 .record-detail-media.scene { aspect-ratio: 1896 / 1080; max-height: 230px; }
 .record-detail-media img { display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain; }
@@ -31,7 +31,7 @@
 .case-board-insight-list article.hypothesis { border-left-style: dashed; border-left-color: #c17d6f; }
 .case-board-insight-list span { display: block; margin-bottom: 4px; font-size: 14px; color: var(--muted); }
 .case-record-sources { margin: 0; border-bottom: 1px solid var(--line-soft); }
-.case-record-sources summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; padding: 0 8px; border: 6px solid transparent; border-image: var(--ui-panel-frame) 52 fill / 6px / 0 stretch; list-style: none; background: var(--panel); color: var(--accent); font: 400 15px/1.5 var(--ui-font); cursor: pointer; touch-action: manipulation; }
+.case-record-sources summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; padding: 0 8px; border: 6px solid transparent; border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 6px / 0 stretch; list-style: none; background: var(--panel); color: var(--accent); font: 400 15px/1.5 var(--ui-font); cursor: pointer; touch-action: manipulation; }
 .case-record-sources summary::-webkit-details-marker { display: none; }
 .case-record-sources summary > svg { flex: 0 0 auto; }
 .case-record-sources[open] summary > svg { transform: rotate(90deg); }

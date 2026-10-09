@@ -12,7 +12,7 @@
 .case-board-type { position: relative; flex: 0 1 180px; min-width: 0; }
 .case-board-view .case-board-type select { width: 100%; min-width: 0; min-height: 48px; padding: 0 30px 0 10px; appearance: none; font-size: 16px; cursor: pointer; }
 .case-board-type > svg { position: absolute; right: 13px; top: 50%; transform: translateY(-50%); color: var(--accent); pointer-events: none; }
-:root .case-board-view .case-board-search, :root .case-board-view .case-board-type select { box-sizing: border-box; border: 6px solid transparent; border-image: var(--ui-panel-frame) 52 fill / 6px / 0 stretch; border-radius: 8px; background: var(--panel); color: var(--text); font-family: var(--ui-font); caret-color: var(--text); }
+:root .case-board-view .case-board-search, :root .case-board-view .case-board-type select { box-sizing: border-box; border: 6px solid transparent; border-image: var(--ui-input-frame) 90 100 90 100 fill / 7px 12px / 0 stretch; border-radius: 6px; background: var(--panel-strong); color: var(--text); font-family: var(--ui-font); caret-color: var(--text); }
 .case-board-view .case-board-search:focus-within, .case-board-view .case-board-type select:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: -2px; }
 .case-board-view .case-board-toolbar > button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; padding: 0 14px; font-size: 15px; white-space: nowrap; }
 .case-board-view .case-board-toolbar > button.active { color: var(--ui-ink); border-color: transparent; }
@@ -23,7 +23,7 @@
 .case-board-view.archive-layout .case-board-mobile-list { display: grid; gap: 12px; padding: 6px 0 12px; }
 .case-board-view.archive-layout .case-board-mobile-list > section { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; }
 .case-board-mobile-list > section > h4 { grid-column: 1 / -1; margin: 4px 4px 0; padding-left: 8px; border-left: 2px solid var(--line); color: var(--accent); font-family: var(--ui-font); font-size: 14px; line-height: 1.4; font-weight: 400; }
-:root .case-board-view.archive-layout .case-board-mobile-card { position: relative; display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 106px; width: 100%; padding: 3px 6px; text-align: left; border: 8px solid transparent; border-image: var(--ui-panel-frame) 52 fill / 8px / 0 stretch; border-radius: 0; color: var(--text); background: var(--panel); font: inherit; cursor: pointer; }
+:root .case-board-view.archive-layout .case-board-mobile-card { position: relative; display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 106px; width: 100%; padding: 3px 6px; text-align: left; border: 8px solid transparent; border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 8px / 0 stretch; border-radius: 0; color: var(--text); background: var(--panel); font: inherit; cursor: pointer; }
 .case-record-photo { display: grid; place-items: center; position: relative; width: 58px; height: 74px; flex: 0 0 58px; border: 1px solid var(--line); background: var(--panel-strong); color: var(--line); overflow: hidden; }
 .case-record-photo img { position: absolute; display: block; width: 100%; height: 100%; object-fit: cover; object-position: center top; background: var(--panel); }
 .case-record-photo img[hidden] { display: none; }
