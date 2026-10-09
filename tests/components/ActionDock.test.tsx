@@ -17,7 +17,7 @@ describe('ActionDock player-specific suggestions', () => {
     expect(screen.getByRole('region', { name: '游戏结局' })).toHaveTextContent(ending.summary);
     expect(screen.queryByRole('textbox')).toBeNull(); expect(screen.queryByText('行动中')).toBeNull();
     expect(screen.queryByText('已提交')).toBeNull(); expect(screen.queryByRole('button', { name: '重试本轮' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: /查看艾达的属性，HP/ }));
+    fireEvent.click(screen.getByRole('button', { name: /查看艾达的属性，生命/ }));
     fireEvent.click(screen.getByRole('button', { name: '调查回顾' }));
     expect(screen.getByRole('button', { name: '调查回顾' })).toHaveFocus();
     fireEvent.click(screen.getByRole('button', { name: '返回首页' }));
@@ -32,7 +32,7 @@ describe('ActionDock player-specific suggestions', () => {
     const inspect = vi.fn(), submit = vi.fn(), change = vi.fn();
     render(<ActionDock onInspectPlayer={inspect} isDiceRolling={false} state={state} onDeclarationChange={change} onSubmit={submit} onRoll={vi.fn()} onSuggestion={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: '查看艾达的属性', exact: true }));
-    fireEvent.click(screen.getByRole('button', { name: /查看亨利的属性，HP/ }));
+    fireEvent.click(screen.getByRole('button', { name: /查看亨利的属性，生命/ }));
     expect(inspect.mock.calls).toEqual([['ada'], ['henry']]);
     expect(submit).not.toHaveBeenCalled(); expect(change).not.toHaveBeenCalled();
     expect(screen.getByRole('textbox')).toHaveValue('检查窗边');
@@ -78,8 +78,8 @@ describe('ActionDock player-specific suggestions', () => {
     const { rerender } = render(<ActionDock state={state} {...props} />);
     expect(fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter', shiftKey: true })).toBe(true);
     expect(onSubmit).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: /查看艾达的属性，HP/ })).toHaveAttribute('aria-current', 'step');
-    expect(screen.getByRole('button', { name: /查看亨利的属性，HP/ })).toHaveTextContent('已提交');
+    expect(screen.getByRole('button', { name: /查看艾达的属性，生命/ })).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByRole('button', { name: /查看亨利的属性，生命/ })).toHaveTextContent('已提交');
     rerender(<ActionDock state={{ ...state, isThinking: true }} {...props} />);
     expect(screen.queryByText('行动中')).not.toBeInTheDocument();
     expect(screen.queryByText('已提交')).not.toBeInTheDocument();

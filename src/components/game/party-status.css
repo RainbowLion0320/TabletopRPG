@@ -14,9 +14,9 @@
 .party-compact-bars .bar-label.hp { color: #e1a89a; }
 .party-compact-bars .bar-label.san { color: #adcadc; }
 .party-compact-bars .bar-value { color: var(--text); font-size: 13px; line-height: 1.3; }
-.party-compact-bars .mini-bar { display: inline-block; width: 40px; height: 4px; flex: 0 0 auto; overflow: hidden; background: #ffffff16; }
-.party-compact-bars .mini-bar i { display: block; height: 100%; background: #c38e7f; transition: width .3s; }
-.party-compact-bars .mini-bar i.san { background: #8fbbd3; }
+.party-compact-bars .mini-bar { display: inline-block; width: 40px; height: 8px; flex: 0 0 auto; overflow: hidden; border: 2px solid transparent; border-image: var(--ui-input-frame) 90 100 90 100 fill / 2px 3px / 0 stretch; background: var(--panel-strong); }
+.party-compact-bars .mini-bar i { display: block; height: 100%; background: linear-gradient(#edbca5, #c38e7f 55%, #9e665a); transition: width .3s; }
+.party-compact-bars .mini-bar i.san { background: linear-gradient(#c1deed, #8fbbd3 55%, #668cab); }
 .party-strip-compact:not(:has(.party-compact:nth-child(2))) { grid-template-columns: minmax(0, 1fr); }
 .party-strip-compact:not(:has(.party-compact:nth-child(2))) .party-compact { flex-direction: row; align-items: center; justify-self: start; max-width: 100%; gap: 10px; }
 .party-strip-compact:not(:has(.party-compact:nth-child(2))) .party-compact-heading { width: auto; }
@@ -39,4 +39,7 @@
 }
 @media (max-height: 300px) {
   :root.portrait-ui .party-strip-compact { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .party-compact-bars .mini-bar i { transition: none; }
 }

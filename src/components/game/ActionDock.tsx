@@ -191,21 +191,21 @@ function PartyStatusStrip({ state, canDeclare, onInspectPlayer }: Pick<ActionDoc
               className={cardClass}
               key={player.id}
               type="button"
-              aria-label={`查看${player.name}的属性，HP ${player.currentHp}/${player.hp}，SAN ${player.currentSan}/${player.san}${status ? `，${status}` : ''}`}
+              aria-label={`查看${player.name}的属性，生命 ${player.currentHp}/${player.hp}，理智 ${player.currentSan}/${player.san}${status ? `，${status}` : ''}`}
               aria-haspopup="dialog"
               aria-current={status === '行动中' ? 'step' : undefined}
               onClick={(event) => { event.currentTarget.focus({ preventScroll: true }); onInspectPlayer(player.id); }}
-              title={`${player.name} ${player.job} | HP ${player.currentHp}/${player.hp} | SAN ${player.currentSan}/${player.san}`}
+              title={`${player.name} ${player.job} | 生命 (HP) ${player.currentHp}/${player.hp} | 理智 (SAN) ${player.currentSan}/${player.san}`}
             >
               <span className="party-compact-heading"><strong>{player.name}</strong>{status && <span className="party-action-status">{status}</span>}</span>
               <span className="party-compact-bars">
                 <span className="party-resource">
-                  <span className="bar-label hp">HP</span>
+                  <span className="bar-label hp">生命</span>
                   <span className="mini-bar" aria-hidden="true"><i style={{ width: `${hpPct}%` }} /></span>
                   <span className="bar-value">{player.currentHp}/{player.hp}</span>
                 </span>
                 <span className="party-resource">
-                  <span className="bar-label san">SAN</span>
+                  <span className="bar-label san">理智</span>
                   <span className="mini-bar" aria-hidden="true"><i className="san" style={{ width: `${sanPct}%` }} /></span>
                   <span className="bar-value">{player.currentSan}/{player.san}</span>
                 </span>
