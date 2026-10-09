@@ -152,7 +152,7 @@ export function CaseBoardInspector({ model, node, onClose, onSelect, onBack, ret
         ) : null}
         {sources.length ? (
           <details className="case-record-sources" key={node.id}>
-            <summary>信息来源</summary>
+            <summary><span>信息来源</span><ChevronRight size={17} aria-hidden="true" /></summary>
             <ul>{sources.map((source) => <li key={source}>{source}</li>)}</ul>
           </details>
         ) : null}

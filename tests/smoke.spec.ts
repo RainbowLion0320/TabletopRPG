@@ -1650,13 +1650,16 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     await expect(drawer.getByText('当前筛选条件下没有匹配资料。')).toBeVisible();
     await expect(drawer.getByRole('button', { name: '关闭资料', exact: true })).toBeInViewport();
     const clear = drawer.getByRole('button', { name: '清除案件搜索' });
-    const clearBox = (await clear.boundingBox())!;
-    expect(clearBox.width).toBeGreaterThanOrEqual(44);
-    expect(clearBox.height).toBeGreaterThanOrEqual(44);
-    expect(await clear.evaluate(element => {
+    // Measure touch targets after the drawer's opening motion completes.
+    await expect(drawer).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
+    const clearTarget = await clear.evaluate(element => {
       const box = element.getBoundingClientRect();
-      return element.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
-    })).toBe(true);
+      return { width: box.width, height: box.height,
+        hit: element.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)) };
+    });
+    expect(clearTarget.width).toBeGreaterThanOrEqual(44);
+    expect(clearTarget.height).toBeGreaterThanOrEqual(44);
+    expect(clearTarget.hit).toBe(true);
     await clear.click();
     await expect(search).toHaveValue(''); await expect(search).toBeFocused();
     await page.setViewportSize(size);
