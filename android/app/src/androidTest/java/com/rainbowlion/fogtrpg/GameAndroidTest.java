@@ -339,7 +339,9 @@ public class GameAndroidTest {
                     js("document.querySelector('.investigator-party button:last-child').scrollIntoView({block:'nearest',inline:'nearest'})");
                     reachable(".investigator-party button:last-child"); nativeTap(".investigator-party button:last-child");
                     until("document.querySelector('.investigator-party button:last-child').getAttribute('aria-pressed')==='true'");
-                    assertEquals("Teammates can be compared above the keyboard without losing the skill query", "true", js("document.querySelector('.investigator-search input').value==='侦查'&&document.querySelector('.investigator-body').clientHeight>=70"));
+                    assertEquals("Teammates can be compared above the keyboard without losing the skill query", "true", js("document.querySelector('.investigator-search input').value==='侦查'&&document.querySelector('.investigator-body').clientHeight>=75"));
+                    assertEquals("Filtered skill and threshold headings remain fully readable above the keyboard", "true", js("(()=>{const b=document.querySelector('.investigator-body').getBoundingClientRect(),r=document.querySelector('.investigator-skills tbody tr').getBoundingClientRect();return r.top>=b.top&&r.bottom<=b.bottom&&Array.from(document.querySelectorAll('.investigator-skills thead th')).every(e=>parseFloat(getComputedStyle(e).fontSize)>=13)})()"));
+                    screenshot(prefix + "-skills-short");
                     js("document.querySelector('.investigator-party button:first-child').scrollIntoView({block:'nearest',inline:'nearest'})");
                     nativeTap(".investigator-party button:first-child"); nativeTap("[aria-label='清除技能搜索']");
                     until("document.activeElement===document.querySelector('.investigator-search input')");

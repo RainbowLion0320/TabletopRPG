@@ -4,6 +4,8 @@
 > Updated: 2026-10-09
 > Scope: current React/Vite implementation
 
+In 0.5.5, the investigator dossier uses its compact header on short desktop windows as well as phones. Under 360px, desktop margins leave room for at least one full filtered skill row; close, party navigation, tabs and search remain fixed while only the body scrolls. Short-window threshold headings are 13px, and normal height restores the original portrait and identity. Browser regressions cover 1/2/4 players, query preservation across teammates and returning to the original multiline action; native checks verify the full filtered row and readable headings above the keyboard. Artwork, skills, rules, storage and AI behavior stay unchanged.
+
 In 0.5.4, desktop reference positioning uses the same percentage of viewport and button height, keeping the whole control inside the available vertical travel after resize. Drag deltas use that travel, without transform animation lag; the phone entry remains fixed. Desktop windows at or below 600px yield the scene row, at 400px yield suggestions and cap input at 66px, and at 300px omit the party strip while the avatar dossier still exposes the party. Header, scrollable prose, explicit actions, drafts and normal-window restoration are preserved without shrinking text.
 
 In 0.5.3, the shared dialog key handler leaves events marked `isComposing` or legacy `keyCode === 229` to the input method. Escape cannot dismiss an unsaved form and Tab cannot wrap dialog focus while composing. Ordinary keys retain the existing topmost-dialog ownership, focus trap and opener restoration. API drafts, game actions, art and storage contracts remain unchanged.

@@ -1938,6 +1938,21 @@ for (const party of [1, 2, 4] as const) {
       await avatar.click(); const sheet = page.getByRole('dialog', { name: '亨利·格雷', exact: true });
       await expect(sheet).toBeVisible();
       if (party > 1) await expect(sheet.getByRole('navigation', { name: '查看队员' }).getByRole('button')).toHaveCount(party);
+      await sheet.getByRole('tab', { name: '技能', exact: true }).click();
+      const search = sheet.getByRole('searchbox', { name: '搜索技能' });
+      await search.fill('侦查');
+      const reading = (await sheet.getByRole('tabpanel', { name: '技能', exact: true }).boundingBox())!;
+      const skill = (await sheet.getByRole('row', { name: /^侦查/ }).boundingBox())!;
+      expect(reading.height).toBeGreaterThanOrEqual(75);
+      expect(skill.y).toBeGreaterThanOrEqual(reading.y);
+      expect(skill.y + skill.height).toBeLessThanOrEqual(reading.y + reading.height);
+      if (party > 1) {
+        await sheet.getByRole('navigation', { name: '查看队员' }).getByRole('button', { name: '艾达·华莱士', exact: true }).click();
+        const teammate = page.getByRole('dialog', { name: '艾达·华莱士', exact: true });
+        await expect(teammate.getByRole('searchbox', { name: '搜索技能' })).toHaveValue('侦查');
+        await expect(teammate.getByRole('row', { name: /^侦查/ })).toBeInViewport();
+      }
+      await page.screenshot({ path: testInfo.outputPath(`desktop-short-skills-${height}.png`) });
       await page.keyboard.press('Escape'); await expect(avatar).toBeFocused(); await expect(draft).toHaveValue(text);
       await page.screenshot({ path: testInfo.outputPath(`desktop-short-${height}.png`) });
     }

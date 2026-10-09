@@ -63,18 +63,20 @@
 .portrait-ui .investigator-party { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .portrait-ui .investigator-vitals { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 @media (max-height: 500px) {
-  .portrait-ui .investigator-portrait, .portrait-ui .investigator-caption, .portrait-ui .investigator-identity small { display: none; }
-  .portrait-ui .investigator-identity h2 { font-size: 16px; }
-  .portrait-ui .investigator-identity p { margin: 0; }
-  .portrait-ui .investigator-party { display: flex; overflow-x: auto; }
-  .portrait-ui .investigator-party button { flex: 0 0 auto; padding-inline: 10px; }
+  :root .investigator-portrait, :root .investigator-caption, :root .investigator-identity small { display: none; }
+  :root .investigator-identity h2 { font-size: 16px; }
+  :root .investigator-identity p { margin: 0; }
+  :root .investigator-party { display: flex; overflow-x: auto; }
+  :root .investigator-party button { flex: 0 0 auto; padding-inline: 10px; }
 }
 @media (max-height: 360px) {
-  .portrait-ui .investigator-sheet { padding: 4px; border-width: 6px; border-image-width: 6px; }
-  .portrait-ui .investigator-heading { padding-bottom: 0; min-height: 44px; }
-  .portrait-ui .investigator-identity p { display: none; }
-  .portrait-ui .investigator-party { margin-bottom: 2px; }
-  .portrait-ui .investigator-tabs { padding-bottom: 0; }
-  .portrait-ui .investigator-search { margin: 2px 0 0; }
-  .portrait-ui .investigator-skills thead th { height: 30px; padding-block: 4px; font-size: 12px; }
+  :root:not(.portrait-ui) .investigator-overlay { padding: 10px; }
+  :root:not(.portrait-ui) .investigator-sheet { height: calc(100dvh - 20px); }
+  :root .investigator-sheet { padding: 4px; border-width: 6px; border-image-width: 6px; }
+  :root .investigator-heading { padding-bottom: 0; min-height: 44px; }
+  :root .investigator-identity p { display: none; }
+  :root .investigator-party { margin-bottom: 2px; }
+  :root .investigator-tabs { padding-bottom: 0; }
+  :root .investigator-search { margin: 2px 0 0; }
+  :root .investigator-skills thead th { height: 30px; padding-block: 4px; font-size: 13px; }
 }
