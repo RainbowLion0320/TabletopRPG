@@ -1,4 +1,5 @@
-import { Home, RotateCcw, Save, Settings, X } from 'lucide-react';
+import { Home, RotateCcw, Settings, X } from 'lucide-react';
+import { ArchiveRecordArt } from '../shared/ArchiveRecordArt';
 import { JournalArt } from '../shared/JournalArt';
 import { useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -18,7 +19,9 @@ interface GameMenuProps {
 
 export function GameMenu({ onClose, onHome, onLoad, onOpenApi, onRestart, onSave, open }: GameMenuProps) {
   const dialogRef = useRef<HTMLElement>(null);
-  useDialogFocus(open, dialogRef, onClose);
+  useDialogFocus(open, dialogRef, onClose, undefined, {
+    getFallbackFocus: () => document.querySelector<HTMLButtonElement>('.dock-actor-avatar')
+  });
   if (!open) return null;
   return createPortal(
     <div className="game-menu-backdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
@@ -31,7 +34,7 @@ export function GameMenu({ onClose, onHome, onLoad, onOpenApi, onRestart, onSave
       <section aria-labelledby="game-menu-records">
         <h3 id="game-menu-records">调查记录</h3>
         <div className="menu-list menu-records">
-        <button onClick={onSave}><Save size={16} />保存游戏</button>
+        <button onClick={onSave}><ArchiveRecordArt kind="file" />保存游戏</button>
         <button onClick={onLoad}><JournalArt />读取存档</button>
         </div>
       </section>

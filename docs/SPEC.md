@@ -4,7 +4,7 @@
 > Updated: 2026-10-10
 > Scope: current React/Vite implementation
 
-In 0.5.21, action confirmation uses a dedicated painted navy-and-silver fountain pen instead of the paper-plane outline. The 24px contained image has empty alt text, aria-hidden and no pointer events. Submit/next-actor names, 48px minimum button height, portrait multiline Enter and declaration handlers remain. Thirteen painted assets are in use; party resources, record controls, projections, case rules, storage and API configuration remain unchanged.
+In 0.5.22, save access and the record heading reuse the existing painted file/journal images at 20px/24px; noninteractive status tags reuse the painted input frame with 13px text. Save-manager and game-menu dialogs supply the existing focus hook with a visible actor-avatar fallback when a responsive layout hides their original opener. Normal return focus, drafts, player data, selected loading, deletion persistence guards and confirmation remain unchanged. Thirteen painted assets remain; no new art, player steps, storage or AI restrictions.
 
 In 0.5.14, empty logs, unmatched log searches and empty saves use one dedicated painted silver-blue investigator ledger, faithful to the approved artist palette and motifs. The new 14,954-byte WebP is displayed proportionally within 112 by 72 pixels, with the existing state text at 15px. The decorative image receives no pointer input or accessible name. Empty logs center within their existing reading area; saves keep their existing space. Windows at most 500px high hide the illustration so status, search and exit remain reachable. Queries, focus, action drafts and save operations are preserved, with no added model rule, stored field or player step.
 

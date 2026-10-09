@@ -1,9 +1,10 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { FolderOpen, Trash2, X } from 'lucide-react';
+import { Trash2, X } from 'lucide-react';
 import type { IncompatibleSaveSlot, SaveSlot } from '../../types/game';
 import { useDialogFocus } from '../shared/useDialogFocus';
 import { ArchiveEmptyArt } from '../shared/ArchiveEmptyArt';
+import { JournalArt } from '../shared/JournalArt';
 import './save-manager.css';
 
 interface SaveManagerModalProps {
@@ -36,7 +37,9 @@ export function SaveManagerModal({ incompatibleSaves = [], onClose, onDelete, on
     if (control.bottom > body.bottom) list.scrollTop += control.bottom - body.bottom + 8;
     else if (control.top < body.top) list.scrollTop += control.top - body.top - 8;
   }
-  useDialogFocus(open, dialogRef, close);
+  useDialogFocus(open, dialogRef, close, undefined, {
+    getFallbackFocus: () => document.querySelector<HTMLButtonElement>('.dock-actor-avatar')
+  });
   useEffect(() => {
     if (!open) {
       setConfirmationId(null);
@@ -99,7 +102,7 @@ export function SaveManagerModal({ incompatibleSaves = [], onClose, onDelete, on
     <div className="save-manager-backdrop" onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
       <div ref={dialogRef} tabIndex={-1} aria-modal="true" aria-labelledby={`${id}-title`} className="save-manager-card" role="dialog">
         <header className="save-manager-heading">
-          <div><h2 id={`${id}-title`}><FolderOpen size={20} aria-hidden="true" />读取存档</h2><p>{slots.length ? `${slots.length} 份本地调查记录` : '保存调查后，可在这里选择记录继续。'}</p></div>
+          <div><h2 id={`${id}-title`}><JournalArt size={24} />读取存档</h2><p>{slots.length ? `${slots.length} 份本地调查记录` : '保存调查后，可在这里选择记录继续。'}</p></div>
           <button type="button" className="ghost-btn save-manager-close" aria-label="关闭存档列表" disabled={busy} onClick={close}><X size={18} aria-hidden="true" /></button>
         </header>
 

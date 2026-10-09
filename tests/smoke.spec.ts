@@ -2629,6 +2629,24 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
     await page.setViewportSize({ width: size.width, height: size.height });
     await dialog.getByRole('button', { name: '关闭', exact: true }).click();
     await expect(page.getByRole('button', { name: '菜单', exact: true })).toBeFocused();
+    if (size.width < 700) {
+      const draft = '先记录信上的日期。\n再查看门廊的痕迹。';
+      await page.locator('.dock-input').fill(draft);
+      await page.getByRole('button', { name: '菜单', exact: true }).click();
+      await page.getByRole('button', { name: '读取存档', exact: true }).click();
+      await page.setViewportSize({ width: size.width, height: 300 });
+      await dialog.getByRole('button', { name: '关闭存档列表' }).click();
+      await expect(page.locator('.dock-actor-avatar')).toBeFocused();
+      await expect(page.locator('.dock-input')).toHaveValue(draft);
+      await page.setViewportSize({ width: size.width, height: size.height });
+      await expect(page.locator('.dock-input')).toHaveValue(draft);
+      await page.getByRole('button', { name: '菜单', exact: true }).click();
+      await page.setViewportSize({ width: size.width, height: 300 });
+      await page.getByRole('button', { name: '关闭调查菜单' }).click();
+      await expect(page.locator('.dock-actor-avatar')).toBeFocused();
+      await expect(page.locator('.dock-input')).toHaveValue(draft);
+      await page.setViewportSize({ width: size.width, height: size.height });
+    }
   });
 }
 
