@@ -526,13 +526,6 @@ button {
   box-shadow: 0 0 0 2px rgba(216,189,122,0.12);
 }
 
-.dock-submit {
-  flex-shrink: 0;
-  min-height: 36px !important;
-  padding: 0 14px !important;
-  font-size: 12px !important;
-}
-
 .suggestion-row {
   display: flex;
   align-items: center;

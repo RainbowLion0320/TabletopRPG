@@ -6,6 +6,7 @@ import { pendingDmFailureText } from '../../services/narrativeVisibility';
 import './ending-dock.css';
 import './turn-prompt.css';
 import './party-status.css';
+import './action-controls.css';
 
 interface ActionDockProps {
   autoFocusInput?: boolean;
