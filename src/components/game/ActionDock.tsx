@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import { Dice5, Flag, Home, Send } from 'lucide-react';
+import { Dice5, Flag, Home } from 'lucide-react';
+import actionPen from '../../../assets/ui/artist/action-pen.webp';
 import { JournalArt } from '../shared/JournalArt';
 import type { GameState } from '../../types/game';
 import { getScenarioDefinition, getScenarioProgressForState } from '../../scenario/engine';
@@ -166,7 +167,7 @@ export function ActionDock({
           if (!isLastActor) inputRef.current?.focus({ preventScroll: true });
           onSubmit();
         }}>
-          <Send size={16} />
+          <img className="action-pen-art" src={actionPen} width={24} height={24} alt="" aria-hidden="true" draggable={false} decoding="async" />
           {submitLabel}
         </button>
       </div>

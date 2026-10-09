@@ -1,5 +1,6 @@
 /* Action controls remain readable beside bounded multiline drafts. */
 :root .action-dock .dock-submit { flex-shrink: 0; min-height: 48px; padding: 0 14px; font-size: 15px; white-space: nowrap; }
+.action-pen-art { display: block; flex: 0 0 24px; object-fit: contain; pointer-events: none; }
 :root .action-dock .suggestion-row button { min-width: 0; max-width: 100%; min-height: 44px; padding: 5px 10px; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
 .portrait-ui .action-dock .suggestion-row button { flex-shrink: 0; max-width: none; white-space: nowrap; }
 :root.fog-ui .action-dock .suggestion-row button { border: 4px solid transparent; border-image: none; background: transparent; color: var(--ui-ink); box-shadow: none; }

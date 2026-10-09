@@ -1,5 +1,13 @@
 # 采用 UI 图的实际提示词
 
+## action-pen.webp（0.5.21）
+
+一次生成：`exec-44d292d9-78d5-435f-be96-bc699eadd749`，2026-10-10。内置 Image Gen，无参考图和后续编辑，原生透明度保持；原 PNG 保留于本机生成目录，不提交。
+
+```text
+Use case: stylized-concept. Asset type: one transparent painted raster game UI icon for the action submission button in a 1920s London mystery tabletop game. Primary request: a beautiful compact FOUNTAIN PEN, one complete pen only, replacing a generic chat-paper-plane symbol with an object that expresses writing an investigator's action. Finely hand-painted navy-blue lacquer barrel, brushed-silver fittings and an elegant silver nib, with only a restrained muted-gold collar and paired tiny pearl rivets. Broad readable silhouette, slightly elevated diagonal view: barrel at upper left and exposed nib pointing down toward the lower right, nib is about one quarter of the object length. Keep the whole pen centered and contained with generous real transparent margin, occupying about 80 percent of the square canvas diagonal. Clear dark-ink outline against pale blue or pale gold buttons, silver highlights stay controlled. Two-dimensional painted inventory-game-art quality; tactile but visually simple enough to recognize at 20 to 24 pixels. Match cold midnight-blue cloth-and-paper UI with layered silver details and cool ivory highlights, no warm bronze leather theme. Actual native RGBA transparency outside the pen, no surrounding glow or ground shadow, no scene background or checkerboard painted into pixels. No writing, letters, labels, numbers, paper sheet, book, hands, extra objects, outer frame, complete UI or button. This is a generic interface pictogram and adds no story prop or player instruction.
+```
+
 ## journal.webp（0.5.19）
 
 一次生成：`exec-b71d7d2b-adf5-48e8-b331-e9329e0064de`，2026-10-10。内置 Image Gen，无参考图和后续编辑，原生透明度保持；原 PNG 保留于本机生成目录，不提交。
