@@ -95,7 +95,7 @@ export function CaseBoardFlow({ model, selectedId, onSelect }: CaseBoardFlowProp
       markerEnd: edge.tone === 'route' ? { type: MarkerType.ArrowClosed, color: EDGE_COLOR.route } : undefined,
       style: { stroke: EDGE_COLOR[edge.tone], strokeWidth: selectedId && (edge.from === selectedId || edge.to === selectedId) ? 2.4 : 1.5,
         strokeDasharray: edge.certainty === 'hypothesis' || edge.tone === 'danger' ? '6 5' : undefined, opacity: faded ? .16 : .82 },
-      labelStyle: { fill: 'var(--muted)', fontSize: 11 }, labelBgStyle: { fill: 'var(--panel-strong)', fillOpacity: .88 },
+      labelStyle: { fill: 'var(--muted)', fontSize: 13 }, labelBgStyle: { fill: 'var(--panel-strong)', fillOpacity: .88 },
       labelBgPadding: [5, 3] as [number, number], labelBgBorderRadius: 3
     };
   });

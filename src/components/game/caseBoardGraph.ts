@@ -64,11 +64,11 @@ export interface LayoutedCaseBoardNode extends CaseBoardDisplayNode {
 }
 
 export const CASE_BOARD_NODE_SIZE: Record<CaseBoardDisplayNodeType, { width: number; height: number }> = {
-  npc: { width: 210, height: 116 },
-  scene: { width: 190, height: 104 },
-  item: { width: 196, height: 108 },
-  event: { width: 206, height: 112 },
-  theory: { width: 218, height: 124 }
+  npc: { width: 240, height: 146 },
+  scene: { width: 230, height: 140 },
+  item: { width: 232, height: 144 },
+  event: { width: 244, height: 144 },
+  theory: { width: 248, height: 148 }
 };
 
 function threadNodePriority(node: CaseBoardDisplayNode): number {

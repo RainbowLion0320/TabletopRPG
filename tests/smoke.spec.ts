@@ -2001,7 +2001,11 @@ for (const size of [{ width: 980, height: 640 }, { width: 1440, height: 900 }]) 
   test(`desktop case camera fits details and filters while restoring the player's view at ${size.width}px`, async ({ page }, testInfo) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.setViewportSize(size);
-    await gotoWithSave(page, createDynamicCaseBoardSave());
+    const state = createDynamicCaseBoardSave();
+    state.caseBoard!.nodes[0] = { ...state.caseBoard!.nodes[0],
+      title: '门廊至药店后门的拖拽和纤维痕迹仍需进一步核对',
+      subtitle: '调查员在门廊与后门记录到的公开现场观察', certainty: 'hypothesis' };
+    await gotoWithSave(page, state);
     await page.getByRole('button', { name: '继续游戏' }).click();
     await page.getByRole('button', { name: '资料', exact: true }).click();
     const drawer = page.getByRole('dialog', { name: '资料', exact: true });
@@ -2015,6 +2019,30 @@ for (const size of [{ width: 980, height: 640 }, { width: 1440, height: 900 }]) 
     });
     const node = drawer.getByRole('button', { name: '人物 伊莎贝拉·摩勒', exact: true });
     await expect.poll(view).not.toBe('translate(0px, 0px) scale(1)');
+    const cards = graph.locator('.case-flow-node');
+    for (const card of await cards.all()) {
+      const text = await card.evaluate(element => {
+        const bounds = element.getBoundingClientRect();
+        const meta = element.querySelector('.case-flow-node-meta')!, title = element.querySelector('strong')!;
+        const subtitle = element.querySelector('small'), foot = element.querySelector('.case-flow-node-foot')!;
+        return {
+          type: parseFloat(getComputedStyle(meta).fontSize), title: parseFloat(getComputedStyle(title).fontSize),
+          subtitle: subtitle ? parseFloat(getComputedStyle(subtitle).fontSize) : null,
+          foot: parseFloat(getComputedStyle(foot).fontSize),
+          clipped: [meta, title, subtitle, foot.textContent ? foot : null].filter(Boolean).some(child => {
+            const rect = child!.getBoundingClientRect();
+            return rect.left < bounds.left || rect.right > bounds.right || rect.top < bounds.top || rect.bottom > bounds.bottom;
+          })
+        };
+      });
+      expect(text.type).toBeGreaterThanOrEqual(13); expect(text.title).toBeGreaterThanOrEqual(17);
+      if (text.subtitle !== null) expect(text.subtitle).toBeGreaterThanOrEqual(14);
+      expect(text.foot).toBeGreaterThanOrEqual(12); expect(text.clipped).toBe(false);
+    }
+    await expect(graph.locator('.case-flow-node.event').getByText('待验证', { exact: true })).toBeVisible();
+    expect(await graph.locator('.case-flow-node.scene img').evaluate(element => getComputedStyle(element).objectPosition)).toBe('50% 50%');
+    expect(await node.locator('img').evaluate(element => getComputedStyle(element).objectFit)).toBe('cover');
+    await page.screenshot({ path: testInfo.outputPath('case-cards.png') });
     const threads = drawer.getByRole('navigation', { name: '调查脉络' });
     for (const control of await threads.getByRole('button').all()) {
       const presentation = await control.evaluate(element => ({
@@ -2058,6 +2086,10 @@ for (const size of [{ width: 980, height: 640 }, { width: 1440, height: 900 }]) 
     await expect.poll(() => inside('.case-flow-node.npc.selected')).toBe(true);
     await page.keyboard.press('Escape'); await expect(detail).toHaveCount(0);
     await expect.poll(view).toBe(originalView); await expect(node).toBeFocused();
+    await node.click(); await expect(detail).toBeVisible();
+    await detail.getByRole('button', { name: '关闭资料详情', exact: true }).click();
+    await expect(detail).toHaveCount(0); await expect(node).toBeFocused();
+    await expect.poll(view).toBe(originalView);
     const paneBox = (await graph.boundingBox())!;
     await page.mouse.move(paneBox.x + 20, paneBox.y + 20);
     await page.mouse.down(); await page.mouse.move(paneBox.x + 180, paneBox.y + 90, { steps: 8 }); await page.mouse.up();

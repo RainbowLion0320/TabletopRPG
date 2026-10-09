@@ -17,12 +17,15 @@
 .case-flow-node:enabled:hover { box-shadow: 0 0 0 1px var(--accent), 0 6px 20px #0008; }
 .case-flow-photo { flex: 0 0 60px; align-self: stretch; display: grid; place-items: center; margin: 5px 0 5px 5px; overflow: hidden; border: 1px solid var(--line); background: radial-gradient(ellipse, var(--line-soft), var(--panel-strong)); }
 .case-flow-photo img { display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain; object-position: center bottom; }
+.case-flow-node.npc .case-flow-photo img { object-fit: cover; object-position: center top; }
 .case-flow-node.scene .case-flow-photo { flex-basis: 58px; }
-.case-flow-node-body { display: flex; flex: 1; flex-direction: column; min-width: 0; padding: 7px 8px; }
-.case-flow-node-meta { display: inline-flex; align-items: center; gap: 5px; align-self: flex-start; color: var(--record-accent); font-size: 11px; line-height: 1.4; }
-.case-flow-node strong { display: -webkit-box; overflow: hidden; margin-top: 4px; color: var(--text); font: 400 15px/1.4 var(--ui-font); -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
-.case-flow-node small { overflow: hidden; margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
-.case-flow-node-foot { display: flex; gap: 6px; margin-top: auto; color: var(--muted); font-size: 10px; line-height: 1.4; }
+.case-flow-node.scene .case-flow-photo img { object-position: center; }
+.case-flow-node-body { display: flex; flex: 1; flex-direction: column; min-width: 0; padding: 8px; }
+.case-flow-node-meta { display: inline-flex; align-items: center; gap: 5px; align-self: flex-start; color: var(--record-accent); font-size: 13px; line-height: 1.4; }
+.case-flow-node-meta > svg { flex: 0 0 auto; }
+.case-flow-node strong { display: -webkit-box; overflow: hidden; margin-top: 4px; color: var(--text); font: 400 17px/1.4 var(--ui-font); -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
+.case-flow-node small { overflow: hidden; margin-top: 3px; color: var(--muted); font-size: 14px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.case-flow-node-foot { display: flex; gap: 6px; margin-top: auto; color: var(--muted); font-size: 12px; line-height: 1.4; }
 .case-flow-node-foot:empty { display: none; }
 .case-flow-handle { width: 5px; height: 5px; border: 1px solid var(--muted); background: var(--line-soft); opacity: .5; pointer-events: none; }
 .case-flow-node.recent { animation: case-board-new 1.4s ease-out; }

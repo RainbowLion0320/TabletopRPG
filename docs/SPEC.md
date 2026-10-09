@@ -4,6 +4,8 @@
 > Updated: 2026-10-09
 > Scope: current React/Vite implementation
 
+In 0.5.10, desktop relationship cards match the phone dossier hierarchy: 17px names, 14px identity subtitles, 13px type and relationship labels, and 12px status. Shared ELK/card dimensions reserve room for two-line names and the status row. NPC thumbnails fill the existing mount from the top; scene thumbnails remain fully contained and centered, and detail views retain the original full images. Painted frames, camera restoration, known-record filtering and the mobile archive remain intact; no new assets, actions or model constraints.
+
 In 0.5.9, long waits pair still 15px captions with a painted silver-blue fountain-pen nib. The decorative 24px container uses only a slow 3.6s opacity cycle, disabled for reduced motion; the row remains 36px. It sits outside the scrollable history as the panel footer, so long actions, resizing and reading earlier entries cannot hide it; completion releases the space without increasing the overall panel height. Existing 24 local captions, 8s non-repeating rotation, accessible status and timer cleanup remain intact. The alpha-preserving 4,778-byte WebP has recorded built-in Image Gen provenance; no new model requests, timers, rules or player actions.
 
 In 0.5.8, the AI connection disclosure reuses the painted silver-blue panel with a 15px label, 44px target and existing settings/chevron icons. Native details click and Enter toggling, field order, validation, custom connection priority and fixed close/save controls remain intact. Only the body scrolls in a short viewport. Hover/press use subtle brightness feedback; reduced motion removes transitions. No new assets, settings, dependencies or model behavior.
