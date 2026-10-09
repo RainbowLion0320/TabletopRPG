@@ -6,7 +6,7 @@ import { makeState } from '../dm/fixtures';
 import { createScenarioProgress } from '../../src/scenario/engine';
 
 const { layout } = vi.hoisted(() => ({ layout: { portrait: false } }));
-vi.mock('../../src/platform/layout', () => ({ useCaseBoardListLayout: () => true, usePortraitLayout: () => layout.portrait }));
+vi.mock('../../src/platform/layout', () => ({ useCaseBoardListLayout: () => true, usePortraitLayout: () => layout.portrait, useShortViewport: () => false }));
 beforeEach(() => { layout.portrait = false; });
 
 function renderDrawer(state = makeState({ activeNpcName: '伊莎贝拉·摩勒' })) {

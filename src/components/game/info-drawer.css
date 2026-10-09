@@ -13,6 +13,10 @@
 .info-drawer-page .case-board-workspace { flex: 1; height: auto; min-height: 0; }
 .info-drawer-tabs [role='tab']:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: -2px; }
 .portrait-ui .info-drawer-page .case-board-view { padding: 0 2px; }
+@media (min-width: 901px) and (max-height: 500px) {
+  :root:not(.portrait-ui) .info-drawer-react.fullscreen { padding: 12px; }
+  :root:not(.portrait-ui) .case-board-view .case-board-heading { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
 @media (prefers-reduced-motion: reduce) {
   .info-drawer-react.fullscreen { transition: none; }
 }

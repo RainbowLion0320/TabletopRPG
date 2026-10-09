@@ -2425,6 +2425,33 @@ test('desktop case details own Escape while keyboard navigation stays in the enc
   await expect(detail.getByRole('button', { name: '关闭资料详情' })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(detail).toHaveCount(0); await expect(drawer).toBeVisible(); await expect(node).toBeFocused();
+  for (const height of [500, 420, 300]) {
+    await node.click(); await page.setViewportSize({ width: 1440, height });
+    await expect(detail).toHaveAttribute('aria-modal', 'true');
+    expect(await detail.locator('.case-board-inspector-scroll').evaluate(element => element.clientHeight)).toBeGreaterThan(height / 2);
+    const close = detail.getByRole('button', { name: '关闭资料详情', exact: true });
+    const target = await close.evaluate(element => {
+      const r = element.getBoundingClientRect();
+      return { width: r.width, height: r.height, hit: element.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)) };
+    });
+    expect(target).toEqual({ width: 44, height: 44, hit: true });
+    await expect(drawer.locator('.react-flow')).toHaveCount(1);
+    const headerTop = (await detail.locator('header').boundingBox())!.y;
+    await detail.locator('.case-board-inspector-scroll').evaluate(element => { element.scrollTop = element.scrollHeight; });
+    expect((await detail.locator('header').boundingBox())!.y).toBe(headerTop);
+    expect(await detail.evaluate(element => element.scrollTop)).toBe(0);
+    await close.focus(); await page.keyboard.press('Tab');
+    expect(await detail.evaluate(element => element.contains(document.activeElement))).toBe(true);
+    await detail.getByRole('button', { name: '查看摩勒住宅资料', exact: true }).click();
+    await expect(drawer.getByRole('dialog', { name: '摩勒住宅详情', exact: true })).toHaveAttribute('aria-modal', 'true');
+    await page.keyboard.press('Escape');
+    await expect(drawer.locator('.case-board-inspector')).toHaveCount(0); await expect(node).toBeFocused();
+    await expect.poll(() => drawer.locator('.case-flow-node').evaluateAll(elements => elements.every(element => {
+      const r = element.getBoundingClientRect(), pane = element.closest('.case-board-flow-wrap')!.getBoundingClientRect();
+      return r.left >= pane.left && r.top >= pane.top && r.right <= pane.right && r.bottom <= pane.bottom;
+    }))).toBe(true);
+    await page.setViewportSize({ width: 1440, height: 900 });
+  }
   await node.focus(); await page.keyboard.press('Space');
   const search = drawer.getByRole('searchbox', { name: '搜索案件资料' }); await search.focus();
   await page.keyboard.press('Escape'); await expect(detail).toHaveCount(0); await expect(search).toBeFocused();

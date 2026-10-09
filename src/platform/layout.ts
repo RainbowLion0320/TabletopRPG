@@ -4,10 +4,13 @@ const phoneQuery = typeof window !== 'undefined' && typeof window.matchMedia ===
   ? window.matchMedia('(max-width: 700px)') : null;
 const boardListQuery = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
   ? window.matchMedia('(max-width: 900px)') : null;
+const shortViewportQuery = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+  ? window.matchMedia('(max-height: 500px)') : null;
 let nativeUi = false;
 const listeners = new Set<() => void>();
 const isPhone = () => nativeUi || (phoneQuery?.matches ?? false);
 const isBoardList = () => nativeUi || (boardListQuery?.matches ?? false);
+const isShortViewport = () => shortViewportQuery?.matches ?? false;
 const subscribeQuery = (query: MediaQueryList | null) => (notify: () => void) => {
   listeners.add(notify);
   query?.addEventListener('change', notify);
@@ -15,6 +18,7 @@ const subscribeQuery = (query: MediaQueryList | null) => (notify: () => void) =>
 };
 const subscribe = subscribeQuery(phoneQuery);
 const subscribeBoard = subscribeQuery(boardListQuery);
+const subscribeShortViewport = subscribeQuery(shortViewportQuery);
 
 /** The same phone layout is used by the APK and a narrow web viewport. */
 export function initializeGameUi(native = false) {
@@ -37,4 +41,8 @@ export function usePortraitLayout() {
 
 export function useCaseBoardListLayout() {
   return useSyncExternalStore(subscribeBoard, isBoardList, () => false);
+}
+
+export function useShortViewport() {
+  return useSyncExternalStore(subscribeShortViewport, isShortViewport, () => false);
 }

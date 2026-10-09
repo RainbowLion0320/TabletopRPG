@@ -22,20 +22,24 @@ function CaseBoardCamera({ geometryKey, focusKey, selectedId }: { geometryKey: s
   const height = useStore((state) => state.height);
   const pane = useStore((state) => state.domNode);
   const previous = useRef<{ geometryKey: string; selectedId: string | null } | null>(null);
-  const savedView = useRef<Viewport | null>(null);
+  const savedView = useRef<{ viewport: Viewport; windowWidth: number; windowHeight: number } | null>(null);
   useEffect(() => {
     if (!flow.viewportInitialized || !width || !height) return;
     const changedLayout = previous.current?.geometryKey !== geometryKey;
     if (changedLayout) savedView.current = null;
-    if (selectedId && !previous.current?.selectedId && !changedLayout) savedView.current = flow.getViewport();
+    if (selectedId && !previous.current?.selectedId && !changedLayout) savedView.current = {
+      viewport: flow.getViewport(), windowWidth: window.innerWidth, windowHeight: window.innerHeight
+    };
     previous.current = { geometryKey, selectedId };
     const frame = requestAnimationFrame(() => {
       if (pane && (pane.clientWidth !== width || pane.clientHeight !== height)) return;
       if (!selectedId && savedView.current) {
         const restored = savedView.current;
         savedView.current = null;
-        void flow.setViewport(restored, { duration: motionDuration() });
-        return;
+        if (restored.windowWidth === window.innerWidth && restored.windowHeight === window.innerHeight) {
+          void flow.setViewport(restored.viewport, { duration: motionDuration() });
+          return;
+        }
       }
       let ids = JSON.parse(focusKey) as string[];
       const nodes = flow.getNodes();

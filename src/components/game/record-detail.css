@@ -4,6 +4,7 @@
 :root .entity-detail-card { width: min(520px, 100%); max-width: 100%; max-height: min(720px, var(--mobile-dialog-height, calc(100dvh - 32px))); padding: 4px 7px; }
 :root .case-board-inspector { height: 100%; padding: 4px 6px; }
 :root .case-board-inspector.modal { position: fixed; inset: 0; z-index: 220; width: 100%; height: var(--mobile-height, 100dvh); padding: max(4px, env(safe-area-inset-top, 0px)) max(6px, env(safe-area-inset-right, 0px)) max(6px, env(safe-area-inset-bottom, 0px)) max(6px, env(safe-area-inset-left, 0px)); }
+:root .case-board-inspector.case-details-short > header, :root .case-board-inspector.case-details-short > .case-board-inspector-scroll { width: min(760px, 100%); margin-inline: auto; }
 :root .entity-detail-header, :root .case-board-inspector > header { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; flex-wrap: nowrap; gap: 10px; margin: 0; padding: 6px 0 10px; border-bottom: 1px solid var(--line); }
 .record-detail-identity { flex: 1; min-width: 0; }
 :root .entity-detail-header span, :root .case-board-inspector > header span { display: block; color: var(--muted); font-size: 14px; line-height: 1.5; }

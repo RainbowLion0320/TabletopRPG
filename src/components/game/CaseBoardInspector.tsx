@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, type RefObject } from 'react';
 import { ArrowLeft, ChevronRight, X } from 'lucide-react';
 import { useDialogFocus } from '../shared/useDialogFocus';
-import { useCaseBoardListLayout } from '../../platform/layout';
+import { useCaseBoardListLayout, useShortViewport } from '../../platform/layout';
 import { storyData } from '../../data/storyData';
 import { getClueDetail, getNpcDetail } from '../../dm/entityDetail';
 import type { GameState } from '../../types/game';
@@ -80,6 +80,8 @@ const INSIGHT_LABEL = {
 
 export function CaseBoardInspector({ model, node, onClose, onSelect, onBack, returnFocusRef, state, archive = false }: CaseBoardInspectorProps) {
   const mobile = useCaseBoardListLayout() || archive;
+  const shortViewport = useShortViewport();
+  const modal = mobile || shortViewport;
   const dialogRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sourcesRef = useRef<HTMLDetailsElement>(null);
@@ -94,7 +96,7 @@ export function CaseBoardInspector({ model, node, onClose, onSelect, onBack, ret
   }
   function backToRecord() { rememberReading(); onBack?.(); }
 
-  useDialogFocus(true, dialogRef, mobile && onBack ? backToRecord : onClose, returnFocusRef, { trapFocus: mobile });
+  useDialogFocus(true, dialogRef, mobile && onBack ? backToRecord : onClose, returnFocusRef, { trapFocus: modal });
   useLayoutEffect(() => {
     const reading = recordReading.current.get(node.id);
     if (sourcesRef.current) sourcesRef.current.open = reading?.sourcesOpen ?? false;
@@ -116,8 +118,8 @@ export function CaseBoardInspector({ model, node, onClose, onSelect, onBack, ret
   return (
     <aside
       aria-label={`${node.title}详情`}
-      aria-modal={mobile ? 'true' : undefined}
-      className={`case-board-inspector${mobile ? ' modal' : ''}`}
+      aria-modal={modal ? 'true' : undefined}
+      className={`case-board-inspector${modal ? ' modal' : ''}${!mobile && shortViewport ? ' case-details-short' : ''}`}
       ref={dialogRef}
       role="dialog"
       tabIndex={-1}
