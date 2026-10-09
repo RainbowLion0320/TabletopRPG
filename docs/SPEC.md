@@ -4,6 +4,8 @@
 > Updated: 2026-10-09
 > Scope: current React/Vite implementation
 
+In 0.5.8, the AI connection disclosure reuses the painted silver-blue panel with a 15px label, 44px target and existing settings/chevron icons. Native details click and Enter toggling, field order, validation, custom connection priority and fixed close/save controls remain intact. Only the body scrolls in a short viewport. Hover/press use subtle brightness feedback; reduced motion removes transitions. No new assets, settings, dependencies or model behavior.
+
 In 0.5.7, save deletion reuses the original pale-blue secondary artwork, existing trash icon and deep-red text with 15px labels and at least 96 by 44px targets. Enabled danger buttons retain distinct ink at rest and on hover instead of inheriting ordinary button ink. Inline confirmation, Keep-first focus, cancellation, persistence guards, failure recovery and the current action remain unchanged. The existing 320px, 390px and desktop record flows still verify long-list scrolling, short windows and focus restoration; no new images, dependencies, storage fields or game rules.
 
 In 0.5.6, desktop case threads reuse the original gold selected and pale-blue secondary buttons with 44px targets, 15px titles and 13px counts. Full thread names wrap within their control. Known NPC photos reuse the transparent painted mount, and graph tools use the existing painted tray. Filtering, zoom, detail navigation and camera restoration remain intact; phones keep their known-record archive and clear hidden desktop thread filters on resize. No new assets, dependencies, AI calls, prompts or game rules.

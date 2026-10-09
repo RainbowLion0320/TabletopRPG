@@ -57,6 +57,18 @@ public class GameAndroidTest {
         });
         return visible.get();
     }
+    private void awaitSettledIme(boolean visible) {
+        long deadline = SystemClock.elapsedRealtime() + 10000;
+        long stableSince = 0;
+        while (SystemClock.elapsedRealtime() < deadline) {
+            if (imeVisible() == visible) {
+                if (stableSince == 0) stableSince = SystemClock.elapsedRealtime();
+                if (SystemClock.elapsedRealtime() - stableSince >= 300) return;
+            } else stableSince = 0;
+            SystemClock.sleep(50);
+        }
+        fail("Input method visibility did not settle to " + visible);
+    }
     private void click(String text) throws Exception {
         String match = "Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === " + JSONObject.quote(text) + " || b.getAttribute('aria-label') === " + JSONObject.quote(text) + ")";
         until(match + " && !" + match + ".disabled"); js(match + ".click()");
@@ -355,16 +367,12 @@ public class GameAndroidTest {
                 reachable(".investigator-close");
                 click("技能");
                 assertEquals("Returning to skills restores the reading position", skillsReadingPosition, js("document.querySelector('.investigator-body').scrollTop"));
-                boolean keyboardBeforeBack = imeVisible();
-                System.out.println("Skill input keyboard visible before system return: " + keyboardBeforeBack);
+                // Real focus and settled insets make both system-return steps deterministic.
+                nativeTap(".investigator-search input"); awaitSettledIme(true);
                 InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
-                if (keyboardBeforeBack) {
-                    long keyboardDeadline = SystemClock.elapsedRealtime() + 5000;
-                    while (imeVisible() && SystemClock.elapsedRealtime() < keyboardDeadline) SystemClock.sleep(100);
-                    assertFalse("The first return dismisses the input method", imeVisible());
-                    assertEquals("Dismissing the keyboard keeps the dossier open", "true", js("Boolean(document.querySelector('.investigator-sheet'))"));
-                    InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
-                }
+                awaitSettledIme(false);
+                assertEquals("Dismissing the keyboard keeps the dossier open", "true", js("Boolean(document.querySelector('.investigator-sheet'))"));
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
                 until("!document.querySelector('.investigator-sheet')");
                 assertEquals("Inspecting a teammate preserves the current action and actor", "true", js("document.querySelector('.dock-input').value==='查看属性时保留这段行动草稿'&&document.querySelector('.party-compact.active strong').textContent==='亨利·格雷'"));
                 js("document.querySelector('.party-compact:last-child').click()"); until("document.querySelector('.investigator-sheet')");

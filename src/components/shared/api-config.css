@@ -12,13 +12,15 @@
 .api-field { display: grid; gap: 6px; min-width: 0; }
 .api-key-control { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 6px; align-items: stretch; }
 .api-key-reveal { display: grid; place-items: center; min-width: 44px; min-height: 44px; padding: 0; }
-.api-connection { min-width: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.api-connection summary { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 4px; list-style: none; color: var(--accent); font-family: var(--ui-font); font-size: 15px; cursor: pointer; }
+.api-connection { min-width: 0; }
+.api-connection summary { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 8px; border: 4px solid transparent; border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 4px / 0 stretch; background: var(--panel); list-style: none; color: var(--accent); font-family: var(--ui-font); font-size: 15px; cursor: pointer; touch-action: manipulation; transition: filter 130ms ease; }
 .api-connection summary::-webkit-details-marker { display: none; }
 .api-connection summary span { flex: 1; }
 .api-connection summary > svg:last-child { transition: transform 130ms ease; }
 .api-connection[open] summary > svg:last-child { transform: rotate(180deg); }
 .api-connection summary:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: -2px; }
+@media (hover: hover) { .api-connection summary:hover { filter: brightness(1.08); } }
+.api-connection summary:active { filter: brightness(.92); }
 .api-connection-fields { display: grid; gap: 14px; padding: 2px 0 14px; }
 .api-config-card footer { flex: 0 0 auto; }
 :root .api-config-card footer button { font-size: 15px; }
@@ -33,5 +35,5 @@
   .api-config-header { margin-bottom: 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .api-connection summary > svg:last-child { transition: none; }
+  .api-connection summary, .api-connection summary > svg:last-child { transition: none; }
 }
