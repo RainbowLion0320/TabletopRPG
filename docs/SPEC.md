@@ -4,6 +4,8 @@
 > Updated: 2026-10-09
 > Scope: current React/Vite implementation
 
+In 0.5.12, investigator selection reuses the painted silver-blue dossier frame for core and expanded attribute cells, preserving distinct HP/MP/SAN/Luck color cues. Occupation and specialties use 13px text, biography 14px, core labels 12px, expanded labels 13px, skills/background 14px and the fixed party summary 14px/13px. Portrait cards remain a single independently scrolling column with naturally wrapped text; native checkboxes, separate disclosure controls, default solo selection, empty-party guards and restoration of the current investigation are unchanged. No new assets, data fields or game rules.
+
 In 0.5.11, case-board scene thumbnails use an 84×56px landscape mount with the existing painted dossier frame as a 3px border. The full scene remains centered with object-fit: contain. Mobile records, desktop graph cards and graph-failure fallback dossiers share this presentation. Text hierarchy, portrait thumbnails, full-image details and card minimum heights remain unchanged; no new image files or player actions.
 
 In 0.5.10, desktop relationship cards match the phone dossier hierarchy: 17px names, 14px identity subtitles, 13px type and relationship labels, and 12px status. Shared ELK/card dimensions reserve room for two-line names and the status row. NPC thumbnails fill the existing mount from the top; scene thumbnails remain fully contained and centered, and detail views retain the original full images. Painted frames, camera restoration, known-record filtering and the mobile archive remain intact; no new assets, actions or model constraints.

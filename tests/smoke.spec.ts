@@ -922,10 +922,10 @@ test('investigator setup shows portraits and full attribute blocks', async ({ pa
   });
   expect(expandedLayout.cardHeight).toBeGreaterThan(collapsedLayout.cardHeight + 100);
   expect(expandedLayout.panelTop).toBeGreaterThanOrEqual(expandedLayout.toggleBottom);
-  const vitalBorderColors = await vitals.locator('span').evaluateAll((items) =>
-    items.map((item) => getComputedStyle(item).borderTopColor)
+  const vitalCueColors = await vitals.locator('span').evaluateAll((items) =>
+    items.map((item) => getComputedStyle(item, '::after').backgroundColor)
   );
-  expect(new Set(vitalBorderColors).size).toBe(4);
+  expect(new Set(vitalCueColors).size).toBe(4);
   await expect(vitals.getByText('HP', { exact: true })).toBeVisible();
   await expect(vitals.getByText('12', { exact: true })).toHaveCount(2);
   await expect(vitals.getByText('MP', { exact: true })).toBeVisible();
