@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useLayoutEffect, useRef, type RefObject } from 'react';
 import { ArrowLeft, ChevronRight, X } from 'lucide-react';
 import { useDialogFocus } from '../shared/useDialogFocus';
 import { useCaseBoardListLayout } from '../../platform/layout';
@@ -82,11 +82,23 @@ export function CaseBoardInspector({ model, node, onClose, onSelect, onBack, ret
   const mobile = useCaseBoardListLayout() || archive;
   const dialogRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const sourcesRef = useRef<HTMLDetailsElement>(null);
+  const recordReading = useRef(new Map<string, { scrollTop: number; sourcesOpen: boolean }>());
   const headingRef = useRef<HTMLHeadingElement>(null);
   const previousNode = useRef<string | null>(null);
-  useDialogFocus(true, dialogRef, mobile && onBack ? onBack : onClose, returnFocusRef, { trapFocus: mobile });
-  useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+
+  function rememberReading() {
+    if (scrollRef.current) recordReading.current.set(node.id, {
+      scrollTop: scrollRef.current.scrollTop, sourcesOpen: sourcesRef.current?.open ?? false
+    });
+  }
+  function backToRecord() { rememberReading(); onBack?.(); }
+
+  useDialogFocus(true, dialogRef, mobile && onBack ? backToRecord : onClose, returnFocusRef, { trapFocus: mobile });
+  useLayoutEffect(() => {
+    const reading = recordReading.current.get(node.id);
+    if (sourcesRef.current) sourcesRef.current.open = reading?.sourcesOpen ?? false;
+    if (scrollRef.current) scrollRef.current.scrollTop = reading?.scrollTop ?? 0;
     if (previousNode.current && previousNode.current !== node.id) headingRef.current?.focus({ preventScroll: true });
     previousNode.current = node.id;
   }, [node.id]);
@@ -111,14 +123,14 @@ export function CaseBoardInspector({ model, node, onClose, onSelect, onBack, ret
       tabIndex={-1}
     >
       <header>
-        {onBack && <button aria-label="返回上一份资料" className="record-detail-back" onClick={onBack} title="返回上一份资料" type="button"><ArrowLeft size={18} /></button>}
+        {onBack && <button aria-label="返回上一份资料" className="record-detail-back" onClick={backToRecord} title="返回上一份资料" type="button"><ArrowLeft size={18} /></button>}
         <div className="record-detail-identity">
           <span>{base.role}</span>
           <h4 ref={headingRef} tabIndex={-1} title={node.title}>{node.title}</h4>
         </div>
         <button aria-label="关闭资料详情" onClick={onClose} title="关闭" type="button"><X size={17} /></button>
       </header>
-      <div className="case-board-inspector-scroll" ref={scrollRef}>
+      <div className="case-board-inspector-scroll" ref={scrollRef} onScroll={rememberReading}>
         <RecordDetailMedia src={caseRecordImage(node)} kind={node.type === 'scene' ? 'scene' : 'portrait'} name={node.title} />
         <section>
           <h5>已知信息</h5>
@@ -131,7 +143,7 @@ export function CaseBoardInspector({ model, node, onClose, onSelect, onBack, ret
             <ul className="case-related-list">{relations.map((edge) => {
               const other = relatedNode(edge, node, model);
               if (!other) return null;
-              return <li key={edge.id}><button className="case-related-record" type="button" aria-label={`查看${other.title}资料`} onClick={() => onSelect(other.id)}>
+              return <li key={edge.id}><button className="case-related-record" type="button" aria-label={`查看${other.title}资料`} onClick={() => { rememberReading(); onSelect(other.id); }}>
                 <span><small>{edge.label ?? '存在关联'}</small><strong>{other.title}</strong></span><ChevronRight size={17} aria-hidden="true" />
               </button></li>;
             })}</ul>
@@ -151,7 +163,7 @@ export function CaseBoardInspector({ model, node, onClose, onSelect, onBack, ret
           </section>
         ) : null}
         {sources.length ? (
-          <details className="case-record-sources" key={node.id}>
+          <details className="case-record-sources" key={node.id} ref={sourcesRef} onToggle={rememberReading}>
             <summary><span>信息来源</span><ChevronRight size={17} aria-hidden="true" /></summary>
             <ul>{sources.map((source) => <li key={source}>{source}</li>)}</ul>
           </details>

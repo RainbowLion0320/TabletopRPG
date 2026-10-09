@@ -1900,6 +1900,15 @@ test('reference panel renders saved dynamic case board hypotheses', async ({ pag
   await inspector.getByText('信息来源', { exact: true }).click();
   await expect(inspector.getByText('第 1 回合：玩家发现药店后门有被撬痕迹')).toBeVisible();
   await expect(inspector.getByText(/e1/)).toHaveCount(0);
+  await inspector.getByRole('button', { name: '查看药店后门被撬资料', exact: true }).click();
+  const eventDetail = page.getByRole('dialog', { name: '药店后门被撬详情', exact: true });
+  await expect(eventDetail.locator('.case-record-sources')).not.toHaveAttribute('open', '');
+  await eventDetail.getByRole('button', { name: '返回上一份资料', exact: true }).click();
+  await expect(inspector.locator('.case-record-sources')).toHaveAttribute('open', '');
+  await inspector.getByRole('button', { name: '关闭资料详情', exact: true }).click();
+  await board.locator('.case-flow-node.theory.hypothesis', { hasText: '可能有内应协助' }).click();
+  await expect(inspector.locator('.case-record-sources')).not.toHaveAttribute('open', '');
+  expect(await inspector.locator('.case-board-inspector-scroll').evaluate(element => element.scrollTop)).toBe(0);
 });
 
 test('reference panel uses the compact case board without horizontal overflow at 390px', async ({ page }) => {
@@ -2061,6 +2070,25 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     await detail.getByRole('button', { name: '查看摩勒住宅资料' }).click();
     const sceneDetail = page.getByRole('dialog', { name: '摩勒住宅详情', exact: true });
     await expect(sceneDetail.locator('.record-detail-media img')).toHaveCSS('object-fit', 'contain');
+    await page.setViewportSize({ width: size.width, height: 300 });
+    const sources = sceneDetail.locator('.case-record-sources');
+    await sources.locator('summary').click();
+    await expect(sources).toHaveAttribute('open', '');
+    await expect(sources).toContainText('第 1 回合：玩家发现药店后门有被撬痕迹');
+    const relatedRecord = sceneDetail.getByRole('button', { name: '查看现场记录 1资料', exact: true });
+    await relatedRecord.scrollIntoViewIfNeeded();
+    const readingPosition = await sceneDetail.locator('.case-board-inspector-scroll').evaluate(element => element.scrollTop);
+    expect(readingPosition).toBeGreaterThan(0);
+    await relatedRecord.click();
+    const eventDetail = page.getByRole('dialog', { name: '现场记录 1详情', exact: true });
+    await expect(eventDetail.locator('.case-record-sources')).not.toHaveAttribute('open', '');
+    expect(await eventDetail.locator('.case-board-inspector-scroll').evaluate(element => element.scrollTop)).toBe(0);
+    await eventDetail.locator('.case-record-sources summary').click();
+    await expect(eventDetail.locator('.case-record-sources')).toHaveAttribute('open', '');
+    await eventDetail.getByRole('button', { name: '返回上一份资料', exact: true }).click();
+    await expect(sources).toHaveAttribute('open', '');
+    await expect.poll(() => sceneDetail.locator('.case-board-inspector-scroll').evaluate(element => element.scrollTop)).toBe(readingPosition);
+    await page.setViewportSize(size);
     await sceneDetail.getByRole('button', { name: '返回上一份资料' }).click();
     await expect(detail).toBeVisible();
     await detail.getByRole('button', { name: '查看摩勒住宅资料' }).click();
