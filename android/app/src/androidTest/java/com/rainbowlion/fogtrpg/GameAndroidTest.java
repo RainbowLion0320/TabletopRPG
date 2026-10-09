@@ -288,6 +288,10 @@ public class GameAndroidTest {
                 reachable(".dock-actor-avatar"); nativeTap(".dock-actor-avatar");
                 until("document.querySelector('.investigator-sheet')"); reachable(".investigator-close");
                 assertEquals("Character sheet reads the selected investigator", "true", js("document.querySelector('.investigator-identity h2').textContent==='亨利·格雷'&&document.querySelectorAll('.investigator-attributes>div').length===8"));
+                assertEquals("Resource labels and upper limits remain readable", "true", js("Array.from(document.querySelectorAll('.investigator-vitals dt,.investigator-vitals dd small')).every(e=>parseFloat(getComputedStyle(e).fontSize)>=14)"));
+                assertEquals("Attribute abbreviations remain readable", "true", js("Array.from(document.querySelectorAll('.investigator-attributes dt small')).every(e=>parseFloat(getComputedStyle(e).fontSize)>=12)"));
+                assertEquals("Investigator navigation text remains readable", "true", js("Array.from(document.querySelectorAll('.investigator-tabs button,.investigator-party button')).every(e=>parseFloat(getComputedStyle(e).fontSize)>=15)"));
+                assertEquals("Phone resources use two complete columns without overflow", "true", js("(()=>{const v=document.querySelector('.investigator-vitals'),r=Array.from(v.children).map(e=>e.getBoundingClientRect());return r.length===4&&r[0].top===r[1].top&&r[2].top===r[3].top&&r[2].top>r[0].bottom&&v.scrollWidth<=v.clientWidth&&Array.from(v.querySelectorAll('dt,dd')).every(e=>e.scrollWidth<=e.clientWidth)})()"));
                 if (partySize > 1) {
                     js("document.querySelector('.investigator-party button:last-child').click()");
                     until("document.querySelector('.investigator-party button:last-child').getAttribute('aria-pressed')==='true'");

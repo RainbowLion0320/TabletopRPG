@@ -653,9 +653,14 @@ for (const size of [{ width: 390, height: 844, party: 1 }, { width: 1440, height
     await expect(sheet).toHaveAccessibleName('亨利·格雷');
     await expect(sheet.locator('[data-stat="hp"] dd')).toHaveText('12 / 12');
     await expect(sheet.locator('.investigator-attributes > div')).toHaveCount(8);
+    expect(await sheet.locator('.investigator-vitals dt').evaluateAll(elements => elements.every(e => parseFloat(getComputedStyle(e).fontSize) >= 14))).toBe(true);
+    expect(await sheet.locator('.investigator-vitals dd small').evaluateAll(elements => elements.every(e => parseFloat(getComputedStyle(e).fontSize) >= 14))).toBe(true);
+    expect(await sheet.locator('.investigator-vitals').evaluate(e => e.scrollWidth <= e.clientWidth)).toBe(true);
+    expect(await sheet.locator('.investigator-attributes dt small').evaluateAll(elements => elements.every(e => parseFloat(getComputedStyle(e).fontSize) >= 12))).toBe(true);
     expect(await sheet.evaluate(e => getComputedStyle(e).borderImageSource.includes('dossier-mount'))).toBe(true);
     for (const selector of ['.investigator-tabs button', '.investigator-party button']) {
       expect(await sheet.locator(selector).evaluateAll(elements => elements.every(e => e.getBoundingClientRect().height >= 44))).toBe(true);
+      expect(await sheet.locator(selector).evaluateAll(elements => elements.every(e => parseFloat(getComputedStyle(e).fontSize) >= 15))).toBe(true);
     }
     if (size.party > 1) {
       const teammate = size.party === 4 ? '罗伯特·肖' : '艾达·华莱士';
