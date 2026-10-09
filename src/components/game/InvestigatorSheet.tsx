@@ -31,7 +31,7 @@ export function InvestigatorSheet({ players, selectedId, onSelect, onClose }: In
   const [query, setQuery] = useState('');
   const [failedPortrait, setFailedPortrait] = useState<string | null>(null);
   useDialogFocus(Boolean(player), dialogRef, onClose, undefined, {
-    getFallbackFocus: () => document.querySelector<HTMLButtonElement>('.dock-actor-avatar')
+    getFallbackFocus: () => document.querySelector<HTMLButtonElement>('.dock-actor-avatar, .ending-actions button')
   });
   useLayoutEffect(() => {
     if (previousPlayer.current !== selectedId) {
@@ -108,7 +108,7 @@ export function InvestigatorSheet({ players, selectedId, onSelect, onClose }: In
           {tab === 'overview' && <>
             <dl className="investigator-vitals" aria-label="当前状态">
               <div data-stat="hp"><dt>生命 HP</dt><dd>{player.currentHp}<small> / {player.hp}</small></dd></div>
-              <div data-stat="mp"><dt>魔法 MP</dt><dd>{player.currentMp}<small> / {player.mp}</small></dd></div>
+              <div data-stat="mp"><dt>魔力 MP</dt><dd>{player.currentMp}<small> / {player.mp}</small></dd></div>
               <div data-stat="san"><dt>理智 SAN</dt><dd>{player.currentSan}<small> / {player.san}</small></dd></div>
               <div data-stat="luck"><dt>幸运</dt><dd>{player.luck}</dd></div>
             </dl>

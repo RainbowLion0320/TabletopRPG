@@ -94,9 +94,9 @@ export function CharacterSetup({ onBack, onStart, portrait = false }: CharacterS
                     {specialties.map(([name, value]) => <span key={name}>{name}<em>{value}</em></span>)}
                   </div>
                   <div className="preset-vitals" aria-label={`${preset.name}派生数值`}>
-                    <span><b>HP</b><em>{stats.hp}</em></span>
-                    <span><b>MP</b><em>{stats.mp}</em></span>
-                    <span><b>SAN</b><em>{stats.san}</em></span>
+                    <span title="生命（HP）"><b>生命</b><em>{stats.hp}</em></span>
+                    <span title="魔力（MP）"><b>魔力</b><em>{stats.mp}</em></span>
+                    <span title="理智（SAN）"><b>理智</b><em>{stats.san}</em></span>
                     <span><b>幸运</b><em>{stats.luck}</em></span>
                   </div>
                 </div>

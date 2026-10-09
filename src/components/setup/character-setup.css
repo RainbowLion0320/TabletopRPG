@@ -42,7 +42,7 @@
 .preset-vitals span:nth-child(1) { --stat-color: #a96d60; }
 .preset-vitals span:nth-child(2) { --stat-color: #658aa6; }
 .preset-vitals span:nth-child(3) { --stat-color: #709087; }
-.preset-vitals b { display: block; font-size: 12px; line-height: 1.25; font-weight: 400; color: var(--text); }
+.preset-vitals b { display: block; font-size: 13px; line-height: 1.25; font-weight: 400; color: var(--text); }
 .preset-vitals em { display: block; margin-top: 2px; font: 19px Georgia, serif; font-variant-numeric: tabular-nums; color: var(--text); }
 .preset-card-actions { display: flex; justify-content: flex-end; padding: 3px 10px 4px; border-top: 1px solid rgb(var(--ui-line-rgb) / 0.231); }
 .preset-attrs-toggle { display: inline-flex; justify-content: center; align-items: center; gap: 5px; min-height: 44px; padding: 0 16px; font-size: 14px; }

@@ -468,7 +468,11 @@ public class GameAndroidTest {
                 until("document.activeElement===document.querySelector('.record-log-search input')&&document.querySelector('.record-log-search input').value===''");
                 assertEquals("Only the log list scrolls beneath its controls above the keyboard", "true", js("(()=>{const l=document.querySelector('.action-log-list').getBoundingClientRect(),s=document.querySelector('.record-log-search').getBoundingClientRect();return l.top>=s.bottom&&l.bottom<=innerHeight+1&&l.height>60})()"));
                 viewport(size[0], size[1]); screenshot(prefix + "-log"); reachable("[aria-label='关闭资料']");
-                js("document.querySelector('[aria-label=关闭资料]').click()");
+                String referenceDraft = js("document.querySelector('.dock-input').value");
+                viewport(size[0], 300); nativeTap("[aria-label='关闭资料']");
+                until("!document.querySelector('.info-drawer-react.open')&&document.activeElement===document.querySelector('.dock-actor-avatar')");
+                assertEquals("Closing short-window references keeps the action draft", referenceDraft, js("document.querySelector('.dock-input').value"));
+                screenshot(prefix + "-reference-focus-restored"); viewport(size[0], size[1]);
                 menu("声音设置"); reachable("[role='switch'][aria-label='背景音乐']"); reachable("[role='switch'][aria-label='游戏音效']");
                 screenshot(prefix + "-audio");
                 js("document.querySelector('.audio-credits').open=true;document.querySelector('.audio-settings-body').scrollTop=99999");
@@ -957,6 +961,9 @@ public class GameAndroidTest {
                 assertEquals("Reading and actions do not overlap", "true", js("document.querySelector('.narrative-panel').clientHeight>=140&&document.querySelector('.narrative-panel').getBoundingClientRect().bottom<=document.querySelector('.ending-dock').getBoundingClientRect().top+.5"));
                 nativeTap(".ending-dock .party-compact:last-child"); until("document.querySelector('.investigator-sheet')");
                 nativeTap(".investigator-close"); until("!document.querySelector('.investigator-sheet')&&document.activeElement===document.querySelector('.ending-dock .party-compact:last-child')");
+                nativeTap(".ending-dock .party-compact:last-child"); until("document.querySelector('.investigator-sheet')"); viewport(size[0], 300);
+                nativeTap(".investigator-close"); until("!document.querySelector('.investigator-sheet')&&document.activeElement===document.querySelector('.ending-actions button:first-child')");
+                screenshot("ending-" + size[0] + "-sheet-focus-restored"); viewport(size[0], size[1]);
                 nativeTap(".ending-actions button:first-child"); until("document.querySelector('.investigation-ending')");
                 assertEquals("Review opens the progress page", "true", js("document.querySelector('.info-drawer-tabs button:first-child').getAttribute('aria-selected')==='true'"));
                 screenshot("ending-" + size[0] + "-review");

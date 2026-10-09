@@ -81,7 +81,9 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
   useEffect(() => {
     if (drawerRef.current) drawerRef.current.inert = !open;
   }, [open]);
-  useDialogFocus(open, drawerRef, onClose);
+  useDialogFocus(open, drawerRef, onClose, undefined, {
+    getFallbackFocus: () => document.querySelector<HTMLButtonElement>('.dock-actor-avatar, .ending-actions button')
+  });
 
   function changeTabWithKey(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     const next = event.key === 'ArrowRight' ? (index + 1) % drawerTabs.length

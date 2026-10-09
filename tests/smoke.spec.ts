@@ -933,10 +933,10 @@ test('investigator setup shows portraits and full attribute blocks', async ({ pa
     items.map((item) => getComputedStyle(item, '::after').backgroundColor)
   );
   expect(new Set(vitalCueColors).size).toBe(4);
-  await expect(vitals.getByText('HP', { exact: true })).toBeVisible();
+  await expect(vitals.getByText('生命', { exact: true })).toBeVisible();
   await expect(vitals.getByText('12', { exact: true })).toHaveCount(2);
-  await expect(vitals.getByText('MP', { exact: true })).toBeVisible();
-  await expect(vitals.getByText('SAN', { exact: true })).toBeVisible();
+  await expect(vitals.getByText('魔力', { exact: true })).toBeVisible();
+  await expect(vitals.getByText('理智', { exact: true })).toBeVisible();
   await expect(vitals.getByText('60', { exact: true })).toHaveCount(1);
 });
 
@@ -1189,6 +1189,7 @@ for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height:
     });
     await expect.poll(bounds).toEqual({ listInside: true, inputInside: true, closeInside: true, noOverflow: true });
     await page.getByRole('button', { name: '关闭资料' }).click(); await expect(draft).toHaveValue('继续查看门廊上的痕迹。');
+    await expect(page.locator('.dock-actor-avatar')).toBeFocused();
     await page.setViewportSize(size); await page.getByRole('button', { name: '资料', exact: true }).click();
     await page.getByRole('tab', { name: '日志' }).click(); await expect(search).toHaveValue('');
     await expect(list.locator('li')).toHaveCount(60);
@@ -1243,6 +1244,13 @@ for (const size of [{ width: 320, height: 568, party: 1, endingId: 'END_C' }, { 
     await expect(page.getByRole('dialog', { name: state.players.at(-1)!.name, exact: true })).toBeVisible();
     await page.getByRole('button', { name: '关闭调查员档案' }).click(); await expect(ending.locator('.party-compact').last()).toBeFocused();
     const review = page.getByRole('button', { name: '调查回顾', exact: true });
+    if (size.width < 600) {
+      await ending.locator('.party-compact').last().click();
+      await page.setViewportSize({ width: size.width, height: 300 });
+      await page.getByRole('button', { name: '关闭调查员档案' }).click();
+      await expect(review).toBeFocused();
+      await page.setViewportSize(size);
+    }
     await review.click(); await expect(page.getByRole('tab', { name: '进度' })).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('.investigation-ending')).toContainText(outcome.summary);
     const skippedObjective = page.locator('.objective-row').filter({ hasText: '调查蒙特利尔与埃里克的关系' });
