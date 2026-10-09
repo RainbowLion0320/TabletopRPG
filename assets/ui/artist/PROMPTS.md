@@ -269,3 +269,12 @@ Create one exquisitely hand-painted small game UI emblem: a closed round 1920s L
 ```text
 Create one exquisite hand-painted raster game UI emblem for a 1920s rainy London mystery tabletop game: a single ivory ten-sided percentile die, centered and isolated on a genuinely transparent background. Its recognizable silhouette is an upright angular diamond polyhedron with broad kite-shaped faces, inspired by finely crafted cream porcelain gaming dice with restrained antique-brown engraved key-pattern borders. Keep the faces pale and uncluttered, with a few clear brown bevels so the polyhedral die reads immediately at 24 pixels. Subtle cool silver-blue reflected edge light will harmonize with midnight-blue paper-and-cloth panels and pearlescent silver fittings. Compact square composition, the complete die fully contained, generous transparent outside margins, crisp natural alpha edges, quiet tactile painterly detail. This is a decorative roll-action emblem, not a displayed roll result: leave every face blank, with no numbers, letters or pips. Only one complete die; no outer button, scene, glow, ground shadow, wording, mockup or extra objects.
 ```
+
+
+## 返回首页徽记（0.5.38）
+
+内置 Image Gen 单次新图，无参考图与后续编辑；生成 ID `exec-f6fc45f6-0f67-4963-b40a-a61837b645f2`，原 PNG 保留默认 generated_images 目录，不提交；transparent_background=true。以下是实际完整提示词：
+
+```text
+Create one polished raster game UI asset for the Chinese detective RPG Fog / Disappear, set in London in 1920. Subject: a tiny front-facing Victorian London townhouse emblem that will sit beside the existing Return Home text in a menu button. This is neutral navigation artwork, not a location revealed by the story. Match the established artist-made interface: cool rain-blue and slate-navy tones, carefully painted silver edges, soft pearlescent highlights, restrained early twentieth century elegance. A clear peaked roof, one broad central doorway and a few simple window masses form an instantly readable house silhouette. Give it shallow engraved-metal relief and hand-painted material, with dark navy structure for contrast on a pale-blue button. Keep the broad silhouette legible at 20 pixels; concentrate detail on the roof and doorway rather than many tiny bricks. One centered emblem filling most of a square canvas, isolated with a truly transparent background, natural antialiased alpha. No enclosing button or frame, no words, numbers or separate decorations. Deliver the single finished illustration, not a mockup or asset sheet.
+```

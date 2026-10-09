@@ -32,6 +32,7 @@
 | investigation-lens.webp | 内置 Image Gen 精绘（0.5.29） | 64×65，2,148 字节；调查目标 24px、技能/案件搜索 16px、日志搜索 17px contain；空 alt、无命中，不代表剧情物证 |
 | pocket-watch.webp | 内置 Image Gen 精绘（0.5.29） | 64×65，2,778 字节；已公开局势标题 24px contain，银蓝怀表；空 alt、无命中，不新增时钟或改变数值 |
 | dice-emblem.webp | 内置 Image Gen 精绘（0.5.35） | 59×64，2,344 字节；原掷骰按钮 24px contain，象牙色十面骰；空 alt、无独立命中，不表示点数 |
+| home-emblem.webp | 内置 Image Gen 精绘（0.5.38） | 64×64，3,126 字节；调查菜单/结案返回首页原按钮内共用 20px contain，银蓝伦敦宅邸；空 alt、无独立命中，不表示剧情地点 |
 
 原首页含字切图放在真实按钮内，保留原动作和可访问名称；实时文字使用原 PSD 无字底板。原按钮切片 `12 108 12 108` 映射为 `6px 18px`，图标底板完整缩放。阅读框源 1024px 的 128px 护角对应运行时 768px / 96px；中间边不含星珠，伸缩不会把节点拉成长条。头像与立绘沿用原人物和比例，空心装裱不盖住人物中心。
 
@@ -73,6 +74,7 @@ ffmpeg -i "动态bg.mp4" -an -c:v libvpx-vp9 -crf 28 -b:v 0 -deadline good -cpu-
 | sound-emblem | `d47bfc21497847875a4a99439018051cf76953147e30db4360a6bb4cb5dfda95` | `df88ebd50782343fcc918d4c6be9718e2451ef965937a8ca65dae65e6d1d504a` |
 | investigation-lens | `e86401ab66b8b1c59802e647049cba5bc828d890994d79c9d100b7b7a33f10e0` | `de012c8fd9ab188b0be7a39abbd41ff647a9690d16a1ac2540f6a13a2a1e41f8` |
 | pocket-watch | `5c538107779eedcbac5adb0e2ac64df6c29ebcd126751959b066696321559d07` | `cbd6919d2b98903cdabd6c1680a0e6bde19ddf2971e816e6825746da7fed0559` |
+| home-emblem | `946abd3c07227f8b07a8b797567a8cc35a6d7696be4caa28ad83d2374a2082d7` | `2879b0a485f7c56fbd74d90829d4ad46fee8436713ffa3ac5ca24e0bc81f5797` |
 
 0.5.9 的钢笔尖源 PNG 为 1145×1374，透明空边裁为 `(321,98,504,1174)`，仅等比例缩至高 128px 和 WebP 编码（quality 92 / alphaQuality 100 / effort 6）。原像素有 1,244,366 个 alpha 0，半透明边保留；未修改原图颜色或绘制形状。运行时字句静止，只有笔尖 3.6 秒明暗变化，减少动态时静止；等待行仍 36px，固定在剧情页脚，原标题线画在已有留白内；不额外增加整张面板高度。
 
@@ -104,3 +106,6 @@ ffmpeg -i "动态bg.mp4" -an -c:v libvpx-vp9 -crf 28 -b:v 0 -deadline good -cpu-
 
 
 0.5.35 掷骰徽记使用内置 Image Gen 一次新图生成，无参考图与后续编辑，生成 ID `exec-ac8929ff-3a94-4a09-9f55-a812d3369949`。源 PNG 1254×1254，1,041,592 个 alpha 0 像素、最大 alpha 255。仅裁检测到的外透明空白并保留 12px 余量，到画布边界时截取到边界，裁框 (0,0,1119,1218)，等比例缩为 59×64；WebP quality 92 / alphaQuality 100 / effort 6。未程序绘画、去底、改色或加字。原掷骰按钮内 24px contain、自然半透明边保留、不命中、不独立朗读；源 PNG 留在本机生成目录，不提交。徽记沿用原象牙骰的雕纹和银蓝反光，是操作装饰，不表示新物品或掷出点数。原骰面/动画/字魂云雀宋、锁定结果、确认一次的结算不变；共二十张实际采用精绘图。
+
+
+0.5.38 返回首页徽记由内置 Image Gen 一次新图生成，无参考图与后续编辑，生成 ID `exec-f6fc45f6-0f67-4963-b40a-a61837b645f2`。源 PNG 1254×1254，769,015 个 alpha 0 像素；只裁检测到的外透明空边，裁框 (0,0,1246,1242)，保留最多 12px 余量，等比例缩为 64×64，WebP quality 92 / alphaQuality 100 / effort 6，3,126 字节。未程序绘画、改色或去底，自然 alpha 保留，原 PNG 留在本机生成目录，不提交。20px contain 共用于调查菜单与结案的原返回首页按钮，空 alt、装饰无独立命中；宅邸是导航图标，不代表剧情地点、已解锁场景或故事物件。共二十一张实际采用精绘图。

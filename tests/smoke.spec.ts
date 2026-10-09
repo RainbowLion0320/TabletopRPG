@@ -1328,6 +1328,9 @@ for (const size of [{ width: 320, height: 568, party: 1, endingId: 'END_C' }, { 
     const ending = page.getByRole('region', { name: '游戏结局' });
     await expect(ending).toContainText(outcome.title);
     await expect(ending).toContainText(outcome.summary);
+    const homeArt = ending.getByRole('button', { name: '返回首页', exact: true }).locator('.home-emblem-art');
+    await expect.poll(() => homeArt.evaluate((e: HTMLImageElement) => e.complete && e.naturalWidth === 64 && e.naturalHeight === 64)).toBe(true);
+    expect(await homeArt.evaluate(e => { const r = e.getBoundingClientRect(); return getComputedStyle(e).pointerEvents === 'none' && e.getAttribute('alt') === '' && e.getAttribute('aria-hidden') === 'true' && r.width === 20 && r.height === 20 && e.closest('button')!.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)); })).toBe(true);
     await expect(page.locator('.dock-input, .scene-npc, .npc-nameplate, .party-action-status')).toHaveCount(0);
     await expect(ending.locator('.party-compact')).toHaveCount(size.party);
     await expect.poll(() => page.locator('.scene-backdrop-img').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
@@ -2456,6 +2459,9 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     await expect(menu.getByRole('button', { name: '关闭调查菜单' })).toBeFocused();
     await expect(menu.getByRole('button', { name: '保存游戏' })).toBeInViewport();
     await expect(menu.getByRole('button', { name: '继续调查' })).toBeInViewport();
+    const homeArt = menu.getByRole('button', { name: '返回首页', exact: true }).locator('.home-emblem-art');
+    await expect.poll(() => homeArt.evaluate((e: HTMLImageElement) => e.complete && e.naturalWidth === 64 && e.naturalHeight === 64)).toBe(true);
+    expect(await homeArt.evaluate(e => { const r = e.getBoundingClientRect(); return getComputedStyle(e).pointerEvents === 'none' && e.getAttribute('alt') === '' && e.getAttribute('aria-hidden') === 'true' && r.width === 20 && r.height === 20 && e.closest('button')!.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)); })).toBe(true);
     await menu.getByRole('button', { name: '声音设置' }).click();
     await expect(page.getByRole('dialog', { name: '声音设置' })).toBeVisible();
     await page.keyboard.press('Escape');

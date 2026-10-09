@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import { Home } from 'lucide-react';
 import actionPen from '../../../assets/ui/artist/action-pen.webp';
 import caseSeal from '../../../assets/ui/artist/case-seal.webp';
 import diceEmblem from '../../../assets/ui/artist/dice-emblem.webp';
 import { JournalArt } from '../shared/JournalArt';
+import { HomeEmblemArt } from '../shared/HomeEmblemArt';
 import type { GameState } from '../../types/game';
 import { getScenarioDefinition, getScenarioProgressForState } from '../../scenario/engine';
 import { pendingDmFailureText } from '../../services/narrativeVisibility';
@@ -92,7 +92,7 @@ export function ActionDock({
         <div className="ending-copy"><img className="case-seal-art" src={caseSeal} width={28} height={28} alt="" aria-hidden="true" draggable={false} decoding="async" /><div><strong>{ending.title}</strong><p>{ending.summary}</p></div></div>
         {(onReview || onHome) && <nav className="ending-actions" aria-label="结案操作">
           {onReview && <button type="button" className="primary-action" aria-haspopup="dialog" onClick={(event) => { event.currentTarget.focus({ preventScroll: true }); onReview(); }}><JournalArt />调查回顾</button>}
-          {onHome && <button type="button" className="secondary-action" onClick={onHome}><Home size={16} aria-hidden="true" />返回首页</button>}
+          {onHome && <button type="button" className="secondary-action" onClick={onHome}><HomeEmblemArt />返回首页</button>}
         </nav>}
         <PartyStatusStrip state={state} canDeclare={false} portrait={portrait} onInspectPlayer={onInspectPlayer} />
       </section>

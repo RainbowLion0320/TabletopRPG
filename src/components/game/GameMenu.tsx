@@ -1,7 +1,8 @@
-import { Home, RotateCcw, X } from 'lucide-react';
+import { RotateCcw, X } from 'lucide-react';
 import { ArchiveRecordArt } from '../shared/ArchiveRecordArt';
 import { JournalArt } from '../shared/JournalArt';
 import { TuningDialArt } from '../shared/TuningDialArt';
+import { HomeEmblemArt } from '../shared/HomeEmblemArt';
 import { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AudioSettingsButton } from '../shared/AudioSettingsButton';
@@ -50,7 +51,7 @@ export function GameMenu({ onClose, onHome, onLoad, onOpenApi, onRestart, onSave
         <h3 id="game-menu-navigation">导航</h3>
         <div className="menu-list">
         <button onClick={onRestart}><RotateCcw size={16} />重新开始</button>
-        <button onClick={onHome}><Home size={16} />返回首页</button>
+        <button onClick={onHome}><HomeEmblemArt />返回首页</button>
         </div>
       </section>
       </div>

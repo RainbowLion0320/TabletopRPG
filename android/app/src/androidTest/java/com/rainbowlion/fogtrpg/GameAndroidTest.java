@@ -84,6 +84,10 @@ public class GameAndroidTest {
         try (FileOutputStream output = new FileOutputStream(new File(folder, name + ".png"))) { bitmap.compress(Bitmap.CompressFormat.PNG, 100, output); }
         bitmap.recycle();
     }
+    private void paintedHomeEmblem(String selector) throws Exception {
+        until("(()=>{const e=document.querySelector(" + JSONObject.quote(selector) + ");return e?.complete&&e.naturalWidth===64&&e.naturalHeight===64})()");
+        assertEquals("Painted home navigation remains decorative and its original button receives touch", "true", js("(()=>{const e=document.querySelector(" + JSONObject.quote(selector) + "),r=e.getBoundingClientRect();return getComputedStyle(e).pointerEvents==='none'&&e.alt===''&&e.getAttribute('aria-hidden')==='true'&&r.width===20&&r.height===20&&e.closest('button').contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))})()"));
+    }
     private void fresh() throws Exception {
         context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE).edit().clear().commit();
         activity = ActivityScenario.launch(MainActivity.class);
@@ -559,6 +563,7 @@ public class GameAndroidTest {
                 js("document.querySelector('.audio-credits').open=true;document.querySelector('.audio-settings-body').scrollTop=99999");
                 reachable(".audio-close"); js("document.querySelector('.audio-close').click()");
                 until("document.querySelector('.game-menu').contains(document.activeElement)");
+                paintedHomeEmblem(".game-menu .home-emblem-art");
                 reachable(".game-menu-close"); reachable(".game-menu footer button"); screenshot(prefix + "-menu");
                 InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
                 until("!document.querySelector('.game-menu') && document.activeElement===document.querySelector('.menu-button')");
@@ -1061,6 +1066,7 @@ public class GameAndroidTest {
                 activity.recreate(); until("document.querySelector('.title-resume-preview')"); viewport(size[0], size[1]);
                 assertEquals("Completed records offer a review", "true", js("document.querySelector('.title-resume-preview').textContent.includes('已结案')&&document.querySelector('.title-continue').textContent==='回顾调查'"));
                 click("回顾调查"); until("document.querySelector('.ending-dock')");
+                paintedHomeEmblem(".ending-actions .home-emblem-art");
                 readableNavigation();
                 assertEquals("The ending stays read-only with the original party", "true", js("!document.querySelector('.dock-input')&&!document.querySelector('.party-action-status')&&!document.querySelector('.scene-npc')&&document.querySelectorAll('.ending-dock .party-compact').length===" + size[2]));
                 assertEquals("Outcome uses the drawn record mount and readable text", "true", js("getComputedStyle(document.querySelector('.ending-copy')).borderImageSource.includes('panel-frame')&&parseFloat(getComputedStyle(document.querySelector('.ending-copy p')).fontSize)>=15"));
