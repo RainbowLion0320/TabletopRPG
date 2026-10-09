@@ -1368,7 +1368,7 @@ export function createInitialGameState(players: Investigator[]): GameState {
     flags: {},
     actionLog: [{ time: time(), text: '游戏开始 · 摩勒住宅' }],
     conversationHistory: [],
-    messages: [{ id: id(), type: 'dm', text: initialMessage, npcName: null }],
+    messages: [{ id: id(), type: 'dm', text: players.length === 1 ? initialMessage.replace('你们', '你') : initialMessage, npcName: null }],
     suggestions,
     suggestionsByPlayerId,
     isThinking: false,

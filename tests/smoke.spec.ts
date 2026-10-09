@@ -655,6 +655,7 @@ for (const size of [{ width: 320, height: 568, party: 4 }, { width: 390, height:
     const archiveEntry = await page.getByRole('button', { name: '资料', exact: true }).boundingBox();
     expect(archiveEntry!.width).toBeGreaterThanOrEqual(44);
     expect(archiveEntry!.height).toBeGreaterThanOrEqual(44);
+    expect(await page.locator('.world-time').evaluate(el => Number.parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(12);
     if (size.width < 700) {
       await expect(page.locator('.brand-scene')).toHaveText('泰晤士港·扶桑花号');
       await expect(page.locator('.world-time')).toHaveText('1920-07-13 17:30');

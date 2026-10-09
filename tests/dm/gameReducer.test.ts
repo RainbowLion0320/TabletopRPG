@@ -7,17 +7,24 @@ import { makeInvestigator, makeState } from './fixtures';
 import { createInvestigatorFromPreset, presets } from '../../src/data/presets';
 
 describe('gameReducer start opening message', () => {
-  it('keeps the scenario opening compact while preserving the letter paragraph break', () => {
-    const next = gameReducer(makeState(), {
-      type: 'start',
-      players: [makeInvestigator({ name: '亨利' })]
-    });
-    const opening = next.messages[0]?.text ?? '';
+  it('keeps compact openings appropriate for the party while preserving stored narration', () => {
+    const authored = getScenarioDefinition().presentation.openingNarrative;
+    for (const partySize of [1, 2, 4]) {
+      const next = gameReducer(makeState(), { type: 'start',
+        players: Array.from({ length: partySize }, (_, i) => makeInvestigator({ id: `opening-${i}`, name: `调查员${i}` })) });
+      const opening = next.messages[0]?.text ?? '';
+      expect(opening).toMatch(/^.+。雨夜的伦敦/);
+      expect(opening).not.toContain('。\n\n雨夜的伦敦');
+      expect(opening.match(/\n\n/g)).toHaveLength(1);
+      expect(opening).toContain('\n\n信中写道');
+      expect(opening).toContain(partySize === 1 ? '你站在纽伦上街101号' : '你们站在纽伦上街101号');
+      expect(opening.split('\n\n')[1]).toBe(authored.split('\n\n')[1]);
+      if (partySize > 1) expect(opening).toBe(authored);
 
-    expect(opening).toMatch(/^.+。雨夜的伦敦/);
-    expect(opening).not.toContain('。\n\n雨夜的伦敦');
-    expect(opening.match(/\n\n/g)).toHaveLength(1);
-    expect(opening).toContain('\n\n信中写道');
+      const saved = { ...next, messages: [{ ...next.messages[0], text: authored }] };
+      const restored = gameReducer(next, { type: 'restore', state: saved });
+      expect(restored.messages[0].text).toBe(authored);
+    }
   });
 
   it('keeps message ids unique when time and randomness are identical', () => {

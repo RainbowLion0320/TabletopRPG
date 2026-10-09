@@ -4,7 +4,7 @@
 > Updated: 2026-10-10
 > Scope: current React/Vite implementation
 
-In 0.5.30, the archive frame hides in the same paint that its page unmounts, avoiding an empty frame sliding over the returned game. Normal opening retains its existing transition; reduced-motion opening is immediate. Close-button and Escape navigation retain page cleanup, query resets, restored focus, complete multiline drafts, party and ending review. No presence timer, hidden graph retention or gameplay changes are introduced. Nineteen painted assets, full scene/NPC composition and readable short-screen navigation remain intact.
+In 0.5.31, a new solo opening uses the singular player address while multiplayer keeps the authored plural opening. Existing saved messages and the quoted letter remain intact; no source scenario, fingerprint, migration or request schema changes are made. Desktop story time is 12px, matching portrait readability, with full time/location, short-screen navigation and expanded story retained. Nineteen painted assets, archive cleanup and reduced-motion behavior remain intact.
 
 In 0.5.14, empty logs, unmatched log searches and empty saves use one dedicated painted silver-blue investigator ledger, faithful to the approved artist palette and motifs. The new 14,954-byte WebP is displayed proportionally within 112 by 72 pixels, with the existing state text at 15px. The decorative image receives no pointer input or accessible name. Empty logs center within their existing reading area; saves keep their existing space. Windows at most 500px high hide the illustration so status, search and exit remain reachable. Queries, focus, action drafts and save operations are preserved, with no added model rule, stored field or player step.
 
