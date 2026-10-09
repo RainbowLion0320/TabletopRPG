@@ -150,3 +150,19 @@ Edit target: the single supplied newly generated square silver-blue backing plat
 Change only the OUTSIDE TRANSPARENCY cleanup: remove every stray blue, cyan or white fleck, streak, splatter and isolated pixel outside the actual silver square button's complete outline, especially the floating white flecks ABOVE its top edge and the electric-blue splashes BELOW its bottom edge. All exterior pixels beyond the clean square button silhouette must be genuinely transparent alpha, with only a very narrow natural antialiased edge around the button. No colored haze or ragged residue outside the outline.
 Keep the actual square button COMPLETELY unchanged: same shape, complete uncut four corners, same light gray-blue matte textured icon center, same fine layered silver bevel rails, same tiny gold corner points, same paired pearls and four-point corner stars, same size and colors. The entire center surface inside the button stays fully opaque. Do not repaint, smooth, blur or remove the drawn frame. Do not add anything. No text, icon, digits, symbols in the center or backdrop.
 ```
+
+## archive-empty.webp
+
+初始生成：`exec-b6b772b3-d3ff-4700-9d08-911f4354b1df`；最终透明边缘编辑：`exec-3daf8d04-3d6d-4987-b98d-ace4fca67cb5`，2026-10-09。均使用内置 Image Gen，初始新图无参考图，编辑仅参考初始生成 PNG；原生成文件保留于本机生成目录，不提交。
+
+### 初始生成
+
+```text
+Create one finely painted game UI inventory illustration for the empty-record state of a 1920s London mystery tabletop RPG. A small open investigator's case ledger with two entirely blank, pale blue-grey paper leaves, a deep rain-blue cloth cover, layered brushed-silver corner fittings and one restrained muted-gold pin. A slender silver magnifying glass rests diagonally across the lower right edge. Composition is a compact, clearly recognizable object, slightly elevated three-quarter view, centered with generous actual transparent space around it. Match an existing cold midnight-blue UI with ivory-silver fine double outlines, tiny paired pearl details and discreet four-point star motifs at metal corners. Rich hand-painted material detail, subtle worn blue fabric, softly shaded cool paper and controlled silver edge highlights; crisp silhouette and legibility when displayed at 64 to 72 pixels high. The ledger pages are empty. The visual mood is quiet investigation, no warning or failure cues. Produce a polished two-dimensional game asset, not a web outline icon, photograph or complete interface. No people, scene background, lettering, numbers, logo, progress indicator or outer UI panel. No brown leather or warm sepia parchment. Use native RGBA transparency outside the object, preserve soft edge alpha, avoid a checkerboard drawn into the pixels and avoid a large ground shadow. One object composition only, no variants or contact sheet.
+```
+
+### 外部透明区域清理
+
+```text
+Edit only the transparency and outside-edge cleanup of the supplied open silver-blue investigator ledger asset. Keep the book, blank paper leaves, blue cloth, four silver corners, pearls and stars, small gold pin and magnifying glass exactly as drawn: same shapes, materials, colours, texture, perspective and composition. Remove all diffuse blue, grey and white background haze, all large soft ground or glow shadows around the object, and all non-object background pixels. The whole outside region around the exact ledger and magnifier silhouette must be true RGBA alpha 0, with only a narrow natural anti-aliased silhouette edge. The physical book, pages, metal and handle must be opaque; only actual glass highlights may retain a little natural translucency. Do not darken or repaint the object. Do not introduce a presentation background or checkerboard. One existing object only, no text or new details. Return a clean production cutout ready to show at a small size on a midnight-blue game panel.
+```

@@ -45,7 +45,9 @@
 .action-log-list > li:last-child { border-bottom: 0; }
 .action-log-time { display: block; font-size: 12px; line-height: 1.5; color: var(--muted); font-variant-numeric: tabular-nums; }
 .action-log-list p { margin: 6px 0 0; color: var(--text); font-size: 15px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
-.action-log-list > .action-log-empty { padding: 16px 0; color: var(--accent); font-size: 14px; line-height: 1.7; }
+.action-log-list:has(> .action-log-empty) { display: flex; align-items: center; justify-content: center; }
+.action-log-list > .action-log-empty { display: grid; justify-items: center; gap: 12px; padding: 12px 0; color: var(--accent); font-size: 15px; line-height: 1.7; text-align: center; }
 .action-log-list > .action-log-empty::before { display: none; }
+@media (max-height: 500px) { .action-log-list > .action-log-empty { gap: 0; padding: 0; } }
 @media (max-height: 420px) { .action-log-heading { display: none; } .record-log-search { margin-bottom: 6px; } }
 @media (prefers-reduced-motion: reduce) { .investigation-history summary > svg:last-child { transition: none; } }

@@ -3,6 +3,7 @@ import { BookOpen, Check, ChevronDown, Clock3, Flag, Search, Target, X } from 'l
 import type { GameState } from '../../types/game';
 import { getScenarioDefinition, getScenarioProgressForState, getVisibleScenarioObjectives } from '../../scenario/engine';
 import { isPlayerVisibleLogEntry } from '../../services/narrativeVisibility';
+import { ArchiveEmptyArt } from '../shared/ArchiveEmptyArt';
 import './investigation-records.css';
 
 type Progress = ReturnType<typeof getScenarioProgressForState>;
@@ -97,7 +98,7 @@ export function ActionLogArchive({ entries, query, onQueryChange, scrollPosition
         <span className="action-log-time">{entry.time}</span><p>{entry.text}</p>
       </li>)}
       {!matches.length && <li className="action-log-empty" role="status">
-        {normalizedQuery ? '没有找到相关记录。' : '暂无行动记录。'}
+        <ArchiveEmptyArt /><span>{normalizedQuery ? '没有找到相关记录。' : '暂无行动记录。'}</span>
       </li>}
     </ol>
   </section>;

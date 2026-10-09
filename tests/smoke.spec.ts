@@ -2480,7 +2480,7 @@ for (const party of [1, 2, 4] as const) {
   });
 }
 
-test('save manager can load and delete explicit save slots', async ({ page }) => {
+test('save manager can load and delete explicit save slots', async ({ page }, testInfo) => {
   await startNewGame(page);
   const input = page.locator('.dock-input');
   await input.fill('先保存门廊的调查安排。');
@@ -2527,6 +2527,12 @@ test('save manager can load and delete explicit save slots', async ({ page }) =>
   await saveManager.getByRole('button', { name: '确认删除' }).click();
   await expect(page.getByRole('dialog', { name: '读取存档' }).getByText('暂无存档')).toBeVisible();
   await expect(page.getByRole('button', { name: '关闭', exact: true })).toBeFocused();
+  await page.screenshot({ path: testInfo.outputPath('empty-save-record.png') });
+  await page.screenshot({ path: 'output/ui-2026-10-08/208-empty-save-painted.png' });
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.screenshot({ path: 'output/ui-2026-10-08/210-empty-save-small.png' });
+  await page.setViewportSize({ width: 390, height: 300 });
+  await page.screenshot({ path: 'output/ui-2026-10-08/211-empty-save-short.png' });
 });
 
 for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390, height: 844, party: 2 as const }, { width: 1440, height: 900, party: 1 as const }]) {

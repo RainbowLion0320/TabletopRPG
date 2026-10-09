@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { FolderOpen, Trash2, X } from 'lucide-react';
 import type { IncompatibleSaveSlot, SaveSlot } from '../../types/game';
 import { useDialogFocus } from '../shared/useDialogFocus';
+import { ArchiveEmptyArt } from '../shared/ArchiveEmptyArt';
 import './save-manager.css';
 
 interface SaveManagerModalProps {
@@ -127,7 +128,7 @@ export function SaveManagerModal({ incompatibleSaves = [], onClose, onDelete, on
               </div>}
             </article>;
           })}
-        </div> : <div className="save-manager-empty"><FolderOpen size={32} aria-hidden="true" /><p>暂无存档</p></div>}
+        </div> : <div className="save-manager-empty"><ArchiveEmptyArt /><p>暂无存档</p></div>}
 
         <footer><button ref={closeRef} type="button" className="ghost-btn" disabled={busy} onClick={close}>关闭</button></footer>
       </div>

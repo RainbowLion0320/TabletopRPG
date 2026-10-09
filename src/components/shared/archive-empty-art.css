@@ -1,0 +1,2 @@
+.archive-empty-art { display: block; width: 112px; height: 72px; object-fit: contain; pointer-events: none; user-select: none; }
+@media (max-height: 500px) { .archive-empty-art { display: none; } }

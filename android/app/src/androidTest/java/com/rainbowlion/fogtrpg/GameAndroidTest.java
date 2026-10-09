@@ -450,7 +450,9 @@ public class GameAndroidTest {
                 click("进度"); click("日志");
                 assertEquals("Log queries survive switching reference tabs", "true", js("document.querySelector('.record-log-search input').value==='摩勒住宅'"));
                 fill(".record-log-search input", "没有这条QA记录"); until("document.querySelector('.action-log-empty')");
+                screenshot(prefix + "-log-empty");
                 viewport(size[0], 300); reachable("[aria-label='关闭资料']"); reachable(".record-log-search input");
+                screenshot(prefix + "-log-empty-short");
                 reachable("[aria-label='清空日志搜索']"); nativeTap("[aria-label='清空日志搜索']");
                 until("document.activeElement===document.querySelector('.record-log-search input')&&document.querySelector('.record-log-search input').value===''");
                 assertEquals("Only the log list scrolls beneath its controls above the keyboard", "true", js("(()=>{const l=document.querySelector('.action-log-list').getBoundingClientRect(),s=document.querySelector('.record-log-search').getBoundingClientRect();return l.top>=s.bottom&&l.bottom<=innerHeight+1&&l.height>60})()"));
