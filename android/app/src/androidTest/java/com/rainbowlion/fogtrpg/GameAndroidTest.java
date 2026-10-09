@@ -262,6 +262,7 @@ public class GameAndroidTest {
                 reachable(".setup-footer .primary-btn");
                 assertEquals("Expanded stats do not widen the card", "true", js("Array.from(document.querySelectorAll('.preset-card-content')).every(e=>e.scrollWidth<=e.clientWidth+1)"));
                 click("进入游戏"); reachable(".dock-input");
+                assertEquals("Empty phone action hint stays inside its field", "true", js("(()=>{const e=document.querySelector('.dock-input');return e.value===''&&e.scrollHeight<=e.clientHeight+1})()"));
                 readablePartyDossiers();
                 if (size[0] == 360) {
                     // Wait for the non-interactive save notification to fade before testing the HUD.
@@ -272,6 +273,7 @@ public class GameAndroidTest {
                     readablePartyDossiers();
                     assertEquals("Smallest four-player HUD keeps every value inside its card", "true", js("Array.from(document.querySelectorAll('.party-compact,.party-strip-compact')).every(e=>e.scrollWidth<=e.clientWidth+1)"));
                     assertEquals("Smallest four-player reading area remains usable", "true", js("document.querySelector('.narrative-panel').clientHeight>=140"));
+                    assertEquals("Smallest four-player empty action hint is not clipped", "true", js("(()=>{const e=document.querySelector('.dock-input');return e.value===''&&e.scrollHeight<=e.clientHeight+1})()"));
                     screenshot("portrait-320x568-four-game");
                     viewport(size[0], size[1]);
                 }
@@ -626,7 +628,7 @@ public class GameAndroidTest {
                         boolean narrator = body.contains("COC 第七版 AI DM Agent");
                         if (narrator) narratorCalls.incrementAndGet();
                         assertEquals("Bearer android-qa-only-token", request.getHeader("Authorization"));
-                        String content = narrator ? "{\"narrative\":\"Android 调查继续，伊莎贝拉说明父亲失踪的经过。\",\"activeNpc\":\"伊莎贝拉·摩勒\",\"nextPrompt\":\"继续调查。\",\"playerChoices\":{}}" : "{\"facts\":[],\"nodes\":[],\"edges\":[]}";
+                        String content = narrator ? "{\"narrative\":\"Android 调查继续，伊莎贝拉说明父亲失踪的经过。\",\"activeNpc\":\"伊莎贝拉·摩勒\",\"nextPrompt\":\"继续调查。\",\"playerChoices\":[\"检查门锁\",\" 检查门锁 \",\"观察窗边\",\"询问委托人\"]}" : "{\"facts\":[],\"nodes\":[],\"edges\":[]}";
                         String response = request.getPath().endsWith("/responses") ? "{\"output_text\":" + JSONObject.quote(content) + "}" : "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":" + JSONObject.quote(content) + "}}]}";
                         MockResponse reply = new MockResponse().setHeader("Content-Type", "application/json").setBody(response);
                         if (party == 1 && narrator) reply.setBodyDelay(10, TimeUnit.SECONDS);
@@ -663,6 +665,12 @@ public class GameAndroidTest {
                 until("document.querySelectorAll('.story-message.player').length === " + party);
                 assertEquals("Multiline player action is preserved in the actual turn", "true", js("document.querySelector('.story-message.player .player-message-text').textContent.includes('接受委托'+String.fromCharCode(10)+'询问失踪经过')"));
                 assertNoResizeErrors();
+                until("document.querySelectorAll('.suggestion-row button').length===3");
+                assertEquals("Distinct choices remain beside the existing story route", "true", js("Array.from(document.querySelectorAll('.suggestion-row button')).map(e=>e.textContent).join('|')==='前往老赫特酒吧继续调查|检查门锁|观察窗边'"));
+                nativeTap(".suggestion-row button:first-child");
+                assertEquals("A suggestion only fills the current draft", "true", js("document.querySelector('.dock-input').value==='前往老赫特酒吧继续调查'"));
+                assertEquals("A suggestion never starts another model turn", 1, narratorCalls.get());
+                assertEquals("No additional action was submitted", String.valueOf(party), js("document.querySelectorAll('.story-message.player').length"));
                 assertEquals("No API token in WebView storage", "null", js("localStorage.getItem('trpg-api')"));
                 assertFalse(context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE).getAll().toString().contains("android-qa-only-token"));
                 assertTrue(context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE).contains("trpg-api"));
@@ -670,12 +678,15 @@ public class GameAndroidTest {
                 SystemClock.sleep(300);
                 js("window.qaPortraitUpgradeReady=false;Capacitor.Plugins.GameStorage.readAll().then(async({values})=>{"
                     + "const record=JSON.parse(values['trpg-android-session-v1']);record.state.players.forEach((p,i)=>p.portrait='/assets/'+String(i+1).padStart(16,'0')+'-oldBuild.webp');"
+                    + "window.qaDistinctSavedChoices=Object.values(record.state.suggestionsByPlayerId).every(list=>list.length===3&&new Set(list).size===3&&list[1]==='检查门锁'&&list[2]==='观察窗边');"
                     + "await Capacitor.Plugins.GameStorage.write({key:'trpg-android-session-v1',value:JSON.stringify(record)});window.qaPortraitUpgradeReady=true;})");
                 until("window.qaPortraitUpgradeReady");
+                assertEquals("Encrypted save retains distinct choices within the existing story route limit", "true", js("window.qaDistinctSavedChoices"));
                 activity.recreate(); until("document.querySelector('.title-screen')"); viewport(390, 844); click("继续游戏");
                 until("document.body.innerText.includes('Android 调查继续')");
                 assertEquals("No repeated API prompt", "false", js("Boolean(document.querySelector('#api-config-modal-title'))"));
                 assertEquals("Encrypted session recovery keeps every line of the draft", "true", js("document.querySelector('.dock-input').value.split(String.fromCharCode(10)).join('|')==='下轮先观察门廊|再询问雨夜访客'"));
+                assertEquals("Encrypted recovery retains distinct choices and the existing route", "true", js("Array.from(document.querySelectorAll('.suggestion-row button')).map(e=>e.textContent).join('|')==='前往老赫特酒吧继续调查|检查门锁|观察窗边'"));
                 until("document.querySelector('.dock-actor-avatar img')?.complete&&document.querySelector('.dock-actor-avatar img').naturalWidth>0");
                 nativeTap(".dock-actor-avatar"); until("document.querySelector('.investigator-sheet')");
                 for (int i = 0; i < party; i++) {
@@ -713,7 +724,7 @@ public class GameAndroidTest {
                     nativeTap(".npc-nameplate"); until("document.querySelector('.entity-detail-card')");
                     nativeTap(".entity-detail-close"); until("!document.querySelector('.entity-detail-card')");
                     assertEquals("Known NPC return retains multiline action and reading", "true", js("document.querySelector('.dock-input').value==='记下求助信日期'+String.fromCharCode(10)+'然后检查门廊'&&document.querySelector('.narrative-scroll').scrollTop===100"));
-                    nativeTap(".dock-submit"); until("document.querySelector('.dock-input').placeholder.includes('艾达·华莱士')");
+                    nativeTap(".dock-submit"); until("document.querySelector('.dock-input').getAttribute('aria-label')==='艾达·华莱士的行动'");
                     assertEquals("Changing actor retains the entire long history without calling the model", "true", js("document.querySelectorAll('.story-message.dm').length===200&&document.querySelectorAll('.story-message.player').length===1&&document.querySelector('.narrative-scroll').scrollTop===100&&!!document.querySelector('.narrative-new-content')"));
                     assertEquals(1, narratorCalls.get()); screenshot("long-history-input");
                 }

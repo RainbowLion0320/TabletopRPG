@@ -210,6 +210,20 @@ describe('callNarrator retry repair', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it.each(['legacy array', 'player map'])('retains distinct suggestions before the visible limit for a %s without retrying', async (format) => {
+    const choices = [' 检查**窗户** ', '检查窗户', '询问委托人', '查看信件', '自由探索街道'];
+    const fetchMock = vi.fn(async () => jsonResponse(JSON.stringify({
+      narrative: '雨声仍在窗外回响。', activeNpc: null, nextPrompt: '', keywords: [],
+      playerChoices: format === 'legacy array' ? choices : { 亨利: choices }
+    })));
+    vi.stubGlobal('fetch', fetchMock);
+    const output = await callNarrator(config, {
+      ctx, actions: [{ player: '亨利', action: '我先观察房间。' }], history: []
+    });
+    expect(output.playerChoices).toEqual({ 亨利: ['检查窗户', '询问委托人', '查看信件'] });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('strips unsupported inline Markdown from every player-visible model field', async () => {
     const content = JSON.stringify({
       narrative: '你们来到了位于街角的**老赫特酒吧**，酒保放下`酒杯`。',

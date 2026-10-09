@@ -507,9 +507,11 @@ function normalizePartySceneFromSave(source: Record<string, unknown>, players: I
 }
 
 function normalizeStringList(value: unknown, fallback: string[]) {
-  if (!Array.isArray(value)) return fallback;
-  const list = value.flatMap((item) => typeof item === 'string' && item.trim() ? [item.trim()] : []);
-  return list.length ? list.slice(0, 5) : fallback;
+  const strings = Array.isArray(value)
+    ? value.flatMap((item) => typeof item === 'string' && item.trim() ? [item.trim()] : [])
+    : [];
+  const list = [...new Set(strings)].slice(0, 5);
+  return list.length ? list : [...new Set(fallback.map((item) => item.trim()).filter(Boolean))].slice(0, 5);
 }
 
 const INITIAL_SUGGESTION_SETS = [

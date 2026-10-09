@@ -212,6 +212,53 @@ async function gotoWithSave(page: Page, gameState: GameState, apiConfig?: Record
   await page.goto('/');
 }
 
+for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }]) {
+  test(`resumed suggestions stay distinct and only fill the current investigator at ${size.width}px`, async ({ page }) => {
+    await page.setViewportSize(size);
+    const state = createDynamicCaseBoardSave();
+    state.scenarioProgress = createSmokeScenarioProgress();
+    state.suggestionsByPlayerId = { inspector: ['检查门锁', ' 检查门锁 ', '询问委托人', '观察街道'], nurse: ['安抚委托人', ' 安抚委托人 ', '观察门廊', '留意窗边'] };
+    state.declarations = { inspector: '先记下日期\n再查看门廊', nurse: '留意屋内的声音' };
+    const warnings: string[] = [];
+    page.on('console', message => { if (/same key/i.test(message.text())) warnings.push(message.text()); });
+    await gotoWithSave(page, state);
+    await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+    const suggestions = page.locator('.suggestion-row button'), input = page.locator('.dock-input');
+    await expect(suggestions).toHaveText(['检查门锁', '询问委托人', '观察街道']);
+    await expect(input).toHaveValue(state.declarations.inspector);
+    await suggestions.nth(2).click();
+    await expect(input).toHaveValue('观察街道');
+    await expect(input).toHaveAttribute('aria-label', '亨利·格雷的行动');
+    await expect(page.locator('.story-message.player')).toHaveCount(0);
+    await input.fill(state.declarations.inspector);
+    await page.getByRole('button', { name: '下一位', exact: true }).click();
+    await expect(input).toHaveAttribute('aria-label', '艾达·华莱士的行动');
+    await expect(input).toHaveValue(state.declarations.nurse);
+    await expect(suggestions).toHaveText(['安抚委托人', '观察门廊', '留意窗边']);
+    await suggestions.nth(1).click();
+    await expect(input).toHaveValue('观察门廊');
+    await expect(page.locator('.story-message.player')).toHaveCount(1);
+    await expect(page.locator('.story-message.player')).toContainText(state.declarations.inspector);
+    expect(warnings).toEqual([]);
+  });
+
+  test(`empty phone action hint fits without a clipped second line at ${size.width}px`, async ({ page }) => {
+    await page.setViewportSize(size);
+    await startNewGame(page, 4);
+    const input = page.locator('.dock-input');
+    await expect(input).toHaveValue('');
+    await expect(input).toHaveAttribute('aria-label', '亨利·格雷的行动');
+    await expect.poll(() => input.evaluate(element => element.scrollHeight - element.clientHeight)).toBeLessThanOrEqual(1);
+    await input.fill('先记下日期，再检查门锁。\n保留自由描述。');
+    await page.getByRole('button', { name: '下一位', exact: true }).click();
+    await expect(input).toHaveValue('');
+    await expect(input).toHaveAttribute('aria-label', '艾达·华莱士的行动');
+    await expect.poll(() => input.evaluate(element => element.scrollHeight - element.clientHeight)).toBeLessThanOrEqual(1);
+    await expect(page.locator('.story-message.player')).toContainText('保留自由描述。');
+    await expect(page.locator('.dock-submit')).toBeDisabled();
+  });
+}
+
 for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390, height: 844, party: 2 as const }]) {
   test(`phone multiline actions stay compact and retain the correct actor at ${size.width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize(size);
@@ -382,7 +429,7 @@ test('a 200-entry four-player history keeps all prose and marks while typing, in
   await expect(scroll).toHaveJSProperty('scrollTop', 100);
   await expect(input).toHaveValue('把信中的日期记下来。\n随后检查门廊。');
   await page.getByRole('button', { name: '下一位', exact: true }).click();
-  await expect(input).toHaveAttribute('placeholder', '艾达·华莱士 想要做什么...');
+  await expect(input).toHaveAttribute('aria-label', '艾达·华莱士的行动');
   await expect(input).toBeFocused(); await expect(scroll).toHaveJSProperty('scrollTop', 100);
   await expect(scroll.locator('.story-message.player')).toHaveCount(1);
   expect(await scroll.locator('.story-message.dm p').allTextContents()).toEqual(original);
@@ -511,7 +558,7 @@ function createPoliceStationSave(): GameState {
 test('a selected two-investigator party reaches the main game with both status cards', async ({ page }) => {
   await startNewGame(page, 2);
 
-  await expect(page.getByPlaceholder('亨利·格雷 想要做什么...')).toBeVisible();
+  await expect(page.getByRole('textbox', { name: '亨利·格雷的行动', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '下一位' })).toBeDisabled();
   await expect(page.locator('.brand-title')).toHaveText('第一幕：接受委托');
   await expect(page.locator('.brand-scene')).toHaveText('摩勒住宅');
@@ -747,7 +794,7 @@ test('a solo player can replace the default investigator and cannot start an emp
   await expect(page.locator('.preset-card-modern.selected')).toHaveCount(1);
   await start.click();
   await expect(page.locator('.party-strip-compact .party-compact')).toHaveCount(1);
-  await expect(page.getByPlaceholder('艾达·华莱士 想要做什么...')).toBeVisible();
+  await expect(page.getByRole('textbox', { name: '艾达·华莱士的行动', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '提交', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: '下一位', exact: true })).toHaveCount(0);
 });
@@ -1927,7 +1974,7 @@ test('submitting an action without an API key opens configuration and keeps vali
   test.skip(hasEnvDefaultApiKey, 'requires no default API key from process env or .env.local');
   await startNewGame(page);
 
-  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('检查书房桌面。');
+  await page.getByRole('textbox', { name: '亨利·格雷的行动', exact: true }).fill('检查书房桌面。');
   await page.getByRole('button', { name: '提交' }).click();
 
   await expect(page.getByRole('heading', { name: 'AI DM 配置' })).toBeVisible();
@@ -2141,7 +2188,7 @@ test('saving a game enables continuing the latest save after reloading the title
 
   await page.getByRole('button', { name: '继续游戏' }).click();
   await expect(page.locator('.game-screen')).toBeVisible();
-  await expect(page.getByPlaceholder('亨利·格雷 想要做什么...')).toBeVisible();
+  await expect(page.getByRole('textbox', { name: '亨利·格雷的行动', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '菜单', exact: true }).click();
   await page.getByRole('button', { name: '返回首页', exact: true }).click();
   // Web navigation keeps a live checkpoint only for this page; a fresh page uses the explicit manual save.
@@ -2219,7 +2266,7 @@ test('save manager can load and delete explicit save slots', async ({ page }) =>
 
   await saveManager.getByRole('article').last().getByRole('button', { name: '载入存档' }).click();
   await expect(input).toHaveValue('先保存门廊的调查安排。');
-  await expect(page.getByPlaceholder('亨利·格雷 想要做什么...')).toBeVisible();
+  await expect(page.getByRole('textbox', { name: '亨利·格雷的行动', exact: true })).toBeVisible();
   await expect(page.getByText('已载入存档')).toBeVisible();
 
   await page.getByRole('button', { name: /菜单/ }).click();

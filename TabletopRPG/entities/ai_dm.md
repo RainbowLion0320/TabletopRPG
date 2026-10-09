@@ -4,12 +4,14 @@ title: AI DM 系统
 tags: [ai, core, implemented]
 sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-14
-updated: 2026-10-08
+updated: 2026-10-09
 ---
 
 # AI DM 系统
 
 ## 角色定位
+
+0.4.42 在本地整理重复行动建议：Narrator 先按现有正文格式处理、保留首次出现的不同文本，再取前三项；reducer 对响应、旧存档和已有回退建议去重后保留原五项上限。角色之间独立，原始 DM 记录保持。数量少或重复不触发模型重试、不补造行动，建议仍只填入当前调查员，玩家可以自由修改和输入。
 
 0.4.10 APK 按用户新授权默认连接 MiMo Token Plan / `mimo-v2.6-pro`；既有玩家连接优先，源码与网页不携带真实密钥。MiMo 的 Responses / Chat 适配改用受支持的正文格式，schema 作为正向格式契约；工具阶段保留普通输出，JSON-only 阶段使用 JSON 模式。推理随当前工具往返保留，始终不进入玩家正文。模型先回工具而没有正文时，提议暂存，再获取一次 JSON 正文，最后仍由 Director 审核，不提前掷骰或写入状态。见 [[concepts/android_app]] 与 [构建说明](../../docs/ANDROID.md)。
 

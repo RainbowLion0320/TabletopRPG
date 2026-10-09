@@ -572,6 +572,35 @@ describe('gameReducer applyAiResponse pendingConsequences merge', () => {
     expect(next.suggestions).toEqual(['检查书桌暗格', '比对便签笔迹', '询问伊莎贝拉父亲习惯']);
   });
 
+  it('keeps the first distinct suggestions before the retained limit without merging players', () => {
+    const state = makeState({ players: [makeInvestigator({ id: 'henry', name: '亨利' }), makeInvestigator({ id: 'ada', name: '艾达' })] });
+    const response: AiResponse = {
+      narrative: '你们继续查看房间。', playerChoices: {
+        亨利: [' 查看窗户 ', '查看窗户', '询问委托人', '检查门锁', '观察街道', '整理记录', '查看楼梯'],
+        艾达: ['查看窗户', ' 查看窗户 ', '安抚委托人']
+      }
+    };
+    const original = JSON.stringify(response);
+    const next = gameReducer(state, { type: 'applyAiResponse', response, raw: original });
+    expect(next.suggestionsByPlayerId).toEqual({
+      henry: ['查看窗户', '询问委托人', '检查门锁', '观察街道', '整理记录'],
+      ada: ['查看窗户', '安抚委托人']
+    });
+    expect(next.suggestions).toEqual(next.suggestionsByPlayerId.henry);
+    expect(next.conversationHistory.at(-1)?.content).toBe(original);
+    expect(JSON.stringify(response)).toBe(original);
+  });
+
+  it('cleans retained suggestions when a reply omits player choices without inventing actions', () => {
+    const state = makeState({ players: [makeInvestigator({ id: 'henry', name: '亨利' }), makeInvestigator({ id: 'ada', name: '艾达' })] });
+    state.suggestionsByPlayerId = { henry: ['查看窗户', ' 查看窗户 ', '询问委托人'], ada: ['安抚委托人'] };
+    state.suggestions = ['查看窗户', '查看窗户'];
+    const next = gameReducer(state, { type: 'applyAiResponse', response: { narrative: '雨声仍在窗外回响。', playerChoices: {} }, raw: '{}' });
+    expect(next.suggestionsByPlayerId).toEqual({ henry: ['查看窗户', '询问委托人'], ada: ['安抚委托人'] });
+    expect(next.suggestions).toEqual(['查看窗户', '询问委托人']);
+    expect(state.suggestionsByPlayerId.henry).toEqual(['查看窗户', ' 查看窗户 ', '询问委托人']);
+  });
+
   it('keeps nextPrompt out of player-visible messages while retaining raw DM record', () => {
     const state = makeState({
       players: [makeInvestigator({ name: '亨利' })]
@@ -839,6 +868,24 @@ describe('gameReducer scene focus synchronization', () => {
 });
 
 describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
+  it.each(['global', 'player id', 'player name'])('deduplicates %s suggestions on resume while keeping action ownership and source data', (format) => {
+    const players = [makeInvestigator({ id: 'henry', name: '亨利' }), makeInvestigator({ id: 'ada', name: '艾达' })];
+    const duplicates = [' 查看窗户 ', '查看窗户', '询问委托人', '检查门锁'];
+    const source = { ...makeState({ players }), currentActorIndex: 1, declarations: { henry: '观察房间', ada: '先记下日期\n再检查门锁' },
+      suggestions: duplicates, suggestionsByPlayerId: format === 'global' ? undefined : {
+        [format === 'player id' ? 'henry' : '亨利']: duplicates,
+        [format === 'player id' ? 'ada' : '艾达']: ['安抚委托人', ' 安抚委托人 ', '观察门廊']
+      } };
+    const original = JSON.stringify(source);
+    const restored = hydrateGameState(source);
+    expect(restored.suggestions).toEqual(['查看窗户', '询问委托人', '检查门锁']);
+    expect(restored.suggestionsByPlayerId).toEqual({ henry: ['查看窗户', '询问委托人', '检查门锁'],
+      ada: format === 'global' ? ['查看窗户', '询问委托人', '检查门锁'] : ['安抚委托人', '观察门廊'] });
+    expect(restored.currentActorIndex).toBe(1);
+    expect(restored.declarations).toEqual(source.declarations);
+    expect(JSON.stringify(source)).toBe(original);
+  });
+
   it('rebinds shipped portrait URLs across builds without resetting investigator progress', () => {
     const files = ['henry_gray', 'ada_wallace', 'thomas_bell', 'robert_shaw'];
     for (const format of ['apk', 'web', 'source', 'android-preview', 'missing']) {

@@ -496,7 +496,7 @@ function parseNarratorJson(raw: string): NarratorJsonShape {
 
 function coerceStringArray(v: unknown): string[] {
   if (!Array.isArray(v)) return [];
-  return v.flatMap((x) => typeof x === 'string' && x.trim() ? [normalizeModelText(x)] : []).slice(0, 3);
+  return [...new Set(v.flatMap((x) => typeof x === 'string' && x.trim() ? [normalizeModelText(x)] : []))].slice(0, 3);
 }
 
 function removeLastUnpairedDoubleQuote(value: string): string {

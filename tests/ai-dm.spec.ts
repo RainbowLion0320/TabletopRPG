@@ -95,7 +95,7 @@ test('portrait four-player dice completes a partially supplied batch without fal
   });
   await startGameWithApi(page, { provider: 'custom', protocol: 'responses', endpoint: 'https://unit.test/v1', apiKey: 'test-key', model: 'test-model' }, 4);
   for (let i = 0; i < 4; i++) {
-    await page.getByPlaceholder(`${investigatorNames[i]} 想要做什么...`).fill('原地思考');
+    await page.getByRole('textbox', { name: `${investigatorNames[i]}的行动`, exact: true }).fill('原地思考');
     await page.getByRole('button', { name: i === 3 ? '提交' : '下一位', exact: true }).click();
   }
   await page.evaluate(() => { Math.random = () => .899; });
@@ -152,7 +152,7 @@ for (const scenario of [
       apiKey: 'test-key', model: 'test-model'
     }, scenario.partySize);
     for (let index = 0; index < scenario.partySize; index++) {
-      await page.getByPlaceholder(`${investigatorNames[index]} 想要做什么...`).fill(`询问失踪经过，记录${index + 1}。`);
+      await page.getByRole('textbox', { name: `${investigatorNames[index]}的行动`, exact: true }).fill(`询问失踪经过，记录${index + 1}。`);
       await page.getByRole('button', { name: index === scenario.partySize - 1 ? '提交' : '下一位', exact: true }).click();
     }
     await expect(page.getByRole('button', { name: '重试本轮' })).toBeVisible();
@@ -266,9 +266,9 @@ test('AI DM retries malformed model output instead of returning raw text as narr
   });
 
   await startGameWithApi(page);
-  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the study.');
+  await page.getByRole('textbox', { name: '亨利·格雷的行动', exact: true }).fill('Inspect the study.');
   await page.getByRole('button', { name: '下一位' }).click();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the hallway.');
+  await page.getByRole('textbox', { name: '艾达·华莱士的行动', exact: true }).fill('Watch the hallway.');
   await page.getByRole('button', { name: '提交', exact: true }).click();
 
   await expect.poll(() => narratorAttempts).toBe(2);
@@ -309,9 +309,9 @@ test('AI DM recovers an exhausted malformed turn without duplicating player hist
   });
 
   await startGameWithApi(page);
-  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the study.');
+  await page.getByRole('textbox', { name: '亨利·格雷的行动', exact: true }).fill('Inspect the study.');
   await page.getByRole('button', { name: '下一位' }).click();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the hallway.');
+  await page.getByRole('textbox', { name: '艾达·华莱士的行动', exact: true }).fill('Watch the hallway.');
   await page.getByRole('button', { name: '提交', exact: true }).click();
 
   await expect(page.getByText('The turn recovered without asking the players to submit twice.')).toBeVisible();
@@ -344,9 +344,9 @@ test('an exhausted turn can be saved, loaded and retried without duplicating dec
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(responseBody(content)) });
   });
   await startGameWithApi(page);
-  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the study.');
+  await page.getByRole('textbox', { name: '亨利·格雷的行动', exact: true }).fill('Inspect the study.');
   await page.getByRole('button', { name: '下一位' }).click();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the hallway.');
+  await page.getByRole('textbox', { name: '艾达·华莱士的行动', exact: true }).fill('Watch the hallway.');
   await page.getByRole('button', { name: '提交', exact: true }).click();
   await expect(page.getByRole('button', { name: '重试本轮' })).toBeVisible();
   expect(attempts).toBe(3);
@@ -384,9 +384,9 @@ test('AI DM repairs unescaped dialogue quotes locally without interrupting the t
   });
 
   await startGameWithApi(page);
-  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('追问那句话。');
+  await page.getByRole('textbox', { name: '亨利·格雷的行动', exact: true }).fill('追问那句话。');
   await page.getByRole('button', { name: '下一位' }).click();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('记录她的反应。');
+  await page.getByRole('textbox', { name: '艾达·华莱士的行动', exact: true }).fill('记录她的反应。');
   await page.getByRole('button', { name: '提交', exact: true }).click();
 
   await expect(page.getByText('伊莎贝拉说父亲总提到"水里的东西"，随后沉默下来。')).toBeVisible();
@@ -455,15 +455,15 @@ test('AI DM scene changes update the chapter, backdrop, party location, and resi
   await startGameWithApi(page);
   const initialBackdrop = await page.locator('.scene-backdrop-img').getAttribute('src');
 
-  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('我们接受这份委托。');
+  await page.getByRole('textbox', { name: '亨利·格雷的行动', exact: true }).fill('我们接受这份委托。');
   await page.getByRole('button', { name: '下一位' }).click();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('确认接受伊莎贝拉的委托。');
+  await page.getByRole('textbox', { name: '艾达·华莱士的行动', exact: true }).fill('确认接受伊莎贝拉的委托。');
   await page.getByRole('button', { name: '提交', exact: true }).click();
   await expect(page.getByText('你们正式接受了伊莎贝拉的委托。')).toBeVisible();
 
-  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('搜查书桌抽屉，寻找埃里克留下的合影照片。');
+  await page.getByRole('textbox', { name: '亨利·格雷的行动', exact: true }).fill('搜查书桌抽屉，寻找埃里克留下的合影照片。');
   await page.getByRole('button', { name: '下一位' }).click();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('为亨利照明并记录抽屉中实际发现的物品。');
+  await page.getByRole('textbox', { name: '艾达·华莱士的行动', exact: true }).fill('为亨利照明并记录抽屉中实际发现的物品。');
   await page.getByRole('button', { name: '提交', exact: true }).click();
   await expect(page.getByText('亨利·格雷 · 侦查')).toBeVisible();
   await page.evaluate(() => {
@@ -475,9 +475,9 @@ test('AI DM scene changes update the chapter, backdrop, party location, and resi
   await clueDiceDialog.getByRole('button', { name: '确认结果' }).click();
   await expect(page.getByText('合影把埃里克与蒙特利尔联系起来，警察局成为了明确的去处。')).toBeVisible();
 
-  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('我们前往上城区第二分局。');
+  await page.getByRole('textbox', { name: '亨利·格雷的行动', exact: true }).fill('我们前往上城区第二分局。');
   await page.getByRole('button', { name: '下一位' }).click();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('一起前往上城区第二分局。');
+  await page.getByRole('textbox', { name: '艾达·华莱士的行动', exact: true }).fill('一起前往上城区第二分局。');
   await page.getByRole('button', { name: '提交', exact: true }).click();
 
   await expect(page.locator('.brand-title')).toHaveText('第二幕：街区调查');
@@ -523,7 +523,7 @@ test(`${partySize} investigator(s): submit, locked D100 result, AI continuation 
   await expect(page.locator('.party-strip-compact .party-compact')).toHaveCount(partySize);
   if (partySize === 1) await expect(page.getByRole('button', { name: '下一位' })).toHaveCount(0);
   for (const [index, name] of partyNames.entries()) {
-    await page.getByPlaceholder(`${name} 想要做什么...`).fill(index === 0 ? '检查门锁。' : '在旁观察。');
+    await page.getByRole('textbox', { name: `${name}的行动`, exact: true }).fill(index === 0 ? '检查门锁。' : '在旁观察。');
     await page.getByRole('button', { name: index === partySize - 1 ? '提交' : '下一位', exact: true }).click();
     if (index < partySize - 1) {
       await expect(page.getByRole('button', { name: '掷骰', exact: true })).toHaveCount(0);
@@ -586,7 +586,7 @@ test(`${partySize} investigator(s): submit, locked D100 result, AI continuation 
   await page.getByRole('button', { name: /返回首页/ }).click();
   await page.getByRole('button', { name: /继续游戏/ }).click();
   await expect(page.locator('.party-strip-compact .party-compact')).toHaveCount(partySize);
-  await expect(page.getByPlaceholder('亨利·格雷 想要做什么...')).toBeVisible();
+  await expect(page.getByRole('textbox', { name: '亨利·格雷的行动', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: partySize === 1 ? '提交' : '下一位', exact: true })).toBeDisabled();
   await expect(page.locator('.story-message.player')).toHaveCount(partySize);
 });
@@ -632,9 +632,9 @@ test('narrative highlights remain safe, clickable and stable across desktop and 
   ]);
   expect(isabellaColor).not.toBe(ericColor);
 
-  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('询问伊莎贝拉父亲的近况。');
+  await page.getByRole('textbox', { name: '亨利·格雷的行动', exact: true }).fill('询问伊莎贝拉父亲的近况。');
   await page.getByRole('button', { name: '下一位' }).click();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('记录伊莎贝拉的反应。');
+  await page.getByRole('textbox', { name: '艾达·华莱士的行动', exact: true }).fill('记录伊莎贝拉的反应。');
   await page.getByRole('button', { name: '提交', exact: true }).click();
 
   await expect.poll(() => narratorAttempts).toBe(1);
@@ -700,9 +700,9 @@ test('AI DM handles first player action through a chat-compatible provider', asy
     apiKey: 'test-key',
     model: 'gateway-model'
   });
-  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the dock.');
+  await page.getByRole('textbox', { name: '亨利·格雷的行动', exact: true }).fill('Inspect the dock.');
   await page.getByRole('button', { name: '下一位' }).click();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the fog.');
+  await page.getByRole('textbox', { name: '艾达·华莱士的行动', exact: true }).fill('Watch the fog.');
   await page.getByRole('button', { name: '提交', exact: true }).click();
 
   await expect.poll(() => narratorAttempts).toBe(1);
@@ -710,7 +710,7 @@ test('AI DM handles first player action through a chat-compatible provider', asy
   await expect(page.getByRole('button', { name: 'Inspect the dock' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Check the footprints' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Watch the fog' })).toHaveCount(0);
-  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Prepare the next move.');
+  await page.getByRole('textbox', { name: '亨利·格雷的行动', exact: true }).fill('Prepare the next move.');
   await page.getByRole('button', { name: '下一位' }).click();
   await expect(page.getByRole('button', { name: 'Listen at the door' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Watch the fog' })).toHaveCount(0);
@@ -753,9 +753,9 @@ test('AI DM shows the narrator response before background memory synthesis finis
   });
 
   await startGameWithApi(page);
-  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the study.');
+  await page.getByRole('textbox', { name: '亨利·格雷的行动', exact: true }).fill('Inspect the study.');
   await page.getByRole('button', { name: '下一位' }).click();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the street.');
+  await page.getByRole('textbox', { name: '艾达·华莱士的行动', exact: true }).fill('Watch the street.');
   await page.getByRole('button', { name: '提交', exact: true }).click();
 
   await expect.poll(() => factsStarted).toBe(true);
@@ -803,9 +803,9 @@ test('case board records a meaningful fact when the AI proposes an empty patch',
   });
 
   await startGameWithApi(page);
-  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('留意门廊。');
+  await page.getByRole('textbox', { name: '亨利·格雷的行动', exact: true }).fill('留意门廊。');
   await page.getByRole('button', { name: '下一位' }).click();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('守在一旁。');
+  await page.getByRole('textbox', { name: '艾达·华莱士的行动', exact: true }).fill('守在一旁。');
   await page.getByRole('button', { name: '提交', exact: true }).click();
   await expect(page.getByText('亨利在门廊发现几道新鲜的拖拽刮痕，像是有人搬运过重物。')).toBeVisible();
 
@@ -823,9 +823,9 @@ test('AI DM opens settings when a chat-compatible provider is missing its endpoi
     model: 'mimo-v2.5'
   });
 
-  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the study.');
+  await page.getByRole('textbox', { name: '亨利·格雷的行动', exact: true }).fill('Inspect the study.');
   await page.getByRole('button', { name: '下一位' }).click();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the hallway.');
+  await page.getByRole('textbox', { name: '艾达·华莱士的行动', exact: true }).fill('Watch the hallway.');
   await page.getByRole('button', { name: '提交', exact: true }).click();
 
   const configDialog = page.getByRole('dialog', { name: 'AI DM 配置' });
@@ -868,9 +868,9 @@ test('AI DM thinking state shows an inline animated indicator while the turn is 
   });
 
   await startGameWithApi(page);
-  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the locked drawer.');
+  await page.getByRole('textbox', { name: '亨利·格雷的行动', exact: true }).fill('Inspect the locked drawer.');
   await page.getByRole('button', { name: '下一位' }).click();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the street.');
+  await page.getByRole('textbox', { name: '艾达·华莱士的行动', exact: true }).fill('Watch the street.');
   await page.getByRole('button', { name: '提交', exact: true }).click();
 
   await expect.poll(() => narratorAttempts).toBe(1);
@@ -965,9 +965,9 @@ test('an aborted narrator request cannot write into a restarted game session', a
   });
 
   await startGameWithApi(page);
-  await page.getByPlaceholder('亨利·格雷 想要做什么...').fill('Inspect the study.');
+  await page.getByRole('textbox', { name: '亨利·格雷的行动', exact: true }).fill('Inspect the study.');
   await page.getByRole('button', { name: '下一位' }).click();
-  await page.getByPlaceholder('艾达·华莱士 想要做什么...').fill('Watch the street.');
+  await page.getByRole('textbox', { name: '艾达·华莱士的行动', exact: true }).fill('Watch the street.');
   await page.getByRole('button', { name: '提交', exact: true }).click();
   await expect.poll(() => narratorAttempts).toBe(1);
 

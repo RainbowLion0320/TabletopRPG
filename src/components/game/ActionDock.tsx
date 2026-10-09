@@ -149,7 +149,7 @@ export function ActionDock({
               autoFocus={autoFocusInput}
               disabled={!canDeclare}
               value={declaration}
-              placeholder={`${currentActor.name} 想要做什么...`}
+              placeholder={portrait ? '描述你的行动…' : `${currentActor.name} 想要做什么...`}
               onChange={(event) => onDeclarationChange(currentActor.id, event.target.value)}
               onKeyDown={(event) => {
                 if (!portrait && event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229
