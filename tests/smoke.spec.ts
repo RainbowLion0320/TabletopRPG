@@ -1876,6 +1876,79 @@ test('desktop reference drag moves its tab without opening and resets before cli
   await page.keyboard.press('Space'); await expect(drawer).toBeVisible();
 });
 
+test('desktop reference stays fully reachable after a low drag and short-window resize', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 }); await startNewGame(page);
+  const draft = page.locator('.dock-input'); await draft.fill('查看资料后，继续观察门廊。');
+  const entry = page.getByRole('button', { name: '资料', exact: true });
+  const drawer = page.getByRole('dialog', { name: '资料', exact: true });
+  const box = (await entry.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down(); await page.mouse.move(box.x + box.width / 2, 895, { steps: 10 }); await page.mouse.up();
+  await expect(entry).not.toHaveClass(/dragging/); await expect(drawer).toHaveCount(0);
+  const lowPosition = await entry.evaluate(element => (element as HTMLElement).style.top);
+  await page.setViewportSize({ width: 1440, height: 300 });
+  await page.screenshot({ path: testInfo.outputPath('reference-short-window.png') });
+  const bounds = (await entry.boundingBox())!;
+  expect(bounds.y).toBeGreaterThanOrEqual(0);
+  expect(bounds.y + bounds.height).toBeLessThanOrEqual(300);
+  await entry.click(); await expect(drawer).toBeVisible();
+  await page.keyboard.press('Escape'); await expect(entry).toBeFocused();
+  await expect(draft).toHaveValue('查看资料后，继续观察门廊。');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(entry).not.toHaveClass(/draggable/);
+  const phoneBounds = (await entry.boundingBox())!;
+  expect(phoneBounds.y).toBeLessThan(50); expect(phoneBounds.height).toBe(44);
+  await entry.click(); await expect(drawer).toBeVisible();
+  await page.keyboard.press('Escape'); await expect(entry).toBeFocused();
+  await page.setViewportSize({ width: 1440, height: 300 });
+  expect(await entry.evaluate(element => (element as HTMLElement).style.top)).toBe(lowPosition);
+  const moved = (await entry.boundingBox())!;
+  await page.mouse.move(moved.x + moved.width / 2, moved.y + moved.height / 2);
+  await page.mouse.down(); await page.mouse.move(moved.x + moved.width / 2, 1, { steps: 10 }); await page.mouse.up();
+  const upper = (await entry.boundingBox())!;
+  expect(upper.y).toBeGreaterThanOrEqual(0); expect(upper.y + upper.height).toBeLessThanOrEqual(300);
+  await entry.click(); await expect(drawer).toBeVisible();
+  await page.keyboard.press('Escape'); await expect(draft).toHaveValue('查看资料后，继续观察门廊。');
+});
+
+for (const party of [1, 2, 4] as const) {
+  test(`short desktop keeps long actions and investigator access with ${party} player(s)`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 1440, height: 900 }); await startNewGame(page, party);
+    const draft = page.locator('.dock-input');
+    const text = '记录门廊的划痕和雨水方向，保留完整观察。'.repeat(60);
+    await draft.fill(text);
+    for (const height of [500, 300]) {
+      await page.setViewportSize({ width: 1440, height });
+      await expect.poll(() => page.locator('.dock-submit').evaluate(element => {
+        const rect = element.getBoundingClientRect();
+        return rect.top >= 0 && rect.bottom <= innerHeight && element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+      })).toBe(true);
+      await expect(draft).toBeInViewport(); await expect(draft).toHaveValue(text);
+      await expect(page.getByRole('button', { name: '菜单', exact: true })).toBeInViewport();
+      if (height === 500) for (const member of await page.locator('.party-compact').all()) await expect(member).toBeInViewport();
+      const layout = await page.evaluate(() => ({
+        story: document.querySelector('.narrative-scroll')!.getBoundingClientRect().height,
+        header: document.querySelector('.game-top')!.getBoundingClientRect().bottom,
+        overflow: document.documentElement.scrollWidth > innerWidth,
+        input: document.querySelector('.dock-input')!.getBoundingClientRect().height
+      }));
+      expect(layout.story).toBeGreaterThanOrEqual(60); expect(layout.header).toBeLessThanOrEqual(64);
+      expect(layout.overflow).toBe(false); if (height === 300) expect(layout.input).toBeLessThanOrEqual(66);
+      const avatar = page.getByRole('button', { name: '查看亨利·格雷的属性', exact: true });
+      await avatar.click(); const sheet = page.getByRole('dialog', { name: '亨利·格雷', exact: true });
+      await expect(sheet).toBeVisible();
+      if (party > 1) await expect(sheet.getByRole('navigation', { name: '查看队员' }).getByRole('button')).toHaveCount(party);
+      await page.keyboard.press('Escape'); await expect(avatar).toBeFocused(); await expect(draft).toHaveValue(text);
+      await page.screenshot({ path: testInfo.outputPath(`desktop-short-${height}.png`) });
+    }
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(page.locator('.scene-stage')).toBeVisible();
+    await expect(page.locator('.party-compact')).toHaveCount(party);
+    for (const member of await page.locator('.party-compact').all()) await expect(member).toBeInViewport();
+    await expect(draft).toHaveValue(text);
+  });
+}
+
 test('moving the desktop case board to a phone preserves search and removes the hidden thread filter', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await gotoWithSave(page, createDynamicCaseBoardSave());

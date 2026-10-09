@@ -4,3 +4,19 @@
 :root.fog-ui:not(.portrait-ui) .narrative-panel { position: relative; grid-column: 1; grid-row: 3; inset: auto; height: 100%; min-height: 0; max-height: none; }
 :root.fog-ui:not(.portrait-ui) .narrative-panel.expanded { grid-row: 2 / 4; }
 :root.fog-ui:not(.portrait-ui) .action-dock { position: relative; grid-column: 1; grid-row: 4; inset: auto; min-height: 0; max-height: none; }
+
+/* A short desktop window yields the painting before clipping reading or actions. */
+@media (max-height: 600px) {
+  :root.fog-ui:not(.portrait-ui) .game-screen { grid-template-rows: 64px 0 minmax(0, 1fr) max-content; }
+  :root.fog-ui:not(.portrait-ui) .scene-stage { visibility: hidden; }
+}
+@media (max-height: 400px) {
+  :root.fog-ui:not(.portrait-ui) .game-screen .suggestion-row { display: none; }
+  :root.fog-ui:not(.portrait-ui) .game-screen .dock-input { max-height: 66px; }
+  :root.fog-ui:not(.portrait-ui) .game-screen .action-dock { padding: 6px 10px; }
+  :root.fog-ui:not(.portrait-ui) .game-screen .narrative-panel { padding: 0 12px 6px; }
+  :root.fog-ui:not(.portrait-ui) .game-screen .narrative-header { padding: 0; }
+}
+@media (max-height: 300px) {
+  :root.fog-ui:not(.portrait-ui) .game-screen .party-strip-compact { display: none; }
+}

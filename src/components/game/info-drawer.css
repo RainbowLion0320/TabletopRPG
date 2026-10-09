@@ -1,5 +1,6 @@
 /* The archive header stays outside all scrolling pages. */
 .drawer-tab.draggable { touch-action: none; }
+:root.fog-ui .game-screen .drawer-tab.draggable { transition: filter 130ms ease; }
 .drawer-tab.dragging { cursor: grabbing; }
 .info-drawer-react.fullscreen { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .info-drawer-react > header { flex: 0 0 auto; }

@@ -4,6 +4,8 @@
 > Updated: 2026-10-09
 > Scope: current React/Vite implementation
 
+In 0.5.4, desktop reference positioning uses the same percentage of viewport and button height, keeping the whole control inside the available vertical travel after resize. Drag deltas use that travel, without transform animation lag; the phone entry remains fixed. Desktop windows at or below 600px yield the scene row, at 400px yield suggestions and cap input at 66px, and at 300px omit the party strip while the avatar dossier still exposes the party. Header, scrollable prose, explicit actions, drafts and normal-window restoration are preserved without shrinking text.
+
 In 0.5.3, the shared dialog key handler leaves events marked `isComposing` or legacy `keyCode === 229` to the input method. Escape cannot dismiss an unsaved form and Tab cannot wrap dialog focus while composing. Ordinary keys retain the existing topmost-dialog ownership, focus trap and opener restoration. API drafts, game actions, art and storage contracts remain unchanged.
 
 In 0.5.2, seven dedicated painted runtime assets refine the artist theme: the dice fate panel, silver-blue dossier, hollow portrait mount, dark input plate, square tool backing, header rule and pearl slider stud. Existing home artwork and authored buttons remain unchanged. The dossier uses a 96px slice on its 768px export; inputs use 90/100px slices, while the dice has a fixed aspect and separate text/dice/result zones. Decorative overlays never intercept input. Normal/short phone and desktop dice checks retain focus, readable numbers, original sprites/font and a single authoritative confirmation. Production assets and exact generation prompts are documented in assets/ui/artist/. No game rules, AI calls, storage or dependencies change.

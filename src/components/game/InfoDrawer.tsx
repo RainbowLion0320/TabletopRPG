@@ -48,7 +48,9 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
     if (!drag.moved && Math.abs(deltaY) <= 6) return;
     drag.moved = true;
     setDragging(true);
-    setTabTop(Math.max(8, Math.min(85, drag.startTop + deltaY / window.innerHeight * 100)));
+    // The percentage anchor spans the viewport minus the button's own height.
+    const travel = Math.max(1, window.innerHeight - event.currentTarget.getBoundingClientRect().height);
+    setTabTop(Math.max(8, Math.min(85, drag.startTop + deltaY / travel * 100)));
   }
 
   function endDrag(event: PointerEvent<HTMLButtonElement>, cancelled = false) {
@@ -100,7 +102,7 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
         type="button"
         ref={tabRef}
         className={`drawer-tab${portrait ? '' : ' draggable'}${dragging ? ' dragging' : ''}`}
-        style={portrait ? undefined : { top: `${tabTop}%` }}
+        style={portrait ? undefined : { top: `${tabTop}%`, transform: `translateY(-${tabTop}%)` }}
         onPointerDown={startDrag}
         onPointerMove={moveDrag}
         onPointerUp={(event) => endDrag(event)}
