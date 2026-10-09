@@ -211,7 +211,6 @@
 @media (hover: hover) {
   :root.fog-ui .dock-actor-avatar:hover { border-color: #e4c181; background-color: #3a2e1d; }
 }
-:root.fog-ui .menu-list button { justify-content: flex-start; box-shadow: inset 0 -1px #57452d; padding-inline: 12px; }
 
 /* Archive tabs and cards carry the same file-tab selection language. */
 :root.fog-ui .info-drawer-react { background: #15130f; }
