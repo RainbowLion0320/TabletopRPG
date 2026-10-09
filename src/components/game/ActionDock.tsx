@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import { Dice5, Home } from 'lucide-react';
+import { Home } from 'lucide-react';
 import actionPen from '../../../assets/ui/artist/action-pen.webp';
 import caseSeal from '../../../assets/ui/artist/case-seal.webp';
+import diceEmblem from '../../../assets/ui/artist/dice-emblem.webp';
 import { JournalArt } from '../shared/JournalArt';
 import type { GameState } from '../../types/game';
 import { getScenarioDefinition, getScenarioProgressForState } from '../../scenario/engine';
@@ -119,7 +120,7 @@ export function ActionDock({
             </span>
           </div>
           <button className="secondary-action" disabled={isDiceRolling || state.isThinking} onClick={onRoll}>
-            <Dice5 size={16} aria-hidden="true" />
+            <img className="dice-emblem-art" src={diceEmblem} width={24} height={24} alt="" aria-hidden="true" draggable={false} decoding="async" />
             {isDiceRolling ? '掷骰中' : '掷骰'}
           </button>
         </div>

@@ -162,6 +162,10 @@ public class GameAndroidTest {
 
     private void readableTurnPrompt() throws Exception {
         reachable(".check-card"); reachable(".check-card > button");
+        if ("true".equals(js("document.querySelector('.check-card > button').textContent.trim()==='掷骰'"))) {
+            until("document.querySelector('.dice-emblem-art')?.complete&&document.querySelector('.dice-emblem-art').naturalWidth>0");
+            assertEquals("Painted roll emblem stays decorative inside the original control", "true", js("(()=>{const e=document.querySelector('.dice-emblem-art'),r=e.getBoundingClientRect(),b=e.parentElement.getBoundingClientRect();return r.width>=24&&r.width<=24.5&&r.height>=24&&r.height<=24.5&&r.left>=b.left&&r.right<=b.right&&r.top>=b.top&&r.bottom<=b.bottom&&e.alt===''&&e.getAttribute('aria-hidden')==='true'&&getComputedStyle(e).pointerEvents==='none'})()"));
+        }
         if (Double.parseDouble(js("innerHeight")) > 300) readablePartyDossiers();
         assertEquals("Turn information uses readable text, drawn dossier and full touch controls", "true", js("(()=>{const c=document.querySelector('.check-card'),b=c.querySelector('button'),r=b.getBoundingClientRect(),d=c.closest('.action-dock').getBoundingClientRect(),s=document.querySelector('.narrative-panel').getBoundingClientRect();return Array.from(c.querySelectorAll('strong,span,button')).every(e=>parseFloat(getComputedStyle(e).fontSize)>=15)&&getComputedStyle(c).borderImageSource.includes('panel-frame')&&r.width>=44&&r.height>=44&&s.height>=140&&s.bottom<=d.top+.5&&c.scrollWidth<=c.clientWidth+1})()"));
     }

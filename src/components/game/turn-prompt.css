@@ -5,5 +5,5 @@
 :root .action-dock .check-card strong { color: var(--ui-paper, var(--text)); font: 400 16px/1.4 var(--ui-font, serif); }
 :root .action-dock .check-card span { color: var(--text); font-size: 15px; line-height: 1.4; }
 :root .action-dock .check-card > button { min-width: 44px; min-height: 44px; padding: 0 12px; font-size: 15px; white-space: nowrap; }
-.check-card > button > svg { flex-shrink: 0; }
+.dice-emblem-art { flex: 0 0 24px; width: 24px; height: 24px; object-fit: contain; pointer-events: none; }
 :root .action-dock:has(.check-card) .dock-input-row { display: none; }

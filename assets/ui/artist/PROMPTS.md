@@ -260,3 +260,12 @@ Create one exquisitely hand-painted small game UI emblem: a 1920s London investi
 ```text
 Create one exquisitely hand-painted small game UI emblem: a closed round 1920s London silver pocket watch, front face visible, on a fully transparent background. Single centered isolated object with a small loop crown above the round watch, no chain. The established game art language is cold rainy London, deep navy enamel, layered pearlescent silver edging, ivory highlights, subtle icy blue and one restrained pale-gold hand pivot. The watch face is a calm pale-blue disc with only two clear dark-navy hands and four small ivory hour marks, no numerals or lettering. Fine painted bevels and tactile silver craftsmanship; readable compact silhouette at 24 pixels, rich but restrained painterly fantasy-game UI quality, matching silver-blue dossier frames and antique stationery. Balanced square composition with ample transparent space around the complete watch and crown, natural alpha edges. Only this emblem, no words, labels, numerals, background scene, outer square tile, interface mockup, or large glow.
 ```
+
+
+## 掷骰徽记（0.5.35）
+
+内置 Image Gen 单次新图，无参考图与后续编辑；生成 ID `exec-ac8929ff-3a94-4a09-9f55-a812d3369949`，原 PNG 保留默认 generated_images 目录，不提交；transparent_background=true。以下是实际完整提示词：
+
+```text
+Create one exquisite hand-painted raster game UI emblem for a 1920s rainy London mystery tabletop game: a single ivory ten-sided percentile die, centered and isolated on a genuinely transparent background. Its recognizable silhouette is an upright angular diamond polyhedron with broad kite-shaped faces, inspired by finely crafted cream porcelain gaming dice with restrained antique-brown engraved key-pattern borders. Keep the faces pale and uncluttered, with a few clear brown bevels so the polyhedral die reads immediately at 24 pixels. Subtle cool silver-blue reflected edge light will harmonize with midnight-blue paper-and-cloth panels and pearlescent silver fittings. Compact square composition, the complete die fully contained, generous transparent outside margins, crisp natural alpha edges, quiet tactile painterly detail. This is a decorative roll-action emblem, not a displayed roll result: leave every face blank, with no numbers, letters or pips. Only one complete die; no outer button, scene, glow, ground shadow, wording, mockup or extra objects.
+```
