@@ -4,7 +4,7 @@
 > Updated: 2026-10-10
 > Scope: current React/Vite implementation
 
-In 0.5.32, entering selection and starting, continuing, loading or leaving an investigation clears existing feedback and its timeout before changing pages. Newly completed in-game save, configuration and load feedback remains visible. Nineteen painted assets, authored scene/NPC art, singular/multiplayer opening address, full 12px story time, same-paint archive cleanup and multiline drafts remain intact. No story, API, save format or game rule changes are made.
+In 0.5.33, hydration retains an explicitly empty NPC focus rather than replacing it with the authored resident on continuation or load. Missing legacy focus metadata and offstage NPC references retain their compatibility fallback. Full scene framing, nineteen painted assets, single/multiplayer opening address, 12px story time, page feedback cleanup and multiline drafts remain intact; no story, rule, API or persisted-format changes are made.
 
 In 0.5.14, empty logs, unmatched log searches and empty saves use one dedicated painted silver-blue investigator ledger, faithful to the approved artist palette and motifs. The new 14,954-byte WebP is displayed proportionally within 112 by 72 pixels, with the existing state text at 15px. The decorative image receives no pointer input or accessible name. Empty logs center within their existing reading area; saves keep their existing space. Windows at most 500px high hide the illustration so status, search and exit remain reachable. Queries, focus, action drafts and save operations are preserved, with no added model rule, stored field or player step.
 

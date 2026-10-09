@@ -810,6 +810,16 @@ public class GameAndroidTest {
                     assertEquals("Case information is reachable on a short display", "true", js("innerWidth>900 || document.querySelector('.case-board-mobile-card').getBoundingClientRect().top < innerHeight-60"));
                     screenshot("caseboard");
                     js("document.querySelector('[aria-label=关闭资料]').click()");
+                    menu("返回首页"); until("document.querySelector('.title-resume-preview')");
+                    js("window.qaEmptyNpcReady=false;Capacitor.Plugins.GameStorage.readAll().then(async ({values})=>{"
+                        + "const record=JSON.parse(values['trpg-android-session-v1']);record.state.activeNpcId=null;record.state.activeNpcName=null;"
+                        + "await Capacitor.Plugins.GameStorage.write({key:'trpg-android-session-v1',value:JSON.stringify(record)});window.qaEmptyNpcReady=true;})");
+                    until("window.qaEmptyNpcReady"); activity.recreate(); until("document.querySelector('.title-resume-preview')"); viewport(390, 844);
+                    click("继续游戏"); until("document.querySelector('.dock-input')");
+                    assertEquals("Encrypted continuation keeps an explicitly empty NPC stage", "0", js("document.querySelectorAll('.scene-npc').length"));
+                    assertEquals("Empty-stage recovery keeps the full backdrop", "true", js("document.querySelector('.scene-backdrop-img').getBoundingClientRect().height>100&&getComputedStyle(document.querySelector('.scene-backdrop-img')).objectFit==='contain'"));
+                    assertEquals("Empty-stage recovery keeps the multiline draft", "true", js("document.querySelector('.dock-input').value.split(String.fromCharCode(10)).join('|')==='下轮先观察门廊|再询问雨夜访客'"));
+                    screenshot("restored-empty-npc");
                 }
                 if (party == 4) {
                     viewport(390, 844); menu("返回首页");

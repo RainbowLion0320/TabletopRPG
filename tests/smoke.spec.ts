@@ -1770,6 +1770,31 @@ test('second-act scene loads its authored backdrop and NPC portrait together', a
     expect(response.ok()).toBe(true);
     expect(artDistance(await artThumbnail(await response.body()), await artThumbnail(readFileSync(master)))).toBeLessThan(6);
   }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const emptyStage = createPoliceStationSave();
+  emptyStage.activeNpcId = null;
+  emptyStage.activeNpcName = null;
+  await gotoWithSave(page, emptyStage);
+  await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+  await expect(page.locator('.brand-scene')).toHaveText('上城区第二分局');
+  expect(await page.locator('.scene-npc').count()).toBe(0);
+  const draft = '先记录会面的情况。\n稍后再继续调查。';
+  await page.locator('.dock-input').fill(draft);
+  await page.getByRole('button', { name: '菜单', exact: true }).click();
+  await page.getByRole('button', { name: '返回首页', exact: true }).click();
+  await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+  expect(await page.locator('.scene-npc').count()).toBe(0);
+  await expect(page.locator('.dock-input')).toHaveValue(draft);
+  await page.getByRole('button', { name: '菜单', exact: true }).click();
+  await page.getByRole('button', { name: '保存游戏', exact: true }).click();
+  await expect(page.getByText('已保存', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '菜单', exact: true }).click();
+  await page.getByRole('button', { name: '读取存档', exact: true }).click();
+  await page.getByRole('dialog', { name: '读取存档', exact: true }).getByRole('article').first().getByRole('button', { name: '载入存档', exact: true }).click();
+  expect(await page.locator('.scene-npc').count()).toBe(0);
+  await expect(page.locator('.dock-input')).toHaveValue(draft);
+  await expect.poll(() => page.locator('.scene-backdrop-img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
 });
 
 test('reference panel renders saved dynamic case board hypotheses', async ({ page }) => {

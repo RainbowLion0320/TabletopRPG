@@ -1457,7 +1457,12 @@ export function hydrateGameState(value: unknown): GameState {
   const persistedNpcName = typeof source.activeNpcId === 'string'
     ? npcNameFromId(source.activeNpcId)
     : normalizeNpcName(source.activeNpcName);
-  const activeNpcName = scenarioProgress.endingId
+  // A saved empty focus is intentional; absent or invalid legacy metadata
+  // still needs the authored scene resident as its compatibility fallback.
+  const explicitlyEmptyNpc = source.activeNpcId === null
+    ? source.activeNpcName === null || source.activeNpcName === undefined
+    : source.activeNpcId === undefined && source.activeNpcName === null;
+  const activeNpcName = scenarioProgress.endingId || explicitlyEmptyNpc
     ? null
     : persistedNpcName && storyData.scenes[currentScene].npcs.includes(persistedNpcName)
       ? persistedNpcName

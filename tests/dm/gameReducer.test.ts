@@ -854,6 +854,14 @@ describe('gameReducer scene focus synchronization', () => {
     });
 
     expect(next.activeNpcName).toBeNull();
+    const saved = JSON.parse(JSON.stringify(next));
+    for (const record of [saved, { ...saved, activeNpcId: undefined }, { ...saved, activeNpcName: undefined }]) {
+      const restored = hydrateGameState(record);
+      expect(restored.activeNpcId).toBeNull();
+      expect(restored.activeNpcName).toBeNull();
+      expect(restored.currentScene).toBe(next.currentScene);
+      expect(restored.declarations).toEqual(next.declarations);
+    }
   });
 
   it('keeps the resident NPC focused when the narration still shows them reacting', () => {
@@ -1190,6 +1198,9 @@ describe('gameReducer hydrateGameState v2 saves remain compatible', () => {
 
     expect(hydrated.activeNpcId).toBe('N03');
     expect(hydrated.activeNpcName).toBe('洛夫·蒙特利尔');
+    const legacy = hydrateGameState({ players: hydrated.players, currentScene: 'S02' });
+    expect(legacy.activeNpcId).toBe('N03');
+    expect(legacy.activeNpcName).toBe('洛夫·蒙特利尔');
   });
 
   it('hydrates valid narrative keywords and drops malformed hints', () => {
