@@ -52,7 +52,8 @@
 .preset-other-panel[hidden] { display: none; }
 .preset-attrs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .preset-attrs span { border: 3px solid transparent; border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 3px / 0 stretch; background: var(--panel); text-align: center; padding: 5px 2px; }
-.preset-attrs b { display: block; font-size: 13px; line-height: 1.4; font-weight: 400; color: var(--muted); }
+.preset-attrs b { display: block; font-size: 13px; line-height: 1.4; font-weight: 400; color: var(--text); }
+.preset-attrs b small { display: block; margin-top: 2px; font-size: 12px; line-height: 1.3; color: var(--muted); }
 .preset-attrs em { display: block; margin-top: 3px; font: 17px Georgia, serif; color: var(--text); }
 .preset-skill-list { display: flex; flex-wrap: wrap; gap: 6px 12px; }
 .preset-skill-list span { font-size: 14px; line-height: 1.6; color: var(--text); }

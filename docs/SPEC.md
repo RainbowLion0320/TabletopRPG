@@ -4,6 +4,8 @@
 > Updated: 2026-10-09
 > Scope: current React/Vite implementation
 
+In 0.5.13, expanded investigator selection cells display the existing Chinese attribute names as 13px primary labels with their original abbreviations as 12px secondary labels. Names match the in-game sheet and remain visible on touch devices instead of requiring the previous title tooltip. Attribute values, collapsed card geometry, disclosure/selection separation, scrolling, fixed footer and current-investigation recovery are unchanged. No extra modal, asset, stored field or game rule is introduced.
+
 In 0.5.12, investigator selection reuses the painted silver-blue dossier frame for core and expanded attribute cells, preserving distinct HP/MP/SAN/Luck color cues. Occupation and specialties use 13px text, biography 14px, core labels 12px, expanded labels 13px, skills/background 14px and the fixed party summary 14px/13px. Portrait cards remain a single independently scrolling column with naturally wrapped text; native checkboxes, separate disclosure controls, default solo selection, empty-party guards and restoration of the current investigation are unchanged. No new assets, data fields or game rules.
 
 In 0.5.11, case-board scene thumbnails use an 84×56px landscape mount with the existing painted dossier frame as a 3px border. The full scene remains centered with object-fit: contain. Mobile records, desktop graph cards and graph-failure fallback dossiers share this presentation. Text hierarchy, portrait thumbnails, full-image details and card minimum heights remain unchanged; no new image files or player actions.

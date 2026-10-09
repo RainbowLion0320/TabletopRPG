@@ -122,8 +122,8 @@ export function CharacterSetup({ onBack, onStart, portrait = false }: CharacterS
                 >
                   <div className="preset-attrs" aria-label={`${preset.name}完整属性`}>
                     {otherAttrRows.map(([key, label]) => (
-                      <span key={key} title={label}>
-                        <b>{key}</b>
+                      <span key={key}>
+                        <b>{label}<small>{key}</small></b>
                         <em>{preset.attrs[key]}</em>
                       </span>
                     ))}
