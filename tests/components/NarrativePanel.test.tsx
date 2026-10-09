@@ -35,6 +35,28 @@ describe('NarrativePanel', () => {
     expect(story.querySelectorAll('.narrative-mark-location')).toHaveLength(3);
     expect(story.querySelectorAll('.narrative-mark-inferred')).toHaveLength(1);
     expect(story.querySelector('[data-message-id="unhinted"] p')?.textContent).toBe(text);
+    // The same stored record can receive edited hints or replacement text.
+    state.messages[0].keywords![0].kind = 'danger';
+    rerender(<NarrativePanel state={state} onMarkOpen={nextOpen} />);
+    expect(story.querySelector('.narrative-mark-inferred')?.classList).toContain('narrative-mark-danger');
+    state.messages[0].text = '亨利查看码头旁的暗红血迹与小册子。';
+    state.messages[0].keywords![0].text = '暗红血迹';
+    rerender(<NarrativePanel state={state} onMarkOpen={nextOpen} />);
+    expect(story.querySelector('[data-message-id="hinted"] p')?.textContent).toBe(state.messages[0].text);
+    expect(story.querySelector('.narrative-mark-inferred')?.textContent).toBe('暗红血迹');
+    state.messages[0].keywords = [];
+    rerender(<NarrativePanel state={state} onMarkOpen={nextOpen} />);
+    expect(story.querySelectorAll('.narrative-mark-inferred')).toHaveLength(0);
+    expect(story.querySelectorAll('.narrative-mark-item')).toHaveLength(0);
+    state.clues.push({ id: 'I04', name: '小册子', scene: 'S05', desc: '', found: true });
+    rerender(<NarrativePanel state={state} onMarkOpen={nextOpen} />);
+    expect(story.querySelector('.narrative-mark-item')?.textContent).toBe('小册子');
+    state.players[0].name = '新调查员';
+    state.messages[0].text = '新调查员查看小册子。';
+    rerender(<NarrativePanel state={state} onMarkOpen={nextOpen} />);
+    const person = story.querySelector<HTMLElement>('[data-message-id="hinted"] .narrative-mark-person')!;
+    expect(person.textContent).toBe('新调查员');
+    expect(person.style.getPropertyValue('--person-color')).toBe(getPersonColor(state, '新调查员'));
   });
 
   it('keeps story and dice in the narrative and moves connection feedback to the retry dock', () => {

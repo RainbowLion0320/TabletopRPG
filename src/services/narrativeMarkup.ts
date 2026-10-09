@@ -30,6 +30,8 @@ export interface NarrativeTextSegment {
 }
 
 export interface NarrativeMarkup {
+  /** Complete prepared terms and colors, independent of unrelated draft changes. */
+  signature: string;
   markText(text: string, keywords?: NarrativeKeywordHint[], includeLlmKeywords?: boolean): NarrativeTextSegment[];
   personColor(canonicalName: string): string;
 }
@@ -276,6 +278,7 @@ export function createNarrativeMarkup(state: GameState): NarrativeMarkup {
   const definitions = deterministicTerms(state);
   const colors = buildPersonColorMap(state);
   return {
+    signature: JSON.stringify([definitions, [...colors]]),
     markText: (text, keywords, includeLlmKeywords = true) =>
       markTextWithDefinitions(text, definitions, keywords, includeLlmKeywords),
     personColor: (canonicalName) => personColor(colors, canonicalName)
