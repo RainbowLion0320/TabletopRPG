@@ -6,6 +6,44 @@ import { makeInvestigator } from './dm/fixtures';
 import { parse as parseYaml } from 'yaml';
 import sharp from 'sharp';
 
+for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1440, height: 900 }]) {
+  test(`long DM wait changes its caption without shifting the story at ${size.width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize(size);
+    await startNewGame(page);
+    let release!: () => void;
+    await page.route('https://waiting.test/v1/responses', async route => {
+      await new Promise<void>(resolve => { release = resolve; });
+      await route.abort();
+    });
+    await page.evaluate(() => localStorage.setItem('trpg-api', JSON.stringify({
+      apiKey: 'test-only', provider: 'custom', protocol: 'responses', endpoint: 'https://waiting.test/v1', model: 'test-only'
+    })));
+    await page.locator('.dock-input').fill('礼貌地问好，请她继续讲述。');
+    await page.getByRole('button', { name: '提交', exact: true }).click();
+    const waiting = page.getByRole('status', { name: 'AI DM 正在推演下一幕', exact: true });
+    await expect(waiting).toBeVisible();
+    const caption = waiting.locator('.thinking-line-text');
+    const first = await caption.innerText();
+    await page.evaluate(() => document.fonts.ready);
+    const before = await waiting.evaluate(element => {
+      const r = element.getBoundingClientRect();
+      return { height: r.height, storyHeight: document.querySelector('.narrative-scroll')!.getBoundingClientRect().height };
+    });
+    await expect.poll(() => caption.innerText(), { timeout: 11_000 }).not.toBe(first);
+    expect(await waiting.evaluate(element => {
+      const r = element.getBoundingClientRect(), text = element.querySelector('.thinking-line-text')!;
+      return { height: r.height, storyHeight: document.querySelector('.narrative-scroll')!.getBoundingClientRect().height,
+        readable: parseFloat(getComputedStyle(text).fontSize) >= 15,
+        fits: text.getBoundingClientRect().left >= 0 && text.getBoundingClientRect().right <= innerWidth,
+        overflow: document.documentElement.scrollWidth > innerWidth };
+    })).toEqual({ ...before, readable: true, fits: true, overflow: false });
+    await page.screenshot({ path: testInfo.outputPath('varied-wait.png') });
+    if (size.width === 390) await page.screenshot({ path: 'output/ui-2026-10-08/84-varied-wait-phone.png' });
+    release();
+    await expect(waiting).toHaveCount(0);
+  });
+}
+
 const artThumbnail = (input: Buffer) => sharp(input).flatten({ background: '#1c1914' }).resize(32, 40).raw().toBuffer();
 const artDistance = (picture: Buffer, master: Buffer) => picture.reduce((sum, value, pixel) => sum + Math.abs(value - master[pixel]), 0) / picture.length;
 

@@ -3,7 +3,7 @@ import { App as NativeApp } from '@capacitor/app';
 import { AudioDirector } from '../audio/AudioDirector';
 import { gameAudio } from '../audio/audio';
 import { ApiConfigModal } from '../components/shared/ApiConfigModal';
-import { useDialogFocus } from '../components/shared/useDialogFocus';
+import { ExitGameDialog } from './ExitGameDialog';
 import { CharacterSetup } from '../components/setup/CharacterSetup';
 import { TitleScreen } from '../components/setup/TitleScreen';
 import { GameScreen } from '../app/GameScreen';
@@ -14,6 +14,7 @@ import { isNativeAndroid } from './native';
 import { readMobileSession, writeMobileSession, type MobileSession } from './session';
 import { continuationPreview, type GameContinuation } from '../app/gameContinuation';
 import type { GameState, Investigator } from '../types/game';
+import './android-feedback.css';
 
 type Screen = 'title' | 'setup' | 'game';
 export function AndroidApp() {
@@ -21,11 +22,12 @@ export function AndroidApp() {
   const [session, setSession] = useState<MobileSession | null>(null);
   const [notice, setNotice] = useState('');
   const [exitOpen, setExitOpen] = useState(false);
+  const [exitBusy, setExitBusy] = useState(false);
+  const [exitError, setExitError] = useState('');
   const game = useGameController();
-  const exitRef = useRef<HTMLDivElement>(null);
+  const exitingRef = useRef(false);
   const lastSession = useRef<Promise<MobileSession> | null>(null);
   const backHandler = useRef(() => {});
-  useDialogFocus(exitOpen, exitRef, () => setExitOpen(false));
 
   const rememberSession = useCallback(({ state, roll }: GameContinuation) => {
     // Keep the current investigation usable before disk I/O settles or fails.
@@ -38,7 +40,10 @@ export function AndroidApp() {
 
   useEffect(() => {
     try { setSession(readMobileSession()); }
-    catch (error) { setNotice(error instanceof Error ? error.message : '无法读取自动续玩记录，请使用手动存档。'); }
+    catch (error) {
+      if (import.meta.env.DEV) console.warn('[session] 无法读取自动续玩记录', error);
+      setNotice('自动续玩记录暂时无法读取，请使用手动存档继续。');
+    }
   }, []);
   useEffect(() => {
     if (screen !== 'game' || !game.state.players.length) return;
@@ -52,7 +57,7 @@ export function AndroidApp() {
     if (game.menuOpen) { game.setMenuOpen(false); return; }
     if (screen === 'game') { game.setMenuOpen(true); return; }
     if (screen === 'setup') { setScreen('title'); return; }
-    setExitOpen(true);
+    setExitError(''); setExitOpen(true);
   };
   useEffect(() => {
     if (!isNativeAndroid()) return;
@@ -78,9 +83,13 @@ export function AndroidApp() {
     else if (game.loadLatest()) { setScreen('game'); configureIfNeeded(game.saves[0]?.gameState); }
   };
   const exit = async () => {
-    try { await flushGameStorage(); await NativeApp.exitApp(); }
-    catch { setExitOpen(false); setNotice('保存尚未完成，请稍后再退出。'); }
+    if (exitingRef.current) return;
+    exitingRef.current = true; setExitBusy(true); setExitError('');
+    try { await flushGameStorage(); await NativeApp.exitApp(); setExitOpen(false); }
+    catch { setExitError('保存尚未完成，请稍后再退出。'); }
+    finally { exitingRef.current = false; setExitBusy(false); }
   };
+  const closeExit = () => { if (!exitingRef.current) { setExitOpen(false); setExitError(''); } };
   return <>
     <AudioDirector screen={screen} state={game.state} roll={game.diceRoll} />
     {screen === 'title' ? <>
@@ -92,11 +101,8 @@ export function AndroidApp() {
       <GameScreen controller={game} portrait autoFocusInput={false}
         onHome={(snapshot) => { rememberSession(snapshot); setScreen('title'); }}
         onRestart={(snapshot) => { rememberSession(snapshot); setScreen('setup'); }} />}
-    {notice && <div className="android-notice" role="alert"><span>{notice}</span><button onClick={() => setNotice('')}>知道了</button></div>}
+    {notice && <div className="android-notice" role="alert"><span>{notice}</span><button className="secondary-action" onClick={() => setNotice('')}>知道了</button></div>}
     {screen !== 'game' && game.toast && <div className="toast" role="status">{game.toast}</div>}
-    {exitOpen && <div className="modal-backdrop"><div ref={exitRef} className="modal-card" role="dialog" aria-modal="true" aria-labelledby="exit-title" tabIndex={-1}>
-      <h2 id="exit-title">结束本次调查？</h2><p>下次打开可从首页继续游戏。</p>
-      <footer><button className="ghost-btn" onClick={() => setExitOpen(false)}>留下</button><button className="primary-btn" onClick={() => void exit()}>退出游戏</button></footer>
-    </div></div>}
+    <ExitGameDialog open={exitOpen} busy={exitBusy} error={exitError} onClose={closeExit} onExit={() => void exit()} />
   </>;
 }

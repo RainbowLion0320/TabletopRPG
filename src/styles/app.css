@@ -431,56 +431,6 @@ button {
   letter-spacing: 1px;
 }
 
-.thinking-line {
-  display: flex;
-  justify-content: center;
-  padding: 10px 0 2px;
-}
-
-.thinking-line-text {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 0.03em;
-  color: var(--gold);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0;
-  line-height: 1.6;
-  text-align: center;
-  text-shadow: 0 8px 22px rgba(216,189,122,0.18);
-}
-
-.thinking-line-text span {
-  display: inline-block;
-  animation: thinking-bounce 1.05s ease-in-out infinite;
-  animation-delay: var(--delay);
-}
-
-@keyframes thinking-bounce {
-  0%, 80%, 100% {
-    opacity: 0.7;
-    transform: translateY(0);
-  }
-  40% {
-    opacity: 1;
-    transform: translateY(-0.32em);
-  }
-}
-
-@media (max-width: 640px) {
-  .thinking-line-text {
-    font-size: 12px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .thinking-line-text span {
-    animation: none;
-    opacity: 1;
-  }
-}
-
 .action-dock {
   position: absolute;
   left: 32px;

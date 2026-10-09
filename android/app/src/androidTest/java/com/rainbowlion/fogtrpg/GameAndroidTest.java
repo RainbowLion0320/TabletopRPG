@@ -623,10 +623,13 @@ public class GameAndroidTest {
                         assertEquals("Bearer android-qa-only-token", request.getHeader("Authorization"));
                         String content = narrator ? "{\"narrative\":\"Android 调查继续，伊莎贝拉说明父亲失踪的经过。\",\"activeNpc\":\"伊莎贝拉·摩勒\",\"nextPrompt\":\"继续调查。\",\"playerChoices\":{}}" : "{\"facts\":[],\"nodes\":[],\"edges\":[]}";
                         String response = request.getPath().endsWith("/responses") ? "{\"output_text\":" + JSONObject.quote(content) + "}" : "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":" + JSONObject.quote(content) + "}}]}";
-                        return new MockResponse().setHeader("Content-Type", "application/json").setBody(response);
+                        MockResponse reply = new MockResponse().setHeader("Content-Type", "application/json").setBody(response);
+                        if (party == 1 && narrator) reply.setBodyDelay(10, TimeUnit.SECONDS);
+                        return reply;
                     }
                 });
                 server.start(); fresh();
+                if (party == 1) viewport(390, 844);
                 click("开始游戏"); until("document.querySelectorAll('.preset-card-modern.selected').length === 1");
                 for (int i = 1; i < party; i++) js("document.querySelectorAll('.preset-card-modern strong')[" + i + "].click()");
                 until("document.querySelectorAll('.preset-card-modern.selected').length === " + party);
@@ -642,6 +645,13 @@ public class GameAndroidTest {
                         assertEquals("Completed actor is indicated", "true", js("document.querySelectorAll('.party-compact')[" + i + "].textContent.includes('已提交')"));
                         readablePartyDossiers();
                     }
+                }
+                if (party == 1) {
+                    until("document.querySelector('.thinking-line-text')");
+                    js("window.qaWaitingFirst=document.querySelector('.thinking-line-text').textContent;window.qaWaitingHeight=document.querySelector('.thinking-line').getBoundingClientRect().height");
+                    until("document.querySelector('.thinking-line-text') && document.querySelector('.thinking-line-text').textContent!==window.qaWaitingFirst");
+                    assertEquals("Waiting captions change without moving the story or exceeding the phone", "true", js("(()=>{const e=document.querySelector('.thinking-line-text'),r=e.getBoundingClientRect();return parseFloat(getComputedStyle(e).fontSize)>=15&&r.left>=0&&r.right<=innerWidth&&document.querySelector('.thinking-line').getBoundingClientRect().height===window.qaWaitingHeight})()"));
+                    screenshot("varied-wait-phone");
                 }
                 until("document.body.innerText.includes('Android 调查继续')");
                 assertEquals(1, narratorCalls.get());
@@ -704,6 +714,34 @@ public class GameAndroidTest {
                 }
             } finally { if (activity != null) activity.close(); }
         }
+    }
+
+    @Test public void corruptAutomaticRecordAndExitRemainUsable() throws Exception {
+        fresh();
+        try {
+            viewport(390, 844); click("开始游戏"); click("进入游戏");
+            fill(".dock-input", "继续保留手动记录里的调查安排。"); menu("保存游戏");
+            until("document.querySelector('.game-notice') && document.querySelector('.game-notice').textContent==='已保存'");
+            js("window.qaCorruptReady=false;Capacitor.Plugins.GameStorage.write({key:'trpg-android-session-v1',value:'NOT_JSON_INTERNAL_PRIVATE_HINT'}).then(()=>window.qaCorruptReady=true)");
+            until("window.qaCorruptReady"); activity.recreate(); until("document.querySelector('.android-notice')");
+            assertEquals("Corrupt automatic records show only a usable recovery message", "true", js("(()=>{const t=document.querySelector('.android-notice').textContent;return t.includes('自动续玩记录暂时无法读取')&&!/NOT_JSON|Unexpected|SyntaxError|INTERNAL|position|JSON/.test(t)})()"));
+            reachable(".android-notice button"); screenshot("corrupt-session-notice"); click("知道了");
+            click("继续游戏"); until("document.querySelector('.dock-input')");
+            assertEquals("The independent manual record still restores the full draft", "\"继续保留手动记录里的调查安排。\"", js("document.querySelector('.dock-input').value"));
+            menu("返回首页");
+            for (int[] size : new int[][] {{320,568},{390,844},{430,932},{562,1000}}) {
+                viewport(size[0], size[1]);
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                until("document.querySelector('.android-exit-card')");
+                assertEquals("Exit describes navigation rather than ending the investigation", "true", js("document.querySelector('.android-exit-card h2').textContent==='退出游戏？'&&document.activeElement.textContent==='留在游戏'"));
+                reachable(".android-exit-card footer .secondary-action"); reachable(".android-exit-card footer .primary-btn");
+                screenshot("exit-dialog-"+size[0]);
+                viewport(size[0],300); reachable(".android-exit-card footer .secondary-action"); reachable(".android-exit-card footer .primary-btn");
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                until("!document.querySelector('.android-exit-card')");
+                assertEquals("Cancelling exit retains the current continuation", "true", js("Boolean(document.querySelector('.title-resume-preview'))"));
+            }
+        } finally { if (activity != null) activity.close(); }
     }
 
     @Test public void nativeCancellationStopsTheNetworkCall() throws Exception {

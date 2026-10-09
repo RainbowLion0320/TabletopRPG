@@ -18,8 +18,6 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 .portrait-ui .dm-debug-fab, .portrait-ui .dm-debug-drawer { display: none; }
 .portrait-ui .android-start-error { display: grid; place-content: center; height: 100%; overflow: auto; padding: 16px; text-align: center; }
 .portrait-ui .android-start-error h1 { color: var(--gold); font-size: 20px; }
-.portrait-ui .android-notice { position: fixed; left: var(--mobile-left); right: var(--mobile-right); bottom: var(--mobile-bottom); z-index: 12000; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; max-height: var(--mobile-dialog-height); overflow: auto; border: 1px solid var(--gold); background: #211b12; }
-.portrait-ui .android-notice button { color: var(--gold); border: 0; background: transparent; min-height: 44px; flex-shrink: 0; }
 /* Portrait title and investigator list, with a fixed selection footer. */
 .portrait-ui .title-screen { height: var(--mobile-height); min-height: 0; overflow-y: auto; padding: var(--mobile-top) var(--mobile-right) var(--mobile-bottom) var(--mobile-left); }
 .portrait-ui .title-backdrop { overflow: hidden; }
