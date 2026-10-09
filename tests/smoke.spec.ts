@@ -1231,11 +1231,27 @@ for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height:
         noOverflow: document.documentElement.scrollWidth <= innerWidth };
     });
     await expect.poll(bounds).toEqual({ listInside: true, inputInside: true, closeInside: true, noOverflow: true });
-    await page.getByRole('button', { name: '关闭资料' }).click(); await expect(draft).toHaveValue('继续查看门廊上的痕迹。');
+    const closeArchive = async () => {
+      await page.getByRole('button', { name: '关闭资料' }).click();
+      const firstFrame = await page.locator('.info-drawer-react').evaluate(el => new Promise(resolve => {
+        requestAnimationFrame(() => resolve({ visible: getComputedStyle(el).visibility !== 'hidden',
+          hasPage: !!el.querySelector('.action-log-archive, .investigation-progress, .case-board-view') }));
+      }));
+      expect(firstFrame).toEqual({ visible: false, hasPage: false });
+      await expect(draft).toHaveValue('继续查看门廊上的痕迹。');
+    };
+    await closeArchive();
     await expect(page.locator('.dock-actor-avatar')).toBeFocused();
     await page.setViewportSize(size); await page.getByRole('button', { name: '资料', exact: true }).click();
     await page.getByRole('tab', { name: '日志' }).click(); await expect(search).toHaveValue('');
     await expect(list.locator('li')).toHaveCount(60);
+    await closeArchive();
+    await expect(page.getByRole('button', { name: '资料', exact: true })).toBeFocused();
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.getByRole('button', { name: '资料', exact: true }).click();
+    await page.getByRole('tab', { name: '进度' }).click(); await expect(current).toBeVisible();
+    await closeArchive();
+    await expect(page.getByRole('button', { name: '资料', exact: true })).toBeFocused();
   });
 }
 

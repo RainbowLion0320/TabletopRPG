@@ -3,6 +3,8 @@
 :root.fog-ui .game-screen .drawer-tab.draggable { min-width: 44px; transition: filter 130ms ease; }
 .drawer-tab.dragging { cursor: grabbing; }
 .info-drawer-react.fullscreen { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+/* Closed pages are unmounted; hide their frame in the same paint. */
+.info-drawer-react:not(.open) { transition: none; }
 .info-drawer-react > header { flex: 0 0 auto; }
 .info-drawer-page { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .info-drawer-page.board-page { display: flex; overflow: hidden; }
@@ -11,3 +13,6 @@
 .info-drawer-page .case-board-workspace { flex: 1; height: auto; min-height: 0; }
 .info-drawer-tabs [role='tab']:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: -2px; }
 .portrait-ui .info-drawer-page .case-board-view { padding: 0 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .info-drawer-react.fullscreen { transition: none; }
+}
