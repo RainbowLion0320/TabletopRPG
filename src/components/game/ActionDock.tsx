@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import { BookOpen, Dice5, Flag, Home, Send } from 'lucide-react';
+import { Dice5, Flag, Home, Send } from 'lucide-react';
+import { JournalArt } from '../shared/JournalArt';
 import type { GameState } from '../../types/game';
 import { getScenarioDefinition, getScenarioProgressForState } from '../../scenario/engine';
 import { pendingDmFailureText } from '../../services/narrativeVisibility';
@@ -87,7 +88,7 @@ export function ActionDock({
       <section className="action-dock ending-dock" aria-label="游戏结局">
         <div className="ending-copy"><Flag size={18} aria-hidden="true" /><div><strong>{ending.title}</strong><p>{ending.summary}</p></div></div>
         {(onReview || onHome) && <nav className="ending-actions" aria-label="结案操作">
-          {onReview && <button type="button" className="primary-action" aria-haspopup="dialog" onClick={(event) => { event.currentTarget.focus({ preventScroll: true }); onReview(); }}><BookOpen size={16} aria-hidden="true" />调查回顾</button>}
+          {onReview && <button type="button" className="primary-action" aria-haspopup="dialog" onClick={(event) => { event.currentTarget.focus({ preventScroll: true }); onReview(); }}><JournalArt />调查回顾</button>}
           {onHome && <button type="button" className="secondary-action" onClick={onHome}><Home size={16} aria-hidden="true" />返回首页</button>}
         </nav>}
         <PartyStatusStrip state={state} canDeclare={false} onInspectPlayer={onInspectPlayer} />

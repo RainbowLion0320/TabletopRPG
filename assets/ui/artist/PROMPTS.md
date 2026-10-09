@@ -1,5 +1,13 @@
 # 采用 UI 图的实际提示词
 
+## journal.webp（0.5.19）
+
+一次生成：`exec-b71d7d2b-adf5-48e8-b331-e9329e0064de`，2026-10-10。内置 Image Gen，无参考图和后续编辑，原生透明度保持；原 PNG 保留于本机生成目录，不提交。
+
+```text
+Use case: stylized-concept. Asset type: one production transparent raster UI icon for the investigation records and review buttons of a 1920s London mystery game. Primary request: a carefully hand-painted OPEN INVESTIGATION JOURNAL icon, matching a cold navy-blue and silver illustrated game UI rather than a flat web outline. One open book only, centered, clear two-page silhouette and dark navy cloth covers with gently curved ivory-blue blank pages. Fine layered silver page edges and two small paired pearl rivets on each cover corner, one restrained muted-gold bookmark at the central fold. View from slightly above, balanced and symmetric, covers visible beneath the pages. Dark ink-blue outer contour gives excellent readability on pale-blue button faces; pages remain light and simple. Restrained paper and cloth texture, clean painterly shading and highlights, premium small game inventory illustration. Square canvas, book fills about 78 percent of width, all corners fully contained, generous truly transparent outside margin. Actual transparent alpha background, no surrounding glow, fog, ground, drop-shadow rectangle or drawn checkerboard. Absolutely no writing, letters, numbers, symbols on the blank paper, no plot objects or new story facts. No other objects, no UI frame, no button, no bronze leather theme. Designed to remain recognizable at 20 to 24 pixels, prioritize the book silhouette and central fold over tiny detail.
+```
+
 模式：全部使用内置 image_gen.imagegen。以下保留实际调用的完整提示词，供制作追溯；这些是离线美术制作提示词，不进入 AI DM，不增加游戏校验。PNG 位于本机忽略的 output/ui-2026-10-08/polished-assets/，采用的 WebP 位于本目录。技术导出尺寸/切片/哈希见 [README](README.md)。原稿与中间 PNG 不提交。
 
 ## waiting-nib.webp（0.5.9）

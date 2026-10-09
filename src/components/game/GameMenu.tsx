@@ -1,4 +1,5 @@
-import { BookOpen, Home, RotateCcw, Save, Settings, X } from 'lucide-react';
+import { Home, RotateCcw, Save, Settings, X } from 'lucide-react';
+import { JournalArt } from '../shared/JournalArt';
 import { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AudioSettingsButton } from '../shared/AudioSettingsButton';
@@ -31,7 +32,7 @@ export function GameMenu({ onClose, onHome, onLoad, onOpenApi, onRestart, onSave
         <h3 id="game-menu-records">调查记录</h3>
         <div className="menu-list menu-records">
         <button onClick={onSave}><Save size={16} />保存游戏</button>
-        <button onClick={onLoad}><BookOpen size={16} />读取存档</button>
+        <button onClick={onLoad}><JournalArt />读取存档</button>
         </div>
       </section>
       <section aria-labelledby="game-menu-settings">

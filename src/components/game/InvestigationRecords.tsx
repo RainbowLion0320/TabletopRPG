@@ -1,9 +1,10 @@
 import { useLayoutEffect, useRef, type MutableRefObject } from 'react';
-import { BookOpen, Check, ChevronDown, Clock3, Flag, Search, Target, X } from 'lucide-react';
+import { Check, ChevronDown, Clock3, Flag, Search, Target, X } from 'lucide-react';
 import type { GameState } from '../../types/game';
 import { getScenarioDefinition, getScenarioProgressForState, getVisibleScenarioObjectives } from '../../scenario/engine';
 import { isPlayerVisibleLogEntry } from '../../services/narrativeVisibility';
 import { ArchiveEmptyArt } from '../shared/ArchiveEmptyArt';
+import { JournalArt } from '../shared/JournalArt';
 import './investigation-records.css';
 
 type Progress = ReturnType<typeof getScenarioProgressForState>;
@@ -48,7 +49,7 @@ export function InvestigationProgress({ state }: { state: GameState }) {
       </div>)}
     </section>}
     {found > 0 && <section className="investigation-card investigation-clues">
-      <h3><BookOpen size={17} aria-hidden="true" />线索进度</h3>
+      <h3><JournalArt />线索进度</h3>
       <p className="progress-stat">已发现 {found}{' · '}已分析 {analyzed}</p>
     </section>}
     {past.length > 0 && <details className="investigation-card investigation-history" open={current.length === 0}>

@@ -1,5 +1,6 @@
 import { useId, useRef, useState, useEffect, useLayoutEffect, type KeyboardEvent, type PointerEvent } from 'react';
-import { BookOpen, GripVertical, X } from 'lucide-react';
+import { GripVertical, X } from 'lucide-react';
+import { JournalArt } from '../shared/JournalArt';
 import type { GameState } from '../../types/game';
 import { useDialogFocus } from '../shared/useDialogFocus';
 import { usePortraitLayout } from '../../platform/layout';
@@ -119,7 +120,7 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
         data-sound="paper"
       >
         {!portrait && <GripVertical size={12} className="drawer-grip" aria-hidden="true" />}
-        <BookOpen size={16} />
+        <JournalArt size={24} />
         <span>资料</span>
       </button>
       <aside
