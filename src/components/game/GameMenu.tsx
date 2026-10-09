@@ -20,7 +20,7 @@ interface GameMenuProps {
 export function GameMenu({ onClose, onHome, onLoad, onOpenApi, onRestart, onSave, open }: GameMenuProps) {
   const dialogRef = useRef<HTMLElement>(null);
   useDialogFocus(open, dialogRef, onClose, undefined, {
-    getFallbackFocus: () => document.querySelector<HTMLButtonElement>('.dock-actor-avatar')
+    getFallbackFocus: () => document.querySelector<HTMLButtonElement>('.dock-actor-avatar, .ending-actions button')
   });
   if (!open) return null;
   return createPortal(

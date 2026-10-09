@@ -968,6 +968,13 @@ public class GameAndroidTest {
                 js("window.qaEndingRead=false;Capacitor.Plugins.GameStorage.readAll().then(({values})=>{window.qaEndingSaved=JSON.parse(values['trpg-android-session-v1']);window.qaEndingRead=true;})"); until("window.qaEndingRead");
                 assertEquals("Player resources stay unchanged after home and resume", vitals, js("JSON.stringify(window.qaEndingSaved.state.players.map(p=>[p.currentHp,p.currentMp,p.currentSan]))"));
                 assertEquals("The ending is settled only once", "true", js("window.qaEndingSaved.state.scenarioProgress.settledEndingIds.length===1&&window.qaEndingSaved.state.scenarioProgress.endingId===" + JSONObject.quote(endings[index])));
+                nativeTap(".menu-button"); until("document.querySelector('.game-menu')"); viewport(size[0], 300);
+                nativeTap(".game-menu-close"); until("!document.querySelector('.game-menu')");
+                assertEquals("Closing a short-window menu returns to the ending review", "true", js("document.activeElement===document.querySelector('.ending-actions button:first-child')"));
+                viewport(size[0], size[1]); menu("读取存档"); until("document.querySelector('.save-slot-card')"); viewport(size[0], 300);
+                nativeTap(".save-manager-close"); until("!document.querySelector('.save-manager-card')");
+                assertEquals("Closing short-window saves returns to the read-only ending", "true", js("document.activeElement===document.querySelector('.ending-actions button:first-child')&&!document.querySelector('.dock-input')&&!document.querySelector('.thinking-line')"));
+                viewport(size[0], size[1]); screenshot("ending-" + size[0] + "-return");
             } finally { activity.close(); }
         }
     }

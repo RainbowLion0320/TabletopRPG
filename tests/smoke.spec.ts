@@ -1268,6 +1268,21 @@ for (const size of [{ width: 320, height: 568, party: 1, endingId: 'END_C' }, { 
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('trpg-saves-v2')!)[0].gameState as GameState);
     expect(stored.players.map(p => [p.currentHp, p.currentMp, p.currentSan])).toEqual(resources);
     expect(stored.scenarioProgress?.settledEndingIds).toEqual([size.endingId]); expect(aiCalls).toBe(0);
+    if (size.width < 600) {
+      await page.getByRole('button', { name: '菜单', exact: true }).click();
+      await page.setViewportSize({ width: size.width, height: 300 });
+      await page.getByRole('button', { name: '关闭调查菜单' }).click();
+      await expect(review).toBeFocused();
+      await page.setViewportSize(size);
+      await page.getByRole('button', { name: '菜单', exact: true }).click();
+      await page.getByRole('button', { name: '读取存档', exact: true }).click();
+      await page.setViewportSize({ width: size.width, height: 300 });
+      await page.getByRole('button', { name: '关闭存档列表' }).click();
+      await expect(review).toBeFocused();
+      await expect(ending).toContainText(outcome.summary);
+      await page.setViewportSize(size);
+      expect(aiCalls).toBe(0);
+    }
   });
 }
 

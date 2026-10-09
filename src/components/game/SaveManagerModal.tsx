@@ -38,7 +38,7 @@ export function SaveManagerModal({ incompatibleSaves = [], onClose, onDelete, on
     else if (control.top < body.top) list.scrollTop += control.top - body.top - 8;
   }
   useDialogFocus(open, dialogRef, close, undefined, {
-    getFallbackFocus: () => document.querySelector<HTMLButtonElement>('.dock-actor-avatar')
+    getFallbackFocus: () => document.querySelector<HTMLButtonElement>('.dock-actor-avatar, .ending-actions button')
   });
   useEffect(() => {
     if (!open) {
