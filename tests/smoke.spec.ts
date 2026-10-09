@@ -2501,8 +2501,26 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
     await expect(dialog.getByRole('article')).toHaveCount(12);
     await expect(dialog.getByText('最近保存', { exact: true })).toHaveCount(1);
     const last = dialog.getByRole('article').last();
-    await last.getByRole('button', { name: /^删除存档/ }).click();
+    const deleteButton = last.getByRole('button', { name: /^删除存档/ });
+    const deletePresentation = await deleteButton.evaluate(element => ({
+      frame: getComputedStyle(element, '::before').borderImageSource,
+      font: parseFloat(getComputedStyle(element).fontSize),
+      width: element.getBoundingClientRect().width,
+      height: element.getBoundingClientRect().height
+    }));
+    expect(deletePresentation.frame).toContain('button-secondary');
+    expect(deletePresentation.font).toBeGreaterThanOrEqual(15);
+    expect(deletePresentation.width).toBeGreaterThanOrEqual(96);
+    expect(deletePresentation.height).toBeGreaterThanOrEqual(44);
+    await deleteButton.click();
     await expect(last.getByRole('button', { name: '保留存档' })).toBeFocused();
+    const keep = last.getByRole('button', { name: '保留存档' });
+    const confirm = last.getByRole('button', { name: '确认删除' });
+    await keep.hover();
+    const dangerInk = await confirm.evaluate(element => getComputedStyle(element).color);
+    expect(dangerInk).not.toBe(await keep.evaluate(element => getComputedStyle(element).color));
+    await confirm.hover();
+    expect(await confirm.evaluate(element => getComputedStyle(element).color)).toBe(dangerInk);
     async function verifyLayout() {
       const layout = await dialog.evaluate((element) => {
         const card = element.getBoundingClientRect(), header = element.querySelector('header')!.getBoundingClientRect();

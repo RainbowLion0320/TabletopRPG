@@ -102,7 +102,7 @@
 :root.fog-ui :is(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action) svg {
   flex-shrink: 0; stroke-width: 1.6;
 }
-:root.fog-ui .danger { color: var(--ui-danger-ink); }
+:root.fog-ui button.danger:enabled { color: var(--ui-danger-ink); }
 :root.fog-ui :is(button, [role='button'], [role='checkbox'], summary, a):focus-visible {
   outline: 2px solid var(--ui-focus); outline-offset: -3px;
 }

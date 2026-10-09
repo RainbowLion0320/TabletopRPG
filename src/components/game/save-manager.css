@@ -24,20 +24,17 @@
 .save-party-portraits img[hidden] { display: none; }
 .save-slot-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 3px; min-width: 0; }
 .save-slot-actions > button { flex: 0 1 auto; min-width: 0; min-height: 44px; white-space: nowrap; font-size: 15px; }
-.save-slot-actions .save-slot-delete { margin-right: auto; display: inline-flex; align-items: center; gap: 6px; padding: 0 6px; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 14px; cursor: pointer; touch-action: manipulation; }
-.save-slot-delete:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: -2px; }
-.save-slot-delete:active { color: #f0c8b9; background: #4a2a1e; }
+.save-slot-actions .save-slot-delete { margin-right: auto; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 96px; padding: 0 18px; }
 .save-slot-actions .save-slot-load { min-width: 116px; padding: 0 16px; }
 .save-slot-note { margin: 4px 0 0; font-size: 15px; line-height: 1.6; color: #d7b5a9; }
-.save-delete-confirmation { border-top: 1px solid #755141; margin-top: 4px; padding-top: 8px; }
-.save-delete-confirmation > p { margin: 0 0 5px; font-size: 15px; line-height: 1.6; color: #e0b5a0; overflow-wrap: anywhere; }
+.save-delete-confirmation { border-top: 1px solid var(--line-soft); margin-top: 4px; padding-top: 8px; }
+.save-delete-confirmation > p { margin: 0 0 5px; font-size: 15px; line-height: 1.6; color: var(--ui-danger); overflow-wrap: anywhere; }
 .save-delete-confirmation .save-slot-actions > button { flex: 1; padding: 0 8px; }
 .save-manager-card footer { flex: 0 0 auto; display: flex; justify-content: flex-end; border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
 .save-manager-card footer button { min-width: 130px; }
 .save-manager-empty { min-height: 120px; display: grid; align-content: center; justify-items: center; gap: 9px; color: var(--line); }
 .save-manager-empty p { color: var(--text); font-size: 14px; margin: 0; }
 .save-manager-card button:disabled { cursor: default; }
-.save-slot-delete:disabled { color: var(--line); }
 .portrait-ui .save-manager-backdrop { padding: var(--mobile-top) var(--mobile-right) var(--mobile-bottom) var(--mobile-left); }
 .portrait-ui .save-manager-card { width: min(480px, 100%); max-height: var(--mobile-dialog-height); padding: 5px; }
 .portrait-ui .save-manager-heading { padding-bottom: 10px; }
@@ -48,7 +45,6 @@
 .portrait-ui .save-slot-party { gap: 8px; }
 .portrait-ui .save-slot-party:has(.save-party-portraits > :nth-child(3)) { flex-direction: column; align-items: flex-start; gap: 5px; }
 .portrait-ui .save-manager-card footer button { width: 100%; }
-@media (hover: hover) { .save-slot-delete:hover { color: #e7bcaa; } }
 @media (max-height: 420px) {
   .save-manager-heading { padding-bottom: 6px; }
   .save-manager-heading p { display: none; }

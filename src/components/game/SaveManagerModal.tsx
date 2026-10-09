@@ -122,7 +122,7 @@ export function SaveManagerModal({ incompatibleSaves = [], onClose, onDelete, on
                   <button type="button" className="ghost-btn danger" aria-describedby={messageId} disabled={busy} onClick={() => { void confirmDeletion(slot.id, index); }}>确认删除</button>
                 </div>
               </div> : <div className="save-slot-actions">
-                <button type="button" className="save-slot-delete" data-action="delete" aria-label={`删除存档：${slot.scene}，${slot.savedAt}`} disabled={busy} onClick={() => askToDelete(slot.id)}><Trash2 size={16} aria-hidden="true" />删除</button>
+                <button type="button" className="ghost-btn danger save-slot-delete" data-action="delete" aria-label={`删除存档：${slot.scene}，${slot.savedAt}`} disabled={busy} onClick={() => askToDelete(slot.id)}><Trash2 size={16} aria-hidden="true" />删除</button>
                 {save && <button type="button" className="primary-btn save-slot-load" data-action="load" disabled={busy} onClick={() => { if (!deletingRef.current) onLoad(save); }}>载入存档</button>}
               </div>}
             </article>;
