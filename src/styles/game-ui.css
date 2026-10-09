@@ -52,7 +52,7 @@
   .dice-roll-confirm, .menu-button, .drawer-tab, .narrative-toggle-btn, .narrative-new-content,
   .audio-close, .audio-preview, .entity-detail-close, .info-drawer-react header > button,
   .case-board-inspector header button, .case-related-record, .case-board-toolbar > button,
-  .case-board-tools button, .preset-attrs-toggle, .menu-list button, .info-drawer-tabs button,
+  .case-board-tools button, .case-board-threads button, .preset-attrs-toggle, .menu-list button, .info-drawer-tabs button,
   .investigator-party button, .investigator-tabs button, .investigator-search button,
   .suggestion-row button, .game-menu-close, .api-config-close, .api-key-reveal,
   .investigator-close, .save-manager-close, .case-search-clear, .record-log-search button) {
@@ -68,7 +68,7 @@
   .dice-roll-confirm, .menu-button, .drawer-tab, .narrative-toggle-btn, .narrative-new-content,
   .audio-close, .audio-preview, .entity-detail-close, .info-drawer-react header > button,
   .case-board-inspector header button, .case-related-record, .case-board-toolbar > button,
-  .case-board-tools button, .preset-attrs-toggle, .menu-list button, .info-drawer-tabs button,
+  .case-board-tools button, .case-board-threads button, .preset-attrs-toggle, .menu-list button, .info-drawer-tabs button,
   .investigator-party button, .investigator-tabs button, .investigator-search button,
   .suggestion-row button, .game-menu-close, .api-config-close, .api-key-reveal,
   .investigator-close, .save-manager-close, .case-search-clear, .record-log-search button)::before {
@@ -79,7 +79,8 @@
 }
 :root.fog-ui :is(.primary-btn, .primary-action, .dice-roll-confirm,
   .info-drawer-tabs button.active, .investigator-party button[aria-pressed='true'],
-  .investigator-tabs button[aria-selected='true'], .case-board-toolbar > button.active) {
+  .investigator-tabs button[aria-selected='true'], .case-board-toolbar > button.active,
+  .case-board-threads button[aria-pressed='true']) {
   --control-art: var(--ui-primary-frame);
   color: var(--ui-ink);
 }
@@ -110,14 +111,14 @@
     .dice-roll-confirm, .menu-button, .drawer-tab, .narrative-toggle-btn, .narrative-new-content,
     .audio-close, .audio-preview, .entity-detail-close, .menu-list button, .suggestion-row button,
     .info-drawer-tabs button, .preset-attrs-toggle, .case-board-toolbar > button,
-    .case-board-tools button, .case-board-inspector header button, .case-related-record):enabled:hover {
+    .case-board-tools button, .case-board-threads button, .case-board-inspector header button, .case-related-record):enabled:hover {
     filter: brightness(1.08); color: var(--ui-ink);
   }
 }
 :root.fog-ui :where(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
   .dice-roll-confirm, .menu-button, .drawer-tab, .narrative-toggle-btn, .narrative-new-content,
   .menu-list button, .suggestion-row button, .info-drawer-tabs button, .entity-detail-close,
-  .case-board-inspector header button, .case-related-record):enabled:active {
+  .case-board-inspector header button, .case-board-threads button, .case-related-record):enabled:active {
   transform: translateY(1px); filter: brightness(.92);
 }
 :root.fog-ui button:disabled { cursor: not-allowed; text-shadow: none; transform: none; }
@@ -176,21 +177,20 @@
 @media (hover: hover) { :root.fog-ui .dock-actor-avatar:hover { outline: 1px solid var(--ui-focus); outline-offset: -3px; } }
 :root.fog-ui .info-drawer-react { border: 1px solid transparent; border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 10px / 0 stretch; background: var(--panel-strong); background-clip: padding-box; }
 :root.fog-ui .game-screen .drawer-tab { position: fixed; }
-:root.fog-ui :is(.case-board-mobile-card, .case-board-threads button) { border-radius: 8px; }
-:root.fog-ui .case-board-threads button[aria-pressed='true'] { border-color: var(--accent); background: var(--surface); color: var(--text); }
+:root.fog-ui .case-board-mobile-card { border-radius: 8px; }
 :root.fog-ui.portrait-ui .narrative-panel.expanded { border-radius: 8px 8px 0 0; }
 
 /* Hollow portrait artwork sits above the original painting, never above input. */
-:root.fog-ui :is(.preset-portrait-frame, .investigator-portrait, .case-record-photo,
+:root.fog-ui :is(.preset-portrait-frame, .investigator-portrait, .case-record-photo, .case-flow-node.npc .case-flow-photo,
   .record-detail-media.portrait, .save-party-portraits > span) { position: relative; isolation: isolate; }
 :root.fog-ui :is(.preset-portrait-frame, .investigator-portrait, .dock-actor-avatar,
-  .case-board-mobile-card:not(.scene) .case-record-photo,
+  .case-board-mobile-card:not(.scene) .case-record-photo, .case-flow-node.npc .case-flow-photo,
   .record-detail-media.portrait, .save-party-portraits > span)::after {
   content: ''; position: absolute; inset: 0; z-index: 2;
   background: var(--ui-portrait-mount) center / 100% 100% no-repeat;
   pointer-events: none;
 }
-:root.fog-ui :is(.investigator-portrait, .case-record-photo, .save-party-portraits > span) {
+:root.fog-ui :is(.investigator-portrait, .case-record-photo, .case-flow-node.npc .case-flow-photo, .save-party-portraits > span) {
   border-color: transparent; border-image: none; background: var(--panel-strong);
 }
 

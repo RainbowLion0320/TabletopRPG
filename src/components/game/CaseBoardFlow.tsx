@@ -104,7 +104,7 @@ export function CaseBoardFlow({ model, selectedId, onSelect }: CaseBoardFlowProp
       nodesConnectable={false} nodesDraggable={false} nodesFocusable={false} edgesFocusable={false} deleteKeyCode={null}
       onNodeClick={(event, node) => { event.currentTarget.querySelector<HTMLButtonElement>('.case-flow-node')?.focus({ preventScroll: true }); onSelect(node.id); }} proOptions={{ hideAttribution: true }}>
       <CaseBoardCamera geometryKey={geometryKey} focusKey={focusKey} selectedId={selectedId} />
-      <Background color="rgba(216,189,122,.12)" gap={24} size={1} /><CaseBoardTools />
+      <Background color="rgba(196,217,241,.12)" gap={24} size={1} /><CaseBoardTools />
     </ReactFlow> : <p className="empty-note">{failed ? '暂时无法整理关系图，请重新打开资料。' : model.nodes.length ? '正在整理关系图...' : '当前筛选条件下没有匹配资料。'}</p>}
   </div>;
 }

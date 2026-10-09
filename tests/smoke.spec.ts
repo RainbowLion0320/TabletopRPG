@@ -2002,9 +2002,31 @@ for (const size of [{ width: 980, height: 640 }, { width: 1440, height: 900 }]) 
     });
     const node = drawer.getByRole('button', { name: '人物 伊莎贝拉·摩勒', exact: true });
     await expect.poll(view).not.toBe('translate(0px, 0px) scale(1)');
+    const threads = drawer.getByRole('navigation', { name: '调查脉络' });
+    for (const control of await threads.getByRole('button').all()) {
+      const presentation = await control.evaluate(element => ({
+        height: element.getBoundingClientRect().height,
+        frame: getComputedStyle(element, '::before').borderImageSource,
+        label: parseFloat(getComputedStyle(element.querySelector('strong')!).fontSize),
+        count: parseFloat(getComputedStyle(element.querySelector('span')!).fontSize),
+        overflow: Array.from(element.children).some(child => {
+          const control = element.getBoundingClientRect(), text = child.getBoundingClientRect();
+          return text.left < control.left || text.right > control.right;
+        })
+      }));
+      expect(presentation.height).toBeGreaterThanOrEqual(44);
+      expect(presentation.label).toBeGreaterThanOrEqual(15); expect(presentation.count).toBeGreaterThanOrEqual(13);
+      expect(presentation.frame).toContain('button-'); expect(presentation.overflow).toBe(false);
+    }
+    const selectedThread = threads.locator('button[aria-pressed="true"]');
+    await expect(selectedThread).toHaveCount(1);
+    expect(await selectedThread.evaluate(element => getComputedStyle(element, '::before').borderImageSource)).toContain('button-primary');
+    const allRecords = threads.getByRole('button', { name: /^全部资料/ });
+    expect(await node.locator('.case-flow-photo').evaluate(element => getComputedStyle(element, '::after').backgroundImage)).toContain('portrait-mount');
     const firstView = await view();
     const zoomOut = drawer.getByRole('button', { name: '缩小关系图', exact: true });
     const tools = drawer.getByRole('group', { name: '关系图视角', exact: true });
+    expect(await tools.evaluate(element => getComputedStyle(element).borderImageSource)).toContain('panel-frame');
     for (const button of await tools.getByRole('button').all()) {
       const box = (await button.boundingBox())!;
       expect(box.width).toBeGreaterThanOrEqual(44); expect(box.height).toBeGreaterThanOrEqual(44);
@@ -2050,6 +2072,13 @@ for (const size of [{ width: 980, height: 640 }, { width: 1440, height: 900 }]) 
     await page.keyboard.press('Escape'); await expect(detail).toHaveCount(0);
     await expect(search).toHaveValue('伊莎贝拉');
     await expect(drawer.getByRole('combobox', { name: '资料类型' })).toHaveValue('npc');
+    await threads.getByRole('button').last().click();
+    await expect(threads.getByRole('button').last()).toHaveAttribute('aria-pressed', 'true');
+    expect(await selectedThread.evaluate(element => getComputedStyle(element, '::before').borderImageSource)).toContain('button-primary');
+    await allRecords.click(); await expect(allRecords).toHaveAttribute('aria-pressed', 'true');
+    await expect(search).toHaveValue('伊莎贝拉');
+    await expect(drawer.getByRole('combobox', { name: '资料类型' })).toHaveValue('npc');
+    await expect(node).toBeVisible();
   });
 }
 
