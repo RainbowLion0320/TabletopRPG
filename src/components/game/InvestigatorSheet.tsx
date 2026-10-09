@@ -5,6 +5,7 @@ import type { Investigator } from '../../types/game';
 import { getDifficultyThreshold } from '../../data/gameRules';
 import { getSkillTotal } from '../../services/dice';
 import { useDialogFocus } from '../shared/useDialogFocus';
+import { ArchiveEmptyState } from '../shared/ArchiveEmptyState';
 import './investigatorSheet.css';
 
 interface InvestigatorSheetProps {
@@ -116,15 +117,14 @@ export function InvestigatorSheet({ players, selectedId, onSelect, onClose }: In
           </>}
 
           {tab === 'skills' && <>
-            <table className="investigator-skills">
+            {skillNames.length > 0 ? <table className="investigator-skills">
               <caption>按技能值排列 · 普通 / 困难 / 极难检定</caption>
               <thead><tr><th scope="col">技能</th><th scope="col">普通</th><th scope="col">困难</th><th scope="col">极难</th></tr></thead>
               <tbody>{skillNames.map((name) => {
                 const total = getSkillTotal(player, name);
                 return <tr key={name}><th scope="row">{name}{player.skills[name].isJob && <small>职业</small>}</th><td>{total}</td><td>{getDifficultyThreshold(total, '困难')}</td><td>{getDifficultyThreshold(total, '极难')}</td></tr>;
               })}</tbody>
-            </table>
-            {!skillNames.length && <p className="investigator-empty">{query.trim() ? '没有匹配的技能，试试其他名称。' : '暂无技能记录。'}</p>}
+            </table> : <ArchiveEmptyState>{query.trim() ? '没有匹配的技能，试试其他名称。' : '暂无技能记录。'}</ArchiveEmptyState>}
           </>}
 
           {tab === 'background' && <>

@@ -1,4 +1,5 @@
 .case-board-flow-wrap { position: relative; min-width: 0; background: var(--panel); }
+.case-board-flow-wrap > .case-board-empty { height: 100%; }
 .case-board-tools { display: flex; gap: 5px; padding: 3px; border: 6px solid transparent; border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 6px / 0 stretch; background: var(--panel-strong); box-shadow: 0 3px 12px #0008; }
 :root .case-board-tools button { position: relative; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--ui-ink); cursor: pointer; }
 :root .case-board-tools button:enabled:hover { filter: brightness(1.08); }

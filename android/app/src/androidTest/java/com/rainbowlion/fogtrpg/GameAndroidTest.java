@@ -340,6 +340,10 @@ public class GameAndroidTest {
                     assertEquals("Teammate skill uses its own corrected allocation", JSONObject.quote(expectedDodge), js("Array.from(document.querySelectorAll('.investigator-skills tbody td')).map(e=>e.textContent).join(',')"));
                     js("document.querySelector('.investigator-party button:first-child').click()");
                 }
+                if (size[0] == 390) {
+                    fill(".investigator-search input", "未出现的QA技能"); until("document.querySelector('.investigator-body .archive-empty-state')");
+                    screenshot(prefix + "-skill-empty"); viewport(size[0], 300); screenshot(prefix + "-skill-empty-short"); viewport(size[0], size[1]);
+                }
                 fill(".investigator-search input", "侦查");
                 assertEquals("Skill thresholds match the game rules", "true", js("Array.from(document.querySelectorAll('.investigator-skills tbody td')).map(e=>e.textContent).join(',')==='75,37,15'"));
                 reachable("[aria-label='清除技能搜索']"); nativeTap("[aria-label='清除技能搜索']");
@@ -409,6 +413,10 @@ public class GameAndroidTest {
                 assertEquals("Phone archive does not construct a hidden graph", "true", js("!document.querySelector('.react-flow')&&!document.querySelector('.case-board-flow-wrap')"));
                 until("Array.from(document.querySelectorAll('.case-record-photo img')).every(i=>i.complete&&i.naturalWidth>0)");
                 assertEquals("Archive tabs announce the active page", "true", js("document.querySelector('[role=tab][aria-selected=true]').textContent==='案件板'&&document.querySelector('[role=tabpanel]').getAttribute('aria-labelledby')===document.querySelector('[role=tab][aria-selected=true]').id"));
+                if (size[0] == 390) {
+                    fill(".case-board-search input", "未出现的QA档案"); until("document.querySelector('.case-board-empty')");
+                    screenshot(prefix + "-case-empty"); viewport(size[0], 300); screenshot(prefix + "-case-empty-short"); viewport(size[0], size[1]);
+                }
                 fill(".case-board-search input", "伊莎贝拉");
                 until("document.querySelectorAll('.case-board-mobile-card').length===2");
                 assertEquals("Search keeps the matched person and related scene without unrelated records", "true", js("Array.from(document.querySelectorAll('.case-board-mobile-card')).map(e=>e.textContent).join(',').includes('伊莎贝拉')&&document.querySelector('.case-board-mobile-card.scene')&&!Array.from(document.querySelectorAll('.case-board-mobile-card')).some(e=>e.textContent.includes('埃里克'))"));

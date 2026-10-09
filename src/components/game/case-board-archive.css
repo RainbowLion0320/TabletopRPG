@@ -26,6 +26,9 @@
 .case-board-toolbar:not(:has(> button)) .case-board-type { grid-column: 1 / -1; }
 .case-board-view.archive-layout .case-board-workspace { display: block; min-height: 0; height: auto; overflow-y: auto; border: 0; }
 .case-board-view.archive-layout .case-board-mobile-list { display: grid; gap: 12px; padding: 6px 0 12px; }
+.case-board-empty { flex: 1; }
+.case-board-view.archive-layout .case-board-workspace:has(> .case-board-mobile-list > .case-board-empty) { display: flex; }
+.case-board-view.archive-layout .case-board-mobile-list:has(> .case-board-empty) { display: flex; flex: 1; min-width: 0; min-height: 0; padding: 0; }
 .case-board-view.archive-layout .case-board-mobile-list > section { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; }
 .case-board-mobile-list > section > h4 { grid-column: 1 / -1; margin: 4px 4px 0; padding-left: 8px; border-left: 2px solid var(--line); color: var(--accent); font-family: var(--ui-font); font-size: 14px; line-height: 1.4; font-weight: 400; }
 :root .case-board-view.archive-layout .case-board-mobile-card { position: relative; display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 106px; width: 100%; padding: 3px 6px; text-align: left; border: 8px solid transparent; border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 8px / 0 stretch; border-radius: 0; color: var(--text); background: var(--panel); font: inherit; cursor: pointer; }

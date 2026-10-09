@@ -4,6 +4,7 @@ import type { GameState } from '../../types/game';
 import { CaseBoardInspector } from './CaseBoardInspector';
 import { CaseBoardMobileCard } from './CaseBoardMobileCard';
 import { useCaseBoardListLayout } from '../../platform/layout';
+import { ArchiveEmptyState } from '../shared/ArchiveEmptyState';
 import {
   buildCaseBoardGraphModel,
   filterCaseBoardGraph,
@@ -145,13 +146,13 @@ export function CaseBoard({ state }: CaseBoardProps) {
                 </section>
               );
             })}
-            {!filtered.nodes.length ? <p className="empty-note">当前筛选条件下没有匹配资料。</p> : null}
+            {!filtered.nodes.length ? <ArchiveEmptyState className="case-board-empty">当前筛选条件下没有匹配资料。</ArchiveEmptyState> : null}
           </div>}
 
           {selectedNode ? <CaseBoardInspector model={model} node={selectedNode} onClose={() => setSelection([])} state={state} archive={archive}
             onSelect={followRelation} onBack={selection.length > 1 ? () => setSelection((current) => current.slice(0, -1)) : undefined} returnFocusRef={returnFocusRef} /> : null}
         </div>
-      ) : <p className="empty-note">案件板还没有足够资料，先调查现场或询问 NPC。</p>}
+      ) : <ArchiveEmptyState className="case-board-empty">案件板还没有足够资料，先调查现场或询问 NPC。</ArchiveEmptyState>}
     </section>
   );
 }
