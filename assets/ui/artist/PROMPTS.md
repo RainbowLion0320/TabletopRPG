@@ -151,6 +151,22 @@ Change only the OUTSIDE TRANSPARENCY cleanup: remove every stray blue, cyan or w
 Keep the actual square button COMPLETELY unchanged: same shape, complete uncut four corners, same light gray-blue matte textured icon center, same fine layered silver bevel rails, same tiny gold corner points, same paired pearls and four-point corner stars, same size and colors. The entire center surface inside the button stays fully opaque. Do not repaint, smooth, blur or remove the drawn frame. Do not add anything. No text, icon, digits, symbols in the center or backdrop.
 ```
 
+## archive-file.webp
+
+初始生成：`exec-318ed20b-40a8-43a5-a68d-d713b737dd83`；最终外部透明度编辑：`exec-e4fea1b8-4439-475d-bc61-2e131966e73c`，2026-10-10。均使用内置 Image Gen；初始新图无参考图，编辑只参考初始生成 PNG，原生成文件保留本机生成目录，不提交。
+
+### 初始生成
+
+```text
+Create one finely hand-painted compact document emblem for a production UI in a 1920s London mystery tabletop RPG. A single closed investigator's document folder, viewed almost straight-on with a very slight three-quarter angle: deep rainy navy-blue cloth front cover, two pale cool ivory-blue paper leaves neatly peeking from the top, a small folded page corner, slender brushed-silver layered corner fittings, one tiny restrained muted-gold fastener. Include one discreet four-point silver star at a lower corner and two small paired pearl dots as metal detailing. Match a cold midnight-blue, foggy London game UI with finely painted blue paper, silver rails and ivory highlights. The silhouette should read immediately as a document at 16 pixels high, and as a tactile painted object at 48 pixels high. Broad clear shapes, controlled edge highlights, elegant material detail. Tall compact aspect about 2:3, whole object centered with generous actual transparent margin. The paper and folder are blank. This is a generic archive emblem shared by evidence and event records, not a depiction of a story clue. Produce a polished two-dimensional raster game asset, not a thin web outline icon or a full interface. One object only. No text, numbers, letters, seal writing, people, props, scenery, UI panel or ground shadow. No brown leather, sepia parchment, ornate gold filigree, glow or diffuse background haze. True native RGBA transparency outside the clean complete silhouette, narrow natural antialiased edges, no checkerboard drawn into pixels. Preserve opaque painted material inside the folder.
+```
+
+### 外部透明度编辑
+
+```text
+Edit only the outside transparency of this supplied painted silver-blue archive folder emblem. Keep the entire folder, blank paper leaves, folded corner, blue fabric texture, silver corner fittings, paired pearl rivets, four-point star and small gold fastener exactly as drawn: unchanged colour, shape, size, perspective, composition and complete silhouette. Remove all white, gray and blue diffuse background haze and glow above, beside and below the object, all large soft shadows, and every non-object pixel outside the exact folder and paper outline. The whole outside region must be true RGBA alpha 0, with only a very narrow natural antialiased silhouette edge. The physical folder, paper, fittings and fabric should remain opaque. Do not darken, smooth, repaint or simplify the object. Do not introduce a background or drawn checkerboard. No text, labels, new symbols or new objects. Return a clean production cutout for a small game UI document emblem on a midnight-blue panel.
+```
+
 ## archive-empty.webp
 
 初始生成：`exec-b6b772b3-d3ff-4700-9d08-911f4354b1df`；最终透明边缘编辑：`exec-3daf8d04-3d6d-4987-b98d-ace4fca67cb5`，2026-10-09。均使用内置 Image Gen，初始新图无参考图，编辑仅参考初始生成 PNG；原生成文件保留于本机生成目录，不提交。

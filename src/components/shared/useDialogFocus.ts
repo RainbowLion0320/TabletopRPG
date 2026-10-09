@@ -5,9 +5,11 @@ const dialogs: DialogEntry[] = [];
 const focusableSelector = 'button:not(:disabled), a[href], input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), summary, [tabindex]:not([tabindex="-1"])';
 
 /** Keep keyboard actions in the topmost dialog and restore its opener on close. */
-export function useDialogFocus(open: boolean, ref: RefObject<HTMLElement>, onClose: () => void, returnFocusRef?: RefObject<HTMLElement>, options?: { trapFocus?: boolean }) {
+export function useDialogFocus(open: boolean, ref: RefObject<HTMLElement>, onClose: () => void, returnFocusRef?: RefObject<HTMLElement>, options?: { trapFocus?: boolean; getFallbackFocus?: () => HTMLElement | null }) {
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
+  const fallbackRef = useRef(options?.getFallbackFocus);
+  fallbackRef.current = options?.getFallbackFocus;
   const trapFocus = options?.trapFocus ?? true;
   useEffect(() => {
     const element = ref.current;
@@ -60,7 +62,13 @@ export function useDialogFocus(open: boolean, ref: RefObject<HTMLElement>, onClo
       const target = returnFocusRef?.current ?? previous;
       const active = document.activeElement;
       const restore = active === document.body || dialog.contains(active);
-      if (wasTopmost && restore && target?.isConnected && !target.closest('[inert], [aria-hidden="true"]')) target.focus({ preventScroll: true });
+      if (!wasTopmost || !restore) return;
+      const focus = (candidate: HTMLElement | null | undefined) => {
+        if (candidate?.isConnected && !candidate.closest('[inert], [aria-hidden="true"]')) candidate.focus({ preventScroll: true });
+      };
+      focus(target);
+      // Responsive layouts can hide the original opener while the dialog is open.
+      if (document.activeElement === document.body || dialog.contains(document.activeElement)) focus(fallbackRef.current?.());
     };
   }, [open, ref, returnFocusRef, trapFocus]);
 }

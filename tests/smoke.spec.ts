@@ -781,7 +781,14 @@ for (const size of [{ width: 390, height: 844, party: 1 }, { width: 1440, height
     await expect(page.locator('.party-compact.active')).toContainText('亨利·格雷');
     await page.locator('.party-compact').last().click();
     await expect(sheet).toHaveAccessibleName(size.party === 4 ? '罗伯特·肖' : size.party === 2 ? '艾达·华莱士' : '亨利·格雷');
+    if (size.width <= 700) {
+      await page.setViewportSize({ width: size.width, height: 300 });
+      await expect(page.locator('.party-compact').last()).not.toBeVisible();
+    }
     await sheet.getByRole('button', { name: '关闭调查员档案' }).click();
+    await expect(size.width <= 700 ? avatar : page.locator('.party-compact').last()).toBeFocused();
+    await expect(page.getByRole('textbox', { name: '亨利·格雷的行动' })).toHaveValue(draft);
+    await page.setViewportSize(size);
     if (size.party > 1) {
       await page.getByRole('button', { name: '下一位', exact: true }).click();
       await page.getByRole('textbox', { name: '艾达·华莱士的行动' }).fill('继续查看房间');

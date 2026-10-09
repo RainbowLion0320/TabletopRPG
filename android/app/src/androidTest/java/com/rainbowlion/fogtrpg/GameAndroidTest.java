@@ -379,12 +379,15 @@ public class GameAndroidTest {
                 InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
                 until("!document.querySelector('.investigator-sheet')");
                 assertEquals("Inspecting a teammate preserves the current action and actor", "true", js("document.querySelector('.dock-input').value==='查看属性时保留这段行动草稿'&&document.querySelector('.party-compact.active strong').textContent==='亨利·格雷'"));
-                js("document.querySelector('.party-compact:last-child').click()"); until("document.querySelector('.investigator-sheet')");
+                nativeTap(".party-compact:last-child"); until("document.querySelector('.investigator-sheet')");
                 assertEquals("Status cards inspect their own player", "true", js("document.querySelector('.investigator-identity h2').textContent===document.querySelector('.party-compact:last-child strong').textContent"));
                 click("技能"); viewport(size[0], 300);
                 js("document.querySelector('.investigator-search input').focus()");
                 reachable(".investigator-search input"); reachable(".investigator-close"); screenshot(prefix + "-sheet-keyboard");
-                js("document.querySelector('.investigator-close').click()"); viewport(size[0], size[1]); fill(".dock-input", "");
+                js("document.querySelector('.investigator-close').click()");
+                until("!document.querySelector('.investigator-sheet')&&document.activeElement===document.querySelector('.dock-actor-avatar')");
+                assertEquals("Closing a short-window dossier keeps the action draft", JSONObject.quote("查看属性时保留这段行动草稿"), js("document.querySelector('.dock-input').value"));
+                screenshot(prefix + "-sheet-focus-restored"); viewport(size[0], size[1]); fill(".dock-input", "");
                 js("document.querySelector('.narrative-toggle-btn').click()"); reachable(".narrative-toggle-btn");
                 assertEquals("Expanded reading stays below navigation and above the dock", "true", js("(()=>{const p=document.querySelector('.narrative-panel').getBoundingClientRect(),d=document.querySelector('.action-dock').getBoundingClientRect(),n=document.querySelector('.game-top').getBoundingClientRect();return p.top>=n.bottom&&p.bottom<=d.top+.5&&p.width>innerWidth*.9&&p.left===d.left&&p.right===d.right})()"));
                 js("(()=>{const e=document.createElement('div');e.id='qa-long-story';e.className='story-message dm';e.textContent='调查员沿着门廊仔细查看，斑驳的木板上留下了一道浅浅的划痕。伊莎贝拉回忆起那天走廊里急促的脚步声。'.repeat(40);document.querySelector('.narrative-scroll').appendChild(e)})()");

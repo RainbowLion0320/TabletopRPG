@@ -30,7 +30,9 @@ export function InvestigatorSheet({ players, selectedId, onSelect, onClose }: In
   const [tab, setTab] = useState<SheetTab>('overview');
   const [query, setQuery] = useState('');
   const [failedPortrait, setFailedPortrait] = useState<string | null>(null);
-  useDialogFocus(Boolean(player), dialogRef, onClose);
+  useDialogFocus(Boolean(player), dialogRef, onClose, undefined, {
+    getFallbackFocus: () => document.querySelector<HTMLButtonElement>('.dock-actor-avatar')
+  });
   useLayoutEffect(() => {
     if (previousPlayer.current !== selectedId) {
       previousPlayer.current = selectedId;
