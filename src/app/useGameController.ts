@@ -27,7 +27,7 @@ import {
 const AI_DM_TIMEOUT_MS = 180_000;
 
 export function useGameController() {
-  const { notify, toast } = useToast();
+  const { clearToast, notify, toast } = useToast();
   const saveSlots = useSaveSlots(notify);
   const [state, dispatch] = useReducer(gameReducer, null, () => createInitialGameState([]));
   const [menuOpen, setMenuOpen] = useState(false);
@@ -70,6 +70,7 @@ export function useGameController() {
   }, [diceRoll]);
 
   function cancelDiceRoll() {
+    clearToast();
     foregroundTaskRef.current = null;
     submittedStateRef.current = null;
     diceRollInFlightRef.current = false;

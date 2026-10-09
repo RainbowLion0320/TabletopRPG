@@ -37,7 +37,7 @@ export function App() {
           continuation={continuation ? continuationPreview(continuation.state) : undefined}
           latestSave={game.saves[0]}
           onLoadLatest={loadLatest}
-          onNewGame={() => setScreen('setup')}
+          onNewGame={() => { game.restartSetup(); setScreen('setup'); }}
           onOpenApi={game.openApiSettings}
         />
         <ApiConfigModal open={game.apiOpen} onClose={() => game.setApiOpen(false)} onSave={game.saveApi} />

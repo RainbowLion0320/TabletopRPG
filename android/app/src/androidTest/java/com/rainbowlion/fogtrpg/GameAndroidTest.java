@@ -304,11 +304,10 @@ public class GameAndroidTest {
                 reachable(".setup-footer .primary-btn");
                 assertEquals("Expanded stats do not widen the card", "true", js("Array.from(document.querySelectorAll('.preset-card-content')).every(e=>e.scrollWidth<=e.clientWidth+1)"));
                 click("进入游戏"); reachable(".dock-input");
+                assertEquals("Starting an investigation leaves title feedback behind", "false", js("!!document.querySelector('.toast')"));
                 assertEquals("Empty phone action hint stays inside its field", "true", js("(()=>{const e=document.querySelector('.dock-input');return e.value===''&&e.scrollHeight<=e.clientHeight+1})()"));
                 readablePartyDossiers();
                 if (size[0] == 360) {
-                    // Wait for the non-interactive save notification to fade before testing the HUD.
-                    until("!document.querySelector('.toast')");
                     reachable(".party-compact:last-child");
                     assertEquals("All four status cards fit without horizontal scrolling", "true", js("document.querySelector('.party-strip-compact').scrollWidth<=document.querySelector('.party-strip-compact').clientWidth+1"));
                     viewport(320, 568);
@@ -539,6 +538,10 @@ public class GameAndroidTest {
                     if (i == 1) screenshot(prefix + "-feedback");
                     if (i == 2) viewport(size[0], size[1]);
                 }
+                menu("返回首页"); until("document.querySelector('.title-resume-preview')");
+                assertEquals("Returning home removes feedback from the previous screen", "false", js("!!document.querySelector('.toast')"));
+                click("继续游戏"); until("document.querySelector('.dock-input')");
+                assertEquals("Continuing keeps the action draft after feedback cleanup", currentDraft, js("document.querySelector('.dock-input').value"));
                 menu("读取存档"); until("document.querySelector('.save-manager-card')");
                 reachable(".save-manager-card footer button");
                 assertEquals("Opening the reader keeps the current draft", currentDraft, js("document.querySelector('.dock-input').value"));

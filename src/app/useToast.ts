@@ -8,6 +8,12 @@ export function useToast() {
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
   }, []);
 
+  function clearToast() {
+    if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
+    toastTimer.current = null;
+    setToast('');
+  }
+
   function notify(text: string) {
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
     setToast(text);
@@ -17,6 +23,6 @@ export function useToast() {
     }, text.length > 16 ? 4000 : 1800);
   }
 
-  return { notify, toast };
+  return { clearToast, notify, toast };
 }
 

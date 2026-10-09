@@ -2502,12 +2502,14 @@ for (const scenario of [
     await input.fill('保存时的旧草稿。');
     await page.getByRole('button', { name: '菜单', exact: true }).click();
     await page.getByRole('button', { name: '保存游戏', exact: true }).click();
+    await expect(page.getByText('已保存', { exact: true })).toBeVisible();
     const savedLibrary = await page.evaluate(() => localStorage.getItem('trpg-saves-v2'));
     const draft = '当前的草稿。\n先记下日期，再查看窗框。';
     await input.fill(draft);
     await page.getByRole('button', { name: '菜单', exact: true }).click();
     await page.getByRole('button', { name: '返回首页', exact: true }).click();
     const resume = page.getByRole('button', { name: '继续游戏', exact: true });
+    expect(await page.locator('.toast').count()).toBe(0);
     const preview = page.getByRole('region', { name: '继续调查摘要' });
     await expect(preview).toContainText('当前调查'); await expect(preview).toContainText('摩勒住宅');
     for (let i = 0; i < scenario.partySize; i++) await expect(preview).toContainText(names[i]);

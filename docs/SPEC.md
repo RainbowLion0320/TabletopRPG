@@ -4,7 +4,7 @@
 > Updated: 2026-10-10
 > Scope: current React/Vite implementation
 
-In 0.5.31, a new solo opening uses the singular player address while multiplayer keeps the authored plural opening. Existing saved messages and the quoted letter remain intact; no source scenario, fingerprint, migration or request schema changes are made. Desktop story time is 12px, matching portrait readability, with full time/location, short-screen navigation and expanded story retained. Nineteen painted assets, archive cleanup and reduced-motion behavior remain intact.
+In 0.5.32, entering selection and starting, continuing, loading or leaving an investigation clears existing feedback and its timeout before changing pages. Newly completed in-game save, configuration and load feedback remains visible. Nineteen painted assets, authored scene/NPC art, singular/multiplayer opening address, full 12px story time, same-paint archive cleanup and multiline drafts remain intact. No story, API, save format or game rule changes are made.
 
 In 0.5.14, empty logs, unmatched log searches and empty saves use one dedicated painted silver-blue investigator ledger, faithful to the approved artist palette and motifs. The new 14,954-byte WebP is displayed proportionally within 112 by 72 pixels, with the existing state text at 15px. The decorative image receives no pointer input or accessible name. Empty logs center within their existing reading area; saves keep their existing space. Windows at most 500px high hide the illustration so status, search and exit remain reachable. Queries, focus, action drafts and save operations are preserved, with no added model rule, stored field or player step.
 
