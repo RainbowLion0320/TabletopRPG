@@ -652,6 +652,9 @@ for (const size of [{ width: 320, height: 568, party: 4 }, { width: 390, height:
       : { id: `history-${index}`, type: 'dm' as const, text: '浓雾压在摩勒住宅的窗外。伊莎贝拉停顿片刻，回忆起那天走廊里急促的脚步声。调查员沿着门廊仔细查看，斑驳的木板上留下了一道浅浅的划痕。\n\n'.repeat(4), npcName: null });
     await gotoWithSave(page, state);
     await page.getByRole('button', { name: '继续游戏' }).click();
+    const archiveEntry = await page.getByRole('button', { name: '资料', exact: true }).boundingBox();
+    expect(archiveEntry!.width).toBeGreaterThanOrEqual(44);
+    expect(archiveEntry!.height).toBeGreaterThanOrEqual(44);
     if (size.width < 700) {
       await expect(page.locator('.brand-scene')).toHaveText('泰晤士港·扶桑花号');
       await expect(page.locator('.world-time')).toHaveText('1920-07-13 17:30');

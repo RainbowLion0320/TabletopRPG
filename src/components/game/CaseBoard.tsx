@@ -1,10 +1,11 @@
 import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ChevronDown, Eye, EyeOff, Search, X } from 'lucide-react';
+import { ChevronDown, Eye, EyeOff, X } from 'lucide-react';
 import type { GameState } from '../../types/game';
 import { CaseBoardInspector } from './CaseBoardInspector';
 import { CaseBoardMobileCard } from './CaseBoardMobileCard';
 import { useCaseBoardListLayout } from '../../platform/layout';
 import { ArchiveEmptyState } from '../shared/ArchiveEmptyState';
+import { InvestigationEmblemArt } from '../shared/InvestigationEmblemArt';
 import {
   buildCaseBoardGraphModel,
   filterCaseBoardGraph,
@@ -92,7 +93,7 @@ export function CaseBoard({ state }: CaseBoardProps) {
       </div>
       <div className="case-board-toolbar">
         <label className="case-board-search">
-          <Search size={16} aria-hidden="true" />
+          <InvestigationEmblemArt size={16} />
           <input ref={searchRef} type="search" aria-label="搜索案件资料" onChange={(event) => { setSelection([]); setQuery(event.target.value); }} placeholder="搜索人物、地点或线索" value={query} />
           {query && <button type="button" className="case-search-clear" aria-label="清除案件搜索" onClick={() => { setSelection([]); setQuery(''); searchRef.current?.focus(); }}><X size={16} /></button>}
         </label>

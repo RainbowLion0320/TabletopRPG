@@ -1,11 +1,12 @@
 import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import type { Investigator } from '../../types/game';
 import { getDifficultyThreshold } from '../../data/gameRules';
 import { getSkillTotal } from '../../services/dice';
 import { useDialogFocus } from '../shared/useDialogFocus';
 import { ArchiveEmptyState } from '../shared/ArchiveEmptyState';
+import { InvestigationEmblemArt } from '../shared/InvestigationEmblemArt';
 import './investigatorSheet.css';
 
 interface InvestigatorSheetProps {
@@ -98,7 +99,7 @@ export function InvestigatorSheet({ players, selectedId, onSelect, onClose }: In
         </div>
 
         {tab === 'skills' && <div className="investigator-search">
-          <Search size={16} aria-hidden="true" />
+          <InvestigationEmblemArt size={16} />
           <input ref={searchRef} type="search" value={query} aria-label="搜索技能" placeholder="搜索技能" autoComplete="off" spellCheck={false} onChange={(event) => searchSkills(event.target.value)} />
           {query && <button type="button" aria-label="清除技能搜索" onClick={() => { searchSkills(''); searchRef.current?.focus({ preventScroll: true }); }}><X size={16} /></button>}
         </div>}

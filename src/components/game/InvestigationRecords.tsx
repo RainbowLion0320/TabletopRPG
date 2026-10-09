@@ -1,10 +1,11 @@
 import { useLayoutEffect, useRef, type MutableRefObject } from 'react';
-import { Check, ChevronDown, Clock3, Flag, Search, Target, X } from 'lucide-react';
+import { Check, ChevronDown, X } from 'lucide-react';
 import type { GameState } from '../../types/game';
 import { getScenarioDefinition, getScenarioProgressForState, getVisibleScenarioObjectives } from '../../scenario/engine';
 import { isPlayerVisibleLogEntry } from '../../services/narrativeVisibility';
 import { ArchiveEmptyArt } from '../shared/ArchiveEmptyArt';
 import { JournalArt } from '../shared/JournalArt';
+import { InvestigationEmblemArt } from '../shared/InvestigationEmblemArt';
 import './investigation-records.css';
 
 type Progress = ReturnType<typeof getScenarioProgressForState>;
@@ -35,14 +36,14 @@ export function InvestigationProgress({ state }: { state: GameState }) {
   });
 
   return <section className="investigation-progress scenario-progress" aria-label="剧情进度">
-    {ending && <section className="investigation-card investigation-ending"><h3><Flag size={17} aria-hidden="true" />{ending.title}</h3><p>{ending.summary}</p></section>}
+    {ending && <section className="investigation-card investigation-ending"><h3><InvestigationEmblemArt kind="seal" />{ending.title}</h3><p>{ending.summary}</p></section>}
     {(!ending || current.length > 0) && <section className="investigation-card">
-      <h3><Target size={17} aria-hidden="true" />调查目标</h3>
+      <h3><InvestigationEmblemArt />调查目标</h3>
       {current.length ? <ObjectiveRows objectives={current} progress={progress} />
         : <p className="investigation-note">{progress.endingId ? '本次调查已告一段落。' : '暂无新的调查目标。'}</p>}
     </section>}
     {clocks.length > 0 && <section className="investigation-card investigation-clocks">
-      <h3><Clock3 size={17} aria-hidden="true" />局势</h3>
+      <h3><InvestigationEmblemArt kind="clock" />局势</h3>
       {clocks.map(({ presentation, clock }) => <div className="clock-row" key={presentation.id}>
         <div><strong>{presentation.label}</strong><span>{clock.value} / {presentation.max}</span></div>
         <progress aria-label={presentation.label} max={presentation.max} value={Math.max(0, Math.min(presentation.max, clock.value))} />
@@ -84,7 +85,7 @@ export function ActionLogArchive({ entries, query, onQueryChange, scrollPosition
   return <section className="action-log-archive" aria-label="行动日志">
     <div className="action-log-heading"><h3>行动日志</h3></div>
     <div className="record-log-search">
-      <Search size={17} aria-hidden="true" />
+      <InvestigationEmblemArt size={17} />
       <input ref={searchRef} type="search" aria-label="搜索行动日志" placeholder="查找行动或检定" value={query}
         onChange={(event) => changeQuery(event.target.value)} />
       {query && <button type="button" aria-label="清空日志搜索" title="清空搜索" onClick={() => {

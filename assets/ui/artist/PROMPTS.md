@@ -242,3 +242,21 @@ Use case: stylized-concept. Asset type: one premium transparent painted music em
 ```text
 Use case: stylized-concept. Asset type: one premium transparent painted sound emblem for a 1920s London mystery tabletop game's audio controls. Primary request: a single clear SOUND / LOUDSPEAKER symbol, fully centered and fully contained, made as a small tactile brushed-silver and midnight-blue enamel fitting. A broad solid silver speaker silhouette on the left with a dark navy inset and exactly two thick gently curved silver sound-wave arcs on the right. The simple familiar silhouette should be immediately recognizable at 20 to 24 pixels. A very fine cool ivory-blue bevel, one tiny restrained muted-gold stud at the base, paired minute pearl rivets and a discreet four-point star engraved on a corner fitting. The arcs are substantial painted silver objects with calm soft shading, not glowing rays or thin vector lines. Match a refined cold midnight-blue paper-and-cloth rainy London game interface with silver fittings; no bronze, leather, wood or steampunk machinery. A neutral audio-settings/game-effects emblem, not a plot item, music note, alarm bell or microphone. Square composition, one complete icon with broad clear forms, generous true transparent outside margins. Two-dimensional hand-painted raster game UI asset with quiet material detail and controlled crisp edges; no photograph, full interface or cinematic lighting. Native real RGBA alpha 0 outside the entire complete speaker and two arcs, narrow natural antialiased silhouette edges only. No diffuse glow, haze, ground shadow, colored background, presentation panel, checkerboard painted into pixels, lettering, numbers, labels, extra objects or variants.
 ```
+
+
+## 调查放大镜（0.5.29）
+
+内置 Image Gen 单次新图，无参考图与后续编辑；生成 ID `exec-66b1b189-d9b8-488c-bafa-47eceb1fa67e`，原 PNG 保留默认 generated_images 目录，不提交；transparent_background=true。以下是实际完整提示词：
+
+```text
+Create one exquisitely hand-painted small game UI emblem: a 1920s London investigator's magnifying glass, on a fully transparent background. Single centered isolated object, circular lens at upper left and a short diagonal handle toward lower right. The established game art language is cold rainy London, deep navy enamel, layered pearlescent silver edging, ivory highlights, subtle icy blue glass and one restrained pale-gold pin. The lens stays visually simple and pale so the magnifying-glass silhouette reads clearly at 16–24 pixels. Give the metal a fine painted bevel and tactile craftsmanship; the handle has a clean dark-blue core bordered by silver. Rich but restrained painterly fantasy-game UI quality, matching silver-blue dossier frames and antique stationery. Balanced compact square composition with ample transparent space around the entire object, crisp readable silhouette, natural alpha edges. Only this emblem, no letters, text, numerals, labels, background scene, outer square tile, interface mockup, or large glow.
+```
+
+
+## 局势怀表（0.5.29）
+
+内置 Image Gen 单次新图，无参考图与后续编辑；生成 ID `exec-0cdfe004-e02a-469a-a4d3-9f4035a00e30`，原 PNG 保留默认 generated_images 目录，不提交；transparent_background=true。以下是实际完整提示词：
+
+```text
+Create one exquisitely hand-painted small game UI emblem: a closed round 1920s London silver pocket watch, front face visible, on a fully transparent background. Single centered isolated object with a small loop crown above the round watch, no chain. The established game art language is cold rainy London, deep navy enamel, layered pearlescent silver edging, ivory highlights, subtle icy blue and one restrained pale-gold hand pivot. The watch face is a calm pale-blue disc with only two clear dark-navy hands and four small ivory hour marks, no numerals or lettering. Fine painted bevels and tactile silver craftsmanship; readable compact silhouette at 24 pixels, rich but restrained painterly fantasy-game UI quality, matching silver-blue dossier frames and antique stationery. Balanced square composition with ample transparent space around the complete watch and crown, natural alpha edges. Only this emblem, no words, labels, numerals, background scene, outer square tile, interface mockup, or large glow.
+```

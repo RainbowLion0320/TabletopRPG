@@ -29,6 +29,8 @@
 | tuning-dial.webp | 内置 Image Gen 精绘（0.5.24） | 64×63，2,974 字节；通用银蓝调节盘，AI 设置/连接设置 20px、AI/声音配置标题 24px contain；装饰无命中/独立朗读，不代表剧情物件 |
 | music-gramophone.webp | 内置 Image Gen 精绘（0.5.26） | 64×64，3,116 字节；背景音乐原图标位 24px contain，银蓝留声机；空 alt、无命中，不代表剧情物件 |
 | sound-emblem.webp | 内置 Image Gen 精绘（0.5.26） | 64×64，2,890 字节；声音入口 20/24px、音效原图标位 24px contain；银蓝声音徽记，空 alt、无命中 |
+| investigation-lens.webp | 内置 Image Gen 精绘（0.5.29） | 64×65，2,148 字节；调查目标 24px、技能/案件搜索 16px、日志搜索 17px contain；空 alt、无命中，不代表剧情物证 |
+| pocket-watch.webp | 内置 Image Gen 精绘（0.5.29） | 64×65，2,778 字节；已公开局势标题 24px contain，银蓝怀表；空 alt、无命中，不新增时钟或改变数值 |
 
 原首页含字切图放在真实按钮内，保留原动作和可访问名称；实时文字使用原 PSD 无字底板。原按钮切片 `12 108 12 108` 映射为 `6px 18px`，图标底板完整缩放。阅读框源 1024px 的 128px 护角对应运行时 768px / 96px；中间边不含星珠，伸缩不会把节点拉成长条。头像与立绘沿用原人物和比例，空心装裱不盖住人物中心。
 
@@ -68,12 +70,16 @@ ffmpeg -i "动态bg.mp4" -an -c:v libvpx-vp9 -crf 28 -b:v 0 -deadline good -cpu-
 | tuning-dial | `ef7083f9f9adf3903f77ede99ba0fe32133235e4380edd780befc8b148cd5fe2` | `54f2a193c37151d2e8904667d8f325191e099bd5d7248185122ecbd703a18be7` |
 | music-gramophone | `34817f4327a08ad1de568e85c119d85c0b6a0e848f5e5c699a9fb71b2cd56ef1` | `b21f0e9cbf191decac24e884522ac2baf368ef797a072454ab8e2d76a6506d15` |
 | sound-emblem | `d47bfc21497847875a4a99439018051cf76953147e30db4360a6bb4cb5dfda95` | `df88ebd50782343fcc918d4c6be9718e2451ef965937a8ca65dae65e6d1d504a` |
+| investigation-lens | `e86401ab66b8b1c59802e647049cba5bc828d890994d79c9d100b7b7a33f10e0` | `de012c8fd9ab188b0be7a39abbd41ff647a9690d16a1ac2540f6a13a2a1e41f8` |
+| pocket-watch | `5c538107779eedcbac5adb0e2ac64df6c29ebcd126751959b066696321559d07` | `cbd6919d2b98903cdabd6c1680a0e6bde19ddf2971e816e6825746da7fed0559` |
 
 0.5.9 的钢笔尖源 PNG 为 1145×1374，透明空边裁为 `(321,98,504,1174)`，仅等比例缩至高 128px 和 WebP 编码（quality 92 / alphaQuality 100 / effort 6）。原像素有 1,244,366 个 alpha 0，半透明边保留；未修改原图颜色或绘制形状。运行时字句静止，只有笔尖 3.6 秒明暗变化，减少动态时静止；等待行仍 36px，固定在剧情页脚，原标题线画在已有留白内；不额外增加整张面板高度。
 
 0.5.14 的空白调查册先生成，再由内置 Image Gen 清理外部透明区域。最终源 PNG 为 1536×1024，709,809 个像素为 alpha 0，原 alpha 最大为 254；保留其自然半透明边，不将源图误称为全不透明。只裁掉透明右/下空边为 `(0,0,1514,961)`，等比例缩至宽 256px 并编码 WebP（quality 92 / alphaQuality 100 / effort 6），未程序绘画或修改颜色。插画为无命中、无访问名称的装饰，状态文字仍由真实控件呈现；没有结果时在原日志阅读区居中，空存档沿用原 120px 区域；窗口高度不超过 500px 时隐藏插画，仅保留原状态和操作。
 
 ## 文字安全区与状态
+
+0.5.29 两张调查图均由内置 Image Gen 各一次新图生成，无参考图与后续编辑。investigation-lens 源 PNG 1254×1254，1,235,140 个 alpha 0 像素、最大 255，实际裁框 (0,0,1196,1210)，缩为 64×65 WebP、2,148 字节。 pocket-watch 源 PNG 1254×1254，1,035,497 个 alpha 0 像素、最大 255，实际裁框 (0,8,1220,1246)，缩为 64×65 WebP、2,778 字节。 仅裁检测到的外透明空白、保留 12px 余量（到画布边界时截取到边界），等比例缩放与 WebP quality 92 / alphaQuality 100 / effort 6。自然半透明边保持，未程序绘画、去底、改色或加字。共十九张实际采用精绘图；结案进度同时复用已有中性归档徽记，不改变三种结局含义。
 
 0.5.26 两张声音图均由内置 Image Gen 各一次新图生成，无参考图与后续编辑。music-gramophone 源 PNG 1254×1254，949,668 个 alpha 0 像素、最大 255，裁框 (0,25,1218,1210)，缩为 64×64 WebP、3,116 字节。 sound-emblem 源 PNG 1254×1254，1,070,171 个 alpha 0 像素、最大 255，裁框 (0,0,1254,1254)，缩为 64×64 WebP、2,890 字节。 仅裁外透明空白并保留 12px 余量、等比例缩放和 WebP quality 92 / alphaQuality 100 / effort 6，声音图实际裁框为整张画布。没有程序绘画、去底、改色或添加文字。十七张实际采用图沿用原稿银蓝风格，原控件名称/范围/行为保持。
 
