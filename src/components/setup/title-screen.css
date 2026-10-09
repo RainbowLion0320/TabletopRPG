@@ -1,7 +1,41 @@
-/* A small continuation dossier beside the primary decision, using existing art. */
-.title-resume-preview { width: min(440px, 100%); margin: -12px auto 18px; padding: 5px 12px 7px; text-align: left; border: 8px solid transparent; border-image: url('../../../assets/ui/chrome/dossier-mount.webp') 64 fill / 8px / 0 stretch; background: #201b15; }
-.title-resume-preview > div { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; color: #bea579; font-size: 11px; line-height: 1.5; }
-.title-resume-preview > strong { display: block; margin-top: 4px; color: #e6ca94; font: 400 17px/1.4 var(--ui-font); }
-.title-resume-preview > p { margin: 3px 0 0; color: #d2c4aa; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
-.portrait-ui .title-resume-preview { width: min(320px, 100%); padding-inline: 8px; margin: -10px auto 14px; }
-@media (max-height: 420px) { .title-resume-preview { padding-block: 3px; margin: 0 auto 10px; } .title-resume-preview > div > span:last-child { display: none; } .title-resume-preview > strong { display: inline; margin: 0 0 0 8px; } .title-resume-preview > div { display: inline-flex; } .title-resume-preview > p { font-size: 12px; } }
+/* Desktop proportions come from the artist's 2048 × 1136 home composition. */
+.title-screen { position: relative; display: grid; place-items: center; overflow: hidden; background: #0b1320; }
+.title-backdrop { position: absolute; inset: 0; pointer-events: none; }
+.title-backdrop video { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.title-content { --title-width: min(100vw, calc(100dvh * 2048 / 1136)); position: relative; width: var(--title-width); height: calc(var(--title-width) * 1136 / 2048); text-align: center; }
+.title-mark { position: absolute; left: 50%; top: 12.323944%; width: 32.910156%; height: auto; transform: translateX(-50%); pointer-events: none; }
+.title-actions { position: absolute; top: 41.3732%; left: 51.025391%; width: 24.316406%; transform: translateX(-50%); display: flex; flex-direction: column; gap: calc(var(--title-width) * 41 / 2048); }
+.title-actions > button:nth-child(3) { margin-top: calc(var(--title-width) / 2048); }
+:root.fog-ui .title-actions > button { position: relative; display: block; width: 100%; min-width: 0; min-height: 48px; aspect-ratio: 498 / 127; padding: 0; border: 0; background: transparent; box-shadow: none; color: var(--ui-ink); text-shadow: none; letter-spacing: 0; transition: filter 150ms ease, transform 150ms ease; }
+:root.fog-ui .title-actions > button::before { display: none; }
+.title-actions > button > img { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+:root.fog-ui .title-actions > button:focus-visible { outline: none; filter: drop-shadow(0 0 4px var(--ui-focus)); }
+:root.fog-ui .title-actions > button:enabled:active { transform: translateY(1px); background: transparent; color: var(--ui-ink); box-shadow: none; filter: brightness(.92); }
+:root.fog-ui .title-actions > button:disabled { background: transparent; color: var(--ui-ink); box-shadow: none; opacity: .5; filter: saturate(.35); }
+.title-completed-label { display: grid; place-items: center; width: 100%; height: 100%; background: url('../../../assets/ui/artist/button-secondary.webp') center / 100% 100% no-repeat; font: 400 clamp(18px, 2.6vw, 53px)/1.2 var(--ui-font); }
+:root.fog-ui .title-screen .title-audio { position: absolute; top: max(16px, env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); }
+.title-resume-preview { position: absolute; right: 2%; bottom: 2.5%; width: min(370px, 28%); padding: 8px 14px; text-align: left; border: 8px solid transparent; border-image: var(--ui-panel-frame) 52 fill / 8px / 0 stretch; background: var(--panel); background-clip: padding-box; }
+.title-resume-preview > div { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.title-resume-preview > strong { display: block; margin-top: 4px; color: var(--text); font: 400 17px/1.4 var(--ui-font); }
+.title-resume-preview > p { margin: 3px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+@media (hover: hover) { :root.fog-ui .title-actions > button:enabled:hover { background: transparent; box-shadow: none; color: var(--ui-ink); filter: brightness(1.08); } }
+.portrait-ui .title-screen { height: var(--mobile-height); min-height: 0; overflow-y: auto; padding: var(--mobile-top) var(--mobile-right) var(--mobile-bottom) var(--mobile-left); }
+.portrait-ui .title-content { position: relative; display: flex; flex-direction: column; align-items: center; gap: 18px; width: min(440px, 100%); height: auto; padding: 28px 0; }
+.portrait-ui .title-mark { position: static; width: min(380px, 100%); transform: none; }
+.portrait-ui .title-actions { position: static; width: min(310px, 100%); gap: 12px; transform: none; }
+.portrait-ui .title-actions > button:nth-child(3) { margin-top: 0; }
+.portrait-ui .title-resume-preview { position: static; order: 1; width: min(310px, 100%); margin: 0; padding: 5px 10px; }
+.portrait-ui .title-completed-label { font-size: 28px; }
+:root.fog-ui.portrait-ui .title-screen .title-audio { top: var(--mobile-top); right: var(--mobile-right); }
+@media (max-height: 420px) {
+  .portrait-ui .title-content { gap: 8px; padding: 8px 0; }
+  .portrait-ui .title-mark { width: 150px; }
+  .portrait-ui .title-actions { width: 200px; gap: 6px; }
+  .portrait-ui .title-resume-preview { padding-block: 3px; }
+  .portrait-ui .title-resume-preview > div > span:last-child { display: none; }
+  .portrait-ui .title-resume-preview > div { display: inline-flex; }
+  .portrait-ui .title-resume-preview > strong { display: inline; margin: 0 0 0 8px; }
+  .portrait-ui .title-resume-preview > p { font-size: 12px; }
+  .portrait-ui .title-completed-label { font-size: 21px; }
+}
+@media (prefers-reduced-motion: reduce) { :root.fog-ui .title-actions > button { transition: none; } }

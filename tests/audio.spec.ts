@@ -272,8 +272,8 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     const box = await dialog.boundingBox();
     expect(box!.x).toBeGreaterThanOrEqual(0); expect(box!.x + box!.width).toBeLessThanOrEqual(size.width);
     expect(box!.y).toBeGreaterThanOrEqual(0); expect(box!.y + box!.height).toBeLessThanOrEqual(size.height);
-    expect(await dialog.locator('.audio-channel').first().evaluate(e => getComputedStyle(e).borderImageSource)).toContain('dossier-mount');
-    expect(await preview.evaluate(e => getComputedStyle(e, '::before').borderImageSource)).toContain('brass-frame');
+    expect(await dialog.locator('.audio-channel').first().evaluate(e => getComputedStyle(e).borderImageSource)).toContain('panel-frame');
+    expect(await preview.evaluate(e => getComputedStyle(e, '::before').borderImageSource)).toContain('button-secondary');
     for (const target of [close, dialog.getByRole('switch', { name: '背景音乐', exact: true }), music,
       dialog.getByRole('switch', { name: '游戏音效' }), effects, preview, credits]) await reachable(target);
     expect(await dialog.locator('.audio-channel label').first().evaluate(e => parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(15);

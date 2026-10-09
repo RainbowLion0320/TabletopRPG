@@ -1,4 +1,4 @@
-/* Artist-supplied D100 panel and 30-frame, 12 fps transparent sprite atlas. */
+/* Original D100 sprites and font, inside the shared rain-blue reading frame. */
 @font-face {
   font-family: "Zihun Yunque";
   src: url("../../assets/fonts/zihun-yunquesong.woff2") format("woff2");
@@ -8,7 +8,7 @@
 }
 
 .dice-roll-overlay {
-  --dice-accent: #c6ae77;
+  --dice-accent: var(--muted);
   font-family: "Zihun Yunque", "Noto Serif SC", "Songti SC", serif;
   position: fixed;
   inset: 0;
@@ -33,7 +33,7 @@
 .dice-roll-card > header {
   position: relative;
   z-index: 1;
-  color: #e8ddcb;
+  color: var(--text);
   text-shadow: 0 2px 5px #000, 0 0 12px #000;
 }
 .dice-roll-card > header p {
@@ -48,7 +48,7 @@
   gap: 4px 12px;
   font-size: 12px;
   line-height: 1.5;
-  color: #cfc1a5;
+  color: var(--text);
 }
 
 .dice-roll-panel {
@@ -61,16 +61,20 @@
   display: block;
   width: 100%;
   height: 100%;
+  border: 12px solid transparent;
+  border-image: var(--ui-panel-frame) 52 fill / 12px / 0 stretch;
+  background: var(--panel);
+  background-clip: padding-box;
   pointer-events: none;
   user-select: none;
 }
 .dice-roll-total-label {
   position: absolute;
   left: 23%;
-  top: 18%;
+  top: 10%;
   width: 54%;
   margin: 0;
-  color: #b5a172;
+  color: var(--muted);
   font-size: 8cqw;
   font-weight: 400;
   line-height: 1;
@@ -78,7 +82,7 @@
 }
 .dice-roll-readout {
   position: absolute;
-  top: 26%;
+  top: 19%;
   left: 22%;
   width: 56%;
   height: 12%;
@@ -86,25 +90,25 @@
   place-items: center;
 }
 .dice-roll-total {
-  color: #efe9d9;
+  color: var(--text);
   font-family: inherit;
   font-size: 17cqw;
   font-weight: 400;
   line-height: 1;
-  text-shadow: 0 2px 6px #17130d;
+  text-shadow: 0 2px 6px var(--panel);
 }
 .dice-roll-unsettled {
-  color: #a3916a;
+  color: var(--line);
   font-size: 10cqw;
   letter-spacing: 0.12em;
 }
 
 .dice-roll-stage {
   position: absolute;
-  left: 17.0579%;
-  top: 41.6854%;
-  width: 66.6667%;
-  height: 27.6404%;
+  left: 10%;
+  top: 35%;
+  width: 80%;
+  height: 33.1685%;
   pointer-events: none;
 }
 .dice-roll-idle {
@@ -131,7 +135,7 @@
   transform: translate(-50%, -50%);
   top: 36%;
   font-family: inherit;
-  font-size: 7.5cqw;
+  font-size: 9cqw;
   font-weight: 400;
   line-height: 1;
   color: #493225;
@@ -141,19 +145,19 @@
 .ones-die { left: 72.54%; }
 .dice-roll-hint {
   position: absolute;
-  top: 69%;
+  top: 72%;
   left: 16%;
   width: 68%;
   margin: 0;
-  color: #cbb98c;
+  color: var(--accent);
   font-size: max(11px, 2.8cqw);
   line-height: 1.4;
 }
 .dice-roll-outcome {
   position: absolute;
-  top: 74.5%;
-  left: 21.6%;
-  width: 56.5%;
+  top: 78%;
+  left: 15%;
+  width: 70%;
   height: 13%;
   display: flex;
   align-items: center;
@@ -167,20 +171,21 @@
   line-height: 1.2;
   letter-spacing: 0.06em;
   white-space: nowrap;
-  text-shadow: 0 2px 2px #090705;
+  text-shadow: 0 2px 2px var(--panel-strong);
 }
 .dice-roll-outcome > span {
-  color: #b1a184;
+  color: var(--muted);
   font-size: max(11px, 2.8cqw);
   letter-spacing: 0.08em;
 }
-.result-fail { --dice-accent: #c0bfba; }
+.result-fail { --dice-accent: var(--muted); }
 .result-fumble { --dice-accent: #e9a092; }
 
 .dice-roll-card > footer {
   display: flex;
   justify-content: center;
   min-height: 44px;
+  margin-top: 12px;
 }
 .dice-roll-confirm {
   display: inline-flex;
@@ -188,23 +193,23 @@
   justify-content: center;
   gap: 8px;
   min-width: 154px;
-  min-height: 44px;
+  min-height: 48px;
   padding: 8px 24px;
-  border: 1px solid #a88d59;
+  border: 1px solid var(--muted);
   border-radius: 4px;
-  background: #282016;
-  color: #ebd6a4;
+  background: var(--surface);
+  color: var(--text);
   box-shadow: 0 4px 18px #0008;
   cursor: pointer;
   font-size: 14px;
   transition: background 160ms ease, border-color 160ms ease;
 }
 .dice-roll-confirm:hover {
-  background: #3b2f1f;
-  border-color: #e0c489;
+  background: var(--surface);
+  border-color: var(--accent);
 }
 .dice-roll-confirm:focus-visible {
-  outline: 2px solid #e0c489;
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 .dice-roll-accessible {

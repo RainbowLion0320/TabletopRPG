@@ -13,7 +13,7 @@
 .api-key-control { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 6px; align-items: stretch; }
 .api-key-reveal { display: grid; place-items: center; min-width: 44px; min-height: 44px; padding: 0; }
 .api-connection { min-width: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.api-connection summary { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 4px; list-style: none; color: var(--gold); font-family: var(--ui-font); font-size: 15px; cursor: pointer; }
+.api-connection summary { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 4px; list-style: none; color: var(--accent); font-family: var(--ui-font); font-size: 15px; cursor: pointer; }
 .api-connection summary::-webkit-details-marker { display: none; }
 .api-connection summary span { flex: 1; }
 .api-connection summary > svg:last-child { transition: transform 130ms ease; }

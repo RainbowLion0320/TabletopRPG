@@ -369,8 +369,8 @@ for (const size of [{ width: 320, height: 568 }, { width: 1440, height: 900 }]) 
       });
     });
     for (const control of headerMetrics) { expect(control.width).toBeGreaterThanOrEqual(44); expect(control.height).toBeGreaterThanOrEqual(44); expect(control.inside).toBe(true); expect(control.hit).toBe(true); }
-    expect(await newContent.evaluate(e => getComputedStyle(e, '::before').borderImageSource)).toContain('brass-frame');
-    expect(await header.locator('.npc-nameplate').evaluate(e => getComputedStyle(e).borderImageSource)).toContain('dossier-mount');
+    expect(await newContent.evaluate(e => getComputedStyle(e, '::before').borderImageSource)).toContain('button-secondary');
+    expect(await header.locator('.npc-nameplate').evaluate(e => getComputedStyle(e).borderImageSource)).toContain('panel-frame');
     expect(await header.locator('.npc-nameplate strong').evaluate(e => parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(14);
     await expect(page.getByRole('button', { name: '收起剧情', exact: true })).toHaveAttribute('aria-expanded', 'true');
     const storyBeforeDetails = await scroll.evaluate(e => e.scrollTop);
@@ -704,7 +704,7 @@ for (const size of [{ width: 390, height: 844, party: 1 }, { width: 1440, height
     expect(await sheet.locator('.investigator-vitals dd small').evaluateAll(elements => elements.every(e => parseFloat(getComputedStyle(e).fontSize) >= 14))).toBe(true);
     expect(await sheet.locator('.investigator-vitals').evaluate(e => e.scrollWidth <= e.clientWidth)).toBe(true);
     expect(await sheet.locator('.investigator-attributes dt small').evaluateAll(elements => elements.every(e => parseFloat(getComputedStyle(e).fontSize) >= 12))).toBe(true);
-    expect(await sheet.evaluate(e => getComputedStyle(e).borderImageSource.includes('dossier-mount'))).toBe(true);
+    expect(await sheet.evaluate(e => getComputedStyle(e).borderImageSource.includes('panel-frame'))).toBe(true);
     for (const selector of ['.investigator-tabs button', '.investigator-party button']) {
       expect(await sheet.locator(selector).evaluateAll(elements => elements.every(e => e.getBoundingClientRect().height >= 44))).toBe(true);
       expect(await sheet.locator(selector).evaluateAll(elements => elements.every(e => parseFloat(getComputedStyle(e).fontSize) >= 15))).toBe(true);
@@ -1166,7 +1166,7 @@ for (const size of [{ width: 320, height: 568, party: 1, endingId: 'END_C' }, { 
     let aiCalls = 0; await page.route('**/chat/completions', route => { aiCalls++; return route.abort(); });
     await gotoWithSave(page, state);
     const reviewOnTitle = page.getByRole('button', { name: '回顾调查', exact: true });
-    await expect(reviewOnTitle).toHaveClass(/primary-btn/);
+    await expect(reviewOnTitle).toHaveClass(/title-continue/);
     await expect(page.getByRole('region', { name: '继续调查摘要' })).toContainText('已结案');
     await reviewOnTitle.click();
     const ending = page.getByRole('region', { name: '游戏结局' });
@@ -1248,7 +1248,7 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
         return { target: r.width >= 44 && r.height >= 44 && e.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)),
           inside: r.left >= 0 && r.right <= innerWidth && r.top >= d.top && r.bottom <= Math.min(d.bottom, innerHeight) + .5,
           reading: story.height >= 140 && story.bottom <= d.top + .5,
-          drawn: getComputedStyle(e).borderImageSource.includes('dossier-mount'),
+          drawn: getComputedStyle(e).borderImageSource.includes('panel-frame'),
           opaque: getComputedStyle(e).opacity === '1',
           text: text.every(t => { const s = getComputedStyle(t); const size = parseFloat(s.fontSize); const b = t.getBoundingClientRect(); return size >= (t.tagName === 'STRONG' ? 14 : t.classList.contains('bar-value') ? 13 : 12) && b.left >= r.left && b.right <= r.right; }),
           noOverflow: e.scrollWidth <= e.clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth };
@@ -1322,7 +1322,7 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
           const shortConfirmation = notice.textContent === '已保存';
           return { inside: r.left >= 0 && r.right <= innerWidth && r.top >= top.bottom && r.bottom <= dock.top,
             readable: parseFloat(getComputedStyle(notice).fontSize) >= 15 && notice.scrollWidth <= notice.clientWidth + 1,
-            drawn: getComputedStyle(notice).borderImageSource.includes('dossier-mount'),
+            drawn: getComputedStyle(notice).borderImageSource.includes('panel-frame'),
             passive: getComputedStyle(element).pointerEvents === 'none',
             caption: !shortConfirmation || r.right <= caption.left || r.left >= caption.right || r.bottom <= caption.top || r.top >= caption.bottom,
             party: visibleParty.every(e => { const b = e.getBoundingClientRect(); return b.bottom <= innerHeight && e.contains(document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2)); }),
@@ -1413,7 +1413,7 @@ for (const size of [{ width: 320, height: 568, party: 4 }, { width: 390, height:
           reading: story.height >= 140 && story.bottom <= dock.top + .5,
           party: innerHeight <= 300 || Array.from(document.querySelectorAll('.party-compact')).every(e => { const r = e.getBoundingClientRect(); return r.top >= dock.top && r.bottom <= dock.bottom + .5 && e.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)); }),
           font: Array.from(el.querySelectorAll('strong, span, button')).every(e => parseFloat(getComputedStyle(e).fontSize) >= 15),
-          drawn: getComputedStyle(el).borderImageSource.includes('dossier-mount'),
+          drawn: getComputedStyle(el).borderImageSource.includes('panel-frame'),
           overflow: document.documentElement.scrollWidth <= innerWidth && el.scrollWidth <= el.clientWidth + 1
         };
       });
@@ -1517,10 +1517,12 @@ test(`dice art remains readable and confirms once with ${mode}`, async ({ page }
       allUseFont: Array.from(controls).every(control => getComputedStyle(control).fontFamily.startsWith('"Zihun Yunque"')),
       fits: card.left >= 0 && card.right <= innerWidth && card.top >= 0 && card.bottom <= innerHeight,
       backdrop: getComputedStyle(element).backdropFilter,
-      panelLoaded: (element.querySelector('.dice-roll-panel-art') as HTMLImageElement).naturalWidth === 639
+      panelDrawn: getComputedStyle(element.querySelector('.dice-roll-panel-art')!).borderImageSource.includes('panel-frame'),
+      diceLoaded: (element.querySelector('.dice-roll-idle') as HTMLImageElement).naturalWidth === 426,
+      diceProportions: (() => { const r = element.querySelector('.dice-roll-stage')!.getBoundingClientRect(); return Math.abs(r.width / r.height - 426 / 246) < .01; })()
     };
   });
-  expect(appearance).toEqual({ fontLoaded: true, allUseFont: true, fits: true, backdrop: 'blur(4px)', panelLoaded: true });
+  expect(appearance).toEqual({ fontLoaded: true, allUseFont: true, fits: true, backdrop: 'blur(4px)', panelDrawn: true, diceLoaded: true, diceProportions: true });
   await page.screenshot({ path: `test-results/dice-${mode.replaceAll(' ', '-')}.png` });
   await confirm.click();
   await expect(dialog).toHaveCount(0);
@@ -2143,8 +2145,8 @@ for (const scenario of [
     const preview = page.getByRole('region', { name: '继续调查摘要' });
     await expect(preview).toContainText('当前调查'); await expect(preview).toContainText('摩勒住宅');
     for (let i = 0; i < scenario.partySize; i++) await expect(preview).toContainText(names[i]);
-    await expect(resume).toHaveClass('primary-btn'); await expect(resume).toBeFocused();
-    expect(await page.locator('.title-actions > button').first().innerText()).toBe('继续游戏');
+    await expect(resume).toHaveClass(/title-continue/); await expect(resume).toBeFocused();
+    await expect(page.locator('.title-actions > button').first()).toHaveAccessibleName('开始游戏');
     expect(await page.evaluate(() => localStorage.getItem('trpg-saves-v2'))).toBe(savedLibrary);
     expect(await preview.evaluate(e => e.scrollWidth <= e.clientWidth + 1)).toBe(true);
     await expect(resume).toBeInViewport(); await expect(page.getByRole('button', { name: '开始游戏', exact: true })).toBeInViewport();

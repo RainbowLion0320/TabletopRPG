@@ -17,17 +17,7 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 .portrait-ui .primary-btn, .portrait-ui .ghost-btn, .portrait-ui .icon-text-btn, .portrait-ui .primary-action, .portrait-ui .secondary-action { min-height: 44px; padding: 0 14px; gap: 6px; font-size: 13px; }
 .portrait-ui .dm-debug-fab, .portrait-ui .dm-debug-drawer { display: none; }
 .portrait-ui .android-start-error { display: grid; place-content: center; height: 100%; overflow: auto; padding: 16px; text-align: center; }
-.portrait-ui .android-start-error h1 { color: var(--gold); font-size: 20px; }
-/* Portrait title and investigator list, with a fixed selection footer. */
-.portrait-ui .title-screen { height: var(--mobile-height); min-height: 0; overflow-y: auto; padding: var(--mobile-top) var(--mobile-right) var(--mobile-bottom) var(--mobile-left); }
-.portrait-ui .title-backdrop { overflow: hidden; }
-.portrait-ui .title-backdrop video { display: block; }
-.portrait-ui .title-content { width: min(460px, 100%); padding: 24px 10px; }
-.portrait-ui .title-kicker { font-size: 10px; letter-spacing: 3px; margin-bottom: 12px; }
-.portrait-ui .title-content h1 { font-size: clamp(32px, 10vw, 52px); letter-spacing: .18em; padding-left: .18em; line-height: 1.2; }
-.portrait-ui .title-subtitle { font-size: 13px; line-height: 1.6; margin: 14px 0 22px; }
-.portrait-ui .title-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 320px; margin-inline: auto; }
-.portrait-ui .title-actions > :nth-child(-n+2) { grid-column: 1 / -1; min-height: 48px; }
+.portrait-ui .android-start-error h1 { color: var(--accent); font-size: 20px; }
 /* All current scene paintings are 1896 × 1080. Reserve their own wide frame
    instead of cropping them to fill the portrait screen behind the reading UI. */
 /* Let the scene yield space before reading drops below 140px (plus the frame border). */
@@ -54,7 +44,7 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 .portrait-ui .story-message.player .player-message-line { flex-wrap: wrap; }
 .portrait-ui .message-label { font-size: 11px; margin-bottom: 3px; }
 .portrait-ui .player-inline-name, .portrait-ui .player-inline-separator { font-size: 12px; }
-.portrait-ui .action-dock { position: relative; grid-column: 1; grid-row: 4; inset: auto; min-width: 0; max-height: 45dvh; padding: 6px; }
+.portrait-ui .action-dock { position: relative; grid-column: 1; grid-row: 4; inset: auto; min-width: 0; max-height: min(50dvh, calc(var(--mobile-height) - var(--game-top) - 142px - var(--game-bottom))); padding: 6px; }
 .portrait-ui .dock-input-row { flex-wrap: nowrap; gap: 6px; }
 .portrait-ui .dock-actor-label > span { display: none; }
 .portrait-ui .dock-actor-avatar { width: 26px; height: 32px; }
@@ -69,7 +59,7 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
 .portrait-ui .modal-card footer { display: flex; flex-shrink: 0; margin-top: 12px; gap: 10px; }
 .portrait-ui .modal-card footer > button { flex: 1; }
 .portrait-ui .modal-card label { min-width: 0; font-size: 12px; line-height: 1.3; margin: 0; gap: 4px; }
-.portrait-ui .modal-card input:not([type='range']), .portrait-ui .modal-card select { min-height: 44px; width: 100%; padding: 8px 10px; font-size: 14px; color: var(--text); background: #171410; border: 1px solid var(--line); border-radius: 5px; }
+.portrait-ui .modal-card input:not([type='range']), .portrait-ui .modal-card select { min-height: 44px; width: 100%; padding: 8px 10px; font-size: 14px; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 5px; }
 .portrait-ui .dm-journal-card { display: flex; flex-direction: column; overflow: hidden; }
 .portrait-ui .dm-journal-body { min-height: 0; overflow-y: auto; }
 .portrait-ui .dm-journal-section { margin-top: 8px; }
@@ -115,10 +105,6 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
   .portrait-ui .game-top, .portrait-ui .drawer-tab, .portrait-ui .suggestion-row { display: none; }
   .portrait-ui .action-dock { max-height: 55dvh; }
   .portrait-ui .dock-input { max-height: 66px; }
-  .portrait-ui .title-content { padding: 8px 0; }
-  .portrait-ui .title-kicker, .portrait-ui .title-subtitle { display: none; }
-  .portrait-ui .title-content h1 { font-size: 28px; margin-bottom: 10px; }
-  .portrait-ui .title-actions > :nth-child(-n+2) { grid-column: auto; min-height: 44px; }
   .portrait-ui .info-drawer-tabs { grid-column: 1; grid-row: 1; }
   .portrait-ui .info-drawer-title { display: none; }
 }

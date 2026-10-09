@@ -57,7 +57,7 @@ public class GameAndroidTest {
         return visible.get();
     }
     private void click(String text) throws Exception {
-        String match = "Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === " + JSONObject.quote(text) + ")";
+        String match = "Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === " + JSONObject.quote(text) + " || b.getAttribute('aria-label') === " + JSONObject.quote(text) + ")";
         until(match + " && !" + match + ".disabled"); js(match + ".click()");
     }
     private void fill(String selector, String value) throws Exception {
@@ -150,12 +150,12 @@ public class GameAndroidTest {
     private void readableTurnPrompt() throws Exception {
         reachable(".check-card"); reachable(".check-card > button");
         if (Double.parseDouble(js("innerHeight")) > 300) readablePartyDossiers();
-        assertEquals("Turn information uses readable text, drawn dossier and full touch controls", "true", js("(()=>{const c=document.querySelector('.check-card'),b=c.querySelector('button'),r=b.getBoundingClientRect(),d=c.closest('.action-dock').getBoundingClientRect(),s=document.querySelector('.narrative-panel').getBoundingClientRect();return Array.from(c.querySelectorAll('strong,span,button')).every(e=>parseFloat(getComputedStyle(e).fontSize)>=15)&&getComputedStyle(c).borderImageSource.includes('dossier-mount')&&r.width>=44&&r.height>=44&&s.height>=140&&s.bottom<=d.top+.5&&c.scrollWidth<=c.clientWidth+1})()"));
+        assertEquals("Turn information uses readable text, drawn dossier and full touch controls", "true", js("(()=>{const c=document.querySelector('.check-card'),b=c.querySelector('button'),r=b.getBoundingClientRect(),d=c.closest('.action-dock').getBoundingClientRect(),s=document.querySelector('.narrative-panel').getBoundingClientRect();return Array.from(c.querySelectorAll('strong,span,button')).every(e=>parseFloat(getComputedStyle(e).fontSize)>=15)&&getComputedStyle(c).borderImageSource.includes('panel-frame')&&r.width>=44&&r.height>=44&&s.height>=140&&s.bottom<=d.top+.5&&c.scrollWidth<=c.clientWidth+1})()"));
     }
 
     private void readablePartyDossiers() throws Exception {
         reachable(".party-compact:last-child");
-        assertEquals("Every investigator remains readable, drawn and reachable", "true", js("(()=>{const d=document.querySelector('.action-dock').getBoundingClientRect();return Array.from(document.querySelectorAll('.party-compact')).every(e=>{const r=e.getBoundingClientRect();return r.width>=44&&r.height>=44&&r.top>=d.top&&r.bottom<=Math.min(d.bottom,innerHeight)+.5&&e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))&&getComputedStyle(e).borderImageSource.includes('dossier-mount')&&getComputedStyle(e).opacity==='1'&&e.scrollWidth<=e.clientWidth+1&&Array.from(e.querySelectorAll('strong,.party-action-status,.bar-label,.bar-value')).every(t=>{const b=t.getBoundingClientRect(),s=parseFloat(getComputedStyle(t).fontSize);return s>=(t.tagName==='STRONG'?14:t.classList.contains('bar-value')?13:12)&&b.left>=r.left&&b.right<=r.right})})})()"));
+        assertEquals("Every investigator remains readable, drawn and reachable", "true", js("(()=>{const d=document.querySelector('.action-dock').getBoundingClientRect();return Array.from(document.querySelectorAll('.party-compact')).every(e=>{const r=e.getBoundingClientRect();return r.width>=44&&r.height>=44&&r.top>=d.top&&r.bottom<=Math.min(d.bottom,innerHeight)+.5&&e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))&&getComputedStyle(e).borderImageSource.includes('panel-frame')&&getComputedStyle(e).opacity==='1'&&e.scrollWidth<=e.clientWidth+1&&Array.from(e.querySelectorAll('strong,.party-action-status,.bar-label,.bar-value')).every(t=>{const b=t.getBoundingClientRect(),s=parseFloat(getComputedStyle(t).fontSize);return s>=(t.tagName==='STRONG'?14:t.classList.contains('bar-value')?13:12)&&b.left>=r.left&&b.right<=r.right})})})()"));
     }
 
     private void menu(String label) throws Exception {
@@ -166,7 +166,7 @@ public class GameAndroidTest {
 
     private void readableGameNotice() throws Exception {
         until("document.querySelector('.game-notice .toast')");
-        assertEquals("Feedback is readable above the actions and never intercepts input", "true", js("(()=>{const e=document.querySelector('.game-notice'),n=e.querySelector('.toast'),r=n.getBoundingClientRect(),d=document.querySelector('.action-dock').getBoundingClientRect(),t=document.querySelector('.game-top').getBoundingClientRect();return e.getAttribute('role')==='status'&&e.getAttribute('aria-live')==='polite'&&getComputedStyle(e).pointerEvents==='none'&&parseFloat(getComputedStyle(n).fontSize)>=15&&getComputedStyle(n).borderImageSource.includes('dossier-mount')&&r.left>=0&&r.right<=innerWidth&&r.top>=t.bottom&&r.bottom<=d.top&&n.scrollWidth<=n.clientWidth+1})()"));
+        assertEquals("Feedback is readable above the actions and never intercepts input", "true", js("(()=>{const e=document.querySelector('.game-notice'),n=e.querySelector('.toast'),r=n.getBoundingClientRect(),d=document.querySelector('.action-dock').getBoundingClientRect(),t=document.querySelector('.game-top').getBoundingClientRect();return e.getAttribute('role')==='status'&&e.getAttribute('aria-live')==='polite'&&getComputedStyle(e).pointerEvents==='none'&&parseFloat(getComputedStyle(n).fontSize)>=15&&getComputedStyle(n).borderImageSource.includes('panel-frame')&&r.left>=0&&r.right<=innerWidth&&r.top>=t.bottom&&r.bottom<=d.top&&n.scrollWidth<=n.clientWidth+1})()"));
         if (Double.parseDouble(js("innerHeight")) > 300) readablePartyDossiers();
         assertEquals("Short confirmation leaves the NPC nameplate readable", "true", js("(()=>{const n=document.querySelector('.toast'),c=document.querySelector('.npc-nameplate');if(n.textContent!=='已保存'||!c)return true;const a=n.getBoundingClientRect(),b=c.getBoundingClientRect();return a.right<=b.left||a.left>=b.right||a.bottom<=b.top||a.top>=b.bottom})()"));
     }
@@ -243,6 +243,8 @@ public class GameAndroidTest {
                 activity.onActivity(a -> assertEquals(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, a.getRequestedOrientation()));
                 String prefix = "portrait-" + size[0] + "x" + size[1];
                 reachable(".title-actions .primary-btn");
+                until("Array.from(document.querySelectorAll('.title-mark,.title-actions img')).every(e=>e.complete&&e.naturalWidth>0)");
+                assertEquals("Original artist logo and home buttons decode inside the APK", "true", js("document.querySelector('.title-mark').naturalWidth===674&&Array.from(document.querySelectorAll('.title-actions img')).every(e=>e.naturalWidth===498)"));
                 assertEquals("Home video does not create a page scrollbar", "true", js("document.querySelector('.title-screen').scrollHeight<=document.querySelector('.title-screen').clientHeight+1"));
                 click("AI 设置");
                 until("document.querySelector('.api-config-fields')");
@@ -357,7 +359,7 @@ public class GameAndroidTest {
                 assertEquals("Expanded reading stays below navigation and above the dock", "true", js("(()=>{const p=document.querySelector('.narrative-panel').getBoundingClientRect(),d=document.querySelector('.action-dock').getBoundingClientRect(),n=document.querySelector('.game-top').getBoundingClientRect();return p.top>=n.bottom&&p.bottom<=d.top+.5&&p.width>innerWidth*.9&&p.left===d.left&&p.right===d.right})()"));
                 js("(()=>{const e=document.createElement('div');e.id='qa-long-story';e.className='story-message dm';e.textContent='调查员沿着门廊仔细查看，斑驳的木板上留下了一道浅浅的划痕。伊莎贝拉回忆起那天走廊里急促的脚步声。'.repeat(40);document.querySelector('.narrative-scroll').appendChild(e)})()");
                 String headerTop = js("document.querySelector('.narrative-header').getBoundingClientRect().top");
-                assertEquals("Story identity and tools have readable illustrated touch controls", "true", js("(()=>{const h=document.querySelector('.narrative-header').getBoundingClientRect();return Array.from(document.querySelectorAll('.narrative-header button')).every(e=>{const r=e.getBoundingClientRect();return r.width>=44&&r.height>=44&&r.left>=h.left&&r.right<=h.right+.5})&&parseFloat(getComputedStyle(document.querySelector('.npc-nameplate strong')).fontSize)>=14&&getComputedStyle(document.querySelector('.npc-nameplate')).borderImageSource.includes('dossier-mount')&&getComputedStyle(document.querySelector('.narrative-toggle-btn'),'::before').borderImageSource.includes('brass-frame')})()"));
+                assertEquals("Story identity and tools have readable illustrated touch controls", "true", js("(()=>{const h=document.querySelector('.narrative-header').getBoundingClientRect();return Array.from(document.querySelectorAll('.narrative-header button')).every(e=>{const r=e.getBoundingClientRect();return r.width>=44&&r.height>=44&&r.left>=h.left&&r.right<=h.right+.5})&&parseFloat(getComputedStyle(document.querySelector('.npc-nameplate strong')).fontSize)>=14&&getComputedStyle(document.querySelector('.npc-nameplate')).borderImageSource.includes('panel-frame')&&getComputedStyle(document.querySelector('.narrative-toggle-btn'),'::before').backgroundImage.includes('icon-frame')})()"));
                 for (double fraction : new double[] {0, .5, 1}) {
                     js("(()=>{const s=document.querySelector('.narrative-scroll');s.scrollTop=(s.scrollHeight-s.clientHeight)*" + fraction + "})()");
                     assertEquals("Story header stays fixed when history scrolls", headerTop, js("document.querySelector('.narrative-header').getBoundingClientRect().top"));
@@ -439,10 +441,10 @@ public class GameAndroidTest {
                 String currentDraft = js("document.querySelector('.dock-input').value");
                 String currentActor = js("document.querySelector('.party-compact.active strong').textContent");
                 menu("返回首页"); until("document.querySelector('.title-resume-preview')");
-                assertEquals("Home offers the current investigation before starting over", "true", js("document.querySelector('.title-resume-preview').textContent.includes('当前调查')&&document.querySelector('.title-actions button:first-child').textContent==='继续游戏'&&document.activeElement===document.querySelector('.title-actions .primary-btn')"));
+                assertEquals("Artist navigation retains focused one-tap continuation", "true", js("document.querySelector('.title-resume-preview').textContent.includes('当前调查')&&document.querySelector('.title-actions button:first-child').getAttribute('aria-label')==='开始游戏'&&document.activeElement===document.querySelector('.title-continue')"));
                 assertEquals("Party preview fits the phone without horizontal overflow", "true", js("document.querySelector('.title-resume-preview').scrollWidth<=document.querySelector('.title-resume-preview').clientWidth+1"));
-                reachable(".title-actions .primary-btn"); screenshot(prefix + "-resume");
-                viewport(size[0], 300); reachable(".title-actions .primary-btn"); viewport(size[0], size[1]);
+                reachable(".title-continue"); screenshot(prefix + "-resume");
+                viewport(size[0], 300); reachable(".title-continue"); viewport(size[0], size[1]);
                 click("继续游戏"); until("document.querySelector('.dock-input')");
                 assertEquals("Returning home preserves the action draft", currentDraft, js("document.querySelector('.dock-input').value"));
                 assertEquals("Returning home preserves the acting investigator", currentActor, js("document.querySelector('.party-compact.active strong').textContent"));
@@ -844,10 +846,10 @@ public class GameAndroidTest {
                 until("window.qaEndingReady");
                 String vitals = js("window.qaEndingVitals");
                 activity.recreate(); until("document.querySelector('.title-resume-preview')"); viewport(size[0], size[1]);
-                assertEquals("Completed records offer a review", "true", js("document.querySelector('.title-resume-preview').textContent.includes('已结案')&&document.querySelector('.title-actions button:first-child').textContent==='回顾调查'"));
+                assertEquals("Completed records offer a review", "true", js("document.querySelector('.title-resume-preview').textContent.includes('已结案')&&document.querySelector('.title-continue').textContent==='回顾调查'"));
                 click("回顾调查"); until("document.querySelector('.ending-dock')");
                 assertEquals("The ending stays read-only with the original party", "true", js("!document.querySelector('.dock-input')&&!document.querySelector('.party-action-status')&&!document.querySelector('.scene-npc')&&document.querySelectorAll('.ending-dock .party-compact').length===" + size[2]));
-                assertEquals("Outcome uses the drawn record mount and readable text", "true", js("getComputedStyle(document.querySelector('.ending-copy')).borderImageSource.includes('dossier-mount')&&parseFloat(getComputedStyle(document.querySelector('.ending-copy p')).fontSize)>=15"));
+                assertEquals("Outcome uses the drawn record mount and readable text", "true", js("getComputedStyle(document.querySelector('.ending-copy')).borderImageSource.includes('panel-frame')&&parseFloat(getComputedStyle(document.querySelector('.ending-copy p')).fontSize)>=15"));
                 reachable(".ending-actions button:first-child"); reachable(".ending-actions button:last-child"); reachable(".ending-dock .party-compact:last-child");
                 assertEquals("Reading and actions do not overlap", "true", js("document.querySelector('.narrative-panel').clientHeight>=140&&document.querySelector('.narrative-panel').getBoundingClientRect().bottom<=document.querySelector('.ending-dock').getBoundingClientRect().top+.5"));
                 nativeTap(".ending-dock .party-compact:last-child"); until("document.querySelector('.investigator-sheet')");
@@ -900,9 +902,9 @@ public class GameAndroidTest {
             assertEquals("Music mute leaves the effects channel enabled", "true", js("document.querySelector('[aria-label=游戏音效]').getAttribute('aria-checked')==='true'"));
             for (int[] size : new int[][] { {320,568}, {390,844}, {430,932}, {562,1000} }) {
                 viewport(size[0], size[1]);
-                assertEquals("Channel artwork and volume text stay readable", "true", js("getComputedStyle(document.querySelector('.audio-channel')).borderImageSource.includes('dossier-mount')&&parseFloat(getComputedStyle(document.querySelector('.audio-channel label')).fontSize)>=15"));
+                assertEquals("Channel artwork and volume text stay readable", "true", js("getComputedStyle(document.querySelector('.audio-channel')).borderImageSource.includes('panel-frame')&&parseFloat(getComputedStyle(document.querySelector('.audio-channel label')).fontSize)>=15"));
                 js("document.querySelector('.audio-preview').scrollIntoView({block:'nearest'})"); reachable(".audio-preview");
-                assertEquals("Preview has a touch-sized drawn control", "true", js("document.querySelector('.audio-preview').getBoundingClientRect().height>=44&&getComputedStyle(document.querySelector('.audio-preview'),'::before').borderImageSource.includes('brass-frame')"));
+                assertEquals("Preview has a touch-sized drawn control", "true", js("document.querySelector('.audio-preview').getBoundingClientRect().height>=44&&getComputedStyle(document.querySelector('.audio-preview'),'::before').borderImageSource.includes('button-secondary')"));
                 nativeTap(".audio-preview");
                 fill("input[aria-label='音效音量']", "0"); until("document.querySelector('.audio-preview').disabled");
                 fill("input[aria-label='音效音量']", "23"); until("!document.querySelector('.audio-preview').disabled");

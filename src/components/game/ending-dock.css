@@ -1,10 +1,10 @@
 /* A finished investigation keeps its original outcome, records and party reachable. */
 :root.fog-ui .ending-dock { display: flex; flex-direction: column; align-items: stretch; gap: 8px; min-height: 0; max-height: none; }
-.ending-copy { display: flex; flex: 0 0 auto; gap: 9px; min-width: 0; padding: 7px 9px; border: 5px solid transparent; border-image: url('../../../assets/ui/chrome/dossier-mount.webp') 64 fill / 5px / 0 stretch; background: #211c14; }
-.ending-copy > svg { flex: 0 0 auto; margin-top: 3px; color: #cfb580; }
+.ending-copy { display: flex; flex: 0 0 auto; gap: 9px; min-width: 0; padding: 7px 9px; border: 5px solid transparent; border-image: var(--ui-panel-frame) 52 fill / 5px / 0 stretch; background: var(--panel); }
+.ending-copy > svg { flex: 0 0 auto; margin-top: 3px; color: var(--accent); }
 .ending-copy > div { min-width: 0; }
-.ending-copy strong { color: #ead19a; font: 400 17px/1.4 var(--ui-font); overflow-wrap: anywhere; }
-.ending-copy p { margin: 4px 0 0; color: #d5cbb6; font: 400 15px/1.65 var(--ui-font); overflow-wrap: anywhere; }
+.ending-copy strong { color: var(--text); font: 400 17px/1.4 var(--ui-font); overflow-wrap: anywhere; }
+.ending-copy p { margin: 4px 0 0; color: var(--text); font: 400 15px/1.65 var(--ui-font); overflow-wrap: anywhere; }
 .ending-actions { display: grid; flex: 0 0 auto; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .ending-actions > button { min-width: 0; min-height: 44px; }
 :root.fog-ui .ending-dock .party-strip-compact { flex: 0 0 auto; margin-top: 0; padding-top: 0; border-top: 0; }

@@ -3,7 +3,6 @@ import { Check } from 'lucide-react';
 import type { DiceResult } from '../../types/game';
 import { DICE_ROLL_DURATION_MS, type DiceRollPresentation } from '../../app/diceRollAnimation';
 import { useDialogFocus } from '../shared/useDialogFocus';
-import panelArt from '../../../assets/ui/dice/ui_dice_panel.webp';
 import idleArt from '../../../assets/ui/dice/ui_dice_idle.webp';
 import rollArt from '../../../assets/ui/dice/ui_dice_roll.webp';
 
@@ -84,7 +83,7 @@ export function DiceRollOverlay({ onConfirm, roll }: DiceRollOverlayProps) {
         </header>
 
         <div className="dice-roll-panel">
-          <img className="dice-roll-panel-art" src={panelArt} alt="" draggable={false} />
+          <div className="dice-roll-panel-art" aria-hidden="true" />
           <p className="dice-roll-total-label">总点数</p>
           <div className="dice-roll-readout" aria-live="polite" aria-atomic="true">
             {revealed ? (

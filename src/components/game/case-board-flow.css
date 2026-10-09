@@ -1,31 +1,30 @@
-.case-board-flow-wrap { position: relative; min-width: 0; background: #17140f; }
-.case-board-tools { display: flex; gap: 5px; padding: 5px; border: 1px solid #78613d; background: #14120eed; box-shadow: inset 0 0 0 2px #090806, 0 3px 12px #0008; }
-:root .case-board-tools button { position: relative; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid #886a3f; border-radius: 0; background: #231b10; color: #dfc18b; cursor: pointer; }
-:root .case-board-tools button::before { content: ''; position: absolute; inset: -1px; border: 8px solid transparent; border-image: var(--ui-frame) 80 / 8px / 0 stretch; pointer-events: none; }
-:root .case-board-tools button:enabled:hover { background: #46351e; color: #fff0cf; }
-:root .case-board-tools button:enabled:active { background: #15110c; transform: translateY(1px); }
-:root .case-board-tools button:disabled { color: #83745c; background: #19150f; border-color: #4d3e28; cursor: default; }
+.case-board-flow-wrap { position: relative; min-width: 0; background: var(--panel); }
+.case-board-tools { display: flex; gap: 5px; padding: 5px; border: 1px solid var(--line); background: rgb(var(--ui-strong-rgb) / 0.929); box-shadow: inset 0 0 0 2px var(--panel-strong), 0 3px 12px #0008; }
+:root .case-board-tools button { position: relative; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--ui-ink); cursor: pointer; }
+:root .case-board-tools button:enabled:hover { filter: brightness(1.08); }
+:root .case-board-tools button:enabled:active { filter: brightness(.92); transform: translateY(1px); }
+:root .case-board-tools button:disabled { color: var(--ui-ink); opacity: .55; cursor: default; }
 .react-flow__node-caseBoardNode { border-radius: 0; }
-.case-flow-node { --record-accent: #c2a170; position: relative; display: flex; width: 100%; height: 100%; padding: 0; overflow: hidden; border: 6px solid transparent; border-image: url('../../../assets/ui/chrome/dossier-mount.webp') 64 fill / 6px / 0 stretch; border-radius: 0; background: #1b1710; color: #e6d5b4; box-shadow: 0 5px 15px #0006; font: inherit; text-align: left; cursor: pointer; transition: opacity 180ms ease, box-shadow 180ms ease; }
+.case-flow-node { --record-accent: var(--muted); position: relative; display: flex; width: 100%; height: 100%; padding: 0; overflow: hidden; border: 6px solid transparent; border-image: var(--ui-panel-frame) 52 fill / 6px / 0 stretch; border-radius: 0; background: var(--panel); color: var(--text); box-shadow: 0 5px 15px #0006; font: inherit; text-align: left; cursor: pointer; transition: opacity 180ms ease, box-shadow 180ms ease; }
 .case-flow-node.npc { --record-accent: #93b3c0; }
 .case-flow-node.scene { --record-accent: #a1b994; }
-.case-flow-node.event { --record-accent: #bdb09c; }
-.case-flow-node.theory { --record-accent: #d6a078; }
+.case-flow-node.event { --record-accent: var(--muted); }
+.case-flow-node.theory { --record-accent: var(--accent); }
 .case-flow-node.hypothesis .case-flow-node-meta { border-bottom: 1px dashed var(--record-accent); }
 .case-flow-node.faded { opacity: .3; }
-.case-flow-node.selected { box-shadow: 0 0 0 2px #c8a569, 0 8px 22px #0007; }
+.case-flow-node.selected { box-shadow: 0 0 0 2px var(--accent), 0 8px 22px #0007; }
 .case-flow-node:focus-visible { opacity: 1; outline: 2px solid var(--ui-focus); outline-offset: -3px; }
-.case-flow-node:enabled:hover { box-shadow: 0 0 0 1px #d4b980, 0 6px 20px #0008; }
-.case-flow-photo { flex: 0 0 60px; align-self: stretch; display: grid; place-items: center; margin: 5px 0 5px 5px; overflow: hidden; border: 1px solid #756041; background: radial-gradient(ellipse, #433723, #12110d); }
+.case-flow-node:enabled:hover { box-shadow: 0 0 0 1px var(--accent), 0 6px 20px #0008; }
+.case-flow-photo { flex: 0 0 60px; align-self: stretch; display: grid; place-items: center; margin: 5px 0 5px 5px; overflow: hidden; border: 1px solid var(--line); background: radial-gradient(ellipse, var(--line-soft), var(--panel-strong)); }
 .case-flow-photo img { display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain; object-position: center bottom; }
 .case-flow-node.scene .case-flow-photo { flex-basis: 58px; }
 .case-flow-node-body { display: flex; flex: 1; flex-direction: column; min-width: 0; padding: 7px 8px; }
 .case-flow-node-meta { display: inline-flex; align-items: center; gap: 5px; align-self: flex-start; color: var(--record-accent); font-size: 11px; line-height: 1.4; }
-.case-flow-node strong { display: -webkit-box; overflow: hidden; margin-top: 4px; color: #ebd2a1; font: 400 15px/1.4 var(--ui-font); -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
-.case-flow-node small { overflow: hidden; margin-top: 3px; color: #b9a98d; font-size: 11px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
-.case-flow-node-foot { display: flex; gap: 6px; margin-top: auto; color: #c4ac84; font-size: 10px; line-height: 1.4; }
+.case-flow-node strong { display: -webkit-box; overflow: hidden; margin-top: 4px; color: var(--text); font: 400 15px/1.4 var(--ui-font); -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
+.case-flow-node small { overflow: hidden; margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.case-flow-node-foot { display: flex; gap: 6px; margin-top: auto; color: var(--muted); font-size: 10px; line-height: 1.4; }
 .case-flow-node-foot:empty { display: none; }
-.case-flow-handle { width: 5px; height: 5px; border: 1px solid #ad8b54; background: #5c4430; opacity: .5; pointer-events: none; }
+.case-flow-handle { width: 5px; height: 5px; border: 1px solid var(--muted); background: var(--line-soft); opacity: .5; pointer-events: none; }
 .case-flow-node.recent { animation: case-board-new 1.4s ease-out; }
-@keyframes case-board-new { from { box-shadow: 0 0 0 3px #c8a569; } to { box-shadow: 0 5px 15px #0006; } }
+@keyframes case-board-new { from { box-shadow: 0 0 0 3px var(--accent); } to { box-shadow: 0 5px 15px #0006; } }
 @media (prefers-reduced-motion: reduce) { .case-flow-node, .case-flow-node.recent { animation: none; transition: none; } }

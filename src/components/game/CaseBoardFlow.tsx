@@ -7,7 +7,7 @@ import { layoutCaseBoardGraph, type CaseBoardGraphModel } from './caseBoardGraph
 import './case-board-flow.css';
 
 const NODE_TYPES = { caseBoardNode: CaseBoardNodeCard };
-const EDGE_COLOR = { evidence: '#b99a61', suspicion: '#c97163', route: '#6f9db8', danger: '#d45f50' };
+const EDGE_COLOR = { evidence: '#c4d9f1', suspicion: '#c799c7', route: '#8faad0', danger: '#de938b' };
 const MIN_ZOOM = .2;
 const MAX_ZOOM = 1.5;
 interface CaseBoardFlowProps { model: CaseBoardGraphModel; selectedId: string | null; onSelect: (id: string) => void }
@@ -95,7 +95,7 @@ export function CaseBoardFlow({ model, selectedId, onSelect }: CaseBoardFlowProp
       markerEnd: edge.tone === 'route' ? { type: MarkerType.ArrowClosed, color: EDGE_COLOR.route } : undefined,
       style: { stroke: EDGE_COLOR[edge.tone], strokeWidth: selectedId && (edge.from === selectedId || edge.to === selectedId) ? 2.4 : 1.5,
         strokeDasharray: edge.certainty === 'hypothesis' || edge.tone === 'danger' ? '6 5' : undefined, opacity: faded ? .16 : .82 },
-      labelStyle: { fill: '#d8c7a4', fontSize: 11 }, labelBgStyle: { fill: '#17130f', fillOpacity: .88 },
+      labelStyle: { fill: 'var(--muted)', fontSize: 11 }, labelBgStyle: { fill: 'var(--panel-strong)', fillOpacity: .88 },
       labelBgPadding: [5, 3] as [number, number], labelBgBorderRadius: 3
     };
   });

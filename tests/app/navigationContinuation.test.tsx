@@ -46,7 +46,7 @@ describe('current investigation navigation', () => {
     if (source === 'automatic') localStorage.setItem(SESSION_KEY, JSON.stringify({ version: 1, savedAt: 1234, state, roll: null }));
     else saveGameState(state);
     render(<AndroidApp />);
-    const review = screen.getByRole('button', { name: '回顾调查', exact: true }); expect(review).toHaveClass('primary-btn');
+    const review = screen.getByRole('button', { name: '回顾调查', exact: true }); expect(review).toHaveClass('title-continue');
     fireEvent.click(review);
     expect(screen.getByRole('region', { name: '游戏结局' })).toHaveTextContent('结局C：和平交涉');
     expect(screen.queryByRole('dialog', { name: 'AI 设置' })).toBeNull(); expect(screen.queryByRole('textbox')).toBeNull();
@@ -57,7 +57,7 @@ describe('current investigation navigation', () => {
     render(<App />); const input = startSolo(); fireEvent.change(input, { target: { value: '先记录信上的日期。\n再查看门廊。' } });
     navigate('返回首页');
     const resume = screen.getByRole('button', { name: '继续游戏', exact: true });
-    expect(resume).toBeEnabled(); expect(resume).toHaveClass('primary-btn'); expect(resume).toHaveFocus();
+    expect(resume).toBeEnabled(); expect(resume).toHaveClass('title-continue'); expect(resume).toHaveFocus();
     expect(screen.getByRole('region', { name: '继续调查摘要' })).toHaveTextContent('当前调查');
     fireEvent.click(resume);
     expect(screen.getByRole('textbox', { name: '亨利·格雷的行动' })).toHaveValue('先记录信上的日期。\n再查看门廊。');

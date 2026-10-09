@@ -1,8 +1,11 @@
-import { Play, Settings } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { SaveSlot } from '../../types/game';
-import fogVideo from '../../../assets/scenes/scene_main_fog_london.webm';
-import fogPoster from '../../../assets/scenes/scene_main_fog_london.webp';
+import fogVideo from '../../../assets/ui/artist/title-rain.webm';
+import fogPoster from '../../../assets/ui/artist/title-background.webp';
+import titleLogo from '../../../assets/ui/artist/title-logo.webp';
+import newArt from '../../../assets/ui/artist/home-new.webp';
+import continueArt from '../../../assets/ui/artist/home-continue.webp';
+import settingsArt from '../../../assets/ui/artist/home-settings.webp';
 import { AudioSettingsButton } from '../shared/AudioSettingsButton';
 import { continuationPreview } from '../../app/gameContinuation';
 import './title-screen.css';
@@ -41,33 +44,34 @@ export function TitleScreen({ hasSaves, latestSave, continuation, onLoadLatest, 
       video.pause();
     };
   }, []);
-  const newAction = <button key="new" ref={hasSaves ? undefined : primaryRef} className={hasSaves ? 'ghost-btn' : 'primary-btn'} onClick={onNewGame}>
-    <Play size={18} aria-hidden="true" />开始游戏
+  const newAction = <button ref={hasSaves ? undefined : primaryRef} className="primary-btn title-new" aria-label="开始游戏" onClick={onNewGame}>
+    <img src={newArt} alt="" aria-hidden="true" /><span className="ui-visually-hidden">开始游戏</span>
   </button>;
-  const continueAction = <button key="continue" ref={hasSaves ? primaryRef : undefined} className={hasSaves ? 'primary-btn' : 'ghost-btn'}
-    disabled={!hasSaves} onClick={onLoadLatest}>{preview?.completed ? '回顾调查' : '继续游戏'}</button>;
+  const continueAction = <button ref={hasSaves ? primaryRef : undefined} className="ghost-btn title-continue"
+    disabled={!hasSaves} onClick={onLoadLatest}>
+    {preview?.completed ? <span className="title-completed-label">回顾调查</span>
+      : <><img src={continueArt} alt="" aria-hidden="true" /><span className="ui-visually-hidden">继续游戏</span></>}
+  </button>;
   return (
     <section className="title-screen">
       <div className="title-backdrop" aria-hidden="true">
-        <video ref={videoRef} src={fogVideo} poster={fogPoster} muted loop playsInline preload="auto" disablePictureInPicture />
+        <video ref={videoRef} src={fogVideo} poster={fogPoster} muted loop playsInline preload="metadata" disablePictureInPicture />
       </div>
       <div className="title-content">
-        <p className="title-kicker">DISAPPEAR IN FOG · AI TRPG</p>
-        <h1>雾中消逝</h1>
-        <p className="title-subtitle">1920 年伦敦，煤气灯下的失踪案正在等待调查员。</p>
+        <h1 className="ui-visually-hidden">雾中消逝</h1>
+        <img className="title-mark" src={titleLogo} alt="" aria-hidden="true" />
         {preview && <section className="title-resume-preview" aria-label="继续调查摘要">
           <div><span>{preview.label}</span><span>{preview.detail}</span></div>
           <strong>{preview.scene}</strong><p>{preview.players}</p>
         </section>}
         <div className="title-actions">
-          {hasSaves ? <>{continueAction}{newAction}</> : <>{newAction}{continueAction}</>}
-          <button className="ghost-btn subtle" onClick={onOpenApi}>
-            <Settings size={16} />
-            AI 设置
+          {newAction}{continueAction}
+          <button className="ghost-btn title-settings" aria-label="AI 设置" onClick={onOpenApi}>
+            <img src={settingsArt} alt="" aria-hidden="true" /><span className="ui-visually-hidden">AI 设置</span>
           </button>
-          <AudioSettingsButton className="ghost-btn subtle" />
         </div>
       </div>
+      <AudioSettingsButton className="icon-text-btn audio-icon-button title-audio" iconOnly />
     </section>
   );
 }

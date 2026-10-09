@@ -1,45 +1,44 @@
-/* The brass sound panel keeps its close control still while channels and credits scroll. */
+/* The rain-blue sound panel keeps its close control still while channels and credits scroll. */
 .audio-settings-backdrop { z-index: 400; padding: 16px; }
 :root.fog-ui .audio-settings { display: flex; flex-direction: column; width: min(480px, 100%); min-width: 0; max-height: calc(100dvh - 32px); padding: 18px; overflow: clip; }
 .audio-settings > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: 0 0 auto; padding-bottom: 10px; }
 :root.fog-ui .audio-settings header h2 { margin: 0; font-size: 21px; }
-:root.fog-ui .audio-close { position: relative; display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; padding: 0; color: var(--ui-paper); }
+:root.fog-ui .audio-close { position: relative; display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; padding: 0; color: var(--ui-ink); }
 .audio-settings-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1px; scroll-padding: 5px; }
-:root.fog-ui .audio-channel { min-width: 0; padding: 8px; border: 4px solid transparent; border-image: url('../../../assets/ui/chrome/dossier-mount.webp') 64 fill / 4px / 0 stretch; background: #211c14; }
+:root.fog-ui .audio-channel { min-width: 0; padding: 8px; border: 4px solid transparent; border-image: var(--ui-panel-frame) 52 fill / 4px / 0 stretch; background: var(--panel); }
 .audio-channel-heading, .audio-channel-heading > span, .audio-switch { display: flex; align-items: center; gap: 8px; }
 .audio-channel-heading { justify-content: space-between; }
-.audio-channel-heading > span { min-width: 0; color: #e5cb95; font: 400 16px/1.4 var(--ui-font); }
-.audio-channel-heading svg { flex: 0 0 auto; color: #ceb176; }
-:root.fog-ui .audio-switch { flex: 0 0 auto; min-height: 44px; padding: 0 7px; border: 1px solid #7b6340; border-radius: 2px; background: #17140e; box-shadow: inset 0 0 0 2px #090a08; color: #bcae95; font: 400 15px/1.4 var(--ui-font); cursor: pointer; touch-action: manipulation; }
-:root.fog-ui .audio-switch[aria-checked='true'] { color: #f0d99f; border-color: #ad8d54; background: #2d2417; }
-.audio-switch-track { flex: 0 0 40px; width: 40px; height: 22px; padding: 3px; border: 1px solid #857051; border-radius: 2px; background: #11110e; box-shadow: inset 0 1px 4px #000; }
-.audio-switch-track i { display: block; width: 14px; height: 14px; border-radius: 1px; background: #998b70; box-shadow: inset 0 0 0 1px #ddc9a4; transition: transform 160ms; }
-[aria-checked='true'] .audio-switch-track { background: #5e4826; border-color: #d9b675; }
-[aria-checked='true'] .audio-switch-track i { transform: translateX(18px); background: #e3c58a; }
-:root.fog-ui .audio-channel p { margin: 4px 0 0; color: #c8baa0; font: 400 15px/1.6 var(--ui-font); }
-:root.fog-ui .audio-settings .audio-channel label { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0; margin: 6px 0 0; color: #d5c7ac; font: 400 15px/1.4 var(--ui-font); }
-.audio-channel output { color: #ead19a; font-variant-numeric: tabular-nums; }
+.audio-channel-heading > span { min-width: 0; color: var(--text); font: 400 16px/1.4 var(--ui-font); }
+.audio-channel-heading svg { flex: 0 0 auto; color: var(--accent); }
+:root.fog-ui .audio-switch { flex: 0 0 auto; min-height: 44px; padding: 0 7px; border: 1px solid transparent; border-radius: 8px; background: transparent; box-shadow: none; color: var(--text); font: 400 15px/1.4 var(--ui-font); cursor: pointer; touch-action: manipulation; }
+:root.fog-ui .audio-switch[aria-checked='true'] { color: var(--text); }
+.audio-switch-track { flex: 0 0 40px; width: 40px; height: 22px; padding: 3px; border: 1px solid var(--line); border-radius: 11px; background: var(--panel-strong); }
+.audio-switch-track i { display: block; width: 14px; height: 14px; border-radius: 50%; background: var(--quiet); transition: transform 160ms; }
+[aria-checked='true'] .audio-switch-track { background: var(--line-soft); border-color: var(--accent); }
+[aria-checked='true'] .audio-switch-track i { transform: translateX(18px); background: var(--text); }
+:root.fog-ui .audio-channel p { margin: 4px 0 0; color: var(--text); font: 400 15px/1.6 var(--ui-font); }
+:root.fog-ui .audio-settings .audio-channel label { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0; margin: 6px 0 0; color: var(--text); font: 400 15px/1.4 var(--ui-font); }
+.audio-channel output { color: var(--text); font-variant-numeric: tabular-nums; }
 :root.fog-ui .audio-settings input[type='range'] { grid-column: 1 / -1; width: 100%; height: 44px; min-height: 44px; padding: 0; margin: 0; appearance: none; -webkit-appearance: none; background: transparent; border: 0; box-shadow: none; cursor: pointer; }
-.audio-settings input[type='range']::-webkit-slider-runnable-track { height: 6px; background: #090a08; border: 1px solid #79623f; border-radius: 1px; }
-.audio-settings input[type='range']::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 22px; height: 28px; margin-top: -12px; border: 1px solid #e3c48b; border-radius: 2px; background: #9f7c44; box-shadow: inset 0 0 0 3px #46351e, 0 2px 4px #000a; }
-.audio-settings input[type='range']::-moz-range-track { height: 6px; background: #090a08; border: 1px solid #79623f; border-radius: 1px; }
-.audio-settings input[type='range']::-moz-range-thumb { width: 22px; height: 28px; border: 1px solid #e3c48b; border-radius: 2px; background: #9f7c44; box-shadow: inset 0 0 0 3px #46351e; }
+.audio-settings input[type='range']::-webkit-slider-runnable-track { height: 6px; background: var(--panel-strong); border: 1px solid var(--line); border-radius: 3px; }
+.audio-settings input[type='range']::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 24px; height: 24px; margin-top: -10px; border: 0; border-radius: 5px; background: var(--ui-icon-frame) center / 100% 100% no-repeat; }
+.audio-settings input[type='range']::-moz-range-track { height: 6px; background: var(--panel-strong); border: 1px solid var(--line); border-radius: 3px; }
+.audio-settings input[type='range']::-moz-range-thumb { width: 24px; height: 24px; border: 0; border-radius: 5px; background: var(--ui-icon-frame) center / 100% 100% no-repeat; }
 .audio-settings input[type='range']:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: -2px; }
 :root.fog-ui .audio-settings input[type='range']:disabled { opacity: .45; cursor: default; }
 :root.fog-ui .audio-settings .audio-preview { position: relative; min-height: 44px; margin-top: 4px; padding: 0 12px; font-size: 15px; }
-:root.fog-ui :is(.audio-close, .audio-preview)::before { content: ''; position: absolute; inset: -1px; border: 10px solid transparent; border-image: var(--ui-frame) 80 fill / 10px / 0 stretch; pointer-events: none; z-index: -1; }
-:root.fog-ui .audio-settings .audio-note { margin: 0; color: #b8ab94; font: 400 14px/1.6 var(--ui-font); }
-.audio-credits { color: #cabb9f; }
-.audio-credits summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 6px 10px; border: 1px solid #715c3b; border-radius: 2px; background: #211c15; box-shadow: inset 0 0 0 2px #100f0b, inset 0 0 0 3px #463a29; color: #e0c38c; font: 400 15px/1.5 var(--ui-font); cursor: pointer; list-style: none; touch-action: manipulation; }
+:root.fog-ui .audio-settings .audio-note { margin: 0; color: var(--muted); font: 400 14px/1.6 var(--ui-font); }
+.audio-credits { color: var(--text); }
+.audio-credits summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 6px 10px; border: 4px solid transparent; border-image: var(--ui-panel-frame) 52 fill / 4px / 0 stretch; border-radius: 8px; background: var(--panel); color: var(--accent); font: 400 15px/1.5 var(--ui-font); cursor: pointer; list-style: none; touch-action: manipulation; }
 .audio-credits summary::-webkit-details-marker { display: none; }
 .audio-credits summary > svg { flex-shrink: 0; transition: transform 160ms; }
 .audio-credits[open] summary > svg { transform: rotate(180deg); }
 .audio-credits summary:focus-visible, .audio-credit-links a:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: -2px; }
 .audio-credit-item { padding: 8px 2px; }
-.audio-credit-item + .audio-credit-item { border-top: 1px solid #51432e; }
+.audio-credit-item + .audio-credit-item { border-top: 1px solid var(--line-soft); }
 .audio-credit-links { display: flex; flex-wrap: wrap; gap: 0 16px; }
-.audio-credit-links a { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0 4px; color: #e1c791; font: 400 15px/1.5 var(--ui-font); text-decoration: underline; text-underline-offset: 3px; }
-:root.fog-ui .audio-credits p { margin: 0; color: #c6b99f; overflow-wrap: anywhere; font: 400 15px/1.7 var(--ui-font); }
+.audio-credit-links a { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0 4px; color: var(--accent); font: 400 15px/1.5 var(--ui-font); text-decoration: underline; text-underline-offset: 3px; }
+:root.fog-ui .audio-credits p { margin: 0; color: var(--muted); overflow-wrap: anywhere; font: 400 15px/1.7 var(--ui-font); }
 .icon-text-btn.audio-icon-button { width: 44px; height: 44px; flex: 0 0 44px; padding: 0; justify-content: center; }
 .audio-icon-button > svg { flex-shrink: 0; }
 :root.fog-ui.portrait-ui .audio-settings { max-height: var(--mobile-dialog-height); padding: 16px; }

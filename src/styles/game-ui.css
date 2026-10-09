@@ -1,189 +1,151 @@
-/* Fog / investigation UI. Shared artwork and states; layout lives in portrait.css
-   and desktop-game-layout.css.
-   Nine-sliced artwork keeps its corners at touch sizes and never contains text. */
+/* The artist's rain-blue home artwork is the source for every shared surface.
+   Full button artwork is nine-sliced; long reading surfaces use the quiet panel. */
 :root.fog-ui {
-  --gold: #d6b77b;
-  --gold-deep: #9d7741;
-  --text: #e7ddcc;
-  --muted: #b9ad98;
-  --quiet: #9b8f7a;
-  --line: #665238;
-  --line-soft: #3b3328;
-  --panel: #1b1813;
-  --panel-strong: #15130f;
-  --ui-paper: #f3e3bc;
-  --ui-brass: #ae8b52;
-  --ui-edge: #665238;
-  --ui-ink: #0f0e0c;
-  --ui-focus: #f7d998;
-  --ui-danger: #efaaa0;
+  --bg: #0d1725;
+  --panel: #18283c;
+  --panel-strong: #101c2d;
+  --surface: #21374f;
+  --text: #eef3fb;
+  --muted: #b5c7e0;
+  --quiet: #91a9c9;
+  --accent: #c4d9f1;
+  --accent-deep: #8faad0;
+  --line: #6080a3;
+  --line-soft: #344d6b;
+  --red: #de938b;
+  --green: #90bbad;
+  --ui-paper: var(--text);
+  --ui-ink: #23314a;
+  --ui-focus: #e7f4ff;
+  --ui-danger: #efb7b0;
+  --ui-danger-ink: #552231;
   --ui-font: "Zihun Yunque", "Noto Serif SC", "Songti SC", serif;
-  --ui-frame: url('../../assets/ui/chrome/brass-frame.webp');
-  --ui-primary-frame: url('../../assets/ui/chrome/primary-brass.webp');
-  --ui-grain: url('../../assets/ui/chrome/leather-grain.webp');
+  --ui-body-font: Georgia, "Noto Serif SC", "Songti SC", serif;
+  --ui-panel-frame: url('../../assets/ui/artist/panel-frame.webp');
+  --ui-icon-frame: url('../../assets/ui/artist/icon-frame.webp');
+  --ui-primary-frame: url('../../assets/ui/artist/button-primary.webp');
+  --ui-secondary-frame: url('../../assets/ui/artist/button-secondary.webp');
+  --ui-bg-rgb: 13 23 37;
+  --ui-panel-rgb: 24 40 60;
+  --ui-strong-rgb: 16 28 45;
+  --ui-surface-rgb: 33 55 79;
+  --ui-text-rgb: 238 243 251;
+  --ui-muted-rgb: 181 199 224;
+  --ui-accent-rgb: 196 217 241;
+  --ui-line-rgb: 96 128 163;
+  --ui-line-soft-rgb: 52 77 107;
   color-scheme: dark;
 }
-
-/* A quiet surface underneath the art is also the missing-image fallback. */
-:root.fog-ui :where(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
-  .dice-roll-confirm, .menu-button, .drawer-tab, .narrative-toggle-btn, .audio-close,
-  .entity-detail-close, .info-drawer-react header > button, .case-board-inspector header button, .case-related-record,
-  .case-board-toolbar > button, .preset-attrs-toggle, .menu-list button, .info-drawer-tabs button,
-  .suggestion-row button) {
-  isolation: isolate;
-  border: 1px solid var(--ui-edge);
-  border-radius: 2px;
-  background: #211c15;
-  color: var(--ui-paper);
-  box-shadow: inset 0 0 0 2px #100f0b, inset 0 0 0 3px #463a29, 0 2px 3px #0005;
-  font-family: var(--ui-font);
-  font-weight: 400;
-  text-shadow: 0 1px 2px #000;
-  cursor: pointer;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-  transition: color 130ms ease, border-color 130ms ease, background-color 130ms ease, box-shadow 130ms ease, transform 130ms ease;
+.ui-visually-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
 }
 
-/* Raised bronze plate for the current primary action and compact tool icons. */
-:root.fog-ui :is(.primary-btn, .primary-action, .secondary-action, .dice-roll-confirm, .menu-button, .audio-icon-button, .game-menu .menu-list button, .game-menu-close, .api-config-close, .api-key-reveal, .case-related-record) { position: relative; }
-:root.fog-ui :is(.primary-btn, .primary-action, .dice-roll-confirm) {
-  background: #aa8952;
-  border-color: #b99559;
-  color: #140e05;
-  text-shadow: 0 1px #fff0bc55;
-  box-shadow: inset 0 0 0 2px #15110b, 0 2px 0 #080706, 0 0 14px #bb8d3620;
+/* Real controls carry the art; the decorative image never owns input. */
+:root.fog-ui :is(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
+  .dice-roll-confirm, .menu-button, .drawer-tab, .narrative-toggle-btn, .narrative-new-content,
+  .audio-close, .audio-preview, .entity-detail-close, .info-drawer-react header > button,
+  .case-board-inspector header button, .case-related-record, .case-board-toolbar > button,
+  .case-board-tools button, .preset-attrs-toggle, .menu-list button, .info-drawer-tabs button,
+  .investigator-party button, .investigator-tabs button, .investigator-search button,
+  .suggestion-row button, .game-menu-close, .api-config-close, .api-key-reveal,
+  .investigator-close, .save-manager-close, .case-search-clear) {
+  --control-art: var(--ui-secondary-frame);
+  position: relative; isolation: isolate;
+  border: 1px solid transparent; border-radius: 18px;
+  background: transparent; color: var(--ui-ink); box-shadow: none;
+  font-family: var(--ui-font); font-weight: 400; text-shadow: none;
+  cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  transition: filter 130ms ease, transform 130ms ease;
 }
-:root.fog-ui :where(.primary-btn, .primary-action, .secondary-action, .dice-roll-confirm,
-  .menu-button, .drawer-tab, .audio-icon-button, .game-menu .menu-list button, .game-menu-close, .api-config-close, .api-key-reveal,
-  .entity-detail-close, .case-board-inspector header button, .case-related-record)::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border: 12px solid transparent;
-  border-image: var(--ui-frame) 80 fill / 12px / 0 stretch;
-  pointer-events: none;
-  z-index: -1;
+:root.fog-ui :is(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
+  .dice-roll-confirm, .menu-button, .drawer-tab, .narrative-toggle-btn, .narrative-new-content,
+  .audio-close, .audio-preview, .entity-detail-close, .info-drawer-react header > button,
+  .case-board-inspector header button, .case-related-record, .case-board-toolbar > button,
+  .case-board-tools button, .preset-attrs-toggle, .menu-list button, .info-drawer-tabs button,
+  .investigator-party button, .investigator-tabs button, .investigator-search button,
+  .suggestion-row button, .game-menu-close, .api-config-close, .api-key-reveal,
+  .investigator-close, .save-manager-close, .case-search-clear)::before {
+  content: ''; position: absolute; inset: -1px;
+  border: 6px solid transparent;
+  border-image: var(--control-art) 12 108 12 108 fill / 6px 18px / 0 stretch;
+  pointer-events: none; z-index: -1; opacity: 1;
 }
-:root.fog-ui :is(.menu-button, .drawer-tab, .audio-icon-button, .game-menu .menu-list button, .game-menu-close, .api-config-close, .api-key-reveal)::before {
-  border-image-width: 10px;
+:root.fog-ui :is(.primary-btn, .primary-action, .dice-roll-confirm,
+  .info-drawer-tabs button.active, .investigator-party button[aria-pressed='true'],
+  .investigator-tabs button[aria-selected='true'], .case-board-toolbar > button.active) {
+  --control-art: var(--ui-primary-frame);
+  color: var(--ui-ink);
 }
-:root.fog-ui :is(.primary-btn, .primary-action, .dice-roll-confirm)::before {
-  border-image-source: var(--ui-primary-frame);
-  opacity: 1;
+:root.fog-ui :is(.menu-button, .drawer-tab, .audio-icon-button, .narrative-toggle-btn,
+  .audio-close, .entity-detail-close, .info-drawer-react header > button,
+  .case-board-inspector header button, .game-menu-close, .api-config-close, .api-key-reveal,
+  .investigator-close, .save-manager-close, .investigator-search button,
+  .case-board-tools button, .case-search-clear) {
+  border-radius: 8px; color: var(--ui-ink);
+}
+:root.fog-ui :is(.menu-button, .drawer-tab, .audio-icon-button, .narrative-toggle-btn,
+  .audio-close, .entity-detail-close, .info-drawer-react header > button,
+  .case-board-inspector header button, .game-menu-close, .api-config-close, .api-key-reveal,
+  .investigator-close, .save-manager-close, .investigator-search button,
+  .case-board-tools button, .case-search-clear)::before {
+  border: 0; border-image: none;
+  background: var(--ui-icon-frame) center / 100% 100% no-repeat;
 }
 :root.fog-ui :is(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action) svg {
-  flex-shrink: 0;
-  stroke-width: 1.7;
+  flex-shrink: 0; stroke-width: 1.6;
 }
-:root.fog-ui :is(.ghost-btn.subtle, .preset-attrs-toggle) { color: #d2c3a7; }
-:root.fog-ui .danger { color: var(--ui-danger); border-color: #88564d; background: #291b17; }
-:root.fog-ui :is(button, [role='button'], [role='checkbox']):focus-visible {
-  outline: 2px solid var(--ui-focus);
-  outline-offset: -3px;
+:root.fog-ui .danger { color: var(--ui-danger-ink); }
+:root.fog-ui :is(button, [role='button'], [role='checkbox'], summary, a):focus-visible {
+  outline: 2px solid var(--ui-focus); outline-offset: -3px;
 }
 @media (hover: hover) {
   :root.fog-ui :where(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
-    .dice-roll-confirm, .menu-button, .drawer-tab, .narrative-toggle-btn, .audio-close,
-    .entity-detail-close, .menu-list button, .suggestion-row button, .info-drawer-tabs button,
-    .preset-attrs-toggle, .case-board-toolbar > button, .case-board-inspector header button, .case-related-record):enabled:hover {
-    border-color: #e4c181;
-    background-color: #51402a;
-    color: #fff2d4;
-    box-shadow: inset 0 0 0 2px #17120c, inset 0 0 0 3px #987742, 0 2px 8px #0008;
-  }
-  :root.fog-ui :is(.primary-btn, .primary-action, .dice-roll-confirm):enabled:hover {
-    color: #140e05;
-  }
-  :root.fog-ui :is(.primary-btn, .primary-action, .dice-roll-confirm):enabled:hover::before {
-    filter: brightness(1.12);
+    .dice-roll-confirm, .menu-button, .drawer-tab, .narrative-toggle-btn, .narrative-new-content,
+    .audio-close, .audio-preview, .entity-detail-close, .menu-list button, .suggestion-row button,
+    .info-drawer-tabs button, .preset-attrs-toggle, .case-board-toolbar > button,
+    .case-board-tools button, .case-board-inspector header button, .case-related-record):enabled:hover {
+    filter: brightness(1.08); color: var(--ui-ink);
   }
 }
 :root.fog-ui :where(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
-  .dice-roll-confirm, .menu-button, .drawer-tab, .narrative-toggle-btn, .menu-list button,
-  .suggestion-row button, .info-drawer-tabs button, .entity-detail-close, .case-board-inspector header button, .case-related-record):enabled:active {
-  transform: translateY(1px);
-  background-color: #15120d;
-  box-shadow: inset 0 2px 5px #000c;
-  color: #f9d89b;
+  .dice-roll-confirm, .menu-button, .drawer-tab, .narrative-toggle-btn, .narrative-new-content,
+  .menu-list button, .suggestion-row button, .info-drawer-tabs button, .entity-detail-close,
+  .case-board-inspector header button, .case-related-record):enabled:active {
+  transform: translateY(1px); filter: brightness(.92);
 }
-:root.fog-ui button:disabled {
-  opacity: 1;
-  color: #9e927d;
-  border-color: #504636;
-  background-color: #1c1914;
-  box-shadow: inset 0 0 0 2px #14120e;
-  cursor: not-allowed;
-  text-shadow: none;
-  transform: none;
-}
-:root.fog-ui button:disabled::before { opacity: .25; }
-:root.fog-ui :is(.primary-btn, .primary-action, .dice-roll-confirm):enabled:active {
-  color: #140e05;
-}
-:root.fog-ui :is(.primary-btn, .primary-action, .dice-roll-confirm):enabled:active::before { filter: brightness(.9); }
+:root.fog-ui button:disabled { cursor: not-allowed; text-shadow: none; transform: none; }
+:root.fog-ui :is(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
+  .dice-roll-confirm, .menu-list button, .suggestion-row button):disabled { opacity: .55; color: var(--ui-ink); }
 
-/* Title: brass plates over the existing London film. */
-:root.fog-ui .title-content h1 { font-family: var(--ui-font); color: #e4c88c; }
-:root.fog-ui .title-kicker { color: #b5a584; }
-:root.fog-ui .title-subtitle { color: #d0c4b0; text-shadow: 0 2px 4px #000; }
-:root.fog-ui .title-actions { gap: 12px; }
-:root.fog-ui .title-actions > button { min-height: 48px; letter-spacing: .08em; }
-:root.fog-ui .title-actions > :nth-child(-n+2) { font-size: 17px; }
-
-/* Ledger surfaces: ornamental outer rim, restrained interiors for long reading. */
+/* Opaque, softly drawn frames support readable text over the real scene art. */
 :root.fog-ui .modal-card {
-  position: relative;
-  isolation: isolate;
-  border-color: #79603c;
-  border-radius: 3px;
-  background-color: #191610;
-  background-image: linear-gradient(#191610ee, #12110fed), var(--ui-grain);
-  box-shadow: inset 0 0 0 3px #0b0a08, inset 0 0 0 4px #58452b, 0 18px 55px #000a;
-}
-:root.fog-ui .modal-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border: 14px solid transparent;
-  border-image: var(--ui-frame) 80 / 14px / 0 stretch;
-  pointer-events: none;
-  z-index: -1;
-  opacity: .7;
+  position: relative; border: 1px solid transparent; border-radius: 12px;
+  border-image: var(--ui-panel-frame) 52 fill / 12px / 0 stretch;
+  background: var(--panel); background-clip: padding-box;
+  box-shadow: 0 18px 55px #0008;
 }
 :root.fog-ui :is(.modal-card h2, .entity-detail-header h3, .setup-heading h1, .info-drawer-title h2) {
-  font-family: var(--ui-font);
-  color: #e9d3a0;
-  letter-spacing: .06em;
+  font-family: var(--ui-font); color: var(--text); letter-spacing: .04em;
 }
-:root.fog-ui .modal-card footer { border-top: 1px solid #55432c; padding-top: 10px; }
-:root.fog-ui .modal-card label { color: #cbbda3; }
+:root.fog-ui .modal-card footer { border-top: 1px solid var(--line-soft); padding-top: 10px; }
+:root.fog-ui .modal-card label { color: var(--muted); }
 :root.fog-ui :is(.modal-card input:not([type='range']), .modal-card select, .dock-input) {
-  border: 1px solid #655238;
-  border-bottom-color: #927044;
-  border-radius: 2px;
-  background: #0d0d0b;
-  color: #eee3d0;
-  box-shadow: inset 0 2px 5px #0008, 0 1px 0 #b08b4826;
-  font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
-  caret-color: #f0ce8b;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--panel-strong); color: var(--text);
+  box-shadow: inset 0 1px 4px #0003;
+  font-family: var(--ui-body-font); caret-color: var(--ui-focus);
 }
-:root.fog-ui :is(input, textarea)::placeholder { color: #a99b82; opacity: 1; }
+:root.fog-ui :is(input, textarea)::placeholder { color: var(--muted); opacity: 1; }
 :root.fog-ui :is(.modal-card input:not([type='range']), .modal-card select, .dock-input):focus-within {
-  border-color: var(--ui-focus);
-  outline: 1px solid var(--ui-focus);
-  outline-offset: -3px;
-  box-shadow: inset 0 0 0 3px #392b18;
+  border-color: var(--ui-focus); outline: 1px solid var(--ui-focus); outline-offset: -2px;
 }
-:root.fog-ui :is(.modal-card input, .dock-input):disabled { color: #9e927d; border-color: #443b2e; }
+:root.fog-ui :is(.modal-card input, .dock-input):disabled { color: var(--quiet); border-color: var(--line-soft); }
+:root.fog-ui .game-top { background: var(--panel-strong); border-bottom: 1px solid var(--line-soft); }
+:root.fog-ui .brand-title { font-family: var(--ui-font); color: var(--text); }
+:root.fog-ui :is(.brand-scene, .world-time) { color: var(--muted); }
 
-:root.fog-ui :is(.case-board-mobile-card, .case-board-threads button) { border-radius: 2px; }
-
-/* Story and tools are one desk, with the full scene painting left untouched. */
-:root.fog-ui .game-top { background: #11100e; border-bottom: 1px solid #534129; }
-:root.fog-ui .brand-title { font-family: var(--ui-font); color: #dfc58d; }
-:root.fog-ui :is(.brand-scene, .world-time) { color: #b9ad98; }
-/* The opaque desktop navigation has its own space above the NPC painting. */
+/* Desktop navigation has its own space above the NPC painting. */
 :root.fog-ui:not(.portrait-ui) .game-top { height: 64px; padding: 10px 32px; align-items: center; }
 :root.fog-ui:not(.portrait-ui) .brand-block { display: flex; align-items: baseline; gap: 16px; min-width: 0; max-width: calc(100% - 64px); }
 :root.fog-ui:not(.portrait-ui) .brand-title { font-size: 20px; line-height: 1.3; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -192,45 +154,24 @@
 :root.fog-ui:not(.portrait-ui) .menu-button { width: 44px; height: 44px; flex-shrink: 0; }
 :root.fog-ui:not(.portrait-ui) .scene-npc { height: calc(100% - 8px); }
 :root.fog-ui :is(.narrative-panel, .action-dock) {
-  background-color: #15130f;
-  background-image: linear-gradient(#191711f5, #11110ff5), var(--ui-grain);
-  border-color: #79603c;
-  box-shadow: inset 2px 0 #0a0907, inset -2px 0 #0a0907;
-  border-radius: 2px;
+  border-color: transparent; border-radius: 8px;
+  border-image: var(--ui-panel-frame) 52 fill / 8px / 0 stretch;
+  background: var(--panel); background-clip: padding-box; box-shadow: none;
 }
 :root.fog-ui .narrative-panel { border-bottom: 0; }
-:root.fog-ui .action-dock { border-top-color: #77603d; }
-:root.fog-ui .story-message { border-radius: 1px; }
-:root.fog-ui .story-message.dm { border-left: 2px solid #b49a65; background: #211e1755; }
-:root.fog-ui .story-message.player { background: #30281bd9; border-right: 2px solid #a48953; }
-:root.fog-ui .message-label { color: #d1b981; letter-spacing: .1em; }
-:root.fog-ui .dock-actor-avatar { border-radius: 1px; border-color: #ab8851; background: #17120c; }
-:root.fog-ui .dock-actor-avatar { width: 44px; height: 44px; padding: 3px; cursor: pointer; }
-:root.fog-ui .dock-actor-avatar:active { border-color: #f0cf8b; box-shadow: inset 0 0 0 1px #f0cf8b; }
-@media (hover: hover) {
-  :root.fog-ui .dock-actor-avatar:hover { border-color: #e4c181; background-color: #3a2e1d; }
-}
-
-/* Archive tabs and cards carry the same file-tab selection language. */
-:root.fog-ui .info-drawer-react { background: #15130f; }
-:root.fog-ui :is(.info-drawer-tabs button.active, .case-board-toolbar > button.active,
-  .case-board-threads button[aria-pressed='true']) {
-  border-color: #bc9b5d;
-  border-bottom: 3px solid #dcc18a;
-  background: #3a2f1d;
-  color: #ffe7b5;
-}
-:root.fog-ui .case-board-mobile-card { border-color: #625036; background: #211d15; }
-:root.fog-ui .case-board-mobile-card:active { border-color: #d3ae6d; background: #382d1d; }
-
-/* Art never increases the frame allocations proven on the smallest phones. */
-:root.fog-ui.portrait-ui .title-actions > button { min-height: 48px; }
-:root.fog-ui.portrait-ui .title-actions > :nth-child(-n+2) { min-height: 52px; }
-:root.fog-ui.portrait-ui .title-content { padding-inline: 10px; }
-:root.fog-ui.portrait-ui .narrative-panel.expanded { border-radius: 2px; }
-:root.fog-ui.portrait-ui .action-dock { padding: 4px 6px; }
-/* Browser form fields avoid automatic input zoom on mobile WebKit. */
-:root.fog-ui.portrait-ui:not(.android-app) :is(input, select, textarea) { font-size: 16px; }
+:root.fog-ui .action-dock { border-top-color: transparent; }
+:root.fog-ui .story-message { border-radius: 4px; }
+:root.fog-ui .story-message.dm { border-left: 2px solid var(--accent); background: rgb(var(--ui-surface-rgb) / .25); }
+:root.fog-ui .story-message.player { background: var(--surface); border-right: 2px solid var(--accent); }
+:root.fog-ui .message-label { color: var(--accent); letter-spacing: .06em; }
+:root.fog-ui .dock-actor-avatar { width: 44px; height: 44px; padding: 3px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-strong); cursor: pointer; }
+:root.fog-ui .dock-actor-avatar:active { border-color: var(--ui-focus); }
+@media (hover: hover) { :root.fog-ui .dock-actor-avatar:hover { border-color: var(--ui-focus); } }
+:root.fog-ui .info-drawer-react { background: var(--panel-strong); }
+:root.fog-ui .game-screen .drawer-tab { position: fixed; }
+:root.fog-ui :is(.case-board-mobile-card, .case-board-threads button) { border-radius: 8px; }
+:root.fog-ui .case-board-threads button[aria-pressed='true'] { border-color: var(--accent); background: var(--surface); color: var(--text); }
+:root.fog-ui.portrait-ui .narrative-panel.expanded { border-radius: 8px 8px 0 0; }
 @media (prefers-reduced-motion: reduce) {
-  :root.fog-ui *, :root.fog-ui *::before, :root.fog-ui *::after { scroll-behavior: auto; transition: none; }
+  :root.fog-ui :is(button, a) { transition: none; }
 }

@@ -1,31 +1,30 @@
 /* Local investigation records: compact cards, one scroll area, fixed exit controls. */
 .save-manager-backdrop { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 24px; background: #070605bd; backdrop-filter: blur(6px); }
-.save-manager-card { display: flex; flex-direction: column; min-width: 0; min-height: 0; width: min(620px, 100%); max-height: calc(100dvh - 48px); overflow: hidden; padding: 10px; border: 9px solid transparent; border-image: url('../../../assets/ui/chrome/dossier-mount.webp') 64 / 9px / 0 stretch; color: var(--text); background: linear-gradient(#211c15ed, #14120fed), var(--ui-grain); box-shadow: 0 18px 55px #000a; }
+.save-manager-card { display: flex; flex-direction: column; min-width: 0; min-height: 0; width: min(620px, 100%); max-height: calc(100dvh - 48px); overflow: hidden; padding: 10px; border: 9px solid transparent; border-image: var(--ui-panel-frame) 52 / 9px / 0 stretch; color: var(--text); background: linear-gradient(rgb(var(--ui-panel-rgb) / 0.929), rgb(var(--ui-strong-rgb) / 0.929)); box-shadow: 0 18px 55px #000a; }
 .save-manager-heading { display: flex; flex: 0 0 auto; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 0 0 12px; }
 .save-manager-heading > div { min-width: 0; }
-.save-manager-heading h2 { display: flex; align-items: center; gap: 8px; font-family: var(--ui-font); font-size: 23px; font-weight: 400; color: #eed7a4; margin: 2px 0 5px; line-height: 1.3; }
-.save-manager-heading h2 svg { flex: 0 0 auto; color: #b89b68; }
-.save-manager-heading p { font-size: 14px; color: #c5b79f; line-height: 1.5; margin: 0; }
+.save-manager-heading h2 { display: flex; align-items: center; gap: 8px; font-family: var(--ui-font); font-size: 23px; font-weight: 400; color: var(--text); margin: 2px 0 5px; line-height: 1.3; }
+.save-manager-heading h2 svg { flex: 0 0 auto; color: var(--muted); }
+.save-manager-heading p { font-size: 14px; color: var(--muted); line-height: 1.5; margin: 0; }
 :root.fog-ui .save-manager-card .ghost-btn { position: relative; font-size: 15px; min-height: 44px; }
-:root.fog-ui .save-manager-card .ghost-btn::before { content: ''; position: absolute; inset: -1px; border: 10px solid transparent; border-image: var(--ui-frame) 80 / 10px / 0 stretch; pointer-events: none; z-index: -1; }
 :root .save-manager-close { display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 44px; padding: 0; }
 .save-list { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; max-height: min(60dvh, 580px); overflow-y: auto; overscroll-behavior: contain; padding: 1px 4px 3px 1px; scroll-padding: 8px; }
-.save-slot-card { flex: 0 0 auto; min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 4px 8px 6px; border: 10px solid transparent; border-image: url('../../../assets/ui/chrome/dossier-mount.webp') 64 fill / 10px / 0 stretch; background: #201b15; color: #dcd0bb; }
+.save-slot-card { flex: 0 0 auto; min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 4px 8px 6px; border: 10px solid transparent; border-image: var(--ui-panel-frame) 52 fill / 10px / 0 stretch; background: var(--panel); color: var(--text); }
 .save-slot-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
-.save-slot-heading h3 { min-width: 0; overflow-wrap: anywhere; font-family: var(--ui-font); font-weight: 400; color: #e6ca94; font-size: 19px; line-height: 1.4; margin: 0; }
-.save-slot-tag { flex: 0 0 auto; font-size: 13px; line-height: 1.4; color: #d7c193; border-bottom: 1px solid #8b7046; padding-bottom: 2px; }
+.save-slot-heading h3 { min-width: 0; overflow-wrap: anywhere; font-family: var(--ui-font); font-weight: 400; color: var(--text); font-size: 19px; line-height: 1.4; margin: 0; }
+.save-slot-tag { flex: 0 0 auto; font-size: 13px; line-height: 1.4; color: var(--accent); border-bottom: 1px solid var(--line); padding-bottom: 2px; }
 .save-slot-tag.unavailable { color: #d0a29a; border-color: #94685d; }
-.save-slot-time { font-size: 14px; font-variant-numeric: tabular-nums; color: #c5b79f; line-height: 1.5; }
+.save-slot-time { font-size: 14px; font-variant-numeric: tabular-nums; color: var(--muted); line-height: 1.5; }
 .save-slot-party { display: flex; align-items: center; gap: 10px; min-width: 0; margin-top: 3px; }
 .save-slot-party > span { min-width: 0; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
 .save-party-portraits { display: flex; flex: 0 0 auto; gap: 3px; }
-.save-party-portraits > span { position: relative; display: grid; place-items: center; width: 26px; height: 35px; border: 1px solid #826744; overflow: hidden; background: #11100e; }
-.save-party-portraits b { font-weight: 400; color: #c1a574; }
-.save-party-portraits img { position: absolute; width: 100%; height: 100%; object-fit: cover; object-position: center top; background: #15130f; }
+.save-party-portraits > span { position: relative; display: grid; place-items: center; width: 26px; height: 35px; border: 1px solid var(--line); overflow: hidden; background: var(--panel-strong); }
+.save-party-portraits b { font-weight: 400; color: var(--muted); }
+.save-party-portraits img { position: absolute; width: 100%; height: 100%; object-fit: cover; object-position: center top; background: var(--panel); }
 .save-party-portraits img[hidden] { display: none; }
 .save-slot-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 3px; min-width: 0; }
 .save-slot-actions > button { flex: 0 1 auto; min-width: 0; min-height: 44px; white-space: nowrap; font-size: 15px; }
-.save-slot-actions .save-slot-delete { margin-right: auto; display: inline-flex; align-items: center; gap: 6px; padding: 0 6px; border: 0; background: transparent; color: #bfb096; font: inherit; font-size: 14px; cursor: pointer; touch-action: manipulation; }
+.save-slot-actions .save-slot-delete { margin-right: auto; display: inline-flex; align-items: center; gap: 6px; padding: 0 6px; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 14px; cursor: pointer; touch-action: manipulation; }
 .save-slot-delete:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: -2px; }
 .save-slot-delete:active { color: #f0c8b9; background: #4a2a1e; }
 .save-slot-actions .save-slot-load { min-width: 116px; padding: 0 16px; }
@@ -33,12 +32,12 @@
 .save-delete-confirmation { border-top: 1px solid #755141; margin-top: 4px; padding-top: 8px; }
 .save-delete-confirmation > p { margin: 0 0 5px; font-size: 15px; line-height: 1.6; color: #e0b5a0; overflow-wrap: anywhere; }
 .save-delete-confirmation .save-slot-actions > button { flex: 1; padding: 0 8px; }
-.save-manager-card footer { flex: 0 0 auto; display: flex; justify-content: flex-end; border-top: 1px solid #665032; padding-top: 10px; margin-top: 10px; }
+.save-manager-card footer { flex: 0 0 auto; display: flex; justify-content: flex-end; border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
 .save-manager-card footer button { min-width: 130px; }
-.save-manager-empty { min-height: 120px; display: grid; align-content: center; justify-items: center; gap: 9px; color: #a58d63; }
-.save-manager-empty p { color: #c8bca4; font-size: 14px; margin: 0; }
+.save-manager-empty { min-height: 120px; display: grid; align-content: center; justify-items: center; gap: 9px; color: var(--line); }
+.save-manager-empty p { color: var(--text); font-size: 14px; margin: 0; }
 .save-manager-card button:disabled { cursor: default; }
-.save-slot-delete:disabled { color: #786d5a; }
+.save-slot-delete:disabled { color: var(--line); }
 .portrait-ui .save-manager-backdrop { padding: var(--mobile-top) var(--mobile-right) var(--mobile-bottom) var(--mobile-left); }
 .portrait-ui .save-manager-card { width: min(480px, 100%); max-height: var(--mobile-dialog-height); padding: 5px; }
 .portrait-ui .save-manager-heading { padding-bottom: 10px; }
