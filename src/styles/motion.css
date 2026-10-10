@@ -1,0 +1,67 @@
+/* Motion follows the same silver-blue controls. It never owns game timing,
+   blocks input, changes viewport geometry, or animates restored history. */
+:root.fog-ui { --ui-ease: cubic-bezier(.2,.7,.2,1); }
+:root.fog-ui :is(.title-content, .setup-screen, .game-screen) {
+  animation: fog-screen-enter 190ms var(--ui-ease);
+}
+:root.fog-ui :is(.modal-backdrop, .game-menu-backdrop, .save-manager-backdrop, .entity-detail-overlay, .investigator-overlay) {
+  animation: fog-veil-enter 120ms ease-out;
+}
+:root.fog-ui :is(.modal-card, .save-manager-card, .entity-detail-card, .investigator-sheet) {
+  animation: fog-panel-enter 180ms var(--ui-ease);
+}
+:root.fog-ui .info-drawer-react.fullscreen.open {
+  transition: none; animation: fog-content-enter 180ms var(--ui-ease);
+}
+:root.fog-ui :is(.preset-other-panel:not([hidden]), .save-delete-confirmation,
+  .check-card, .ending-dock, .toast, .narrative-new-content, .case-board-inspector,
+  details[open] > :not(summary)) {
+  animation: fog-content-enter 160ms var(--ui-ease);
+}
+:root.fog-ui .story-message.arriving { animation: fog-message-enter 180ms var(--ui-ease); }
+:root.fog-ui .scene-npc { animation: fog-portrait-enter 220ms var(--ui-ease); }
+:root.fog-ui .scene-backdrop-img.scene-image-arriving { animation: fog-scene-enter 280ms ease-out; }
+:root.fog-ui .scene-backdrop-img.scene-image-loading { opacity: 0; }
+.scene-backdrop-retiring { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; filter: saturate(.75) brightness(.66); pointer-events: none; }
+.portrait-ui .scene-backdrop-retiring { object-fit: contain; object-position: center; filter: saturate(.85) brightness(.86); }
+:root.fog-ui .dock-actor-avatar img { animation: fog-content-enter 140ms ease-out; }
+:root.fog-ui :is(.preset-card-modern, .party-compact, .preset-select-mark) {
+  transition: background-color 160ms ease, outline-color 160ms ease, box-shadow 160ms ease;
+}
+:root.fog-ui .preset-select-mark svg { transition: opacity 140ms ease, transform 140ms var(--ui-ease); transform: scale(.82); }
+:root.fog-ui .selected .preset-select-mark svg { transform: scale(1); }
+:root.fog-ui :is(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
+  .menu-button, .narrative-toggle-btn, .audio-close, .audio-preview, .entity-detail-close,
+  .game-menu-close, .api-config-close, .api-key-reveal, .investigator-close, .save-manager-close,
+  .preset-attrs-toggle, .menu-list button, .info-drawer-tabs button, .investigator-tabs button,
+  .investigator-party button, .suggestion-row button, .case-related-record, .party-compact,
+  .dock-actor-avatar, summary) {
+  transition: filter 130ms ease, translate 100ms var(--ui-ease), background-color 130ms ease, color 130ms ease;
+}
+:root.fog-ui :is(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
+  .menu-button, .narrative-toggle-btn, .audio-close, .audio-preview, .entity-detail-close,
+  .game-menu-close, .api-config-close, .api-key-reveal, .investigator-close, .save-manager-close,
+  .preset-attrs-toggle, .menu-list button, .info-drawer-tabs button, .investigator-tabs button,
+  .investigator-party button, .suggestion-row button, .case-related-record, .party-compact,
+  .dock-actor-avatar):enabled:active { translate: 0 1px; }
+/* Decorative animations stop in the background; no animation-frame JS loop. */
+:root.fog-ui.ui-motion-paused :is(.thinking-line-nib, .thinking-line-dots i) { animation-play-state: paused; }
+:root.fog-ui.ui-motion-paused .thinking-line::after { animation-play-state: paused; }
+@keyframes fog-screen-enter { from { opacity: .7; } to { opacity: 1; } }
+@keyframes fog-veil-enter { from { opacity: .7; } to { opacity: 1; } }
+@keyframes fog-panel-enter { from { opacity: .65; } to { opacity: 1; } }
+@keyframes fog-content-enter { from { opacity: .65; } to { opacity: 1; } }
+@keyframes fog-message-enter { from { opacity: .6; translate: 0 4px; } to { opacity: 1; translate: 0 0; } }
+@keyframes fog-portrait-enter { from { opacity: .55; } to { opacity: 1; } }
+@keyframes fog-scene-enter { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  :root.fog-ui :is(.title-content, .setup-screen, .game-screen, .modal-backdrop, .game-menu-backdrop,
+    .save-manager-backdrop, .entity-detail-overlay, .investigator-overlay, .modal-card, .save-manager-card,
+    .entity-detail-card, .investigator-sheet, .info-drawer-react.fullscreen.open, .preset-other-panel,
+    .save-delete-confirmation, .check-card, .ending-dock, .toast, .narrative-new-content,
+    .case-board-inspector, details[open] > :not(summary),
+    .story-message.arriving, .scene-npc, .scene-backdrop-img, .dock-actor-avatar img) { animation: none; }
+  :root.fog-ui :is(button, summary, .preset-card-modern, .preset-select-mark, .preset-select-mark svg,
+    .preset-attrs-toggle svg, .party-compact) { transition: none !important; }
+  :root.fog-ui button:active { translate: none; }
+}

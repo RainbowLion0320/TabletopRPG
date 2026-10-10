@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, type RefObject } from 'react';
 import { ArrowLeft, ChevronRight, X } from 'lucide-react';
 import { useDialogFocus } from '../shared/useDialogFocus';
+import { useReadingMotion } from '../shared/useReadingMotion';
 import { useCaseBoardListLayout, useShortViewport } from '../../platform/layout';
 import { storyData } from '../../data/storyData';
 import { getClueDetail, getNpcDetail } from '../../dm/entityDetail';
@@ -87,6 +88,7 @@ export function CaseBoardInspector({ model, node, onClose, onSelect, onBack, ret
   const modal = mobile || shortViewport;
   const dialogRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  useReadingMotion(scrollRef, node.id);
   const sourcesRef = useRef<HTMLDetailsElement>(null);
   const recordReading = useRef(new Map<string, { scrollTop: number; sourcesOpen: boolean }>());
   const headingRef = useRef<HTMLHeadingElement>(null);

@@ -1,5 +1,6 @@
 import { useId, useRef } from 'react';
 import { useDialogFocus } from '../shared/useDialogFocus';
+import { useReadingMotion } from '../shared/useReadingMotion';
 import { X } from 'lucide-react';
 import type { EntityDetail } from '../../dm/entityDetail';
 import { RecordDetailMedia } from './RecordDetailMedia';
@@ -12,9 +13,11 @@ interface EntityDetailModalProps {
 
 export function EntityDetailModal({ detail, onClose }: EntityDetailModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
   useDialogFocus(Boolean(detail), dialogRef, onClose);
+  useReadingMotion(bodyRef, detail?.name ?? '', Boolean(detail));
 
   if (!detail) return null;
 
@@ -45,7 +48,7 @@ export function EntityDetailModal({ detail, onClose }: EntityDetailModalProps) {
           </button>
         </header>
 
-        <div className="entity-detail-body">
+        <div className="entity-detail-body" ref={bodyRef}>
           <RecordDetailMedia src={detail.image ?? detail.portrait} kind={detail.image ? 'scene' : 'portrait'} name={detail.name} />
           <div className="entity-detail-section">
             <h4>已知信息</h4>

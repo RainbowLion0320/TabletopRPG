@@ -36,4 +36,24 @@ describe('ThinkingIndicator', () => {
     expect(vi.getTimerCount()).toBe(1);
     unmount(); expect(vi.getTimerCount()).toBe(0);
   });
+
+  it('suspends the caption timer in the background and resumes without skipping the current line', () => {
+    vi.useFakeTimers();
+    const visibility = vi.spyOn(document, 'hidden', 'get').mockReturnValue(false);
+    const { unmount } = render(<ThinkingIndicator />);
+    const read = () => screen.getByRole('status', { name: THINKING_TEXT }).textContent;
+    const caption = read();
+    visibility.mockReturnValue(true);
+    act(() => document.dispatchEvent(new Event('visibilitychange')));
+    expect(vi.getTimerCount()).toBe(0);
+    act(() => vi.advanceTimersByTime(THINKING_CHANGE_MS * 3));
+    expect(read()).toBe(caption);
+    visibility.mockReturnValue(false);
+    act(() => document.dispatchEvent(new Event('visibilitychange')));
+    expect(vi.getTimerCount()).toBe(1);
+    act(() => vi.advanceTimersByTime(THINKING_CHANGE_MS));
+    expect(read()).not.toBe(caption);
+    unmount(); expect(vi.getTimerCount()).toBe(0);
+    visibility.mockRestore();
+  });
 });

@@ -46,8 +46,14 @@ export function ThinkingIndicator() {
   const [lines] = useState(shuffledLines);
   const [index, setIndex] = useState(0);
   useEffect(() => {
-    const timer = window.setInterval(() => setIndex(value => (value + 1) % lines.length), THINKING_CHANGE_MS);
-    return () => window.clearInterval(timer);
+    let timer: number | undefined;
+    const update = () => {
+      window.clearInterval(timer);
+      if (!document.hidden) timer = window.setInterval(() => setIndex(value => (value + 1) % lines.length), THINKING_CHANGE_MS);
+    };
+    update();
+    document.addEventListener('visibilitychange', update);
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', update); };
   }, [lines.length]);
   const text = lines[index];
   return (
@@ -62,6 +68,7 @@ export function ThinkingIndicator() {
       <div className="thinking-line-text" aria-hidden="true">
         {text}
       </div>
+      <span className="thinking-line-dots" aria-hidden="true"><i /><i /><i /></span>
     </div>
   );
 }

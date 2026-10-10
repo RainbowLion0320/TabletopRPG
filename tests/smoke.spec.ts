@@ -28,6 +28,13 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     await page.locator('.narrative-scroll').evaluate(element => { element.scrollTop = 0; });
     await expect(waiting).toBeInViewport({ ratio: 1 });
     await expect.poll(() => waiting.locator('img').evaluate(element => (element as HTMLImageElement).naturalHeight)).toBe(128);
+    await expect(waiting.locator('.thinking-line-dots i')).toHaveCount(3);
+    const motionSnapshot = () => waiting.evaluate(element => [
+      getComputedStyle(element.querySelector('.thinking-line-nib')!).transform,
+      ...[...element.querySelectorAll('.thinking-line-dots i')].map(dot => getComputedStyle(dot).opacity)
+    ].join('|'));
+    const initialMotion = await motionSnapshot();
+    await expect.poll(motionSnapshot).not.toBe(initialMotion);
     const caption = waiting.locator('.thinking-line-text');
     const first = await caption.innerText();
     await page.evaluate(() => document.fonts.ready);
@@ -45,11 +52,12 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
         readable: parseFloat(getComputedStyle(text).fontSize) >= 15,
         fits: text.getBoundingClientRect().left >= 0 && text.getBoundingClientRect().right <= innerWidth,
         quietText: getComputedStyle(text).animationName === 'none',
-        nibDrawn: nib.currentSrc.includes('waiting-nib') && nib.naturalWidth === 55 && nib.getBoundingClientRect().height === 24,
+        nibDrawn: nib.currentSrc.includes('waiting-nib') && nib.naturalWidth === 55 && nib.offsetHeight === 24,
         overflow: document.documentElement.scrollWidth > innerWidth };
     })).toEqual({ ...before, readable: true, fits: true, quietText: true, nibDrawn: true, overflow: false });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     expect(await waiting.locator('img').evaluate(element => getComputedStyle(element).animationName)).toBe('none');
+    expect(await waiting.evaluate(element => element.getAnimations({ subtree: true }).length)).toBe(0);
     await page.screenshot({ path: testInfo.outputPath('varied-wait.png') });
     if (size.width === 390) await page.screenshot({ path: 'output/ui-2026-10-08/173-painted-wait-phone.png' });
     release();
@@ -3021,6 +3029,55 @@ test('portrait home keeps compact main actions and returns from utility settings
     await expect(page.locator('.dock-input')).toHaveValue('先查看信件。\n再检查门廊。');
   }
 });
+
+for (const motion of ['no-preference', 'reduce'] as const) {
+  test(`phone interaction motion preserves fixed controls, reading positions and drafts with ${motion}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: motion });
+    await startNewGame(page, 2);
+    const draft = '先看信件。\n再问清失踪时间。';
+    await page.locator('.dock-input').fill(draft);
+    expect(await page.locator('.game-screen').evaluate(element => getComputedStyle(element).animationName))
+      .toBe(motion === 'reduce' ? 'none' : 'fog-screen-enter');
+    expect(await page.locator('.story-message').evaluateAll(elements => elements.every(element => getComputedStyle(element).animationName === 'none'))).toBe(true);
+    await page.getByRole('button', { name: '查看亨利·格雷的属性', exact: true }).click();
+    const sheet = page.locator('.investigator-sheet');
+    expect(await sheet.evaluate(element => getComputedStyle(element).animationName)).toBe(motion === 'reduce' ? 'none' : 'fog-panel-enter');
+    const headerTop = (await sheet.locator('.investigator-heading').boundingBox())!.y;
+    await sheet.getByRole('tab', { name: '技能', exact: true }).click();
+    const body = sheet.locator('.investigator-body');
+    const readTop = await body.evaluate(element => { element.scrollTop = 100; return element.scrollTop; });
+    await sheet.getByRole('tab', { name: '属性', exact: true }).click();
+    await sheet.getByRole('tab', { name: '技能', exact: true }).click();
+    await expect(body).toHaveJSProperty('scrollTop', readTop);
+    expect((await sheet.locator('.investigator-heading').boundingBox())!.y).toBe(headerTop);
+    if (motion === 'reduce') {
+      expect(await sheet.evaluate(element => element.getAnimations({ subtree: true }).length)).toBe(0);
+      expect(await sheet.getByRole('tab', { name: '技能', exact: true }).evaluate(element => getComputedStyle(element).transitionDuration)).toBe('0s');
+    }
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.dock-input')).toHaveValue(draft);
+    await expect(page.getByRole('button', { name: '查看亨利·格雷的属性', exact: true })).toBeFocused();
+    await page.getByRole('button', { name: '资料', exact: true }).click();
+    const drawer = page.getByRole('dialog', { name: '资料', exact: true });
+    await drawer.getByRole('tab', { name: '进度', exact: true }).click();
+    await drawer.getByRole('tab', { name: '日志', exact: true }).click();
+    await expect(drawer.getByRole('tabpanel')).toContainText('游戏开始');
+    if (motion === 'reduce') expect(await drawer.evaluate(element => element.getAnimations({ subtree: true }).length)).toBe(0);
+    await page.keyboard.press('Escape');
+    await expect(drawer).toHaveCount(0);
+    await expect(page.locator('.dock-input')).toHaveValue(draft);
+    await page.getByRole('button', { name: '菜单', exact: true }).click();
+    const menu = page.getByRole('dialog', { name: '调查菜单', exact: true });
+    const menuTop = (await menu.locator('header').boundingBox())!.y;
+    await menu.locator('.game-menu-body').evaluate(element => { element.scrollTop = element.scrollHeight; });
+    expect((await menu.locator('header').boundingBox())!.y).toBe(menuTop);
+    await page.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '菜单', exact: true })).toBeFocused();
+    await expect(page.locator('.dock-input')).toHaveValue(draft);
+  });
+}
 
 test('D100 fumble has priority over success thresholds', () => {
   const originalRandom = Math.random;

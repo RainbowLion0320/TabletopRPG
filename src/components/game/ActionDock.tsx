@@ -140,7 +140,7 @@ export function ActionDock({
           <>
             <div className="dock-actor-label">
               <button className="dock-actor-avatar" type="button" aria-label={`查看${currentActor.name}的属性`} aria-haspopup="dialog" title="查看调查员档案" onClick={(event) => { event.currentTarget.focus({ preventScroll: true }); onInspectPlayer(currentActor.id); }}>
-                {currentActor.portrait ? <img src={currentActor.portrait} alt="" /> : <span>{currentActor.name.slice(0, 1)}</span>}
+                {currentActor.portrait ? <img key={currentActor.id} src={currentActor.portrait} alt="" /> : <span>{currentActor.name.slice(0, 1)}</span>}
               </button>
               <span>{currentActor.name}</span>
             </div>

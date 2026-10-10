@@ -3,6 +3,7 @@ import { GripVertical, X } from 'lucide-react';
 import { JournalArt } from '../shared/JournalArt';
 import type { GameState } from '../../types/game';
 import { useDialogFocus } from '../shared/useDialogFocus';
+import { useReadingMotion } from '../shared/useReadingMotion';
 import { usePortraitLayout } from '../../platform/layout';
 import { storyData } from '../../data/storyData';
 import { ActionLogArchive, InvestigationProgress } from './InvestigationRecords';
@@ -26,6 +27,7 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
   const progressReading = useRef<{ scrollTop: number; historyOpen?: boolean } | null>(null);
   const caseReadingState = useRef<CaseBoardReadingState | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
+  useReadingMotion(pageRef, activeTab, open);
   const portrait = usePortraitLayout();
   const id = useId();
 

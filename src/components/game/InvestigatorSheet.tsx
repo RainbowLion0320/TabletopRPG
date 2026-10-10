@@ -5,6 +5,7 @@ import type { Investigator } from '../../types/game';
 import { getDifficultyThreshold } from '../../data/gameRules';
 import { getSkillTotal } from '../../services/dice';
 import { useDialogFocus } from '../shared/useDialogFocus';
+import { useReadingMotion } from '../shared/useReadingMotion';
 import { ArchiveEmptyState } from '../shared/ArchiveEmptyState';
 import './investigatorSheet.css';
 
@@ -27,6 +28,7 @@ export function InvestigatorSheet({ players, selectedId, onSelect, onClose }: In
   const id = useId();
   const [tab, setTab] = useState<SheetTab>('overview');
   const [failedPortrait, setFailedPortrait] = useState<string | null>(null);
+  useReadingMotion(bodyRef, `${selectedId}:${tab}`, Boolean(player));
   useDialogFocus(Boolean(player), dialogRef, onClose, undefined, {
     getFallbackFocus: () => document.querySelector<HTMLButtonElement>('.dock-actor-avatar, .ending-actions button')
   });
