@@ -22,7 +22,6 @@ interface InfoDrawerProps {
 
 export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' }: InfoDrawerProps) {
   const [activeTab, setActiveTab] = useState<InfoDrawerTab>(initialTab);
-  const [logQuery, setLogQuery] = useState('');
   const logScrollPosition = useRef(0);
   const progressReading = useRef<{ scrollTop: number; historyOpen?: boolean } | null>(null);
   const caseReadingState = useRef<CaseBoardReadingState | null>(null);
@@ -75,7 +74,7 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
 
   useEffect(() => {
     if (open) setActiveTab(initialTab);
-    else { setLogQuery(''); logScrollPosition.current = 0; progressReading.current = null; caseReadingState.current = null; }
+    else { logScrollPosition.current = 0; progressReading.current = null; caseReadingState.current = null; }
   }, [open, initialTab]);
 
   function selectTab(tab: InfoDrawerTab) {
@@ -173,8 +172,7 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
           <CaseBoard state={state} readingState={caseReadingState} />
         ) : null}
 
-        {open && activeTab === 'log' ? <ActionLogArchive entries={state.actionLog} query={logQuery}
-          onQueryChange={setLogQuery} scrollPosition={logScrollPosition} /> : null}
+        {open && activeTab === 'log' ? <ActionLogArchive entries={state.actionLog} scrollPosition={logScrollPosition} /> : null}
         </div>
       </aside>
     </>

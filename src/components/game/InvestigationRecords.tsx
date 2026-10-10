@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, type MutableRefObject } from 'react';
-import { Check, ChevronDown, X } from 'lucide-react';
+import { Check, ChevronDown } from 'lucide-react';
 import type { GameState } from '../../types/game';
 import { getScenarioDefinition, getScenarioProgressForState, getVisibleScenarioObjectives } from '../../scenario/engine';
 import { isPlayerVisibleLogEntry } from '../../services/narrativeVisibility';
@@ -62,45 +62,26 @@ export function InvestigationProgress({ state }: { state: GameState }) {
 
 interface ActionLogArchiveProps {
   entries: GameState['actionLog'];
-  query: string;
-  onQueryChange: (query: string) => void;
   scrollPosition: MutableRefObject<number>;
 }
 
-export function ActionLogArchive({ entries, query, onQueryChange, scrollPosition }: ActionLogArchiveProps) {
-  const searchRef = useRef<HTMLInputElement>(null);
+export function ActionLogArchive({ entries, scrollPosition }: ActionLogArchiveProps) {
   const listRef = useRef<HTMLOListElement>(null);
-  const normalizedQuery = query.trim().toLocaleLowerCase();
   const visible = (entries ?? []).filter(isPlayerVisibleLogEntry);
-  const matches = visible.filter((entry) => `${entry.time} ${entry.text}`.toLocaleLowerCase().includes(normalizedQuery));
   useLayoutEffect(() => {
     if (listRef.current) listRef.current.scrollTop = scrollPosition.current;
-  }, [query, scrollPosition]);
-
-  function changeQuery(value: string) {
-    scrollPosition.current = 0;
-    onQueryChange(value);
-  }
+  }, [scrollPosition]);
 
   return <section className="action-log-archive" aria-label="行动日志">
     <div className="action-log-heading"><h3>行动日志</h3></div>
-    <div className="record-log-search">
-      <InvestigationEmblemArt size={17} />
-      <input ref={searchRef} type="search" aria-label="搜索行动日志" placeholder="查找行动或检定" value={query}
-        onChange={(event) => changeQuery(event.target.value)} />
-      {query && <button type="button" aria-label="清空日志搜索" title="清空搜索" onClick={() => {
-        searchRef.current?.focus({ preventScroll: true });
-        changeQuery('');
-      }}><X size={17} aria-hidden="true" /></button>}
-    </div>
     <ol ref={listRef} className="action-log-list" aria-label="行动记录" onScroll={(event) => {
       scrollPosition.current = event.currentTarget.scrollTop;
     }}>
-      {matches.map((entry, index) => <li key={`${entry.time}-${index}`}>
+      {visible.map((entry, index) => <li key={`${entry.time}-${index}`}>
         <span className="action-log-time">{entry.time}</span><p>{entry.text}</p>
       </li>)}
-      {!matches.length && <li className="action-log-empty" role="status">
-        <ArchiveEmptyArt /><span>{normalizedQuery ? '没有找到相关记录。' : '暂无行动记录。'}</span>
+      {!visible.length && <li className="action-log-empty" role="status">
+        <ArchiveEmptyArt /><span>暂无行动记录。</span>
       </li>}
     </ol>
   </section>;

@@ -805,19 +805,13 @@ for (const size of [{ width: 390, height: 844, party: 1 }, { width: 1440, height
     }
     await page.screenshot({ path: testInfo.outputPath('sheet-attributes.png') });
     await sheet.getByRole('tab', { name: '技能', exact: true }).click();
-    const search = sheet.getByRole('searchbox', { name: '搜索技能' });
-    await search.fill('闪避');
-    await expect(sheet.locator('tbody td')).toHaveText(['30', '15', '6']);
-    await search.fill('侦查');
-    await expect(sheet.locator('tbody tr')).toHaveCount(1);
-    await expect(sheet.locator('tbody td')).toHaveText(['75', '37', '15']);
-    const clear = sheet.getByRole('button', { name: '清除技能搜索' });
-    expect((await clear.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    await sheet.getByRole('button', { name: '清除技能搜索' }).click();
-    await expect(search).toBeFocused();
+    await expect(sheet.getByRole('searchbox')).toHaveCount(0);
+    const skillRow = (name: string) => sheet.getByRole('row', { name: new RegExp('^' + name) });
+    await expect(skillRow('闪避').locator('td')).toHaveText(['30', '15', '6']);
+    await expect(skillRow('侦查').locator('td')).toHaveText(['75', '37', '15']);
+    expect(await sheet.locator('tbody tr').count()).toBeGreaterThan(10);
     expect(await sheet.locator('tbody th').first().evaluate(e => parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(15);
     await sheet.locator('.investigator-body').evaluate((element) => { element.scrollTop = element.scrollHeight; });
-    await expect(search).toBeInViewport();
     await expect(sheet.getByRole('columnheader', { name: '困难' })).toBeInViewport();
     await expect(sheet.getByRole('button', { name: '关闭调查员档案' })).toBeInViewport();
     await page.screenshot({ path: testInfo.outputPath('sheet-skills.png') });
@@ -839,39 +833,27 @@ for (const size of [{ width: 390, height: 844, party: 1 }, { width: 1440, height
     await expect(sheet).toContainText('苏格兰场徽章');
     await sheet.getByRole('tab', { name: '技能', exact: true }).click();
     await expect.poll(() => sheet.locator('.investigator-body').evaluate(e => e.scrollTop)).toBe(readingPosition);
-    if (size.party > 1) {
-      const teammate = size.party === 4 ? '罗伯特·肖' : '艾达·华莱士';
-      await search.fill('侦查');
-      await sheet.getByRole('button', { name: teammate, exact: true }).click();
-      await expect(search).toHaveValue('侦查');
-      expect(await sheet.locator('.investigator-body').evaluate(e => e.scrollTop)).toBe(0);
-      await clear.click();
-      expect(await sheet.locator('.investigator-body').evaluate(e => e.scrollTop)).toBe(0);
-      await sheet.getByRole('button', { name: '亨利·格雷', exact: true }).click();
-      expect(await sheet.locator('.investigator-body').evaluate(e => e.scrollTop)).toBe(0);
-    }
     if (size.width <= 700) {
-      await search.fill('侦查');
-      expect(await sheet.locator('.investigator-body').evaluate(e => e.scrollTop)).toBe(0);
       await page.setViewportSize({ width: size.width, height: 300 });
-      await search.click();
-      await expect(clear).toBeInViewport(); await expect(sheet.getByRole('button', { name: '关闭调查员档案' })).toBeInViewport();
+      await expect(sheet.getByRole('button', { name: '关闭调查员档案' })).toBeInViewport();
       if (size.party > 1) {
         await sheet.getByRole('button', { name: '罗伯特·肖', exact: true }).click();
-        await expect(search).toHaveValue('侦查'); await expect(sheet).toHaveAccessibleName('罗伯特·肖');
+        await expect(sheet).toHaveAccessibleName('罗伯特·肖');
+        await expect(sheet.getByRole('searchbox')).toHaveCount(0);
         await sheet.getByRole('button', { name: '亨利·格雷', exact: true }).click();
       }
-      const keyboardLayout = await sheet.evaluate(e => {
-        const body = e.querySelector('.investigator-body')!.getBoundingClientRect(), field = e.querySelector('.investigator-search')!.getBoundingClientRect();
-        const buttons = Array.from(e.querySelectorAll('.investigator-close,.investigator-tabs button,.investigator-search button'));
-        return { bodyHeight: body.height, searchAbove: field.bottom <= body.top + 1,
+      const shortLayout = await sheet.evaluate(e => {
+        const body = e.querySelector('.investigator-body')!.getBoundingClientRect(), tabs = e.querySelector('.investigator-tabs')!.getBoundingClientRect();
+        const buttons = Array.from(e.querySelectorAll('.investigator-close,.investigator-tabs button'));
+        return { bodyHeight: body.height, tabsAbove: tabs.bottom <= body.top + 1,
           targets: buttons.every(b => { const r = b.getBoundingClientRect(); const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return r.height >= 44 && !!hit && b.contains(hit); }),
           overflow: e.scrollWidth > e.clientWidth, outerScroll: e.scrollTop };
       });
-      expect(keyboardLayout.bodyHeight).toBeGreaterThanOrEqual(70);
-      expect(keyboardLayout).toMatchObject({ searchAbove: true, targets: true, overflow: false, outerScroll: 0 });
-      await clear.click(); await expect(search).toBeFocused();
-      await page.screenshot({ path: testInfo.outputPath('sheet-keyboard.png') });
+      expect(shortLayout.bodyHeight).toBeGreaterThanOrEqual(70);
+      expect(shortLayout).toMatchObject({ tabsAbove: true, targets: true, overflow: false, outerScroll: 0 });
+      await sheet.locator('.investigator-body').evaluate(e => { e.scrollTop = e.scrollHeight; });
+      await expect(sheet.locator('tbody tr').last()).toBeInViewport();
+      await page.screenshot({ path: testInfo.outputPath('sheet-short-direct-skills.png') });
       await page.setViewportSize(size);
     }
     await page.keyboard.press('Escape');
@@ -1222,7 +1204,7 @@ test('progress tab shows authored objectives, clue counts, and world time', asyn
 });
 
 for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height: 844, party: 4 }, { width: 1440, height: 900, party: 2 }]) {
-  test(`investigation records preserve readable goals and searchable log position at ${size.width}px`, async ({ page }, testInfo) => {
+  test(`investigation records preserve readable goals and complete log reading position at ${size.width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize(size);
     const state = createDynamicCaseBoardSave();
     state.players = ['亨利·格雷', '艾达·华莱士', '托马斯·贝尔', '罗伯特·肖'].slice(0, size.party)
@@ -1270,32 +1252,25 @@ for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height:
     await page.setViewportSize(size); await expect(current).toBeVisible();
     await page.getByRole('tab', { name: '日志' }).click();
     await expect.poll(() => list.evaluate(el => el.scrollTop)).toBeCloseTo(position, 0);
-    const search = page.getByRole('searchbox', { name: '搜索行动日志' });
-    await search.fill('调查记录60'); await expect(list.locator('li')).toHaveCount(1);
-    await expect(list.locator('p')).toContainText('把看到的痕迹记在随身本上。');
-    expect(await list.locator('p').evaluate(el => getComputedStyle(el).whiteSpace)).toBe('pre-wrap');
-    expect(await list.locator('p').evaluate(el => Number.parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(15);
-    await expect.poll(() => list.evaluate(el => el.scrollTop)).toBe(0);
-    await page.getByRole('tab', { name: '进度' }).click(); await page.getByRole('tab', { name: '日志' }).click();
-    await expect(search).toHaveValue('调查记录60');
-    await search.fill('EV_HIDDEN_RECORD'); await expect(list.getByRole('status')).toHaveText('没有找到相关记录。');
+    await expect(page.getByRole('searchbox')).toHaveCount(0);
+    await expect(list.locator('li').last()).toContainText('调查记录60：');
+    expect(await list.locator('p').first().evaluate(el => getComputedStyle(el).whiteSpace)).toBe('pre-wrap');
+    expect(await list.locator('p').first().evaluate(el => Number.parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(15);
     await expect(page.getByText('剧情事件：EV_HIDDEN_RECORD')).toHaveCount(0);
     await expect(page.getByText('AI DM 返回格式无效：未解锁地点的内部诊断')).toHaveCount(0);
-    await page.getByRole('button', { name: '清空日志搜索' }).click(); await expect(search).toBeFocused();
-    await expect(list.locator('li')).toHaveCount(60); await expect.poll(() => list.evaluate(el => el.scrollTop)).toBe(0);
-    await search.fill('21:00'); await expect(list.locator('li')).toHaveCount(1);
+    await list.evaluate(el => { el.scrollTop = el.scrollHeight; });
+    await expect(list.locator('li').last()).toBeInViewport();
     await page.screenshot({ path: testInfo.outputPath('investigation-records.png') });
     await page.setViewportSize({ width: Math.min(size.width, 390), height: 300 });
     await expect(page.getByRole('button', { name: '关闭资料' })).toBeVisible();
     const bounds = () => list.evaluate(el => {
-      const listRect = el.getBoundingClientRect(), inputRect = document.querySelector('.record-log-search')!.getBoundingClientRect();
+      const listRect = el.getBoundingClientRect(), headerRect = document.querySelector('.info-drawer-react > header')!.getBoundingClientRect();
       const closeRect = document.querySelector('[aria-label="关闭资料"]')!.getBoundingClientRect();
-      return { listInside: listRect.y >= inputRect.bottom && listRect.bottom <= innerHeight + 1 && listRect.height > 60,
-        inputInside: inputRect.x >= 0 && inputRect.right <= innerWidth && inputRect.height >= 44,
+      return { listInside: listRect.y >= headerRect.bottom && listRect.bottom <= innerHeight + 1 && listRect.height > 60,
         closeInside: closeRect.y >= 0 && closeRect.bottom <= innerHeight && closeRect.width >= 44,
         noOverflow: document.documentElement.scrollWidth <= innerWidth };
     });
-    await expect.poll(bounds).toEqual({ listInside: true, inputInside: true, closeInside: true, noOverflow: true });
+    await expect.poll(bounds).toEqual({ listInside: true, closeInside: true, noOverflow: true });
     const closeArchive = async () => {
       await page.getByRole('button', { name: '关闭资料' }).click();
       const firstFrame = await page.locator('.info-drawer-react').evaluate(el => new Promise(resolve => {
@@ -1308,7 +1283,8 @@ for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height:
     await closeArchive();
     await expect(page.locator('.dock-actor-avatar')).toBeFocused();
     await page.setViewportSize(size); await page.getByRole('button', { name: '资料', exact: true }).click();
-    await page.getByRole('tab', { name: '日志' }).click(); await expect(search).toHaveValue('');
+    await page.getByRole('tab', { name: '日志' }).click();
+    await expect.poll(() => list.evaluate(el => el.scrollTop)).toBe(0);
     await expect(list.locator('li')).toHaveCount(60);
     await closeArchive();
     await expect(page.getByRole('button', { name: '资料', exact: true })).toBeFocused();
@@ -1395,7 +1371,9 @@ for (const size of [{ width: 320, height: 568, party: 1, endingId: 'END_C' }, { 
     await page.getByRole('button', { name: '资料', exact: true }).click();
     await expect(page.getByRole('tab', { name: '案件板' })).toHaveAttribute('aria-selected', 'true');
     await page.getByRole('button', { name: '关闭资料' }).click();
-    await expect.poll(() => page.locator('.info-drawer-react').evaluate(el => el.getBoundingClientRect().left >= innerWidth - 1)).toBe(true);
+    await expect(page.locator('.info-drawer-react')).toBeHidden();
+    await expect(page.locator('.info-drawer-react .case-board-view, .info-drawer-react .action-log-archive, .info-drawer-react .investigation-progress')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '资料', exact: true })).toBeFocused();
     await page.screenshot({ path: testInfo.outputPath('ending-review.png') });
     if (size.width === 390) await page.screenshot({ path: 'output/ui-2026-10-08/41-ending-after.png' });
     if (size.width < 600) {
@@ -1997,13 +1975,9 @@ test('a failed desktop graph download falls back to usable known dossiers withou
   await expect(drawer.getByRole('button', { name: '事件 药店后门被撬', exact: true })).toBeVisible();
   const theory = drawer.getByRole('button', { name: '推测 可能有内应协助', exact: true });
   await expect(theory).toBeVisible();
-  await drawer.getByRole('button', { name: '显示推测', exact: true }).click();
-  await expect(theory).toHaveCount(0);
-  await drawer.getByRole('button', { name: '显示推测', exact: true }).click();
-  await drawer.getByRole('combobox', { name: '资料类型', exact: true }).selectOption('theory');
-  const search = drawer.getByRole('searchbox', { name: '搜索案件资料' });
-  await search.fill('可能有内应协助');
-  await expect(drawer.locator('.case-board-mobile-card')).toHaveCount(1);
+  await expect(drawer.getByRole('searchbox')).toHaveCount(0);
+  await expect(drawer.getByRole('combobox')).toHaveCount(0);
+  await expect(drawer.locator('.case-board-mobile-card')).toHaveCount(5);
   await theory.click();
   const detail = page.getByRole('dialog', { name: '可能有内应协助详情' });
   await expect(detail).toHaveAttribute('aria-modal', 'true');
@@ -2015,16 +1989,14 @@ test('a failed desktop graph download falls back to usable known dossiers withou
   await page.getByRole('button', { name: '返回上一份资料', exact: true }).click();
   await expect(detail).toBeVisible();
   await detail.getByRole('button', { name: '关闭资料详情', exact: true }).click();
-  await expect(theory).toBeFocused(); await expect(search).toHaveValue('可能有内应协助');
-  await drawer.getByRole('button', { name: '清除案件搜索', exact: true }).click();
-  await drawer.getByRole('combobox', { name: '资料类型', exact: true }).selectOption('npc');
+  await expect(theory).toBeFocused();
   await drawer.getByRole('button', { name: '人物 伊莎贝拉·摩勒', exact: true }).click();
   await expect(page.getByRole('dialog', { name: '伊莎贝拉·摩勒详情' })).toBeVisible();
   await page.getByRole('button', { name: '关闭资料详情', exact: true }).click();
   await expect(drawer.locator('.case-board-mobile-card.npc')).not.toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('case-graph-fallback.png') });
   await drawer.getByRole('tab', { name: '日志', exact: true }).click();
-  await expect(drawer.getByRole('searchbox', { name: '搜索行动日志' })).toBeVisible();
+  await expect(drawer.getByRole('list', { name: '行动记录' })).toBeVisible();
   await drawer.getByRole('button', { name: '关闭资料', exact: true }).click();
   await expect(page.locator('.dock-input')).toHaveValue('查看案件资料\n然后继续调查');
   await expect(page.locator('.party-compact')).toHaveCount(2);
@@ -2034,7 +2006,7 @@ test('a failed desktop graph download falls back to usable known dossiers withou
 });
 
 for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 780, height: 1000 }]) {
-  test(`case archive keeps photos, filters and nested return usable at ${size.width}px without loading graph code`, async ({ page }, testInfo) => {
+  test(`case archive keeps all known photos and nested reading returns usable at ${size.width}px without loading graph code`, async ({ page }, testInfo) => {
     const requests: string[] = [];
     page.on('request', (request) => requests.push(request.url()));
     await page.setViewportSize(size);
@@ -2067,34 +2039,20 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     await workspace.evaluate((element) => { element.scrollTop = element.scrollHeight; });
     expect((await header.boundingBox())!.y).toBe(headerTop);
     await expect(drawer.getByRole('button', { name: '关闭资料', exact: true })).toBeInViewport();
-    await expect(drawer.getByRole('searchbox', { name: '搜索案件资料' })).toBeInViewport();
+    await expect(drawer.getByRole('searchbox')).toHaveCount(0);
+    await expect(drawer.getByRole('combobox')).toHaveCount(0);
     expect(await drawer.evaluate((element) => element.scrollTop)).toBe(0);
     await page.setViewportSize({ width: size.width, height: 300 });
-    const search = drawer.getByRole('searchbox', { name: '搜索案件资料' });
-    await search.fill('不存在的调查记录');
-    await expect(drawer.getByText('当前筛选条件下没有匹配资料。')).toBeVisible();
     await expect(drawer.getByRole('button', { name: '关闭资料', exact: true })).toBeInViewport();
-    const clear = drawer.getByRole('button', { name: '清除案件搜索' });
-    // Measure touch targets after the drawer's opening motion completes.
-    await expect(drawer).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
-    const clearTarget = await clear.evaluate(element => {
-      const box = element.getBoundingClientRect();
-      return { width: box.width, height: box.height,
-        hit: element.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)) };
-    });
-    expect(clearTarget.width).toBeGreaterThanOrEqual(44);
-    expect(clearTarget.height).toBeGreaterThanOrEqual(44);
-    expect(clearTarget.hit).toBe(true);
-    await clear.click();
-    await expect(search).toHaveValue(''); await expect(search).toBeFocused();
+    expect((await workspace.boundingBox())!.height).toBeGreaterThan(140);
+    await workspace.evaluate(element => { element.scrollTop = 0; });
+    await expect(drawer.getByRole('button', { name: '地点 摩勒住宅' })).toBeInViewport();
     await page.setViewportSize(size);
-    await drawer.getByRole('combobox', { name: '资料类型' }).selectOption('npc');
     await card.click();
     const detail = page.getByRole('dialog', { name: '伊莎贝拉·摩勒详情', exact: true });
     await expect(detail.getByRole('button', { name: '关闭资料详情' })).toBeFocused();
     await expect(detail).not.toContainText(/I0[1-8]|鸦片运输/);
     await expect.poll(() => detail.locator('.record-detail-media img').evaluate((element) => (element as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
-    await expect(drawer.getByRole('combobox', { name: '资料类型' })).toHaveValue('npc');
     await detail.getByRole('button', { name: '查看摩勒住宅资料' }).click();
     const sceneDetail = page.getByRole('dialog', { name: '摩勒住宅详情', exact: true });
     await expect(sceneDetail.locator('.record-detail-media img')).toHaveCSS('object-fit', 'contain');
@@ -2127,11 +2085,8 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     await page.setViewportSize(size);
     await page.keyboard.press('Escape');
     await expect(detail).toHaveCount(0); await expect(drawer).toBeVisible(); await expect(card).toBeFocused();
-    await expect(drawer.getByRole('combobox', { name: '资料类型' })).toHaveValue('npc');
-    await expect(search).toHaveValue('');
-    await drawer.getByRole('combobox', { name: '资料类型' }).selectOption('event');
-    await search.fill('现场');
-    await expect(drawer.locator('.case-board-mobile-card')).toHaveCount(15);
+    await expect(drawer.locator('.case-board-mobile-card.event')).toHaveCount(15);
+    await expect(drawer.locator('.case-board-mobile-card')).toHaveCount(19);
     await workspace.evaluate((element) => { element.scrollTop = element.scrollHeight; });
     const casePosition = await workspace.evaluate(element => element.scrollTop);
     expect(casePosition).toBeGreaterThan(0);
@@ -2139,15 +2094,12 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     await expect(drawer.getByRole('tabpanel')).not.toContainText(/已发现\s+0\s*\/\s*8/);
     await drawer.getByRole('tab', { name: '日志' }).click();
     await drawer.getByRole('tab', { name: '案件板' }).click();
-    await expect(search).toHaveValue('现场');
-    await expect(drawer.getByRole('combobox', { name: '资料类型' })).toHaveValue('event');
-    await expect(drawer.locator('.case-board-mobile-card')).toHaveCount(15);
+    await expect(drawer.locator('.case-board-mobile-card')).toHaveCount(19);
     await expect.poll(() => workspace.evaluate(element => element.scrollTop)).toBe(casePosition);
     await page.screenshot({ path: testInfo.outputPath('case-archive.png') });
     await drawer.getByRole('button', { name: '关闭资料', exact: true }).click(); await expect(opener).toBeFocused();
     await opener.click();
-    await expect(search).toHaveValue('');
-    await expect(drawer.getByRole('combobox', { name: '资料类型' })).toHaveValue('all');
+    await expect(drawer.getByRole('searchbox')).toHaveCount(0);
     expect(await workspace.evaluate(element => element.scrollTop)).toBe(0);
     await drawer.getByRole('button', { name: '关闭资料', exact: true }).click(); await expect(opener).toBeFocused();
   });
@@ -2250,8 +2202,8 @@ for (const party of [1, 2, 4] as const) {
       await expect(sheet).toBeVisible();
       if (party > 1) await expect(sheet.getByRole('navigation', { name: '查看队员' }).getByRole('button')).toHaveCount(party);
       await sheet.getByRole('tab', { name: '技能', exact: true }).click();
-      const search = sheet.getByRole('searchbox', { name: '搜索技能' });
-      await search.fill('侦查');
+      await expect(sheet.getByRole('searchbox')).toHaveCount(0);
+      await sheet.getByRole('row', { name: /^侦查/ }).scrollIntoViewIfNeeded();
       const reading = (await sheet.getByRole('tabpanel', { name: '技能', exact: true }).boundingBox())!;
       const skill = (await sheet.getByRole('row', { name: /^侦查/ }).boundingBox())!;
       expect(reading.height).toBeGreaterThanOrEqual(75);
@@ -2260,7 +2212,7 @@ for (const party of [1, 2, 4] as const) {
       if (party > 1) {
         await sheet.getByRole('navigation', { name: '查看队员' }).getByRole('button', { name: '艾达·华莱士', exact: true }).click();
         const teammate = page.getByRole('dialog', { name: '艾达·华莱士', exact: true });
-        await expect(teammate.getByRole('searchbox', { name: '搜索技能' })).toHaveValue('侦查');
+        await teammate.getByRole('row', { name: /^侦查/ }).scrollIntoViewIfNeeded();
         await expect(teammate.getByRole('row', { name: /^侦查/ })).toBeInViewport();
       }
       await page.screenshot({ path: testInfo.outputPath(`desktop-short-skills-${height}.png`) });
@@ -2275,28 +2227,29 @@ for (const party of [1, 2, 4] as const) {
   });
 }
 
-test('moving the desktop case board to a phone preserves search and removes the hidden thread filter', async ({ page }) => {
+test('moving the desktop case board to a phone preserves all known dossiers without filter controls', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await gotoWithSave(page, createDynamicCaseBoardSave());
   await page.getByRole('button', { name: '继续游戏' }).click();
   await page.getByRole('button', { name: '资料', exact: true }).click();
   const drawer = page.getByRole('dialog', { name: '资料', exact: true });
   await expect(drawer.locator('.react-flow')).toBeVisible();
-  await drawer.locator('.case-board-threads button').filter({ hasText: '埃里克·摩勒' }).click();
-  await drawer.getByRole('combobox', { name: '资料类型' }).selectOption('npc');
-  await drawer.getByRole('searchbox', { name: '搜索案件资料' }).fill('伊莎贝拉');
-  await expect(drawer.getByText('当前筛选条件下没有匹配资料。')).toBeVisible();
+  await expect(drawer.locator('.case-flow-node')).toHaveCount(5);
+  await expect(drawer.getByRole('searchbox')).toHaveCount(0);
+  await expect(drawer.getByRole('combobox')).toHaveCount(0);
+  await expect(drawer.getByRole('navigation', { name: '调查脉络' })).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(drawer.getByRole('button', { name: '人物 伊莎贝拉·摩勒', exact: true })).toBeVisible();
-  await expect(drawer.getByRole('searchbox', { name: '搜索案件资料' })).toHaveValue('伊莎贝拉');
-  await expect(drawer.getByRole('combobox', { name: '资料类型' })).toHaveValue('npc');
+  await expect(drawer.locator('.case-board-mobile-card')).toHaveCount(5);
   await expect(drawer.locator('.react-flow')).toHaveCount(0);
+  await expect(drawer.getByRole('tabpanel')).not.toContainText(/I0[1-8]|鸦片运输/);
   await page.setViewportSize({ width: 1440, height: 900 });
   await expect(drawer.locator('.case-flow-node.npc', { hasText: '伊莎贝拉·摩勒' })).toBeVisible();
+  await expect(drawer.locator('.case-flow-node')).toHaveCount(5);
 });
 
 for (const size of [{ width: 980, height: 640 }, { width: 1440, height: 900 }]) {
-  test(`desktop case camera fits details and filters while restoring the player's view at ${size.width}px`, async ({ page }, testInfo) => {
+  test(`desktop case camera fits all known details while restoring the player's view at ${size.width}px`, async ({ page }, testInfo) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.setViewportSize(size);
     const state = createDynamicCaseBoardSave();
@@ -2345,26 +2298,8 @@ for (const size of [{ width: 980, height: 640 }, { width: 1440, height: 900 }]) 
     expect(await graph.locator('.case-flow-node.scene img').evaluate(element => getComputedStyle(element).objectPosition)).toBe('50% 50%');
     expect(await node.locator('img').evaluate(element => getComputedStyle(element).objectFit)).toBe('cover');
     await page.screenshot({ path: testInfo.outputPath('case-cards.png') });
-    const threads = drawer.getByRole('navigation', { name: '调查脉络' });
-    for (const control of await threads.getByRole('button').all()) {
-      const presentation = await control.evaluate(element => ({
-        height: element.getBoundingClientRect().height,
-        frame: getComputedStyle(element, '::before').borderImageSource,
-        label: parseFloat(getComputedStyle(element.querySelector('strong')!).fontSize),
-        count: parseFloat(getComputedStyle(element.querySelector('span')!).fontSize),
-        overflow: Array.from(element.children).some(child => {
-          const control = element.getBoundingClientRect(), text = child.getBoundingClientRect();
-          return text.left < control.left || text.right > control.right;
-        })
-      }));
-      expect(presentation.height).toBeGreaterThanOrEqual(44);
-      expect(presentation.label).toBeGreaterThanOrEqual(15); expect(presentation.count).toBeGreaterThanOrEqual(13);
-      expect(presentation.frame).toContain('button-'); expect(presentation.overflow).toBe(false);
-    }
-    const selectedThread = threads.locator('button[aria-pressed="true"]');
-    await expect(selectedThread).toHaveCount(1);
-    expect(await selectedThread.evaluate(element => getComputedStyle(element, '::before').borderImageSource)).toContain('button-primary');
-    const allRecords = threads.getByRole('button', { name: /^全部资料/ });
+    await expect(drawer.getByRole('navigation', { name: '调查脉络' })).toHaveCount(0);
+    await expect(drawer.getByRole('searchbox')).toHaveCount(0);
     expect(await node.locator('.case-flow-photo').evaluate(element => getComputedStyle(element, '::after').backgroundImage)).toContain('portrait-mount');
     const firstView = await view();
     const zoomOut = drawer.getByRole('button', { name: '缩小关系图', exact: true });
@@ -2397,7 +2332,7 @@ for (const size of [{ width: 980, height: 640 }, { width: 1440, height: 900 }]) 
     await page.mouse.down(); await page.mouse.move(paneBox.x + 180, paneBox.y + 90, { steps: 8 }); await page.mouse.up();
     await expect.poll(view).not.toBe(originalView);
     const pannedView = await view();
-    await drawer.getByRole('searchbox', { name: '搜索案件资料' }).focus();
+    await drawer.getByRole('tab', { name: '案件板', exact: true }).focus();
     await viewport.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
     expect(await view()).toBe(pannedView);
     await drawer.getByRole('button', { name: '查看全部关系', exact: true }).click();
@@ -2405,36 +2340,17 @@ for (const size of [{ width: 980, height: 640 }, { width: 1440, height: 900 }]) 
       const card = element.getBoundingClientRect(); const pane = element.closest('.case-board-flow-wrap')!.getBoundingClientRect();
       return card.left >= pane.left && card.top >= pane.top && card.right <= pane.right && card.bottom <= pane.bottom;
     }))).toBe(true);
-    await drawer.getByRole('combobox', { name: '资料类型' }).selectOption('npc');
-    const search = drawer.getByRole('searchbox', { name: '搜索案件资料' }); await search.fill('伊莎贝拉');
-    await expect(graph.locator('.case-flow-node')).toHaveCount(1);
-    await expect.poll(() => inside('.case-flow-node.npc')).toBe(true);
-    await search.fill('没有这种资料'); await expect(graph.getByText('当前筛选条件下没有匹配资料。')).toBeVisible();
-    await search.fill('伊莎贝拉'); await expect(graph.locator('.case-flow-node')).toHaveCount(1);
-    await expect.poll(() => inside('.case-flow-node.npc')).toBe(true);
+    await expect(graph.locator('.case-flow-node')).toHaveCount(5);
     await node.click();
     await page.setViewportSize({ width: size.width - 40, height: size.height - 30 });
     await expect.poll(() => inside('.case-flow-node.npc.selected')).toBe(true);
     await page.screenshot({ path: testInfo.outputPath('case-camera.png') });
     await page.keyboard.press('Escape'); await expect(detail).toHaveCount(0);
-    await expect(search).toHaveValue('伊莎贝拉');
-    await expect(drawer.getByRole('combobox', { name: '资料类型' })).toHaveValue('npc');
-    await threads.getByRole('button').last().click();
-    await expect(threads.getByRole('button').last()).toHaveAttribute('aria-pressed', 'true');
-    expect(await selectedThread.evaluate(element => getComputedStyle(element, '::before').borderImageSource)).toContain('button-primary');
-    await allRecords.click(); await expect(allRecords).toHaveAttribute('aria-pressed', 'true');
-    await expect(search).toHaveValue('伊莎贝拉');
-    await expect(drawer.getByRole('combobox', { name: '资料类型' })).toHaveValue('npc');
-    await expect(node).toBeVisible();
-    await drawer.getByRole('button', { name: '显示推测', exact: true }).click();
-    await threads.getByRole('button').last().click();
     await drawer.getByRole('tab', { name: '日志' }).click();
     await drawer.getByRole('tab', { name: '案件板' }).click();
-    await expect(search).toHaveValue('伊莎贝拉');
-    await expect(drawer.getByRole('combobox', { name: '资料类型' })).toHaveValue('npc');
-    await expect(drawer.getByRole('button', { name: '显示推测', exact: true })).toHaveAttribute('aria-pressed', 'false');
-    await expect(threads.getByRole('button').last()).toHaveAttribute('aria-pressed', 'true');
-    await allRecords.click();
+    await expect(graph.locator('.case-flow-node')).toHaveCount(5);
+    await expect(graph.locator('.case-flow-node.theory')).toHaveCount(1);
+    await expect(graph.locator('.case-flow-node.event').getByText('待验证', { exact: true })).toBeVisible();
     await expect(node).toBeVisible();
   });
 }
@@ -2481,8 +2397,8 @@ test('desktop case details own Escape while keyboard navigation stays in the enc
     await page.setViewportSize({ width: 1440, height: 900 });
   }
   await node.focus(); await page.keyboard.press('Space');
-  const search = drawer.getByRole('searchbox', { name: '搜索案件资料' }); await search.focus();
-  await page.keyboard.press('Escape'); await expect(detail).toHaveCount(0); await expect(search).toBeFocused();
+  const selectedTab = drawer.getByRole('tab', { name: '案件板', exact: true }); await selectedTab.focus();
+  await page.keyboard.press('Escape'); await expect(detail).toHaveCount(0); await expect(selectedTab).toBeFocused();
   await page.keyboard.press('Escape'); await expect(drawer).toBeHidden(); await expect(opener).toBeFocused();
   await expect(draft).toHaveValue('查看资料时保留这段行动。');
 });

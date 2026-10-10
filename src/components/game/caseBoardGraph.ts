@@ -212,36 +212,3 @@ export async function layoutCaseBoardGraph(
   const { layoutNodes } = await import('./caseBoardLayout');
   return layoutNodes(nodes, edges);
 }
-
-export function filterCaseBoardGraph(
-  model: CaseBoardGraphModel,
-  options: { query: string; type: 'all' | CaseBoardDisplayNodeType; showHypotheses: boolean; threadId: string }
-): CaseBoardGraphModel {
-  let allowed = new Set(model.nodes.map((node) => node.id));
-  if (!options.showHypotheses) {
-    allowed = new Set(model.nodes.filter((node) => node.certainty === 'confirmed').map((node) => node.id));
-  }
-  if (options.type !== 'all') {
-    allowed = new Set([...allowed].filter((id) => model.nodes.find((node) => node.id === id)?.type === options.type));
-  }
-  if (options.threadId !== 'all') {
-    const thread = model.threads.find((item) => item.id === options.threadId);
-    const threadIds = new Set(thread?.nodeIds ?? []);
-    allowed = new Set([...allowed].filter((id) => threadIds.has(id)));
-  }
-  const query = options.query.trim().toLocaleLowerCase('zh-CN');
-  if (query) {
-    const matched = new Set(model.nodes.filter((node) =>
-      `${node.title} ${node.subtitle ?? ''}`.toLocaleLowerCase('zh-CN').includes(query)
-    ).map((node) => node.id));
-    const withNeighbors = new Set(matched);
-    model.edges.forEach((edge) => {
-      if (matched.has(edge.from)) withNeighbors.add(edge.to);
-      if (matched.has(edge.to)) withNeighbors.add(edge.from);
-    });
-    allowed = new Set([...allowed].filter((id) => withNeighbors.has(id)));
-  }
-  const nodes = model.nodes.filter((node) => allowed.has(node.id));
-  const edges = model.edges.filter((edge) => allowed.has(edge.from) && allowed.has(edge.to));
-  return { ...model, nodes, edges };
-}

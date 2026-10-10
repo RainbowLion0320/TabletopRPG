@@ -86,8 +86,9 @@ test('an old four-player save shows corrected Dodge and preserves the authored c
   await page.getByRole('button', { name: '查看亨利·格雷的属性', exact: true }).click();
   const sheet = page.locator('.investigator-sheet');
   await sheet.getByRole('tab', { name: '技能', exact: true }).click();
-  await sheet.getByRole('searchbox', { name: '搜索技能' }).fill('闪避');
-  await expect(sheet.locator('tbody td')).toHaveText(['30', '15', '6']);
+  await expect(sheet.getByRole('searchbox')).toHaveCount(0);
+  const dodge = () => sheet.getByRole('row', { name: /^闪避/ }).locator('td');
+  await expect(dodge()).toHaveText(['30', '15', '6']);
   await sheet.getByRole('button', { name: '罗伯特·肖', exact: true }).click();
-  await expect(sheet.locator('tbody td')).toHaveText(['50', '25', '10']);
+  await expect(dodge()).toHaveText(['50', '25', '10']);
 });

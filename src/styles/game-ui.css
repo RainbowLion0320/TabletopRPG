@@ -52,11 +52,11 @@
 :root.fog-ui :is(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
   .dice-roll-confirm, .menu-button, .drawer-tab, .narrative-toggle-btn, .narrative-new-content,
   .audio-close, .audio-preview, .entity-detail-close, .info-drawer-react header > button,
-  .case-board-inspector header button, .case-related-record, .case-board-toolbar > button,
-  .case-board-tools button, .case-board-threads button, .preset-attrs-toggle, .menu-list button, .info-drawer-tabs button,
-  .investigator-party button, .investigator-tabs button, .investigator-search button,
+  .case-board-inspector header button, .case-related-record,
+  .case-board-tools button, .preset-attrs-toggle, .menu-list button, .info-drawer-tabs button,
+  .investigator-party button, .investigator-tabs button,
   .suggestion-row button, .game-menu-close, .api-config-close, .api-key-reveal,
-  .investigator-close, .save-manager-close, .case-search-clear, .record-log-search button) {
+  .investigator-close, .save-manager-close) {
   --control-art: var(--ui-secondary-frame);
   position: relative; isolation: isolate;
   border: 1px solid transparent; border-radius: 18px;
@@ -68,11 +68,11 @@
 :root.fog-ui :is(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
   .dice-roll-confirm, .menu-button, .drawer-tab, .narrative-toggle-btn, .narrative-new-content,
   .audio-close, .audio-preview, .entity-detail-close, .info-drawer-react header > button,
-  .case-board-inspector header button, .case-related-record, .case-board-toolbar > button,
-  .case-board-tools button, .case-board-threads button, .preset-attrs-toggle, .menu-list button, .info-drawer-tabs button,
-  .investigator-party button, .investigator-tabs button, .investigator-search button,
+  .case-board-inspector header button, .case-related-record,
+  .case-board-tools button, .preset-attrs-toggle, .menu-list button, .info-drawer-tabs button,
+  .investigator-party button, .investigator-tabs button,
   .suggestion-row button, .game-menu-close, .api-config-close, .api-key-reveal,
-  .investigator-close, .save-manager-close, .case-search-clear, .record-log-search button)::before {
+  .investigator-close, .save-manager-close)::before {
   content: ''; position: absolute; inset: -1px;
   border: 6px solid transparent;
   border-image: var(--control-art) 12 108 12 108 fill / 6px 18px / 0 stretch;
@@ -80,23 +80,22 @@
 }
 :root.fog-ui :is(.primary-btn, .primary-action, .dice-roll-confirm,
   .info-drawer-tabs button.active, .investigator-party button[aria-pressed='true'],
-  .investigator-tabs button[aria-selected='true'], .case-board-toolbar > button.active,
-  .case-board-threads button[aria-pressed='true']) {
+  .investigator-tabs button[aria-selected='true']) {
   --control-art: var(--ui-primary-frame);
   color: var(--ui-ink);
 }
 :root.fog-ui :is(.menu-button, .drawer-tab, .audio-icon-button, .narrative-toggle-btn,
   .audio-close, .entity-detail-close, .info-drawer-react header > button,
   .case-board-inspector header button, .game-menu-close, .api-config-close, .api-key-reveal,
-  .investigator-close, .save-manager-close, .investigator-search button,
-  .case-board-tools button, .case-search-clear, .record-log-search button) {
+  .investigator-close, .save-manager-close,
+  .case-board-tools button) {
   border-radius: 8px; color: var(--ui-ink);
 }
 :root.fog-ui :is(.menu-button, .drawer-tab, .audio-icon-button, .narrative-toggle-btn,
   .audio-close, .entity-detail-close, .info-drawer-react header > button,
   .case-board-inspector header button, .game-menu-close, .api-config-close, .api-key-reveal,
-  .investigator-close, .save-manager-close, .investigator-search button,
-  .case-board-tools button, .case-search-clear, .record-log-search button)::before {
+  .investigator-close, .save-manager-close,
+  .case-board-tools button)::before {
   border: 0; border-image: none;
   background: var(--ui-icon-frame) center / 100% 100% no-repeat;
 }
@@ -111,15 +110,15 @@
   :root.fog-ui :where(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
     .dice-roll-confirm, .menu-button, .drawer-tab, .narrative-toggle-btn, .narrative-new-content,
     .audio-close, .audio-preview, .entity-detail-close, .menu-list button, .suggestion-row button,
-    .info-drawer-tabs button, .preset-attrs-toggle, .case-board-toolbar > button,
-    .case-board-tools button, .case-board-threads button, .case-board-inspector header button, .case-related-record):enabled:hover {
+    .info-drawer-tabs button, .preset-attrs-toggle,
+    .case-board-tools button, .case-board-inspector header button, .case-related-record):enabled:hover {
     filter: brightness(1.08); color: var(--ui-ink);
   }
 }
 :root.fog-ui :where(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
   .dice-roll-confirm, .menu-button, .drawer-tab, .narrative-toggle-btn, .narrative-new-content,
   .menu-list button, .suggestion-row button, .info-drawer-tabs button, .entity-detail-close,
-  .case-board-inspector header button, .case-board-threads button, .case-related-record):enabled:active {
+  .case-board-inspector header button, .case-related-record):enabled:active {
   transform: translateY(1px); filter: brightness(.92);
 }
 :root.fog-ui button:disabled { cursor: not-allowed; text-shadow: none; transform: none; }

@@ -111,7 +111,7 @@ export function CaseBoardFlow({ model, selectedId, onSelect }: CaseBoardFlowProp
       <CaseBoardCamera geometryKey={geometryKey} focusKey={focusKey} selectedId={selectedId} />
       <Background color="rgba(196,217,241,.12)" gap={24} size={1} /><CaseBoardTools />
     </ReactFlow> : !failed && !model.nodes.length
-      ? <ArchiveEmptyState className="case-board-empty">当前筛选条件下没有匹配资料。</ArchiveEmptyState>
+      ? <ArchiveEmptyState className="case-board-empty">暂无案件资料。</ArchiveEmptyState>
       : <p className="empty-note">{failed ? '暂时无法整理关系图，请重新打开资料。' : '正在整理关系图...'}</p>}
   </div>;
 }

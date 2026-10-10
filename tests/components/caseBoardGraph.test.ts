@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { storyData } from '../../src/data/storyData';
 import {
   buildCaseBoardGraphModel,
-  filterCaseBoardGraph,
   layoutCaseBoardGraph,
   type CaseBoardDisplayEdge,
   type CaseBoardDisplayNode
@@ -105,16 +104,13 @@ describe('case board graph model and layout', () => {
     }
   });
 
-  it('filters by type while keeping search context relations', () => {
+  it('includes every known character and clue for direct browsing without exposing the next location', () => {
     const state = makeState({ activeNpcName: '伊莎贝拉·摩勒' });
     state.clues = [{ ...storyData.items.I04, found: true }];
     state.scenarioProgress = createScenarioProgress();
     state.scenarioProgress.clueStates.I04 = 'discovered';
     const model = buildCaseBoardGraphModel(state);
-    const items = filterCaseBoardGraph(model, { query: '', type: 'item', showHypotheses: true, threadId: 'all' });
-    expect(items.nodes.every((node) => node.type === 'item')).toBe(true);
-    const search = filterCaseBoardGraph(model, { query: '小册子', type: 'all', showHypotheses: true, threadId: 'all' });
-    expect(search.nodes.map((node) => node.title)).toEqual(expect.arrayContaining(['小册子']));
-    expect(search.nodes.map((node) => node.title)).not.toContain('卡森其药店');
+    expect(model.nodes.map((node) => node.title)).toEqual(expect.arrayContaining(['摩勒住宅', '伊莎贝拉·摩勒', '小册子']));
+    expect(model.nodes.map((node) => node.title)).not.toContain('卡森其药店');
   });
 });

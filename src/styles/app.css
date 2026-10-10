@@ -810,7 +810,7 @@ button {
 /* ===== v7 混合调查台 ===== */
 .case-board-workspace {
   display: grid;
-  grid-template-columns: 190px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   min-height: 520px;
   height: calc(100dvh - 188px);
   border-top: 1px solid var(--line-soft);
@@ -819,7 +819,7 @@ button {
 }
 
 .case-board-workspace.has-inspector {
-  grid-template-columns: 190px minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(0, 1fr) 340px;
 }
 
 .case-board-mobile-list {
@@ -1285,6 +1285,5 @@ button {
     overflow: visible;
     border: 0;
   }
-  .case-board-threads,
   .case-board-flow-wrap { display: none; }
 }

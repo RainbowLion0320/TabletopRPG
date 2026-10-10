@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { InfoDrawer } from '../../src/components/game/InfoDrawer';
 import { storyData } from '../../src/data/storyData';
@@ -60,7 +60,7 @@ describe('InfoDrawer v7 investigation workspace', () => {
     expect(meter).toHaveAttribute('value', '6'); expect(meter).toHaveAttribute('max', '7');
     expect(screen.queryByText('internal')).toBeNull();
   });
-  it('searches visible log text and time while preserving order, full multiline text and the saved records', () => {
+  it('shows all visible log entries directly in order with full multiline text and unchanged saved records', () => {
     const state = makeState(); state.actionLog = [
       { time: '21:02', text: 'Henry · 侦查：普通成功\n门槛上有划痕。' },
       { time: '21:01', text: '剧情事件：EV_HIDDEN_TRACE' },
@@ -70,32 +70,25 @@ describe('InfoDrawer v7 investigation workspace', () => {
     renderDrawer(state); fireEvent.click(screen.getByRole('tab', { name: '日志' }));
     const list = screen.getByRole('list', { name: '行动记录' });
     expect(within(list).getAllByRole('listitem')[0]).toHaveTextContent('Henry · 侦查');
-    const input = screen.getByRole('searchbox', { name: '搜索行动日志' });
-    fireEvent.change(input, { target: { value: ' HENRY ' } });
-    expect(within(list).getAllByRole('listitem')).toHaveLength(1);
+    expect(screen.queryByRole('searchbox')).toBeNull();
     expect(within(list).getByText(/门槛上有划痕/).textContent).toContain('\n');
-    fireEvent.change(input, { target: { value: '21:00' } }); expect(screen.getByText('检查窗框')).toBeInTheDocument();
-    fireEvent.change(input, { target: { value: 'EV_HIDDEN_TRACE' } });
-    expect(screen.getByRole('status')).toHaveTextContent('没有找到相关记录。');
+    expect(screen.getByText('检查窗框')).toBeInTheDocument();
     expect(screen.queryByText('剧情事件：EV_HIDDEN_TRACE')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: '清空日志搜索' })); expect(input).toHaveFocus();
     expect(within(list).getAllByRole('listitem')).toHaveLength(2);
     expect(JSON.stringify(state.actionLog)).toBe(original);
   });
-  it('keeps a log search and reading position when switching tabs but starts fresh after closing', () => {
+  it('keeps a log reading position when switching tabs but starts fresh after closing', () => {
     const state = makeState(); state.actionLog = [{ time: '21:00', text: '检查窗框' }];
     const view = render(<InfoDrawer open onClose={vi.fn()} onOpen={vi.fn()} state={state} />);
     fireEvent.click(screen.getByRole('tab', { name: '日志' }));
-    fireEvent.change(screen.getByRole('searchbox', { name: '搜索行动日志' }), { target: { value: '窗框' } });
     const list = screen.getByRole('list', { name: '行动记录' }); list.scrollTop = 72; fireEvent.scroll(list);
     fireEvent.click(screen.getByRole('tab', { name: '进度' })); fireEvent.click(screen.getByRole('tab', { name: '日志' }));
-    expect(screen.getByRole('searchbox', { name: '搜索行动日志' })).toHaveValue('窗框');
     expect(screen.getByRole('list', { name: '行动记录' }).scrollTop).toBe(72);
     view.rerender(<InfoDrawer open={false} onClose={vi.fn()} onOpen={vi.fn()} state={state} />);
     expect(screen.queryByRole('searchbox', { name: '搜索行动日志' })).toBeNull();
     view.rerender(<InfoDrawer open onClose={vi.fn()} onOpen={vi.fn()} state={state} />);
     fireEvent.click(screen.getByRole('tab', { name: '日志' }));
-    expect(screen.getByRole('searchbox', { name: '搜索行动日志' })).toHaveValue('');
+    expect(screen.queryByRole('searchbox')).toBeNull();
     expect(screen.getByRole('list', { name: '行动记录' }).scrollTop).toBe(0);
   });
   it('keeps the fixed phone entry a normal button despite small pointer movement', () => {
@@ -153,10 +146,8 @@ describe('InfoDrawer v7 investigation workspace', () => {
     fireEvent.click(entry, { detail: 1 }); expect(onOpen).not.toHaveBeenCalled();
     fireEvent.click(entry, { detail: 0 }); expect(onOpen).toHaveBeenCalledOnce();
   });
-  it('follows only known related records, returns within the detail and preserves the list filter and opener', async () => {
+  it('follows only known related records and returns to the original card without filter controls', async () => {
     renderDrawer();
-    const type = await screen.findByRole('combobox', { name: '资料类型' });
-    fireEvent.change(type, { target: { value: 'npc' } });
     const opener = await screen.findByRole('button', { name: '人物 伊莎贝拉·摩勒' }); fireEvent.click(opener);
     fireEvent.click(screen.getByRole('button', { name: '查看摩勒住宅资料' }));
     expect(screen.getByRole('dialog', { name: '摩勒住宅详情' })).toBeInTheDocument();
@@ -165,7 +156,7 @@ describe('InfoDrawer v7 investigation workspace', () => {
     expect(screen.getByRole('dialog', { name: '伊莎贝拉·摩勒详情' })).toBeInTheDocument();
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.getByRole('dialog', { name: '资料', exact: true })).toBeInTheDocument();
-    expect(type).toHaveValue('npc'); expect(opener).toHaveFocus();
+    expect(screen.queryByRole('combobox')).toBeNull(); expect(opener).toHaveFocus();
   });
   it('uses keyboard tabs and keeps script-wide clue totals out of player progress', async () => {
     renderDrawer();
@@ -237,7 +228,7 @@ describe('InfoDrawer v7 investigation workspace', () => {
     expect(document.activeElement).toBe(drawerTab);
   });
 
-  it('reveals authored branches and supports type filtering', async () => {
+  it('shows all known characters and clues directly without type filters or unlocking hidden branches', async () => {
     const state = makeState({ activeNpcName: '伊莎贝拉·摩勒' });
     state.clues = [{ ...storyData.items.I04, found: true }];
     state.scenarioProgress = createScenarioProgress();
@@ -245,9 +236,9 @@ describe('InfoDrawer v7 investigation workspace', () => {
     renderDrawer(state);
     expect((await screen.findAllByText('小册子')).length).toBeGreaterThan(0);
     expect(screen.queryByText('卡森其药店')).not.toBeInTheDocument();
-    fireEvent.change(screen.getByRole('combobox', { name: '资料类型' }), { target: { value: 'item' } });
+    expect(screen.queryByRole('searchbox')).toBeNull(); expect(screen.queryByRole('combobox')).toBeNull();
     const mobileList = screen.getByLabelText('案件资料列表');
-    await waitFor(() => expect(within(mobileList).queryByText('伊莎贝拉·摩勒')).not.toBeInTheDocument());
+    expect(within(mobileList).getByText('伊莎贝拉·摩勒')).toBeInTheDocument();
     expect(within(mobileList).getAllByText('小册子').length).toBeGreaterThan(0);
   });
 

@@ -497,41 +497,24 @@ public class GameAndroidTest {
                     js("document.querySelector('.investigator-party button:first-child').click()");
                 }
                 screenshot(prefix + "-attributes"); click("技能");
-                fill(".investigator-search input", "闪避");
-                assertEquals("Dodge uses half of percentile DEX", "true", js("Array.from(document.querySelectorAll('.investigator-skills tbody td')).map(e=>e.textContent).join(',')==='30,15,6'"));
-                if (partySize > 1) {
-                    js("document.querySelector('.investigator-party button:last-child').click()");
-                    assertEquals("Comparing teammates keeps the skill query", "true", js("document.querySelector('.investigator-search input').value==='闪避'"));
-                    String expectedDodge = partySize == 4 ? "50,25,10" : "35,17,7";
-                    assertEquals("Teammate skill uses its own corrected allocation", JSONObject.quote(expectedDodge), js("Array.from(document.querySelectorAll('.investigator-skills tbody td')).map(e=>e.textContent).join(',')"));
-                    js("document.querySelector('.investigator-party button:first-child').click()");
-                }
-                if (size[0] == 390) {
-                    fill(".investigator-search input", "未出现的QA技能"); until("document.querySelector('.investigator-body .archive-empty-state')");
-                    screenshot(prefix + "-skill-empty"); viewport(size[0], 300); screenshot(prefix + "-skill-empty-short"); viewport(size[0], size[1]);
-                }
-                fill(".investigator-search input", "侦查");
-                assertEquals("Skill thresholds match the game rules", "true", js("Array.from(document.querySelectorAll('.investigator-skills tbody td')).map(e=>e.textContent).join(',')==='75,37,15'"));
-                reachable("[aria-label='清除技能搜索']"); nativeTap("[aria-label='清除技能搜索']");
-                until("document.activeElement===document.querySelector('.investigator-search input')&&document.querySelector('.investigator-search input').value===''");
-                assertEquals("Clearing skills returns to the list start", "0", js("document.querySelector('.investigator-body').scrollTop"));
+                assertEquals("The complete skill list has no search control", "true", js("!document.querySelector('input[type=search]')&&document.querySelectorAll('.investigator-skills tbody tr').length>10"));
+                assertEquals("Dodge uses half of percentile DEX", "true", js("Array.from(Array.from(document.querySelectorAll('.investigator-skills tbody tr')).find(r=>r.querySelector('th').textContent.startsWith('闪避')).querySelectorAll('td')).map(e=>e.textContent).join(',')==='30,15,6'"));
+                assertEquals("Skill thresholds match the game rules", "true", js("Array.from(Array.from(document.querySelectorAll('.investigator-skills tbody tr')).find(r=>r.querySelector('th').textContent.startsWith('侦查')).querySelectorAll('td')).map(e=>e.textContent).join(',')==='75,37,15'"));
                 assertEquals("Skills remain readable", "true", js("parseFloat(getComputedStyle(document.querySelector('.investigator-skills tbody th')).fontSize)>=15"));
                 if (partySize > 1) {
-                    fill(".investigator-search input", "侦查"); viewport(size[0], 300);
-                    js("document.querySelector('.investigator-party button:last-child').scrollIntoView({block:'nearest',inline:'nearest'})");
-                    reachable(".investigator-party button:last-child"); nativeTap(".investigator-party button:last-child");
-                    until("document.querySelector('.investigator-party button:last-child').getAttribute('aria-pressed')==='true'");
-                    assertEquals("Teammates can be compared above the keyboard without losing the skill query", "true", js("document.querySelector('.investigator-search input').value==='侦查'&&document.querySelector('.investigator-body').clientHeight>=75"));
-                    assertEquals("Filtered skill and threshold headings remain fully readable above the keyboard", "true", js("(()=>{const b=document.querySelector('.investigator-body').getBoundingClientRect(),r=document.querySelector('.investigator-skills tbody tr').getBoundingClientRect();return r.top>=b.top&&r.bottom<=b.bottom&&Array.from(document.querySelectorAll('.investigator-skills thead th')).every(e=>parseFloat(getComputedStyle(e).fontSize)>=13)})()"));
-                    screenshot(prefix + "-skills-short");
-                    js("document.querySelector('.investigator-party button:first-child').scrollIntoView({block:'nearest',inline:'nearest'})");
-                    nativeTap(".investigator-party button:first-child"); nativeTap("[aria-label='清除技能搜索']");
-                    until("document.activeElement===document.querySelector('.investigator-search input')");
-                    viewport(size[0], size[1]);
+                    js("document.querySelector('.investigator-party button:last-child').click()");
+                    String expectedDodge = partySize == 4 ? "50,25,10" : "35,17,7";
+                    assertEquals("Teammate skill uses its own corrected allocation", JSONObject.quote(expectedDodge), js("Array.from(Array.from(document.querySelectorAll('.investigator-skills tbody tr')).find(r=>r.querySelector('th').textContent.startsWith('闪避')).querySelectorAll('td')).map(e=>e.textContent).join(',')"));
+                    viewport(size[0], 300);
+                    assertEquals("Complete teammate skills remain readable in a short window", "true", js("document.querySelector('.investigator-body').clientHeight>=75&&Array.from(document.querySelectorAll('.investigator-skills thead th')).every(e=>parseFloat(getComputedStyle(e).fontSize)>=13)"));
+                    js("document.querySelector('.investigator-body').scrollTop=99999");
+                    reachable(".investigator-skills tbody tr:last-child"); reachable(".investigator-close"); screenshot(prefix + "-skills-short");
+                    js("document.querySelector('.investigator-body').scrollTop=0;document.querySelector('.investigator-party button:first-child').scrollIntoView({block:'nearest',inline:'nearest'})");
+                    nativeTap(".investigator-party button:first-child"); viewport(size[0], size[1]);
                 }
                 js("document.querySelector('.investigator-body').scrollTop=99999");
                 String skillsReadingPosition = js("document.querySelector('.investigator-body').scrollTop");
-                reachable(".investigator-search input"); reachable(".investigator-close"); screenshot(prefix + "-skills");
+                reachable(".investigator-skills thead th"); reachable(".investigator-close"); screenshot(prefix + "-skills");
                 if (partySize > 1) {
                     js("document.querySelector('.investigator-party button:last-child').scrollIntoView({block:'nearest',inline:'nearest'})");
                     nativeTap(".investigator-party button:last-child");
@@ -558,31 +541,16 @@ public class GameAndroidTest {
                 reachable(".investigator-close");
                 click("技能");
                 assertEquals("Returning to skills restores the reading position", skillsReadingPosition, js("document.querySelector('.investigator-body').scrollTop"));
-                if (partySize > 1) {
-                    fill(".investigator-search input", "侦查");
-                    js("document.querySelector('.investigator-party button:last-child').scrollIntoView({block:'nearest',inline:'nearest'})");
-                    nativeTap(".investigator-party button:last-child");
-                    until("document.querySelector('.investigator-party button:last-child').getAttribute('aria-pressed')==='true'");
-                    assertEquals("Changing the shared skill query resets each teammate's result position", "true", js("document.querySelector('.investigator-search input').value==='侦查'&&document.querySelector('.investigator-body').scrollTop===0"));
-                    nativeTap("[aria-label='清除技能搜索']");
-                    js("document.querySelector('.investigator-party button:first-child').scrollIntoView({block:'nearest',inline:'nearest'})");
-                    nativeTap(".investigator-party button:first-child");
-                    until("document.querySelector('.investigator-party button:first-child').getAttribute('aria-pressed')==='true'");
-                    assertEquals("Clearing a comparison starts all members' unfiltered lists at the beginning", "true", js("document.querySelector('.investigator-search input').value===''&&document.querySelector('.investigator-body').scrollTop===0"));
-                }
-                // Real focus and settled insets make both system-return steps deterministic.
-                nativeTap(".investigator-search input"); awaitSettledIme(true);
-                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                // Direct browsing never opens a search keyboard; one system Back closes the dossier.
                 awaitSettledIme(false);
-                assertEquals("Dismissing the keyboard keeps the dossier open", "true", js("Boolean(document.querySelector('.investigator-sheet'))"));
                 InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
                 until("!document.querySelector('.investigator-sheet')");
                 assertEquals("Inspecting a teammate preserves the current action and actor", "true", js("document.querySelector('.dock-input').value==='查看属性时保留这段行动草稿'&&document.querySelector('.party-compact.active strong').textContent==='亨利·格雷'"));
                 nativeTap(".party-compact:last-child"); until("document.querySelector('.investigator-sheet')");
                 assertEquals("Status cards inspect their own player", "true", js("document.querySelector('.investigator-identity h2').textContent===document.querySelector('.party-compact:last-child strong').textContent"));
                 click("技能"); viewport(size[0], 300);
-                js("document.querySelector('.investigator-search input').focus()");
-                reachable(".investigator-search input"); reachable(".investigator-close"); screenshot(prefix + "-sheet-keyboard");
+                js("document.querySelector('.investigator-body').scrollTop=99999");
+                reachable(".investigator-skills tbody tr:last-child"); reachable(".investigator-close"); screenshot(prefix + "-sheet-short-direct-skills");
                 js("document.querySelector('.investigator-close').click()");
                 until("!document.querySelector('.investigator-sheet')&&document.activeElement===document.querySelector('.dock-actor-avatar')");
                 assertEquals("Closing a short-window dossier keeps the action draft", JSONObject.quote("查看属性时保留这段行动草稿"), js("document.querySelector('.dock-input').value"));
@@ -616,26 +584,16 @@ public class GameAndroidTest {
                 assertEquals("Phone archive does not construct a hidden graph", "true", js("!document.querySelector('.react-flow')&&!document.querySelector('.case-board-flow-wrap')"));
                 until("Array.from(document.querySelectorAll('.case-record-photo img')).every(i=>i.complete&&i.naturalWidth>0)");
                 assertEquals("Archive tabs announce the active page", "true", js("document.querySelector('[role=tab][aria-selected=true]').textContent==='案件板'&&document.querySelector('[role=tabpanel]').getAttribute('aria-labelledby')===document.querySelector('[role=tab][aria-selected=true]').id"));
-                if (size[0] == 390) {
-                    fill(".case-board-search input", "未出现的QA档案"); until("document.querySelector('.case-board-empty')");
-                    screenshot(prefix + "-case-empty"); viewport(size[0], 300); screenshot(prefix + "-case-empty-short"); viewport(size[0], size[1]);
-                }
-                fill(".case-board-search input", "伊莎贝拉");
-                until("document.querySelectorAll('.case-board-mobile-card').length===2");
-                assertEquals("Search keeps the matched person and related scene without unrelated records", "true", js("Array.from(document.querySelectorAll('.case-board-mobile-card')).map(e=>e.textContent).join(',').includes('伊莎贝拉')&&document.querySelector('.case-board-mobile-card.scene')&&!Array.from(document.querySelectorAll('.case-board-mobile-card')).some(e=>e.textContent.includes('埃里克'))"));
-                fill(".case-board-type select", "npc"); until("document.querySelectorAll('.case-board-mobile-card').length===1");
-                nativeTap(".info-drawer-tabs button[id$='-log']"); until("document.querySelector('.record-log-search input')");
-                nativeTap(".info-drawer-tabs button[id$='-board']"); until("document.querySelector('.case-board-search input')");
-                assertEquals("Case query and type survive real tab taps without exposing unrelated records", "true", js("document.querySelector('.case-board-search input').value==='伊莎贝拉'&&document.querySelector('.case-board-type select').value==='npc'&&document.querySelectorAll('.case-board-mobile-card').length===1"));
-                screenshot(prefix + "-board-retained");
-                fill(".case-board-type select", "all"); until("document.querySelectorAll('.case-board-mobile-card').length===2");
-                viewport(size[0], 300); reachable("[aria-label='关闭资料']"); reachable(".case-search-clear");
-                until("(()=>{const r=document.querySelector('.case-search-clear').getBoundingClientRect();return r.width>=44&&r.height>=44})()");
-                JSONObject clearSize = new JSONObject(js("(()=>{const e=document.querySelector('.case-search-clear'),r=e.getBoundingClientRect(),s=getComputedStyle(e);return {width:r.width,height:r.height,cssWidth:s.width,minHeight:s.minHeight,viewport:[innerWidth,innerHeight]}})()"));
-                assertTrue("Search can be cleared with a full phone touch target: " + clearSize, clearSize.getDouble("width") >= 44 && clearSize.getDouble("height") >= 44);
-                js("document.querySelector('.case-search-clear').click()");
-                assertEquals("Clearing search keeps typing focus", "true", js("document.activeElement===document.querySelector('.case-board-search input')&&document.activeElement.value===''") );
-                viewport(size[0], size[1]);
+                assertEquals("Known dossiers are available directly without search or type filters", "true", js("!document.querySelector('input[type=search]')&&!document.querySelector('.case-board-type')&&!document.querySelector('.case-board-threads')&&document.querySelectorAll('.case-board-mobile-card').length===3"));
+                viewport(size[0], 300); reachable("[aria-label='关闭资料']");
+                js("document.querySelector('.case-board-workspace').scrollTop=99999");
+                String archivePosition = js("document.querySelector('.case-board-workspace').scrollTop");
+                assertTrue("The direct dossier list has its own reading position", Double.parseDouble(archivePosition) > 0);
+                nativeTap(".info-drawer-tabs button[id$='-log']"); until("document.querySelector('.action-log-list')");
+                nativeTap(".info-drawer-tabs button[id$='-board']"); until("document.querySelector('.case-board-workspace')");
+                assertEquals("Real tab taps resume the direct dossier list", archivePosition, js("document.querySelector('.case-board-workspace').scrollTop"));
+                reachable("[aria-label='关闭资料']"); screenshot(prefix + "-board-retained");
+                js("document.querySelector('.case-board-workspace').scrollTop=0"); viewport(size[0], size[1]);
                 if (size[0] == 430) {
                     viewport(960, 1000);
                     assertEquals("Wide native portrait remains a list rather than creating the desktop graph", "true", js("document.querySelector('.case-board-view').classList.contains('archive-layout')&&!document.querySelector('.react-flow')&&document.querySelectorAll('.case-board-mobile-card').length===3"));
@@ -674,19 +632,16 @@ public class GameAndroidTest {
                 assertEquals("Progress does not expose the script's undiscovered clue total", "true", js("!document.querySelector('.scenario-progress').textContent.match(/已发现\\s+0\\s*\\/\\s*8/)") );
                 assertEquals("Current objectives use readable text and omit empty clue statistics", "true", js("parseFloat(getComputedStyle(document.querySelector('.objective-row strong')).fontSize)>=15&&!document.querySelector('.progress-stat')"));
                 reachable("[aria-label='关闭资料']"); screenshot(prefix + "-progress"); click("日志");
-                until("document.querySelector('.record-log-search input')"); reachable(".record-log-search input");
-                assertEquals("The log body uses readable text", "true", js("parseFloat(getComputedStyle(document.querySelector('.action-log-list p')).fontSize)>=15"));
-                fill(".record-log-search input", "摩勒住宅");
-                until("document.querySelector('.action-log-list p')&&document.querySelector('.action-log-list p').textContent.includes('摩勒住宅')");
+                until("document.querySelector('.action-log-list p')");
+                assertEquals("The log body uses readable text without search controls", "true", js("parseFloat(getComputedStyle(document.querySelector('.action-log-list p')).fontSize)>=15&&!document.querySelector('input[type=search]')"));
+                assertEquals("Only player records appear in the log", "true", js("!document.querySelector('.action-log-list').textContent.match(/EV_[A-Z_]+|AI DM 返回格式无效/)&&document.querySelector('.action-log-list').textContent.includes('摩勒住宅')"));
+                viewport(size[0], 300); reachable("[aria-label='关闭资料']");
+                js("document.querySelector('.action-log-list').scrollTop=99999");
+                String logReadingPosition = js("document.querySelector('.action-log-list').scrollTop");
                 click("进度"); click("日志");
-                assertEquals("Log queries survive switching reference tabs", "true", js("document.querySelector('.record-log-search input').value==='摩勒住宅'"));
-                fill(".record-log-search input", "没有这条QA记录"); until("document.querySelector('.action-log-empty')");
-                screenshot(prefix + "-log-empty");
-                viewport(size[0], 300); reachable("[aria-label='关闭资料']"); reachable(".record-log-search input");
-                screenshot(prefix + "-log-empty-short");
-                reachable("[aria-label='清空日志搜索']"); nativeTap("[aria-label='清空日志搜索']");
-                until("document.activeElement===document.querySelector('.record-log-search input')&&document.querySelector('.record-log-search input').value===''");
-                assertEquals("Only the log list scrolls beneath its controls above the keyboard", "true", js("(()=>{const l=document.querySelector('.action-log-list').getBoundingClientRect(),s=document.querySelector('.record-log-search').getBoundingClientRect();return l.top>=s.bottom&&l.bottom<=innerHeight+1&&l.height>60})()"));
+                assertEquals("Reference tab returns retain the complete log's reading position", logReadingPosition, js("document.querySelector('.action-log-list').scrollTop"));
+                assertEquals("Only the complete log scrolls beneath the fixed header", "true", js("(()=>{const l=document.querySelector('.action-log-list').getBoundingClientRect(),h=document.querySelector('.info-drawer-react>header').getBoundingClientRect();return l.top>=h.bottom&&l.bottom<=innerHeight+1&&l.height>140})()"));
+                screenshot(prefix + "-log-short");
                 viewport(size[0], size[1]); screenshot(prefix + "-log"); reachable("[aria-label='关闭资料']");
                 String referenceDraft = js("document.querySelector('.dock-input').value");
                 viewport(size[0], 300); nativeTap("[aria-label='关闭资料']");
@@ -694,7 +649,7 @@ public class GameAndroidTest {
                 assertEquals("Closing short-window references keeps the action draft", referenceDraft, js("document.querySelector('.dock-input').value"));
                 screenshot(prefix + "-reference-focus-restored"); viewport(size[0], size[1]);
                 nativeTap(".drawer-tab"); until("document.querySelector('.case-board-mobile-card')");
-                assertEquals("A new reference visit starts with all known records", "true", js("document.querySelector('.case-board-search input').value===''&&document.querySelector('.case-board-type select').value==='all'&&document.querySelectorAll('.case-board-mobile-card').length===3"));
+                assertEquals("A new reference visit starts with all known records", "true", js("!document.querySelector('input[type=search]')&&document.querySelector('.case-board-workspace').scrollTop===0&&document.querySelectorAll('.case-board-mobile-card').length===3"));
                 nativeTap("[aria-label='关闭资料']"); until("!document.querySelector('.info-drawer-react.open')");
                 menu("声音设置"); reachable("[role='switch'][aria-label='背景音乐']"); reachable("[role='switch'][aria-label='游戏音效']");
                 screenshot(prefix + "-audio");

@@ -4,19 +4,20 @@ import { InvestigatorSheet } from '../../src/components/game/InvestigatorSheet';
 import { makeInvestigator } from '../dm/fixtures';
 
 describe('InvestigatorSheet', () => {
-  it('clears a skill search at the start of its list and returns typing focus to the search field', () => {
-    const player = makeInvestigator({ name: '亨利' }, { 侦查: 75 });
+  it('shows the complete skill list in descending value without search controls', () => {
+    const player = makeInvestigator({ name: '亨利' }, { 侦查: 75, 闪避: 55, 说服: 40 });
     render(<InvestigatorSheet players={[player]} selectedId={player.id} onSelect={vi.fn()} onClose={vi.fn()} />);
     fireEvent.click(screen.getByRole('tab', { name: '技能' }));
-    const search = screen.getByRole('searchbox');
-    fireEvent.change(search, { target: { value: '侦查' } });
-    const body = screen.getByRole('tabpanel'); body.scrollTop = 120; fireEvent.scroll(body);
-    const clear = screen.getByRole('button', { name: '清除技能搜索' }); clear.focus(); fireEvent.click(clear);
-    expect(search).toHaveValue(''); expect(search).toHaveFocus(); expect(body.scrollTop).toBe(0);
-    expect(screen.getByRole('rowheader', { name: '侦查' })).toBeInTheDocument();
+    expect(screen.queryByRole('searchbox')).toBeNull();
+    const names = screen.getAllByRole('rowheader').map(row => row.textContent);
+    expect(names).toHaveLength(Object.keys(player.skills).length);
+    expect(names.indexOf('侦查')).toBeLessThan(names.indexOf('闪避'));
+    expect(names.indexOf('闪避')).toBeLessThan(names.indexOf('说服'));
+    const row = screen.getByRole('rowheader', { name: '闪避' }).closest('tr')!;
+    expect(within(row).getAllByRole('cell').map(cell => cell.textContent)).toEqual(['55', '27', '11']);
   });
 
-  it('keeps each page reading position but starts fresh for a changed investigator or skill query', () => {
+  it('keeps each page reading position independently for each investigator', () => {
     const players = [makeInvestigator({ id: 'henry', name: '亨利', background: { story: '完整的旧案记录。' } }), makeInvestigator({ id: 'ada', name: '艾达' })];
     const props = { players, onSelect: vi.fn(), onClose: vi.fn() };
     const { rerender } = render(<InvestigatorSheet {...props} selectedId="henry" />);
@@ -27,27 +28,29 @@ describe('InvestigatorSheet', () => {
     fireEvent.click(screen.getByRole('tab', { name: '技能' })); expect(body.scrollTop).toBe(210);
     fireEvent.click(screen.getByRole('tab', { name: '随身与背景' })); expect(body.scrollTop).toBe(80);
     fireEvent.click(screen.getByRole('tab', { name: '技能' }));
-    fireEvent.change(screen.getByRole('searchbox'), { target: { value: '侦查' } }); expect(body.scrollTop).toBe(0);
-    body.scrollTop = 40; fireEvent.scroll(body);
     rerender(<InvestigatorSheet {...props} selectedId="ada" />);
-    expect(body.scrollTop).toBe(0); expect(screen.getByRole('searchbox')).toHaveValue('侦查');
+    expect(body.scrollTop).toBe(0); expect(screen.queryByRole('searchbox')).toBeNull();
+    body.scrollTop = 40; fireEvent.scroll(body);
+    rerender(<InvestigatorSheet {...props} selectedId="henry" />); expect(body.scrollTop).toBe(210);
+    rerender(<InvestigatorSheet {...props} selectedId="ada" />); expect(body.scrollTop).toBe(40);
   });
 
-  it('keeps a skill search when comparing teammates and clears it after closing the sheet', () => {
+  it('compares live teammate thresholds directly and starts at the top after closing the sheet', () => {
     const players = [makeInvestigator({ id: 'henry', name: '亨利' }, { 侦查: 75 }), makeInvestigator({ id: 'ada', name: '艾达' }, { 侦查: 50 })];
     const select = vi.fn();
     const { rerender, unmount } = render(<InvestigatorSheet players={players} selectedId="henry" onSelect={select} onClose={vi.fn()} />);
     fireEvent.click(screen.getByRole('tab', { name: '技能' }));
-    fireEvent.change(screen.getByRole('searchbox'), { target: { value: '侦查' } });
     fireEvent.click(screen.getByRole('button', { name: '艾达', exact: true }));
     expect(select).toHaveBeenCalledWith('ada');
     rerender(<InvestigatorSheet players={players} selectedId="ada" onSelect={select} onClose={vi.fn()} />);
-    expect(screen.getByRole('searchbox')).toHaveValue('侦查');
-    expect(screen.getAllByRole('cell').map(cell => cell.textContent)).toEqual(['50', '25', '10']);
+    const row = screen.getByRole('rowheader', { name: '侦查' }).closest('tr')!;
+    expect(within(row).getAllByRole('cell').map(cell => cell.textContent)).toEqual(['50', '25', '10']);
+    const body = screen.getByRole('tabpanel'); body.scrollTop = 40; fireEvent.scroll(body);
     unmount();
     render(<InvestigatorSheet players={players} selectedId="ada" onSelect={select} onClose={vi.fn()} />);
     fireEvent.click(screen.getByRole('tab', { name: '技能' }));
-    expect(screen.getByRole('searchbox')).toHaveValue('');
+    expect(screen.getByRole('tabpanel').scrollTop).toBe(0);
+    expect(screen.queryByRole('searchbox')).toBeNull();
   });
   it('shows live resources and uses the actual check thresholds, including current luck', () => {
     const player = makeInvestigator({ id: 'henry', name: '亨利', currentHp: 3, currentMp: 0, currentSan: 18 }, { 侦查: 67 });
@@ -67,9 +70,7 @@ describe('InvestigatorSheet', () => {
     expect(within(row).getAllByRole('cell').map((cell) => cell.textContent)).toEqual(['67', '33', '13']);
     const luck = screen.getByRole('rowheader', { name: '幸运' }).closest('tr')!;
     expect(within(luck).getAllByRole('cell').map((cell) => cell.textContent)).toEqual(['23', '11', '4']);
-    fireEvent.change(screen.getByRole('searchbox'), { target: { value: '不存在' } });
-    expect(screen.getByText('没有匹配的技能，试试其他名称。')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '清除技能搜索' }));
+    expect(screen.queryByRole('searchbox')).toBeNull();
     expect(screen.getByRole('rowheader', { name: '侦查' })).toBeInTheDocument();
   });
 

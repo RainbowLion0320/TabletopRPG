@@ -6,7 +6,6 @@ import { getDifficultyThreshold } from '../../data/gameRules';
 import { getSkillTotal } from '../../services/dice';
 import { useDialogFocus } from '../shared/useDialogFocus';
 import { ArchiveEmptyState } from '../shared/ArchiveEmptyState';
-import { InvestigationEmblemArt } from '../shared/InvestigationEmblemArt';
 import './investigatorSheet.css';
 
 interface InvestigatorSheetProps {
@@ -24,11 +23,9 @@ export function InvestigatorSheet({ players, selectedId, onSelect, onClose }: In
   const player = players.find((item) => item.id === selectedId);
   const dialogRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
   const readingPositions = useRef(new Map<string, Partial<Record<SheetTab, number>>>());
   const id = useId();
   const [tab, setTab] = useState<SheetTab>('overview');
-  const [query, setQuery] = useState('');
   const [failedPortrait, setFailedPortrait] = useState<string | null>(null);
   useDialogFocus(Boolean(player), dialogRef, onClose, undefined, {
     getFallbackFocus: () => document.querySelector<HTMLButtonElement>('.dock-actor-avatar, .ending-actions button')
@@ -57,12 +54,6 @@ export function InvestigatorSheet({ players, selectedId, onSelect, onClose }: In
     setTab(nextTab);
   }
 
-  function searchSkills(value: string) {
-    setQuery(value);
-    for (const positions of readingPositions.current.values()) positions.skills = 0;
-    if (tab === 'skills' && bodyRef.current) bodyRef.current.scrollTop = 0;
-  }
-
   function handleTabKey(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     const next = event.key === 'ArrowRight' ? (index + 1) % tabs.length
       : event.key === 'ArrowLeft' ? (index + tabs.length - 1) % tabs.length
@@ -74,7 +65,6 @@ export function InvestigatorSheet({ players, selectedId, onSelect, onClose }: In
   }
 
   const skillNames = Object.keys(player.skills)
-    .filter((name) => name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
     .sort((a, b) => getSkillTotal(player, b) - getSkillTotal(player, a) || a.localeCompare(b, 'zh-CN'));
   const background = [
     ['经历', player.background?.story], ['信念', player.background?.belief],
@@ -107,12 +97,6 @@ export function InvestigatorSheet({ players, selectedId, onSelect, onClose }: In
           {tabs.map(([key, label], index) => <button type="button" key={key} id={`${id}-${key}`} role="tab" aria-selected={tab === key} aria-controls={`${id}-body`} tabIndex={tab === key ? 0 : -1} onClick={() => selectTab(key)} onKeyDown={(event) => handleTabKey(event, index)}>{label}</button>)}
         </div>
 
-        {tab === 'skills' && <div className="investigator-search">
-          <InvestigationEmblemArt size={16} />
-          <input ref={searchRef} type="search" value={query} aria-label="搜索技能" placeholder="搜索技能" autoComplete="off" spellCheck={false} onChange={(event) => searchSkills(event.target.value)} />
-          {query && <button type="button" aria-label="清除技能搜索" onClick={() => { searchSkills(''); searchRef.current?.focus({ preventScroll: true }); }}><X size={16} /></button>}
-        </div>}
-
         <div className={`investigator-body${tab === 'skills' ? ' skills-page' : ''}`} ref={bodyRef} id={`${id}-body`} role="tabpanel" aria-labelledby={`${id}-${tab}`} tabIndex={0}
           onScroll={rememberReadingPosition}>
           {tab === 'overview' && <>
@@ -136,7 +120,7 @@ export function InvestigatorSheet({ players, selectedId, onSelect, onClose }: In
                 const total = getSkillTotal(player, name);
                 return <tr key={name}><th scope="row">{name}{player.skills[name].isJob && <small>职业</small>}</th><td>{total}</td><td>{getDifficultyThreshold(total, '困难')}</td><td>{getDifficultyThreshold(total, '极难')}</td></tr>;
               })}</tbody>
-            </table> : <ArchiveEmptyState>{query.trim() ? '没有匹配的技能，试试其他名称。' : '暂无技能记录。'}</ArchiveEmptyState>}
+            </table> : <ArchiveEmptyState>暂无技能记录。</ArchiveEmptyState>}
           </>}
 
           {tab === 'background' && <>
