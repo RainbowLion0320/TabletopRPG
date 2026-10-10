@@ -2024,8 +2024,8 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     const drawer = page.getByRole('dialog', { name: '资料', exact: true });
     const card = drawer.getByRole('button', { name: '人物 伊莎贝拉·摩勒', exact: true });
     await expect(card).toBeVisible();
-    await expect.poll(() => card.locator('img').evaluate((element) => (element as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
-    const scenePhoto = drawer.getByRole('button', { name: '地点 摩勒住宅' }).locator('img');
+    await expect.poll(() => card.locator('img:not(.case-record-emblem-art)').evaluate((element) => (element as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+    const scenePhoto = drawer.getByRole('button', { name: '地点 摩勒住宅' }).locator('img:not(.case-record-emblem-art)');
     await expect.poll(() => scenePhoto.evaluate((element) => (element as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
     await expect(scenePhoto).toHaveCSS('object-fit', 'contain');
     await expect(drawer.locator('.react-flow')).toHaveCount(0);
@@ -2295,8 +2295,8 @@ for (const size of [{ width: 980, height: 640 }, { width: 1440, height: 900 }]) 
       expect(text.foot).toBeGreaterThanOrEqual(12); expect(text.clipped).toBe(false);
     }
     await expect(graph.locator('.case-flow-node.event').getByText('待验证', { exact: true })).toBeVisible();
-    expect(await graph.locator('.case-flow-node.scene img').evaluate(element => getComputedStyle(element).objectPosition)).toBe('50% 50%');
-    expect(await node.locator('img').evaluate(element => getComputedStyle(element).objectFit)).toBe('cover');
+    expect(await graph.locator('.case-flow-node.scene .case-flow-photo img').evaluate(element => getComputedStyle(element).objectPosition)).toBe('50% 50%');
+    expect(await node.locator('.case-flow-photo img').evaluate(element => getComputedStyle(element).objectFit)).toBe('cover');
     await page.screenshot({ path: testInfo.outputPath('case-cards.png') });
     await expect(drawer.getByRole('navigation', { name: '调查脉络' })).toHaveCount(0);
     await expect(drawer.getByRole('searchbox')).toHaveCount(0);
@@ -2729,6 +2729,36 @@ test('title rain rests behind settings and resumes at the same moment', async ({
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await expect.poll(() => video.evaluate((element: HTMLVideoElement) => !element.paused)).toBe(true);
   }
+});
+
+test('short investigation menus keep actions reachable and preserve the draft when saving', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await startNewGame(page);
+  const draft = '先询问委托人。\n这段行动保留到查看资料之后。';
+  await page.locator('.dock-input').fill(draft);
+  await page.setViewportSize({ width: 1440, height: 300 });
+  await page.getByRole('button', { name: '菜单', exact: true }).click();
+  const menu = page.getByRole('dialog', { name: '调查菜单', exact: true });
+  for (const label of ['保存游戏', '读取存档', 'AI 设置', '声音设置', '重新开始', '返回首页']) {
+    const action = menu.getByRole('button', { name: label, exact: true });
+    await action.scrollIntoViewIfNeeded();
+    expect(await action.evaluate(element => {
+      const rect = element.getBoundingClientRect();
+      const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      return hit === element || (hit !== null && element.contains(hit));
+    })).toBe(true);
+  }
+  await expect(menu.getByRole('button', { name: '关闭调查菜单' })).toBeInViewport({ ratio: 1 });
+  await expect(menu.getByRole('button', { name: '继续调查', exact: true })).toBeInViewport({ ratio: 1 });
+  await menu.getByRole('button', { name: '保存游戏', exact: true }).click();
+  await expect(page.getByText('已保存', { exact: true })).toBeVisible();
+  await expect(page.locator('.dock-input')).toHaveValue(draft);
+  await page.getByRole('button', { name: '菜单', exact: true }).click();
+  await page.getByRole('button', { name: '读取存档', exact: true }).click();
+  const saves = page.getByRole('dialog', { name: '读取存档', exact: true });
+  await expect(saves.getByRole('button', { name: '载入存档', exact: true })).toBeVisible();
+  await saves.getByRole('button', { name: '关闭存档列表' }).click();
+  await expect(page.locator('.dock-input')).toHaveValue(draft);
 });
 
 test('saving a game enables continuing the latest save after reloading the title screen', async ({ page }) => {

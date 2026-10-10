@@ -4,15 +4,16 @@
 .game-menu-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: 0 0 auto; margin-bottom: 10px; }
 .game-menu-header h2 { margin: 0; font-size: 21px; }
 .game-menu-close { display: grid; place-items: center; flex: 0 0 44px; width: 44px; min-height: 44px; padding: 0; }
-.game-menu-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; gap: 14px; padding: 2px; scroll-padding: 6px; }
-.game-menu-body h3 { font-size: 14px; font-weight: 400; letter-spacing: .1em; color: var(--muted); margin: 0 0 6px; }
+.game-menu-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 2px; scroll-padding: 6px; }
 .game-menu .menu-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 :root .game-menu .menu-list button { min-width: 0; width: 100%; min-height: 48px; display: flex; align-items: center; gap: 9px; padding: 8px 12px; text-align: left; font-size: 15px; }
 .game-menu .menu-list svg { flex: 0 0 auto; color: currentColor; }
-.game-menu .menu-records .archive-record-art { width: 20px; height: 20px; }
+.game-menu .archive-record-art { width: 20px; height: 20px; }
 :root.fog-ui .game-menu .menu-list button { justify-content: flex-start; box-shadow: none; background: transparent; color: var(--ui-ink); }
 .game-menu footer { flex: 0 0 auto; display: flex; margin-top: 14px; }
 :root .game-menu footer .primary-btn { width: 100%; min-height: 48px; font-size: 15px; }
 .portrait-ui .game-menu-backdrop { align-items: flex-end; justify-content: center; padding: var(--mobile-top) var(--mobile-right) var(--mobile-bottom) var(--mobile-left); }
 :root.portrait-ui .game-menu { width: min(420px, 100%); max-height: var(--mobile-dialog-height); }
 :root.portrait-ui .game-menu-header h2 { margin: 0; }
+:root.portrait-ui .game-menu .menu-list { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+@media (max-height: 500px) { .game-menu-backdrop { align-items: center; padding: 12px 24px; } }

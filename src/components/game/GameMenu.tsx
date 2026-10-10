@@ -33,27 +33,14 @@ export function GameMenu({ onClose, onHome, onLoad, onOpenApi, onRestart, onSave
         <button type="button" className="ghost-btn game-menu-close" aria-label="关闭调查菜单" onClick={onClose}><X size={20} aria-hidden="true" /></button>
       </header>
       <div className="game-menu-body">
-      <section aria-labelledby="game-menu-records">
-        <h3 id="game-menu-records">调查记录</h3>
-        <div className="menu-list menu-records">
-        <button onClick={onSave}><ArchiveRecordArt kind="file" />保存游戏</button>
-        <button onClick={onLoad}><JournalArt />读取存档</button>
-        </div>
-      </section>
-      <section aria-labelledby="game-menu-settings">
-        <h3 id="game-menu-settings">设置</h3>
         <div className="menu-list">
-        <button onClick={onOpenApi}><TuningDialArt />AI 设置</button>
-        <AudioSettingsButton />
+          <button onClick={onSave}><ArchiveRecordArt kind="file" />保存游戏</button>
+          <button onClick={onLoad}><JournalArt />读取存档</button>
+          <button onClick={onOpenApi}><TuningDialArt />AI 设置</button>
+          <AudioSettingsButton />
+          <button onClick={onRestart}><RotateCcw size={16} />重新开始</button>
+          <button onClick={onHome}><HomeEmblemArt />返回首页</button>
         </div>
-      </section>
-      <section aria-labelledby="game-menu-navigation">
-        <h3 id="game-menu-navigation">导航</h3>
-        <div className="menu-list">
-        <button onClick={onRestart}><RotateCcw size={16} />重新开始</button>
-        <button onClick={onHome}><HomeEmblemArt />返回首页</button>
-        </div>
-      </section>
       </div>
       <footer><button type="button" className="primary-btn" onClick={onClose}>继续调查</button></footer>
     </aside>

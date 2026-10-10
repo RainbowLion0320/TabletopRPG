@@ -280,6 +280,18 @@ Create one polished raster game UI asset for the Chinese detective RPG Fog / Dis
 ```
 
 
+## 案件人物与地点符号（0.5.50）
+
+内置 Image Gen，两次生成；`panel-frame.webp` 仅作风格参考，`transparent_background=true`。原 PNG 留在默认 generated_images 目录，不提交；完整画布只等比缩为 128×128px，WebP quality 92 / alphaQuality 100 / effort 6，不裁剪、不去底或改色。人物生成 ID `exec-42ca47a5-4b13-445c-8cf7-bc72041473db`，地点生成 ID `exec-ce78e360-5616-41b2-8e7f-9e17e0eefaf4`。最终源为 `record-person.webp` / `record-place.webp`，以下为实际完整提示词。
+
+```text
+Production raster game UI emblem for a 1920s London mystery RPG. The supplied image is a STYLE REFERENCE ONLY: match its hand-painted midnight-blue enamel, finely aged silver engraving, restrained ivory highlights and tiny pale-gold accents. Create one compact PERSON-RECORD EMBLEM: an oval silver cameo medallion with a neutral anonymous head-and-shoulders profile carved in ivory silver relief, with dark navy recessed enamel around the profile. This is a symbolic dossier category, not a named character portrait: keep facial features indistinct, no expression, no hat or gender-specific costume. A crisp readable profile silhouette, tactile metal bevels and delicate tiny engraved flourishes, one small pale gold clasp. Front view, centered, almost square composition, strong clean large shapes legible at 16px to 42px. Complete object with clear transparent margin on all sides, true transparent alpha outside the medallion, no environmental background, no drop shadow plane, no text, no digits, no badge count, no modern line-icon treatment.
+```
+
+```text
+Production raster game UI emblem for a 1920s London mystery RPG. The supplied image is a STYLE REFERENCE ONLY: match its hand-painted midnight-blue enamel, finely aged silver engraving, restrained ivory highlights and tiny pale-gold accents. Create one compact PLACE-RECORD EMBLEM: a slightly open folded antique street map in pale ivory and blue, with bold clean fold planes and a few simple dark-blue street lines, plus one small exquisitely rendered silver-and-pale-gold compass resting at its lower right. A symbolic place dossier category, not a specific real map: no map labels, lettering, numbers or invented place names. Front three-quarter view with restrained depth; tactile paper and metal highlights, a crisp readable silhouette and clear large shapes legible at 16px to 42px. One complete almost-square object centered with clear transparent margin on all sides, true transparent alpha around the map and compass, no environmental background, no drop shadow plane, no modern map-pin or outline-icon treatment.
+```
+
 ## 局势量条（0.5.42）
 
 内置 Image Gen 单次新图，无参考图与后续编辑；生成 ID `exec-9b2b5584-326c-428c-948c-f09b9dbdeb4e`，原 PNG 留在默认 generated_images 目录，不提交；transparent_background=true。以下是实际完整提示词：

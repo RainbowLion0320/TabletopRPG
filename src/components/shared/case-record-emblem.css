@@ -1,0 +1,2 @@
+.case-record-emblem-art { display: block; flex: 0 0 auto; width: 16px; height: 16px; object-fit: contain; pointer-events: none; }
+.case-record-photo > .case-record-emblem-art { position: static; width: 42px; height: 42px; object-fit: contain; background: transparent; }
