@@ -28,6 +28,13 @@ export function SaveManagerModal({ incompatibleSaves = [], onClose, onDelete, on
   const id = useId();
 
   function close() { if (!deletingRef.current) onClose(); }
+  function back() {
+    if (deletingRef.current) return;
+    if (confirmationId !== null) {
+      const index = [...saves, ...incompatibleSaves].findIndex((slot) => slot.id === confirmationId);
+      cancelDeletion(confirmationId, Math.max(0, index));
+    } else onClose();
+  }
   function focusInList(target: HTMLButtonElement | null | undefined) {
     if (!target) return;
     target.focus({ preventScroll: true });
@@ -37,7 +44,7 @@ export function SaveManagerModal({ incompatibleSaves = [], onClose, onDelete, on
     if (control.bottom > body.bottom) list.scrollTop += control.bottom - body.bottom + 8;
     else if (control.top < body.top) list.scrollTop += control.top - body.top - 8;
   }
-  useDialogFocus(open, dialogRef, close, undefined, {
+  useDialogFocus(open, dialogRef, back, undefined, {
     getFallbackFocus: () => document.querySelector<HTMLButtonElement>('.dock-actor-avatar, .ending-actions button')
   });
   useEffect(() => {

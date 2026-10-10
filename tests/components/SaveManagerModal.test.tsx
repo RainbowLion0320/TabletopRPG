@@ -12,8 +12,8 @@ const blocked: IncompatibleSaveSlot = { id: 3, scene: '旧存档场景', savedAt
 
 describe('SaveManagerModal', () => {
   it('preserves a slot on cancel, restores focus and only loads the explicitly selected save', () => {
-    const onDelete = vi.fn().mockResolvedValue(true), onLoad = vi.fn(), saves = [save(2), save(1)];
-    render(<SaveManagerModal open saves={saves} incompatibleSaves={[]} onClose={vi.fn()} onDelete={onDelete} onLoad={onLoad} />);
+    const onDelete = vi.fn().mockResolvedValue(true), onLoad = vi.fn(), onClose = vi.fn(), saves = [save(2), save(1)];
+    render(<SaveManagerModal open saves={saves} incompatibleSaves={[]} onClose={onClose} onDelete={onDelete} onLoad={onLoad} />);
     const rows = screen.getAllByRole('article');
     expect(screen.getByRole('button', { name: '关闭存档列表' })).toHaveFocus();
     expect(screen.getAllByText('最近保存')).toHaveLength(1);
@@ -24,6 +24,12 @@ describe('SaveManagerModal', () => {
     expect(onDelete).not.toHaveBeenCalled();
     fireEvent.click(keep);
     expect(within(rows[1]).getByRole('button', { name: /^删除存档/ })).toHaveFocus();
+    fireEvent.click(within(rows[1]).getByRole('button', { name: /^删除存档/ }));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('button', { name: '确认删除' })).toBeNull();
+    expect(within(rows[1]).getByRole('button', { name: /^删除存档/ })).toHaveFocus();
+    expect(onDelete).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
     fireEvent.click(within(rows[1]).getByRole('button', { name: '载入存档' }));
     expect(onLoad).toHaveBeenCalledExactlyOnceWith(saves[1]);
   });

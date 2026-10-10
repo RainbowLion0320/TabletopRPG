@@ -750,6 +750,12 @@ public class GameAndroidTest {
                 until("document.querySelector('.save-delete-confirmation')");
                 reachable(".save-delete-confirmation .danger");
                 assertEquals("Deletion first focuses the safe choice", "true", js("document.activeElement.innerText==='保留存档'"));
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                until("document.querySelector('.save-manager-card')&&!document.querySelector('.save-delete-confirmation')");
+                assertEquals("Returning from confirmation retains every record and the original row", "true", js("document.querySelectorAll('.save-slot-card').length===4&&document.activeElement===document.querySelector('.save-slot-card:last-child .save-slot-delete')"));
+                reachable(".save-slot-card:last-child .save-slot-delete"); screenshot(prefix + "-save-return");
+                js("document.querySelector('.save-slot-card:last-child .save-slot-delete').click()");
+                until("document.querySelector('.save-delete-confirmation')");
                 click("保留存档");
                 assertEquals("Cancelling keeps every save", "4", js("document.querySelectorAll('.save-slot-card').length"));
                 js("document.querySelector('.save-slot-card:last-child .save-slot-delete').click()");

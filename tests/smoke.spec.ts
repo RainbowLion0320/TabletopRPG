@@ -2996,6 +2996,13 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
       await last.getByRole('button', { name: /^删除存档/ }).click();
       await verifyLayout();
     }
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('article')).toHaveCount(12);
+    await expect(dialog.getByRole('button', { name: '确认删除' })).toHaveCount(0);
+    await expect(deleteButton).toBeFocused();
+    await deleteButton.click();
+    await verifyLayout();
     await last.getByRole('button', { name: '确认删除' }).click();
     await expect(dialog.getByRole('article')).toHaveCount(11);
     await expect(dialog.getByRole('article').last().getByRole('button', { name: '载入存档' })).toBeFocused();
