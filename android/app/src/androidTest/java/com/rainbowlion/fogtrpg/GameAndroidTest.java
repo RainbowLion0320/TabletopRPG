@@ -243,6 +243,87 @@ public class GameAndroidTest {
         } finally { activity.close(); }
     }
 
+    @Test public void nativeSelectReturnPreservesUnsavedSettings() throws Exception {
+        fresh();
+        android.app.UiAutomation automation = InstrumentationRegistry.getInstrumentation().getUiAutomation();
+        android.accessibilityservice.AccessibilityServiceInfo info = automation.getServiceInfo();
+        int originalFlags = info.flags;
+        try {
+            int smallestWidth = context.getResources().getConfiguration().smallestScreenWidthDp;
+            if ("true".equals(InstrumentationRegistry.getArguments().getString("tabletSelect"))) {
+                assertTrue("The compatibility probe uses an actual tablet configuration", smallestWidth >= 600);
+            }
+            System.out.println("Select return fixture smallestWidthDp=" + smallestWidth);
+            info.flags |= android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;
+            automation.setServiceInfo(info);
+            viewport(390, 844); click("AI 设置"); until("document.querySelector('#api-model')");
+            fill("#api-model", "android-unsaved-model");
+            String[][] fields = {{"#api-provider", "自定义 / 兼容服务", "provider"}, {"#api-protocol", "Chat Completions compatible", "protocol"}};
+            for (String[] field : fields) {
+                nativeTap(field[0], 0, field[0] + " + svg");
+                assertNotNull("The actual Android choices appear", awaitNativeOption(automation, field[1]));
+                screenshot("native-select-options-" + field[2]);
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                until("document.querySelector('.api-config-card')&&document.querySelector('#api-provider').value==='mimo'&&document.querySelector('#api-protocol').value==='responses'&&document.querySelector('#api-model').value==='android-unsaved-model'");
+                reachable(".api-config-close"); screenshot("native-select-return-" + field[2]);
+                assertNull("One return dismisses only the choices", visibleNativeOption(automation, field[1]));
+            }
+            nativeTap("#api-provider", 0, "#api-provider + svg");
+            android.view.accessibility.AccessibilityNodeInfo custom = awaitNativeOption(automation, "自定义 / 兼容服务");
+            assertNotNull("Provider choices reopen after cancellation", custom);
+            nativeOptionTap(custom);
+            until("document.querySelector('#api-provider').value==='custom'&&document.querySelector('#api-protocol').value==='chat-completions'&&document.querySelector('#api-model').value===''");
+            fill("#api-model", "android-unsaved-model");
+            js("document.querySelector('#api-model').scrollIntoView({block:'center'})");
+            nativeTap("#api-model"); awaitSettledIme(true);
+            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+            awaitSettledIme(false);
+            assertEquals("Keyboard return retains the unsaved form", "true", js("Boolean(document.querySelector('.api-config-card'))&&document.querySelector('#api-model').value==='android-unsaved-model'"));
+            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+            until("!document.querySelector('.api-config-card')");
+            click("AI 设置");
+            until("document.querySelector('#api-provider')?.value==='mimo'&&document.querySelector('#api-model')?.value==='mimo-v2.6-pro'");
+            assertNoResizeErrors();
+        } finally {
+            info.flags = originalFlags; automation.setServiceInfo(info);
+            activity.close();
+        }
+    }
+
+    private android.view.accessibility.AccessibilityNodeInfo awaitNativeOption(android.app.UiAutomation automation, String text) {
+        long deadline = SystemClock.elapsedRealtime() + 5000;
+        android.view.accessibility.AccessibilityNodeInfo node;
+        do {
+            node = visibleNativeOption(automation, text);
+            if (node != null) return node;
+            SystemClock.sleep(100);
+        } while (SystemClock.elapsedRealtime() < deadline);
+        return null;
+    }
+
+    private void nativeOptionTap(android.view.accessibility.AccessibilityNodeInfo option) {
+        android.graphics.Rect bounds = new android.graphics.Rect();
+        option.getBoundsInScreen(bounds);
+        assertTrue("The native option has visible screen bounds", bounds.width() > 0 && bounds.height() > 0);
+        long now = SystemClock.uptimeMillis();
+        MotionEvent down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, bounds.centerX(), bounds.centerY(), 0);
+        MotionEvent up = MotionEvent.obtain(now, now + 80, MotionEvent.ACTION_UP, bounds.centerX(), bounds.centerY(), 0);
+        try {
+            InstrumentationRegistry.getInstrumentation().sendPointerSync(down);
+            InstrumentationRegistry.getInstrumentation().sendPointerSync(up);
+        } finally { down.recycle(); up.recycle(); }
+    }
+
+    private android.view.accessibility.AccessibilityNodeInfo visibleNativeOption(android.app.UiAutomation automation, String text) {
+        for (android.view.accessibility.AccessibilityWindowInfo window : automation.getWindows()) {
+            android.view.accessibility.AccessibilityNodeInfo root = window.getRoot();
+            if (root != null) for (android.view.accessibility.AccessibilityNodeInfo node : root.findAccessibilityNodeInfosByText(text)) {
+                if (node.isVisibleToUser() && text.contentEquals(node.getText() == null ? "" : node.getText())) return node;
+            }
+        }
+        return null;
+    }
+
     @Test public void portraitSelectionStaysSingleColumnOnWidePhones() throws Exception {
         // Dedicated QA canvas: at least 1400 x 2000 physical pixels at density 320.
         fresh();
