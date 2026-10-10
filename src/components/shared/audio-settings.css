@@ -19,9 +19,9 @@
 :root.fog-ui .audio-settings .audio-channel label { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0; margin: 6px 0 0; color: var(--text); font: 400 15px/1.4 var(--ui-font); }
 .audio-channel output { color: var(--text); font-variant-numeric: tabular-nums; }
 :root.fog-ui .audio-settings input[type='range'] { grid-column: 1 / -1; width: 100%; height: 44px; min-height: 44px; padding: 0; margin: 0; appearance: none; -webkit-appearance: none; background: transparent; border: 0; box-shadow: none; cursor: pointer; }
-.audio-settings input[type='range']::-webkit-slider-runnable-track { height: 6px; background: var(--panel-strong); border: 1px solid var(--line); border-radius: 3px; }
-.audio-settings input[type='range']::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 24px; height: 24px; margin-top: -10px; border: 0; background: var(--ui-control-stud) center / contain no-repeat; }
-.audio-settings input[type='range']::-moz-range-track { height: 6px; background: var(--panel-strong); border: 1px solid var(--line); border-radius: 3px; }
+.audio-settings input[type='range']::-webkit-slider-runnable-track { box-sizing: border-box; height: 28px; border: 0 solid transparent; border-image: var(--ui-gauge-frame) 0 64 fill / 0 25px / 0 stretch; background: transparent; }
+.audio-settings input[type='range']::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 24px; height: 24px; margin-top: 2px; border: 0; background: var(--ui-control-stud) center / contain no-repeat; }
+.audio-settings input[type='range']::-moz-range-track { box-sizing: border-box; height: 28px; border: 0 solid transparent; border-image: var(--ui-gauge-frame) 0 64 fill / 0 25px / 0 stretch; background: transparent; }
 .audio-settings input[type='range']::-moz-range-thumb { width: 24px; height: 24px; border: 0; background: var(--ui-control-stud) center / contain no-repeat; }
 .audio-settings input[type='range']:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: -2px; }
 :root.fog-ui .audio-settings input[type='range']:disabled { opacity: .45; cursor: default; }

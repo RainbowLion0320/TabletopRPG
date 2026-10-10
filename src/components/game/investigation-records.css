@@ -23,7 +23,7 @@
 .clock-row > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 15px; line-height: 1.7; }
 .clock-row strong { font-weight: 400; color: var(--accent); }
 .clock-row span { flex: 0 0 auto; color: var(--accent); font-variant-numeric: tabular-nums; }
-.clock-row progress { display: block; appearance: none; width: 100%; height: 28px; padding: 8px 0; border: solid transparent; border-width: 0 25px; border-image: url('../../../assets/ui/artist/clock-gauge.webp') 0 64 fill / 0 25px / 0 stretch; background: transparent; }
+.clock-row progress { display: block; appearance: none; width: 100%; height: 28px; padding: 8px 0; border: solid transparent; border-width: 0 25px; border-image: var(--ui-gauge-frame) 0 64 fill / 0 25px / 0 stretch; background: transparent; }
 .clock-row progress::-webkit-progress-bar { background: transparent; box-shadow: none; }
 .clock-row progress::-webkit-progress-value { background: linear-gradient(#d5e8ef, #abc4d6 50%, #648caa); box-shadow: inset 0 1px var(--accent); }
 .clock-row progress::-moz-progress-bar { background: linear-gradient(#d5e8ef, #abc4d6 50%, #648caa); }

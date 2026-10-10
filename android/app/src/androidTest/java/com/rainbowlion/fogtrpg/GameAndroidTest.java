@@ -1159,6 +1159,10 @@ public class GameAndroidTest {
             until("window.qaLoopStarts === 2");
             fill("input[aria-label='音乐音量']", "38"); fill("input[aria-label='音效音量']", "23");
             until("document.querySelector('input[aria-label=音乐音量]').getAttribute('aria-valuetext')==='38%' && document.querySelector('input[aria-label=音效音量]').getAttribute('aria-valuetext')==='23%'");
+            // Resolve CSS URL tokens through CSSOM; WebView custom-property text can contain escapes.
+            js("window.qaSoundGaugeLoaded=false;(()=>{const probe=document.createElement('span');probe.style.cssText='position:fixed;visibility:hidden;pointer-events:none;border-image-source:var(--ui-gauge-frame)';document.body.append(probe);const source=getComputedStyle(probe).borderImageSource,image=new Image();probe.remove();window.qaSoundGaugeProbe={source,done:false};image.onload=()=>{try{const canvas=document.createElement('canvas');canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;const context=canvas.getContext('2d');context.drawImage(image,0,0);const alpha=context.getImageData(0,0,1,1).data[3];Object.assign(window.qaSoundGaugeProbe,{width:image.naturalWidth,height:image.naturalHeight,alpha});window.qaSoundGaugeLoaded=source.includes('clock-gauge')&&image.naturalWidth===512&&image.naturalHeight===72&&alpha===0;}catch(error){window.qaSoundGaugeProbe.error=error.name;}window.qaSoundGaugeProbe.done=true;};image.onerror=()=>Object.assign(window.qaSoundGaugeProbe,{error:'load',done:true});image.src=source.slice(4,-1).replaceAll(String.fromCharCode(34),'').replaceAll(String.fromCharCode(39),'');window.qaSoundGaugeProbe.url=image.src;})()");
+            until("window.qaSoundGaugeProbe?.done");
+            assertEquals("Shared sound gauge decodes with transparency: " + js("window.qaSoundGaugeProbe"), "true", js("window.qaSoundGaugeLoaded"));
             assertEquals("Changing volumes keeps the two current loops running", "2", js("window.qaLoopStarts"));
             nativeTap(".audio-close"); until("!document.querySelector('.audio-settings')"); click("开始游戏"); click("进入游戏");
             until("document.querySelector('.dock-input')&&window.qaLoopStarts>=4&&window.qaActiveLoops===2");
@@ -1172,11 +1176,15 @@ public class GameAndroidTest {
             for (int[] size : new int[][] { {320,568}, {390,844}, {430,932}, {562,1000} }) {
                 viewport(size[0], size[1]);
                 assertEquals("Channel artwork and volume text stay readable", "true", js("getComputedStyle(document.querySelector('.audio-channel')).borderImageSource.includes('panel-frame')&&parseFloat(getComputedStyle(document.querySelector('.audio-channel label')).fontSize)>=15"));
+                js("document.querySelector('input[aria-label=音效音量]').scrollIntoView({block:'nearest'})");
+                reachable("input[aria-label='音效音量']"); nativeTap("input[aria-label='音效音量']");
+                until("Math.abs(Number(document.querySelector('input[aria-label=音效音量]').value)-50)<=1");
                 js("document.querySelector('.audio-preview').scrollIntoView({block:'nearest'})"); reachable(".audio-preview");
                 assertEquals("Preview has a touch-sized drawn control", "true", js("document.querySelector('.audio-preview').getBoundingClientRect().height>=44&&getComputedStyle(document.querySelector('.audio-preview'),'::before').borderImageSource.includes('button-secondary')"));
                 nativeTap(".audio-preview");
                 fill("input[aria-label='音效音量']", "0"); until("document.querySelector('.audio-preview').disabled");
                 fill("input[aria-label='音效音量']", "23"); until("!document.querySelector('.audio-preview').disabled");
+                js("document.querySelector('.audio-settings-body').scrollTop=0"); screenshot("audio-track-" + size[0]);
                 js("document.querySelector('.audio-credits summary').scrollIntoView({block:'nearest'})"); reachable(".audio-credits summary");
                 if (!"true".equals(js("document.querySelector('.audio-credits').open"))) nativeTap(".audio-credits summary");
                 until("document.querySelector('.audio-credits').open");

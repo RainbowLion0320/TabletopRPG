@@ -114,3 +114,5 @@ ffmpeg -i "动态bg.mp4" -an -c:v libvpx-vp9 -crf 28 -b:v 0 -deadline good -cpu-
 ## 局势量条精绘（0.5.42）
 
 单次内置 Image Gen，生成 ID `exec-9b2b5584-326c-428c-948c-f09b9dbdeb4e`，真实透明背景，原 PNG 2172×724 / 905,941 字节留在默认 generated_images 目录，不提交。PNG SHA256 `678bd19fb178cadc04b07f3dad1fc2d72f30fb0f5a519a62a6f91159ae748eb7`；裁除透明留白，以 alpha≥4 定界并保留 12px 缓冲，裁区 (20,212,2131,300)，仅做等比例压缩，WebP quality 94 / alphaQuality 100 / effort 6。运行时图 SHA256 `5af8aa630043a656dbed90444a846ea80ae66c19148e581e4db1f3a72c526b75`，512×72 / 15,092 字节，保留自然 alpha（原图 0–254）；没有抠图、重绘或颜色修改。量条使用左右 64px 的完整高度切片映射为 25×28px 两端，空白凹槽中段横向延展，动态数值仍由原生 progress 负责，不烘焙填充值或数字。见 [实际提示词](PROMPTS.md)。
+
+0.5.43 音乐/音效原生滑条与局势量条共用 `--ui-gauge-frame`，复用上述 512×72 WebP 和原 24px `control-stud.webp`，二十二张采用图片不变。滑条轨道 28px，绘制端饰宽 25px，实际横向 border 为 0，以保留 Chromium 的原生点击/拖动位置；珠头垂直居中于原 44px 控件，0/100 时覆盖端珠，数值仍由原生 range/百分比提供。已公开局势的 25px 实际边框/动态填充、名称与规则保持。没有重新生成、改色或增加图片。
