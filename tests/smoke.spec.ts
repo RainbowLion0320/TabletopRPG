@@ -1249,6 +1249,11 @@ for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height:
     await expect(page.getByText('先听懂对方诉求，再说服其释放埃里克。')).toHaveCount(0);
     await page.locator('.investigation-history summary').click();
     await expect(page.getByText('与伊莎贝拉确认委托和埃里克失踪的基本情况。')).toBeVisible();
+    await page.setViewportSize({ width: size.width, height: 300 });
+    const progressPage = page.locator('.info-drawer-page.progress-page');
+    await progressPage.evaluate(element => { element.scrollTop = element.scrollHeight; });
+    const progressPosition = await progressPage.evaluate(element => element.scrollTop);
+    expect(progressPosition).toBeGreaterThan(0);
     await page.getByRole('tab', { name: '日志' }).click();
     const list = page.getByRole('list', { name: '行动记录' });
     await expect(list.locator('li')).toHaveCount(60);
@@ -1257,10 +1262,14 @@ for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height:
     await list.evaluate(el => { el.scrollTop = 720; });
     await expect.poll(() => list.evaluate(el => el.scrollTop)).toBeGreaterThan(500);
     const position = await list.evaluate(el => el.scrollTop);
-    await page.getByRole('tab', { name: '进度' }).click(); await expect(current).toBeVisible();
+    await page.getByRole('tab', { name: '进度' }).click();
+    await page.screenshot({ path: testInfo.outputPath('progress-reading-return.png') });
+    await expect(page.locator('.investigation-history')).toHaveAttribute('open');
+    await expect.poll(() => progressPage.evaluate(element => element.scrollTop)).toBe(progressPosition);
+    expect((await header.boundingBox())!.y).toBeCloseTo(headerTop, 0);
+    await page.setViewportSize(size); await expect(current).toBeVisible();
     await page.getByRole('tab', { name: '日志' }).click();
     await expect.poll(() => list.evaluate(el => el.scrollTop)).toBeCloseTo(position, 0);
-    expect((await header.boundingBox())!.y).toBeCloseTo(headerTop, 0);
     const search = page.getByRole('searchbox', { name: '搜索行动日志' });
     await search.fill('调查记录60'); await expect(list.locator('li')).toHaveCount(1);
     await expect(list.locator('p')).toContainText('把看到的痕迹记在随身本上。');
@@ -1306,6 +1315,8 @@ for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height:
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.getByRole('button', { name: '资料', exact: true }).click();
     await page.getByRole('tab', { name: '进度' }).click(); await expect(current).toBeVisible();
+    await expect(page.locator('.investigation-history')).not.toHaveAttribute('open');
+    expect(await progressPage.evaluate(element => element.scrollTop)).toBe(0);
     await closeArchive();
     await expect(page.getByRole('button', { name: '资料', exact: true })).toBeFocused();
   });

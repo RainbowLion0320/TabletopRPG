@@ -24,6 +24,7 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
   const [activeTab, setActiveTab] = useState<InfoDrawerTab>(initialTab);
   const [logQuery, setLogQuery] = useState('');
   const logScrollPosition = useRef(0);
+  const progressReading = useRef<{ scrollTop: number; historyOpen?: boolean } | null>(null);
   const caseReadingState = useRef<CaseBoardReadingState | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const portrait = usePortraitLayout();
@@ -74,10 +75,26 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
 
   useEffect(() => {
     if (open) setActiveTab(initialTab);
-    else { setLogQuery(''); logScrollPosition.current = 0; caseReadingState.current = null; }
+    else { setLogQuery(''); logScrollPosition.current = 0; progressReading.current = null; caseReadingState.current = null; }
   }, [open, initialTab]);
 
-  useLayoutEffect(() => { if (pageRef.current) pageRef.current.scrollTop = 0; }, [activeTab]);
+  function selectTab(tab: InfoDrawerTab) {
+    if (activeTab === 'progress' && pageRef.current) {
+      progressReading.current = {
+        scrollTop: pageRef.current.scrollTop,
+        historyOpen: pageRef.current.querySelector<HTMLDetailsElement>('.investigation-history')?.open
+      };
+    }
+    setActiveTab(tab);
+  }
+  useLayoutEffect(() => {
+    const page = pageRef.current;
+    if (!page) return;
+    const reading = open && activeTab === 'progress' ? progressReading.current : null;
+    const history = page.querySelector<HTMLDetailsElement>('.investigation-history');
+    if (history && reading?.historyOpen !== undefined) history.open = reading.historyOpen;
+    page.scrollTop = reading?.scrollTop ?? 0;
+  }, [activeTab, open]);
 
   useEffect(() => {
     if (drawerRef.current) drawerRef.current.inert = !open;
@@ -92,7 +109,7 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
         : event.key === 'Home' ? 0 : event.key === 'End' ? drawerTabs.length - 1 : -1;
     if (next < 0) return;
     event.preventDefault();
-    setActiveTab(drawerTabs[next][0]);
+    selectTab(drawerTabs[next][0]);
     drawerRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
   }
 
@@ -144,7 +161,7 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
           <nav className="info-drawer-tabs" role="tablist" aria-label="资料视图">
             {drawerTabs.map(([tab, label], index) => <button key={tab} type="button" role="tab" id={`${id}-${tab}`} aria-controls={`${id}-page`}
               aria-selected={activeTab === tab} tabIndex={activeTab === tab ? 0 : -1} className={activeTab === tab ? 'active' : ''}
-              onClick={() => setActiveTab(tab)} onKeyDown={(event) => changeTabWithKey(event, index)}>{label}</button>)}
+              onClick={() => selectTab(tab)} onKeyDown={(event) => changeTabWithKey(event, index)}>{label}</button>)}
           </nav>
           <button aria-label="关闭资料" onClick={onClose} title="关闭"><X size={18} /></button>
         </header>
