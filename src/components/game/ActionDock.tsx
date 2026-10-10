@@ -190,8 +190,8 @@ function PartyStatusStrip({ state, canDeclare, portrait, onInspectPlayer }: Pick
       if (!strip || !active || !strip.clientWidth || strip.scrollWidth <= strip.clientWidth) return;
       const card = active.getBoundingClientRect(), viewport = strip.getBoundingClientRect();
       // Move only the horizontal strip; keep the story, input and manual reading in place.
-      if (card.left < viewport.left) strip.scrollLeft += card.left - viewport.left;
-      else if (card.right > viewport.right) strip.scrollLeft += card.right - viewport.right;
+      if (card.left < viewport.left) strip.scrollLeft = Math.floor(strip.scrollLeft + card.left - viewport.left);
+      else if (card.right > viewport.right) strip.scrollLeft = Math.ceil(strip.scrollLeft + card.right - viewport.right);
     };
     revealActor();
     window.addEventListener('resize', revealActor);

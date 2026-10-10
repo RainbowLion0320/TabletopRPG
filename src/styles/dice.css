@@ -5,6 +5,10 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
+  /* Match the supplied glyphs' 800/-200 em box, rather than the taller Win metrics. */
+  ascent-override: 80%;
+  descent-override: 20%;
+  line-gap-override: 0%;
 }
 
 .dice-roll-overlay {

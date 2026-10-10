@@ -103,13 +103,17 @@ public class GameAndroidTest {
         nativeTap(selector, 0);
     }
     private void nativeTap(String selector, int driftCssY) throws Exception {
+        nativeTap(selector, driftCssY, selector);
+    }
+    private void nativeTap(String selector, int driftCssY, String pointSelector) throws Exception {
         reachable(selector);
         CountDownLatch painted = new CountDownLatch(1);
         activity.onActivity(a -> a.getBridge().getWebView().postVisualStateCallback(SystemClock.uptimeMillis(), new WebView.VisualStateCallback() {
             @Override public void onComplete(long requestId) { painted.countDown(); }
         }));
         assertTrue("The target DOM has been drawn before sending real touch", painted.await(10, TimeUnit.SECONDS));
-        org.json.JSONArray point = new org.json.JSONArray(js("(()=>{const r=document.querySelector(" + JSONObject.quote(selector) + ").getBoundingClientRect();return [(r.x+r.width/2)*devicePixelRatio,(r.y+r.height/2)*devicePixelRatio,devicePixelRatio]})()"));
+        if (!selector.equals(pointSelector)) assertEquals("The requested touch point reaches its original control", "true", js("(()=>{const e=document.querySelector(" + JSONObject.quote(selector) + "),r=document.querySelector(" + JSONObject.quote(pointSelector) + ").getBoundingClientRect();return e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))})()"));
+        org.json.JSONArray point = new org.json.JSONArray(js("(()=>{const r=document.querySelector(" + JSONObject.quote(pointSelector) + ").getBoundingClientRect();return [(r.x+r.width/2)*devicePixelRatio,(r.y+r.height/2)*devicePixelRatio,devicePixelRatio]})()"));
         long now = SystemClock.uptimeMillis();
         MotionEvent down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, (float) point.getDouble(0), (float) point.getDouble(1), 0);
         float endY = (float) (point.getDouble(1) + driftCssY * point.getDouble(2));
@@ -300,6 +304,38 @@ public class GameAndroidTest {
                 for (String field : new String[] {"#api-provider", "#api-key", "#api-model", ".api-connection summary"}) reachable(field);
                 reachable(".api-config-close");
                 reachable(".api-config-card footer .primary-btn"); screenshot(prefix + "-api");
+                if (size[0] == 390) {
+                    android.app.UiAutomation automation = InstrumentationRegistry.getInstrumentation().getUiAutomation();
+                    android.accessibilityservice.AccessibilityServiceInfo info = automation.getServiceInfo();
+                    int originalFlags = info.flags;
+                    // The native select popup is a separate interactive window, not the active WebView root.
+                    info.flags |= android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;
+                    automation.setServiceInfo(info);
+                    try {
+                        fill("#api-model", "android-unsaved-model");
+                        nativeTap("#api-provider", 0, "#api-provider + svg");
+                        boolean optionsVisible = false;
+                        long optionDeadline = SystemClock.elapsedRealtime() + 5000;
+                        do {
+                            for (android.view.accessibility.AccessibilityWindowInfo window : automation.getWindows()) {
+                                android.view.accessibility.AccessibilityNodeInfo root = window.getRoot();
+                                if (root != null) for (android.view.accessibility.AccessibilityNodeInfo node : root.findAccessibilityNodeInfosByText("自定义 / 兼容服务")) if (node.isVisibleToUser()) optionsVisible = true;
+                            }
+                            if (!optionsVisible) SystemClock.sleep(100);
+                        } while (!optionsVisible && SystemClock.elapsedRealtime() < optionDeadline);
+                        screenshot("api-provider-options");
+                        assertTrue("Touching the decorative caret opens the real Android provider choices", optionsVisible);
+                        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                        until("document.querySelector('.api-config-card')&&document.querySelector('#api-provider').value==='mimo'&&document.querySelector('#api-model').value==='android-unsaved-model'");
+                        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                        until("!document.querySelector('.api-config-card')");
+                        click("AI 设置");
+                        until("document.querySelector('#api-provider')?.value==='mimo'&&document.querySelector('#api-model')?.value==='mimo-v2.6-pro'");
+                    } finally {
+                        info.flags = originalFlags;
+                        automation.setServiceInfo(info);
+                    }
+                }
                 // No real API credentials or network dependency in layout probes.
                 configure("http://127.0.0.1:1/v1", "responses");
                 click("开始游戏");
@@ -830,7 +866,9 @@ public class GameAndroidTest {
                         assertEquals("Next investigator can keep typing immediately", "true", js("document.activeElement===document.querySelector('.dock-input')"));
                         assertEquals("Completed actor is indicated", "true", js("document.querySelectorAll('.party-compact')[" + i + "].textContent.includes('已提交')"));
                         if (party == 4) {
-                            assertEquals("The next actor is fully exposed without scrolling the story", "true", js("(()=>{const a=document.querySelector('.party-compact[aria-current=step]'),r=a.getBoundingClientRect(),s=a.parentElement.getBoundingClientRect();return r.left>=s.left-.5&&r.right<=s.right+.5&&document.documentElement.scrollWidth<=innerWidth})()"));
+                            String exposed = js("(()=>{const a=document.querySelector('.party-compact[aria-current=step]'),r=a.getBoundingClientRect(),s=a.parentElement.getBoundingClientRect();return r.left>=s.left-.5&&r.right<=s.right+.5&&document.documentElement.scrollWidth<=innerWidth})()");
+                            if (!"true".equals(exposed)) screenshot("party-scroll-diagnostic");
+                            assertEquals("The next actor is fully exposed without scrolling the story: " + js("(()=>{const a=document.querySelector('.party-compact[aria-current=step]'),p=a.parentElement;return {actor:a.textContent,card:a.getBoundingClientRect().toJSON(),strip:p.getBoundingClientRect().toJSON(),scrollLeft:p.scrollLeft,scrollWidth:p.scrollWidth,clientWidth:p.clientWidth,gap:getComputedStyle(p).gap,snap:getComputedStyle(p).scrollSnapType,pageWidth:document.documentElement.scrollWidth,innerWidth}})()"), "true", exposed);
                             if (i == 2) screenshot("compact-four-last-actor");
                         }
                         readablePartyDossiers();
@@ -1034,6 +1072,8 @@ public class GameAndroidTest {
             until("document.querySelector('.dice-roll-overlay.revealed')");
             assertEquals("\"100\"", js("document.querySelector('.dice-roll-total').textContent"));
             assertEquals("\"大失败\"", js("document.querySelector('.dice-roll-outcome h3').textContent"));
+            until("document.fonts.status==='loaded'");
+            assertEquals("The actual result glyphs are centered in the painted result slot", "true", js("(()=>{const label=document.querySelector('.dice-roll-outcome h3'),range=document.createRange();range.selectNodeContents(label);const text=range.getBoundingClientRect(),slot=label.parentElement.getBoundingClientRect(),style=getComputedStyle(label),canvas=document.createElement('canvas').getContext('2d');canvas.font=style.fontWeight+' '+style.fontSize+' '+style.fontFamily;const glyph=canvas.measureText(label.textContent);return Math.abs(text.top+glyph.fontBoundingBoxAscent+(glyph.actualBoundingBoxDescent-glyph.actualBoundingBoxAscent)/2-(slot.top+slot.height/2))<=1.5})()"));
             screenshot("locked-fumble-restored");
             click("确认结果"); until("document.body.innerText.includes('本轮行动已保留')");
             assertEquals("One player action after network failure", "1", js("document.querySelectorAll('.story-message.player').length"));

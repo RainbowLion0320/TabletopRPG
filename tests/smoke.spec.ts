@@ -1771,6 +1771,7 @@ test('painted dice keeps normal results readable on phones, a short keyboard win
   await expect(dialog).toHaveClass(/revealed/, { timeout: 5_000 });
   await expect(dialog.locator('.dice-roll-total')).toHaveText('55');
   await expect(dialog.getByRole('heading', { name: '普通成功' })).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
   const confirm = dialog.getByRole('button', { name: '确认结果' });
   for (const size of [{ width: 390, height: 844 }, { width: 430, height: 932 }, { width: 320, height: 300 }, { width: 1440, height: 900 }]) {
     await page.setViewportSize(size);
@@ -1788,6 +1789,16 @@ test('painted dice keeps normal results readable on phones, a short keyboard win
         confirmReachable: confirm.height >= 48 && confirm.top >= 0 && confirm.bottom <= innerHeight
       };
     })).toEqual({ cardFits: true, resultFits: true, digitsReadable: true, resultReadable: true, confirmReachable: true });
+    // Measure the painted glyphs, not only the line box that flex has centered.
+    const inkOffset = await dialog.locator('.dice-roll-outcome h3').evaluate(label => {
+      const range = document.createRange(); range.selectNodeContents(label);
+      const text = range.getBoundingClientRect(), slot = label.parentElement!.getBoundingClientRect();
+      const style = getComputedStyle(label), canvas = document.createElement('canvas').getContext('2d')!;
+      canvas.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+      const glyph = canvas.measureText(label.textContent!);
+      return text.top + glyph.fontBoundingBoxAscent + (glyph.actualBoundingBoxDescent - glyph.actualBoundingBoxAscent) / 2 - (slot.top + slot.height / 2);
+    });
+    expect(Math.abs(inkOffset)).toBeLessThanOrEqual(1.5);
     await expect(confirm).toBeFocused();
     await page.screenshot({ path: testInfo.outputPath(`dice-${size.width}x${size.height}.png`) });
   }

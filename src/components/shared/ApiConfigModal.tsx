@@ -138,6 +138,7 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
         <fieldset className="api-config-controls" disabled={saving}>
         <div className="api-field">
           <label htmlFor="api-provider">服务商</label>
+          <div className="api-select">
           <select
             id="api-provider"
             value={config.provider}
@@ -147,6 +148,8 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
             <option value="mimo">MiMo</option>
             <option value="custom">自定义 / 兼容服务</option>
           </select>
+          <ChevronDown size={16} aria-hidden="true" />
+          </div>
         </div>
         <div className="api-key-field">
           <label htmlFor="api-key">API Key</label>
@@ -189,10 +192,13 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
           </div>
           <div className="api-field">
             <label htmlFor="api-protocol">协议</label>
+            <div className="api-select">
             <select id="api-protocol" value={config.protocol} onChange={(event) => update({ protocol: event.target.value as AiProtocol })}>
               <option value="responses">OpenAI Responses</option>
               <option value="chat-completions">Chat Completions compatible</option>
             </select>
+            <ChevronDown size={16} aria-hidden="true" />
+            </div>
           </div>
           </div>
         </details>
