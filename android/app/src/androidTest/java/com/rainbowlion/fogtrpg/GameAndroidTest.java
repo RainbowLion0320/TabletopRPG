@@ -1255,12 +1255,14 @@ public class GameAndroidTest {
             assertEquals("Loops loaded during device suspension do not start yet", "0", js("window.qaLoopStarts||0"));
             js("window.qaAudio.resume()");
             until("window.qaLoopStarts === 2");
+            js("window.qaBackgroundVolumeChanged=false;document.addEventListener('visibilitychange',()=>{if(!document.hidden||window.qaBackgroundVolumeChanged)return;const input=document.querySelector('input[aria-label=音乐音量]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'38');input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));window.qaBackgroundVolumeChanged=true;})");
             js("window.qaPausedAt=null;window.qaResumeAt=null;window.qaAudio.addEventListener('statechange',()=>{if(window.qaAudio.state==='suspended')window.qaPausedAt=window.qaAudio.currentTime;else if(window.qaAudio.state==='running'&&window.qaPausedAt!==null)window.qaResumeAt=window.qaAudio.currentTime;})");
             activity.moveToState(androidx.lifecycle.Lifecycle.State.CREATED);
             SystemClock.sleep(300);
             activity.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED);
             until("window.qaAudio.state==='running'&&window.qaResumeAt!==null");
             assertEquals("Android background return continues both existing loops", "2", js("window.qaLoopStarts"));
+            assertEquals("A volume update during Android backgrounding keeps both current tracks", "true", js("window.qaBackgroundVolumeChanged&&document.querySelector('input[aria-label=音乐音量]').value==='38'"));
             assertEquals("Android audio time pauses rather than seeking back to the beginning", "true", js("window.qaResumeAt>=window.qaPausedAt&&window.qaResumeAt-window.qaPausedAt<.12"));
             screenshot("audio-paused-phase-return");
             fill("input[aria-label='音乐音量']", "38"); fill("input[aria-label='音效音量']", "23");

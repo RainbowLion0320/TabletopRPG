@@ -141,7 +141,11 @@ export class AudioEngine {
   }
 
   private canPlay(lane: Lane): boolean {
-    return this.visible && this.unlocked && (lane === 'music'
+    return this.visible && this.channelEnabled(lane);
+  }
+
+  private channelEnabled(lane: Lane): boolean {
+    return this.unlocked && (lane === 'music'
       ? this.settings.musicEnabled && this.settings.musicVolume > 0
       : this.settings.effectsEnabled && this.settings.effectsVolume > 0);
   }
@@ -164,6 +168,8 @@ export class AudioEngine {
 
   private syncLane(lane: Lane): void {
     const asset = this.desired[lane];
+    // A background scene update can change only one lane; keep other suspended loops.
+    if (!this.visible && this.loops.get(lane)?.asset === asset && this.channelEnabled(lane)) return;
     if (!asset || !this.canPlay(lane)) {
       this.generations[lane]++;
       delete this.pending[lane];

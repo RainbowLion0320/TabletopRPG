@@ -80,6 +80,37 @@ describe('audio preferences', () => {
 });
 
 describe('audio lifetime and races', () => {
+  it('keeps an unchanged music track when the scene ambience changes in the background', async () => {
+    engine.setSoundscape({ music: 'investigation', ambience: 'rain' }); engine.unlock(); await flush();
+    const context = Context.instances[0], [music, rain] = context.sources;
+    engine.setVisible(false); await flush();
+    engine.setSoundscape({ music: 'investigation', ambience: 'room' }); await flush();
+    expect(music.stop).not.toHaveBeenCalled();
+    expect(rain.stop).toHaveBeenCalledTimes(1);
+    expect(context.sources).toHaveLength(2);
+    expect(context.gains.slice(0, 2).map(bus => bus.gain.value)).toEqual([0, 0]);
+    engine.setVisible(true); await flush();
+    expect(context.sources).toHaveLength(3);
+    expect(music.start).toHaveBeenCalledTimes(1);
+    expect(context.sources[2].buffer?.id).toBe(ids[audioAssets.room]);
+  });
+
+  it('changes background volumes without restarting tracks and releases only the disabled channel', async () => {
+    engine.setSoundscape({ music: 'investigation', ambience: 'rain' }); engine.unlock(); await flush();
+    const context = Context.instances[0], [music, rain] = context.sources;
+    engine.setVisible(false); await flush();
+    engine.updateSettings({ musicVolume: .6, effectsVolume: .7 }); await flush();
+    expect(music.stop).not.toHaveBeenCalled();
+    expect(rain.stop).not.toHaveBeenCalled();
+    expect(context.gains.slice(0, 2).map(bus => bus.gain.value)).toEqual([0, 0]);
+    engine.updateSettings({ effectsEnabled: false }); await flush();
+    expect(music.stop).not.toHaveBeenCalled();
+    expect(rain.stop).toHaveBeenCalledTimes(1);
+    engine.setVisible(true); await flush();
+    expect(context.sources).toHaveLength(2);
+    expect(context.gains.slice(0, 2).map(bus => bus.gain.value)).toEqual([.6, 0]);
+  });
+
   it('keeps playing loop phases while backgrounded and resumes without restarting either track', async () => {
     engine.setSoundscape({ music: 'theme', ambience: 'rain' }); engine.unlock(); await flush();
     const context = Context.instances[0], loops = context.sources.filter(source => source.loop);

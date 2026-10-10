@@ -3,6 +3,49 @@ import { readFileSync } from 'node:fs';
 
 const manifest = JSON.parse(readFileSync('assets/audio/manifest.json', 'utf8')) as Array<{ file: string; seconds: number }>;
 
+test('background screen changes retain the unchanged music while releasing the old ambience', async ({ page }) => {
+  await page.route('**/*', route => {
+    if (route.request().method() === 'POST') return route.abort();
+    if (new URL(route.request().url()).pathname === '/__api_config') return route.fulfill({ status: 404, body: '' });
+    return route.continue();
+  });
+  await page.addInitScript(() => {
+    const OriginalContext = window.AudioContext;
+    const probe = { context: null as AudioContext | null, loops: [] as Array<{ source: AudioBufferSourceNode; starts: number; stops: number }> };
+    (window as Window & { audioSceneProbe?: typeof probe }).audioSceneProbe = probe;
+    window.AudioContext = class extends OriginalContext {
+      constructor() { super(); probe.context = this; }
+      createBufferSource() {
+        const source = super.createBufferSource(), start = source.start.bind(source), stop = source.stop.bind(source);
+        const loop = { source, starts: 0, stops: 0 };
+        source.start = (...args) => { if (source.loop) { loop.starts++; probe.loops.push(loop); } return start(...args); };
+        source.stop = (...args) => { if (source.loop) loop.stops++; return stop(...args); };
+        return source;
+      }
+    };
+  });
+  const output = () => page.evaluate(() => {
+    const p = (window as Window & { audioSceneProbe?: { context: AudioContext | null; loops: Array<{ source: AudioBufferSourceNode; starts: number; stops: number }> } }).audioSceneProbe!;
+    return { state: p.context?.state, loops: p.loops.map(loop => ({ starts: loop.starts, stops: loop.stops, music: (loop.source.buffer?.duration ?? 0) > 45 })) };
+  });
+  await page.goto('/'); await page.getByRole('button', { name: '声音设置', exact: true }).click();
+  await expect.poll(async () => (await output()).loops.length).toBe(2);
+  await page.getByRole('button', { name: '关闭声音设置', exact: true }).click();
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true }); document.dispatchEvent(new Event('visibilitychange'));
+    // A controlled React screen update exercises the director while the device is paused.
+    Array.from(document.querySelectorAll('button')).find(button => button.textContent?.trim() === '开始游戏')!.click();
+  });
+  await expect(page.locator('.preset-card-modern').first()).toBeVisible();
+  await expect.poll(async () => (await output()).state).toBe('suspended');
+  const paused = await output();
+  expect(paused.loops.find(loop => loop.music)).toEqual({ starts: 1, stops: 0, music: true });
+  expect(paused.loops.find(loop => !loop.music)?.stops).toBe(1);
+  await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, value: false }); document.dispatchEvent(new Event('visibilitychange')); });
+  await expect.poll(async () => (await output()).state).toBe('running');
+  expect((await output()).loops).toEqual(paused.loops);
+});
+
 test('background pause keeps the current music and ambience positions without starting new loops', async ({ page }) => {
   await page.route('**/*', route => {
     if (route.request().method() === 'POST') return route.abort();
