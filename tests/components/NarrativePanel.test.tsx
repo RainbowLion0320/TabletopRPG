@@ -106,6 +106,30 @@ describe('NarrativePanel', () => {
     expect(dmMessage?.querySelector('.message-label')?.textContent).toBe('AI DM');
   });
 
+  it('keeps cached player lines current across draft edits, identity changes and corrected messages', () => {
+    const state = makeState();
+    const player = state.players[0];
+    state.messages = [{ id: 'player-line', type: 'player', playerName: player.name, text: '检查门廊。' }];
+    const firstOpen = vi.fn(), nextOpen = vi.fn();
+    const { rerender } = render(<NarrativePanel state={state} onMarkOpen={firstOpen} />);
+    rerender(<NarrativePanel state={{ ...state, declarations: { [player.id]: '保留多行草稿。' } }} onMarkOpen={nextOpen} />);
+    fireEvent.click(screen.getByRole('button', { name: `查看${player.name}详情` }));
+    expect(firstOpen).not.toHaveBeenCalled();
+    expect(nextOpen).toHaveBeenLastCalledWith(expect.objectContaining({ id: player.id, canonicalName: player.name }), '检查门廊。');
+    player.id = 'replacement-player';
+    rerender(<NarrativePanel state={state} onMarkOpen={nextOpen} />);
+    fireEvent.click(screen.getByRole('button', { name: `查看${player.name}详情` }));
+    expect(nextOpen).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'replacement-player', canonicalName: player.name }), '检查门廊。');
+    player.name = '新的调查员';
+    state.messages[0].playerName = player.name;
+    state.messages[0].text = '补充窗边观察。';
+    rerender(<NarrativePanel state={state} onMarkOpen={nextOpen} />);
+    fireEvent.click(screen.getByRole('button', { name: '查看新的调查员详情' }));
+    expect(nextOpen).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'replacement-player', canonicalName: '新的调查员' }), '补充窗边观察。');
+    expect(screen.getByText('补充窗边观察。')).toBeInTheDocument();
+    expect(screen.queryByText('检查门廊。')).toBeNull();
+  });
+
   it('renders deterministic and LLM marks without changing the original text', () => {
     const state = makeState();
     state.messages = [{

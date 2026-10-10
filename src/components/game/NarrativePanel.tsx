@@ -1,6 +1,6 @@
-import { memo, useCallback, useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { memo, useCallback, useId, useLayoutEffect, useRef, useState, type CSSProperties, type Ref } from 'react';
 import { ChevronDown, Expand, Shrink } from 'lucide-react';
-import type { GameState, NarrativeKeywordHint } from '../../types/game';
+import type { GameState, NarrativeKeywordHint, NarrativeMessage } from '../../types/game';
 import { storyData } from '../../data/storyData';
 import {
   createNarrativeMarkup,
@@ -69,6 +69,41 @@ const RichNarrativeText = memo(function RichNarrativeText({ text, keywords, incl
   && before.includeLlmKeywords === after.includeLlmKeywords
   && before.markup.signature === after.markup.signature
   && before.onMarkOpen === after.onMarkOpen);
+
+interface StoryMessageProps {
+  id: string;
+  type: NarrativeMessage['type'];
+  text: string;
+  playerName?: string;
+  playerId?: string;
+  keywords?: NarrativeKeywordHint[];
+  keywordsKey?: string;
+  markup: NarrativeMarkup;
+  onMarkOpen: NonNullable<NarrativePanelProps['onMarkOpen']>;
+  elementRef?: Ref<HTMLDivElement>;
+}
+
+const StoryMessage = memo(function StoryMessage({ id, type, text, playerName, playerId, keywords, keywordsKey, markup, onMarkOpen, elementRef }: StoryMessageProps) {
+  const richText = <RichNarrativeText text={text} keywords={keywords} keywordsKey={keywordsKey}
+    includeLlmKeywords={type === 'dm'} onMarkOpen={onMarkOpen} markup={markup} />;
+  return <div className={`story-message ${type}`} data-message-id={id} ref={elementRef}>
+    {type === 'dm' ? <div className="message-label">AI DM</div> : null}
+    {type === 'player' ? <p className="player-message-line">
+      <button aria-label={`查看${playerName ?? '玩家'}详情`} className="player-inline-name narrative-mark narrative-mark-person"
+        onClick={() => {
+          if (!playerId || !playerName) return;
+          onMarkOpen({ kind: 'person', id: playerId, label: playerName, source: 'deterministic', canonicalName: playerName }, text);
+        }} style={{ '--person-color': markup.personColor(playerName ?? '玩家') } as CSSProperties} type="button">
+        {playerName ?? '玩家'}
+      </button>
+      <span className="player-inline-separator">：</span>
+      <span className="player-message-text">{richText}</span>
+    </p> : <p>{richText}</p>}
+  </div>;
+}, (before, after) => before.id === after.id && before.type === after.type && before.text === after.text
+  && before.playerName === after.playerName && before.playerId === after.playerId
+  && before.keywordsKey === after.keywordsKey && before.markup.signature === after.markup.signature
+  && before.onMarkOpen === after.onMarkOpen && before.elementRef === after.elementRef);
 
 export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -171,42 +206,10 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
         {visibleMessages.map((message, index) => {
           const keywords = message.type === 'dm' ? message.keywords : undefined;
           // A primitive snapshot also notices in-place hint changes on old records.
-          const richText = <RichNarrativeText text={message.text} keywords={keywords}
-            keywordsKey={keywords?.length ? JSON.stringify(keywords) : undefined}
-            includeLlmKeywords={message.type === 'dm'} onMarkOpen={openMark} markup={markup} />;
-          return (
-            <div
-              className={`story-message ${message.type}`}
-              key={message.id}
-              data-message-id={message.id}
-              ref={index === visibleMessages.length - 1 ? latestMessageRef : undefined}
-            >
-              {message.type === 'dm' ? <div className="message-label">AI DM</div> : null}
-              {message.type === 'player' ? (
-                <p className="player-message-line">
-                  <button
-                    aria-label={`查看${message.playerName ?? '玩家'}详情`}
-                    className="player-inline-name narrative-mark narrative-mark-person"
-                    onClick={() => {
-                      const player = state.players.find((item) => item.name === message.playerName);
-                      if (!player) return;
-                      onMarkOpen?.({
-                        kind: 'person', id: player.id, label: player.name, source: 'deterministic', canonicalName: player.name
-                      }, message.text);
-                    }}
-                    style={{ '--person-color': markup.personColor(message.playerName ?? '玩家') } as CSSProperties}
-                    type="button"
-                  >
-                    {message.playerName ?? '玩家'}
-                  </button>
-                  <span className="player-inline-separator">：</span>
-                  <span className="player-message-text">{richText}</span>
-                </p>
-              ) : (
-                <p>{richText}</p>
-              )}
-            </div>
-          );
+          return <StoryMessage key={message.id} id={message.id} type={message.type} text={message.text}
+            playerName={message.playerName} playerId={state.players.find((player) => player.name === message.playerName)?.id}
+            keywords={keywords} keywordsKey={keywords?.length ? JSON.stringify(keywords) : undefined}
+            markup={markup} onMarkOpen={openMark} elementRef={index === visibleMessages.length - 1 ? latestMessageRef : undefined} />;
         })}
       </div>
       {state.isThinking ? <ThinkingIndicator /> : null}
