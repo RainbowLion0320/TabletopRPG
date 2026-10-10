@@ -257,6 +257,9 @@ public class GameAndroidTest {
             info.flags |= android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;
             automation.setServiceInfo(info);
             viewport(390, 844); click("AI 设置"); until("document.querySelector('#api-model')");
+            assertEquals("Bundled connection details stay collapsed", "true", js("!document.querySelector('.api-connection').open"));
+            screenshot("native-bundled-compact-connection");
+            nativeTap(".api-connection summary"); until("document.querySelector('.api-connection').open");
             fill("#api-model", "android-unsaved-model");
             String[][] fields = {{"#api-provider", "自定义 / 兼容服务", "provider"}, {"#api-protocol", "Chat Completions compatible", "protocol"}};
             for (String[] field : fields) {
@@ -386,7 +389,7 @@ public class GameAndroidTest {
                 click("AI 设置");
                 until("document.querySelector('.api-config-fields')");
                 titlePlayback(true);
-                assertEquals("Bundled MiMo settings are quiet, masked and show the correct connection", "true", js("!document.querySelector('.api-config-card [role=alert]')&&document.querySelector('#api-provider').value==='mimo'&&document.querySelector('#api-model').value==='mimo-v2.6-pro'&&document.querySelector('#api-key').type==='password'&&document.querySelector('.api-connection').open"));
+                assertEquals("Bundled MiMo settings are quiet, masked and keep advanced connection fields collapsed", "true", js("!document.querySelector('.api-config-card [role=alert]')&&document.querySelector('#api-provider').value==='mimo'&&document.querySelector('#api-model').value==='mimo-v2.6-pro'&&document.querySelector('#api-key').type==='password'&&!document.querySelector('.api-connection').open"));
                 for (String field : new String[] {"#api-provider", "#api-key", "#api-model", ".api-connection summary"}) reachable(field);
                 reachable(".api-config-close");
                 reachable(".api-config-card footer .primary-btn"); screenshot(prefix + "-api");

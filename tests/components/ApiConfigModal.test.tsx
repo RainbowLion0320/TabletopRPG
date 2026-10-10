@@ -126,6 +126,35 @@ describe('ApiConfigModal', () => {
     expect(screen.getByLabelText('模型')).toHaveValue('gateway-model');
   });
 
+  it('keeps the bundled MiMo connection compact while exposing saved connection overrides without changing them', () => {
+    const baseline = { provider: 'mimo', protocol: 'responses', endpoint: 'https://bundled-mimo.example/v1', apiKey: 'public-test-key', model: 'public-test-model' };
+    vi.stubEnv('VITE_AI_PROVIDER', baseline.provider);
+    vi.stubEnv('VITE_AI_PROTOCOL', baseline.protocol);
+    vi.stubEnv('VITE_AI_ENDPOINT', baseline.endpoint);
+    vi.stubEnv('VITE_AI_API_KEY', baseline.apiKey);
+    vi.stubEnv('VITE_AI_MODEL', baseline.model);
+    try {
+      const callbacks = { onClose: vi.fn(), onSave: vi.fn() };
+      const view = render(<ApiConfigModal open {...callbacks} />);
+      const connection = screen.getByText('连接设置').closest('details')!;
+      expect(connection).not.toHaveAttribute('open');
+      expect(screen.getByLabelText('API Key')).toHaveAttribute('type', 'password');
+      expect(screen.getByLabelText('模型')).toHaveValue(baseline.model);
+      connection.open = true; fireEvent(connection, new Event('toggle'));
+      expect(screen.getByLabelText('服务地址（Endpoint）')).toHaveValue(baseline.endpoint);
+      expect(screen.getByLabelText('协议')).toHaveValue(baseline.protocol);
+      view.rerender(<ApiConfigModal open={false} {...callbacks} />);
+      const saved = { ...baseline, endpoint: 'https://player-gateway.example/v1' };
+      const encoded = JSON.stringify(saved); window.localStorage.setItem('trpg-api', encoded);
+      view.rerender(<ApiConfigModal open {...callbacks} />);
+      expect(screen.getByText('连接设置').closest('details')).toHaveAttribute('open');
+      expect(screen.getByLabelText('服务地址（Endpoint）')).toHaveValue(saved.endpoint);
+      expect(screen.getByLabelText('协议')).toHaveValue(saved.protocol);
+      expect(window.localStorage.getItem('trpg-api')).toBe(encoded);
+      expect(callbacks.onSave).not.toHaveBeenCalled();
+    } finally { vi.unstubAllEnvs(); }
+  });
+
   it('masks the key by default and resets the reveal state when reopened', () => {
     const props = { onClose: vi.fn(), onSave: vi.fn() };
     const { rerender } = render(<ApiConfigModal open {...props} />);

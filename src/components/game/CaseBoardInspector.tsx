@@ -6,7 +6,7 @@ import { storyData } from '../../data/storyData';
 import { getClueDetail, getNpcDetail } from '../../dm/entityDetail';
 import type { GameState } from '../../types/game';
 import type { CaseBoardDisplayEdge, CaseBoardDisplayNode, CaseBoardGraphModel } from './caseBoardGraph';
-import { caseRecordImage } from './caseBoardPresentation';
+import { caseRecordImage, caseRecordText } from './caseBoardPresentation';
 import { RecordDetailMedia } from './RecordDetailMedia';
 import './record-detail.css';
 
@@ -57,15 +57,18 @@ function sourceLines(
   const lines: string[] = [];
   refs.sourceClueIds.forEach((id) => {
     const clue = state.clues.find((item) => item.id === id) ?? storyData.items[id];
-    if (clue) lines.push(`物证：${clue.name}`);
+    if (clue) lines.push(`物证：${caseRecordText(clue.name, state.players)}`);
   });
   refs.sourceFactIds.forEach((id) => {
     const fact = state.atomicFacts?.find((item) => item.id === id);
-    if (fact) lines.push(`第 ${fact.turn} 回合：${fact.actor}${fact.target ? `与${fact.target}` : ''}，${fact.value}`);
+    if (fact) {
+      const actor = state.players.find(player => player.id === fact.actor)?.name ?? (fact.actor === 'world' ? '现场' : fact.actor);
+      lines.push(`第 ${fact.turn} 回合：${actor}${fact.target ? `与${caseRecordText(fact.target, state.players)}` : ''}，${caseRecordText(fact.value, state.players)}`);
+    }
   });
   refs.sourceEventIds.forEach((id) => {
     const event = state.eventLog?.find((item) => item.id === id);
-    if (event) lines.push(`第 ${event.turn} 回合：${event.description}`);
+    if (event) lines.push(`第 ${event.turn} 回合：${caseRecordText(event.description, state.players)}`);
   });
   return [...new Set(lines)];
 }
@@ -136,8 +139,8 @@ export function CaseBoardInspector({ model, node, onClose, onSelect, onBack, ret
         <RecordDetailMedia src={caseRecordImage(node)} kind={node.type === 'scene' ? 'scene' : 'portrait'} name={node.title} />
         <section>
           <h5>已知信息</h5>
-          <p>{base.description}</p>
-          {base.secrets.map((secret) => <p className="case-board-known-secret" key={secret}>{secret}</p>)}
+          <p>{caseRecordText(base.description, state.players)}</p>
+          {base.secrets.map((secret) => <p className="case-board-known-secret" key={secret}>{caseRecordText(secret, state.players)}</p>)}
         </section>
         {relations.length ? (
           <section>

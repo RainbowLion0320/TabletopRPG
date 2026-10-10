@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { InfoDrawer } from '../../src/components/game/InfoDrawer';
 import { storyData } from '../../src/data/storyData';
-import { makeState } from '../dm/fixtures';
+import { makeInvestigator, makeState } from '../dm/fixtures';
 import { createScenarioProgress } from '../../src/scenario/engine';
 
 const { layout } = vi.hoisted(() => ({ layout: { portrait: false } }));
@@ -265,6 +265,39 @@ describe('InfoDrawer v7 investigation workspace', () => {
     const inspector = await screen.findByLabelText('药店后门被撬详情');
     expect(within(inspector).getByText('第 3 回合：玩家发现药店后门有被撬痕迹')).toBeInTheDocument();
     expect(within(inspector).queryByText(/e1/)).not.toBeInTheDocument();
+  });
+
+  it('shows investigator names in legacy case records and fact sources without rewriting stored identifiers', async () => {
+    const state = makeState({ activeNpcName: '伊莎贝拉·摩勒', players: [
+      makeInvestigator({ id: 'p1', name: '亨利·格雷' }), makeInvestigator({ id: 'p10', name: '艾达·华莱士' })
+    ] });
+    state.atomicFacts = [
+      { id: 'fact-player', turn: 3, actor: 'p1', target: 'p10', predicate: 'relationship', value: '合作检查门廊', source: 'system1' },
+      { id: 'fact-world', turn: 3, actor: 'world', predicate: 'state', value: '门锁有新鲜撬痕', source: 'system1' }
+    ];
+    state.caseBoard = {
+      nodes: [{ id: 'private-record', type: 'event', title: 'p1与p10的门廊观察', subtitle: 'p10记录',
+        detail: 'p1与p10发现门锁撬痕，标签 p100 原样记录。', importance: 4, source: 'ai', certainty: 'confirmed',
+        sourceFactIds: ['fact-player', 'fact-world'], sourceEventIds: [], sourceClueIds: [], createdTurn: 3, updatedTurn: 3, status: 'active' }],
+      edges: [{ id: 'private-link', from: 'scene-s01', to: 'private-record', label: 'p10发现于此', tone: 'evidence', source: 'ai',
+        certainty: 'confirmed', sourceFactIds: ['fact-player'], sourceEventIds: [], sourceClueIds: [], createdTurn: 3, updatedTurn: 3, status: 'active' }],
+      insights: [{ id: 'private-insight', ownerNodeId: 'private-record', slotKey: 'private-attitude', kind: 'attitude',
+        text: '对p10的态度：愿意与p1合作', detail: 'p1与p10合作', certainty: 'hypothesis', sourceFactIds: ['fact-player'],
+        sourceEventIds: [], sourceClueIds: [], createdTurn: 3, updatedTurn: 3, status: 'active' }], lastUpdatedTurn: 3
+    };
+    const original = JSON.stringify({ caseBoard: state.caseBoard, facts: state.atomicFacts });
+    renderDrawer(state);
+    const card = await screen.findByLabelText('事件 亨利·格雷与艾达·华莱士的门廊观察');
+    expect(card).toHaveTextContent('艾达·华莱士记录'); expect(card).toHaveTextContent('艾达·华莱士发现于此');
+    fireEvent.click(card);
+    const inspector = await screen.findByLabelText('亨利·格雷与艾达·华莱士的门廊观察详情');
+    expect(inspector).toHaveTextContent('亨利·格雷与艾达·华莱士发现门锁撬痕');
+    expect(inspector).toHaveTextContent('对艾达·华莱士的态度：愿意与亨利·格雷合作');
+    expect(inspector).toHaveTextContent('第 3 回合：亨利·格雷与艾达·华莱士，合作检查门廊');
+    expect(inspector).toHaveTextContent('第 3 回合：现场，门锁有新鲜撬痕');
+    expect(inspector).toHaveTextContent('标签 p100 原样记录');
+    expect(inspector.textContent).not.toMatch(/(?:p1|p10)(?![a-z0-9_-])/i);
+    expect(JSON.stringify({ caseBoard: state.caseBoard, facts: state.atomicFacts })).toBe(original);
   });
 
   it('keeps the action log as the only auxiliary tab', async () => {

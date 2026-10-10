@@ -1,5 +1,6 @@
 import { caseBoard } from '../../data/scenarios/wuzhongxiaoshi';
 import { storyData } from '../../data/storyData';
+import { caseRecordText } from './caseBoardPresentation';
 import { getVisibleCaseBoard } from '../../dm/caseBoard';
 import { countCompletedGameTurns } from '../../services/turns';
 import type {
@@ -121,7 +122,9 @@ function deriveThreads(nodes: CaseBoardDisplayNode[], edges: CaseBoardDisplayEdg
 export function buildCaseBoardGraphModel(state: GameState): CaseBoardGraphModel {
   const visible = getVisibleCaseBoard(caseBoard, state);
   const currentTurn = countCompletedGameTurns(state.conversationHistory, state.summarizedTurnCount);
-  const activeInsights = (state.caseBoard?.insights ?? []).filter((insight) => insight.status === 'active');
+  const activeInsights = (state.caseBoard?.insights ?? []).filter((insight) => insight.status === 'active')
+    .map(insight => ({ ...insight, text: caseRecordText(insight.text, state.players),
+      detail: insight.detail ? caseRecordText(insight.detail, state.players) : insight.detail }));
   const insightCount = new Map<string, number>();
   const latestInsightTurn = new Map<string, number>();
   activeInsights.forEach((insight) => {
@@ -137,8 +140,8 @@ export function buildCaseBoardGraphModel(state: GameState): CaseBoardGraphModel 
       id: node.id,
       type: node.type,
       refId: node.refId,
-      title: node.title,
-      subtitle: node.subtitle,
+      title: caseRecordText(node.title, state.players),
+      subtitle: node.subtitle ? caseRecordText(node.subtitle, state.players) : node.subtitle,
       importance: node.importance ?? 3,
       certainty: 'confirmed',
       portrait: node.type === 'npc' && node.refId ? storyData.npcs[node.refId]?.portrait : undefined,
@@ -155,8 +158,8 @@ export function buildCaseBoardGraphModel(state: GameState): CaseBoardGraphModel 
       id: node.id,
       type: node.type,
       refId: node.refId,
-      title: node.title,
-      subtitle: node.subtitle,
+      title: caseRecordText(node.title, state.players),
+      subtitle: node.subtitle ? caseRecordText(node.subtitle, state.players) : node.subtitle,
       importance: node.importance,
       certainty: node.certainty,
       portrait: node.type === 'npc' && node.refId ? storyData.npcs[node.refId]?.portrait : undefined,
@@ -171,7 +174,7 @@ export function buildCaseBoardGraphModel(state: GameState): CaseBoardGraphModel 
       id: edge.id,
       from: edge.from,
       to: edge.to,
-      label: edge.label,
+      label: edge.label ? caseRecordText(edge.label, state.players) : edge.label,
       tone: edge.tone,
       certainty: 'confirmed' as const,
       dynamic: false,
@@ -185,7 +188,7 @@ export function buildCaseBoardGraphModel(state: GameState): CaseBoardGraphModel 
         id: edge.id,
         from: edge.from,
         to: edge.to,
-        label: edge.label,
+        label: edge.label ? caseRecordText(edge.label, state.players) : edge.label,
         tone: edge.tone,
         certainty: edge.certainty,
         dynamic: true,

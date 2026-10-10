@@ -225,6 +225,10 @@ function revealField(element: HTMLElement, body: HTMLElement) {
 }
 
 function hasCustomConnection(config: ApiConfig) {
+  const baseline = getEnvDefaultApiConfig();
+  if (config.provider !== 'custom' && !getApiConfigValidationIssue(baseline)
+    && config.provider === baseline.provider && config.protocol === baseline.protocol
+    && config.endpoint?.replace(/\/+$/, '') === baseline.endpoint?.replace(/\/+$/, '')) return false;
   return config.provider !== 'openai'
     || config.protocol !== defaultProtocolForProvider('openai')
     || config.endpoint?.replace(/\/+$/, '') !== defaultEndpointForProvider('openai');
