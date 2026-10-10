@@ -1,5 +1,5 @@
 /* Brief feedback stays above the action dock without consuming reading space. */
-:root .game-notice { position: fixed; top: 72px; left: 32px; z-index: 120; width: max-content; max-width: min(560px, calc(100vw - 64px)); pointer-events: none; }
+:root .game-notice { position: fixed; top: 72px; left: 32px; z-index: 40; width: max-content; max-width: min(560px, calc(100vw - 64px)); pointer-events: none; }
 :root .game-notice .toast { padding: 6px 10px; border: 4px solid var(--line); border-radius: 2px; background: var(--panel); color: var(--text); font-family: var(--ui-font, inherit); font-size: 15px; line-height: 1.4; overflow-wrap: anywhere; }
 :root.fog-ui .game-notice .toast { border-color: transparent; border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 4px / 0 stretch; background: var(--panel); }
 :root.portrait-ui .game-notice { top: calc(var(--game-top, 54px) + 8px); left: var(--mobile-left); max-width: calc(100vw - var(--mobile-left) - var(--mobile-right)); }

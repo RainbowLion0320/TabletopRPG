@@ -130,7 +130,7 @@ export function AndroidApp({ partialRecovery = false }: { partialRecovery?: bool
     {screen === 'title' ? <>
       <TitleScreen hasSaves={Boolean(session) || game.saves.length > 0} latestSave={game.saves[0]}
         continuation={session ? continuationPreview(session.state) : undefined}
-        onLoadLatest={resume} onNewGame={() => setScreen('setup')} onOpenApi={game.openApiSettings} />
+        onLoadLatest={resume} onNewGame={() => setScreen('setup')} onOpenApi={game.openApiSettings} overlayOpen={game.apiOpen || exitOpen} />
       <ApiConfigModal open={game.apiOpen} onClose={() => game.setApiOpen(false)} onSave={game.saveApi} />
     </> : screen === 'setup' ? <CharacterSetup portrait onBack={() => setScreen('title')} onStart={start} /> :
       <GameScreen controller={{ ...game, saveCurrentGame: () => { flushDraft(); game.saveCurrentGame(); } }} portrait autoFocusInput={false}

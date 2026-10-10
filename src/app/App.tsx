@@ -39,6 +39,7 @@ export function App() {
           onLoadLatest={loadLatest}
           onNewGame={() => { game.restartSetup(); setScreen('setup'); }}
           onOpenApi={game.openApiSettings}
+          overlayOpen={game.apiOpen}
         />
         <ApiConfigModal open={game.apiOpen} onClose={() => game.setApiOpen(false)} onSave={game.saveApi} />
         {game.toast ? <div className="toast" role="status">{game.toast}</div> : null}

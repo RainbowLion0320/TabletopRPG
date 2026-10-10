@@ -168,6 +168,10 @@ public class GameAndroidTest {
             + "return e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})()");
     }
 
+    private void titlePlayback(boolean covered) throws Exception {
+        until("(()=>{const video=document.querySelector('.title-backdrop video');return video&&(" + covered + "||document.hidden||matchMedia('(prefers-reduced-motion:reduce)').matches?video.paused:!video.paused)})()");
+    }
+
     private void readableTurnPrompt() throws Exception {
         reachable(".check-card"); reachable(".check-card > button");
         if ("true".equals(js("document.querySelector('.check-card > button').textContent.trim()==='掷骰'"))) {
@@ -300,6 +304,7 @@ public class GameAndroidTest {
                 assertEquals("Home video does not create a page scrollbar", "true", js("document.querySelector('.title-screen').scrollHeight<=document.querySelector('.title-screen').clientHeight+1"));
                 click("AI 设置");
                 until("document.querySelector('.api-config-fields')");
+                titlePlayback(true);
                 assertEquals("Bundled MiMo settings are quiet, masked and show the correct connection", "true", js("!document.querySelector('.api-config-card [role=alert]')&&document.querySelector('#api-provider').value==='mimo'&&document.querySelector('#api-model').value==='mimo-v2.6-pro'&&document.querySelector('#api-key').type==='password'&&document.querySelector('.api-connection').open"));
                 for (String field : new String[] {"#api-provider", "#api-key", "#api-model", ".api-connection summary"}) reachable(field);
                 reachable(".api-config-close");
@@ -338,6 +343,7 @@ public class GameAndroidTest {
                 }
                 // No real API credentials or network dependency in layout probes.
                 configure("http://127.0.0.1:1/v1", "responses");
+                titlePlayback(false);
                 click("开始游戏");
                 int partySize = size[0] == 360 ? 4 : size[0] == 390 ? 2 : 1;
                 for (int i = 1; i < partySize; i++) js("document.querySelectorAll('.preset-card-modern strong')[" + i + "].click()");
@@ -524,6 +530,7 @@ public class GameAndroidTest {
                 reachable(".entity-detail-close"); js("document.querySelector('.entity-detail-close').click()");
                 reachable(".drawer-tab"); nativeTap(".drawer-tab", 6);
                 until("document.querySelector('.case-board-mobile-card')"); reachable("[aria-label='关闭资料']");
+                assertEquals("Transient feedback stays below the open reading panel", "true", js("Number(getComputedStyle(document.querySelector('.game-notice')).zIndex)<Number(getComputedStyle(document.querySelector('.info-drawer-react.open')).zIndex)"));
                 assertEquals("Native portrait entry stays a fixed button after slight touch drift", "true", js("document.querySelector('.drawer-tab').style.top===''&&!document.querySelector('.drawer-tab').classList.contains('dragging')&&document.querySelector('.drawer-tab').title==='资料'"));
                 assertEquals("Phone archive does not construct a hidden graph", "true", js("!document.querySelector('.react-flow')&&!document.querySelector('.case-board-flow-wrap')"));
                 until("Array.from(document.querySelectorAll('.case-record-photo img')).every(i=>i.complete&&i.naturalWidth>0)");
@@ -1021,12 +1028,14 @@ public class GameAndroidTest {
                 viewport(size[0], size[1]);
                 InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
                 until("document.querySelector('.android-exit-card')");
+                titlePlayback(true);
                 assertEquals("Exit describes navigation rather than ending the investigation", "true", js("document.querySelector('.android-exit-card h2').textContent==='退出游戏？'&&document.activeElement.textContent==='留在游戏'"));
                 reachable(".android-exit-card footer .secondary-action"); reachable(".android-exit-card footer .primary-btn");
                 screenshot("exit-dialog-"+size[0]);
                 viewport(size[0],300); reachable(".android-exit-card footer .secondary-action"); reachable(".android-exit-card footer .primary-btn");
                 InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
                 until("!document.querySelector('.android-exit-card')");
+                titlePlayback(false);
                 assertEquals("Cancelling exit retains the current continuation", "true", js("Boolean(document.querySelector('.title-resume-preview'))"));
             }
             byte[] tampered = Base64.decode(context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE).getString("trpg-android-session-v1", ""), Base64.DEFAULT);
@@ -1188,6 +1197,10 @@ public class GameAndroidTest {
             viewport(390, 844);
             js("window.qaThemeFetches=0;window.qaFetch=window.fetch;window.fetch=function(...args){if(String(args[0]).includes('fog-theme'))window.qaThemeFetches++;return window.qaFetch.apply(this,args)};window.qaHoldAudio=true;window.qaAudioHolds=[];window.qaActiveLoops=0;window.AudioContext=class extends window.AudioContext { constructor(...args){super(...args);window.qaAudio=this;} decodeAudioData(...args){return super.decodeAudioData(...args).then(b=>{window.qaDecoded=(window.qaDecoded||0)+1;if(window.qaHoldAudio&&b.duration>2)return new Promise(resolve=>window.qaAudioHolds.push(()=>resolve(b)));return b;})} createBufferSource(){const s=super.createBufferSource(),start=s.start.bind(s);s.start=(...args)=>{if(s.loop){window.qaLoopStarts=(window.qaLoopStarts||0)+1;window.qaActiveLoops++;s.addEventListener('ended',()=>{window.qaActiveLoops--},{once:true});}return start(...args)};return s;} }");
             nativeTap("button[aria-label='声音设置']");
+            titlePlayback(true);
+            String pausedTime = js("document.querySelector('.title-backdrop video').currentTime");
+            SystemClock.sleep(180);
+            assertEquals("Covered title video does not advance while audio remains independent", "true", js("Math.abs(document.querySelector('.title-backdrop video').currentTime-" + pausedTime + ")<.01"));
             until("window.qaAudio && window.qaAudio.state === 'running'");
             until("window.qaAudioHolds.length === 2");
             until("document.querySelector('#audio-settings-title')");

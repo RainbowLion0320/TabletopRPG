@@ -1557,6 +1557,12 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
       await page.screenshot({ path: testInfo.outputPath('save-feedback.png') });
       if (size.width === 320 && !expanded) await page.screenshot({ path: 'output/ui-2026-10-08/62-save-notice-four-player.png' });
       if (size.width === 1440 && !expanded) await page.screenshot({ path: 'output/ui-2026-10-08/63-action-desktop-after.png' });
+      await page.getByRole('button', { name: '资料', exact: true }).click();
+      const reader = page.locator('.info-drawer-react.open');
+      await expect(reader).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
+      expect(await reader.evaluate(element => Number(getComputedStyle(document.querySelector('.game-notice')!).zIndex) < Number(getComputedStyle(element).zIndex))).toBe(true);
+      await page.screenshot({ path: testInfo.outputPath('reader-above-save-feedback.png') });
+      await page.getByRole('button', { name: '关闭资料', exact: true }).click();
       await page.locator('.party-compact').last().click();
       await expect(page.locator('.investigator-sheet[role="dialog"]')).toBeVisible();
       await page.getByRole('button', { name: '关闭调查员档案' }).click();
@@ -2760,6 +2766,54 @@ for (const scenario of [
     expect(await page.evaluate(() => localStorage.getItem('trpg-saves-v2'))).toBe(savedLibrary);
   });
 }
+
+test('title rain rests behind settings and resumes at the same moment', async ({ page }) => {
+  await page.route('**/__api_config', route => route.fulfill({ status: 404, body: '' }));
+  for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 430, height: 932 }, { width: 562, height: 1000 }, { width: 1440, height: 900 }]) {
+    await page.setViewportSize(size);
+    await gotoClean(page);
+    const video = page.locator('.title-backdrop video');
+    await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.readyState >= 2 && !element.paused)).toBe(true);
+    await video.evaluate((element: HTMLVideoElement) => { element.currentTime = 1; });
+    await expect.poll(() => video.evaluate((element: HTMLVideoElement) => !element.seeking && element.readyState >= 2)).toBe(true);
+    const source = await video.getAttribute('src');
+    for (const [kind, close] of [['AI 设置', 'button'], ['声音设置', 'escape'], ['声音设置', 'backdrop'], ['AI 设置', 'save'], ['声音设置', 'button'], ['AI 设置', 'escape']] as const) {
+      const opener = page.getByRole('button', { name: kind, exact: true });
+      await opener.click();
+      await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.paused)).toBe(true);
+      const before = await video.evaluate((element: HTMLVideoElement) => ({ time: element.currentTime, frames: element.getVideoPlaybackQuality().totalVideoFrames }));
+      await page.waitForTimeout(160);
+      const covered = await video.evaluate((element: HTMLVideoElement) => ({ paused: element.paused, time: element.currentTime, frames: element.getVideoPlaybackQuality().totalVideoFrames }));
+      expect(covered.paused).toBe(true);
+      expect(Math.abs(covered.time - before.time)).toBeLessThan(.01);
+      expect(covered.frames - before.frames).toBeLessThanOrEqual(1);
+      if (close === 'escape') await page.keyboard.press('Escape');
+      else if (close === 'backdrop') await page.locator('.audio-settings-backdrop').click({ position: { x: 3, y: 3 } });
+      else if (close === 'save') {
+        const dialog = page.getByRole('dialog', { name: 'AI DM 配置', exact: true });
+        await dialog.getByLabel('服务商', { exact: true }).selectOption('custom');
+        await dialog.getByLabel('API Key', { exact: true }).fill('playback-test-only');
+        await dialog.getByLabel('模型', { exact: true }).fill('playback-test-only');
+        await dialog.getByLabel('服务地址（Endpoint）', { exact: true }).fill('https://playback-test.invalid/v1');
+        await dialog.getByRole('button', { name: '保存', exact: true }).click();
+      } else await page.getByRole('button', { name: kind === 'AI 设置' ? '关闭 AI DM 配置' : '关闭声音设置', exact: true }).click();
+      await expect.poll(() => video.evaluate((element: HTMLVideoElement) => !element.paused)).toBe(true);
+      const elapsed = await video.evaluate((element: HTMLVideoElement, time) => (element.currentTime - time + element.duration) % element.duration, covered.time);
+      expect(elapsed).toBeLessThan(.4);
+      await expect(video).toHaveAttribute('src', source!);
+      await expect(opener).toBeFocused();
+    }
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.paused)).toBe(true);
+    for (const kind of ['AI 设置', '声音设置']) {
+      await page.getByRole('button', { name: kind, exact: true }).click();
+      await page.keyboard.press('Escape');
+      expect(await video.evaluate((element: HTMLVideoElement) => element.paused)).toBe(true);
+    }
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await expect.poll(() => video.evaluate((element: HTMLVideoElement) => !element.paused)).toBe(true);
+  }
+});
 
 test('saving a game enables continuing the latest save after reloading the title screen', async ({ page }) => {
   await startNewGame(page);

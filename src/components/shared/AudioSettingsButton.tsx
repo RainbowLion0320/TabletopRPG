@@ -7,26 +7,30 @@ import { AudioEmblemArt } from './AudioEmblemArt';
 import { TuningDialArt } from './TuningDialArt';
 import './audio-settings.css';
 
-export function AudioSettingsButton({ className, iconOnly = false }: { className?: string; iconOnly?: boolean }) {
+export function AudioSettingsButton({ className, iconOnly = false, onOpenChange }: { className?: string; iconOnly?: boolean; onOpenChange?: (open: boolean) => void }) {
   const [open, setOpen] = useState(false);
   const settings = useSyncExternalStore(gameAudio.subscribe, gameAudio.getSnapshot);
   const volumeId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLButtonElement>(null);
-  useDialogFocus(open, dialogRef, () => setOpen(false), openerRef);
+  function changeOpen(next: boolean) {
+    setOpen(next);
+    onOpenChange?.(next);
+  }
+  useDialogFocus(open, dialogRef, () => changeOpen(false), openerRef);
   return <>
     <button ref={openerRef} type="button" className={className} aria-label="声音设置"
-      title={iconOnly ? '声音设置' : undefined} onClick={() => setOpen(true)}>
+      title={iconOnly ? '声音设置' : undefined} onClick={() => changeOpen(true)}>
       <AudioEmblemArt size={iconOnly ? 24 : 20} />{!iconOnly && '声音设置'}
     </button>
     {open && createPortal(
       <div className="modal-backdrop audio-settings-backdrop" onClick={(event) => {
-        if (event.target === event.currentTarget) setOpen(false);
+        if (event.target === event.currentTarget) changeOpen(false);
       }}>
         <div className="modal-card audio-settings" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="audio-settings-title" tabIndex={-1}>
           <header>
             <h2 id="audio-settings-title"><TuningDialArt size={24} />声音设置</h2>
-            <button className="audio-close" aria-label="关闭声音设置" onClick={() => setOpen(false)}><X size={20} /></button>
+            <button className="audio-close" aria-label="关闭声音设置" onClick={() => changeOpen(false)}><X size={20} /></button>
           </header>
           <div className="audio-settings-body">
           <section className="audio-channel" aria-label="背景音乐设置">
