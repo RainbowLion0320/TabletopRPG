@@ -278,3 +278,12 @@ Create one exquisite hand-painted raster game UI emblem for a 1920s rainy London
 ```text
 Create one polished raster game UI asset for the Chinese detective RPG Fog / Disappear, set in London in 1920. Subject: a tiny front-facing Victorian London townhouse emblem that will sit beside the existing Return Home text in a menu button. This is neutral navigation artwork, not a location revealed by the story. Match the established artist-made interface: cool rain-blue and slate-navy tones, carefully painted silver edges, soft pearlescent highlights, restrained early twentieth century elegance. A clear peaked roof, one broad central doorway and a few simple window masses form an instantly readable house silhouette. Give it shallow engraved-metal relief and hand-painted material, with dark navy structure for contrast on a pale-blue button. Keep the broad silhouette legible at 20 pixels; concentrate detail on the roof and doorway rather than many tiny bricks. One centered emblem filling most of a square canvas, isolated with a truly transparent background, natural antialiased alpha. No enclosing button or frame, no words, numbers or separate decorations. Deliver the single finished illustration, not a mockup or asset sheet.
 ```
+
+
+## 局势量条（0.5.42）
+
+内置 Image Gen 单次新图，无参考图与后续编辑；生成 ID `exec-9b2b5584-326c-428c-948c-f09b9dbdeb4e`，原 PNG 留在默认 generated_images 目录，不提交；transparent_background=true。以下是实际完整提示词：
+
+```text
+Production game UI asset, a single exquisitely painted horizontal gauge trough, isolated on true transparency. Match a 1920s London mystery game's cool midnight-blue UI: finely engraved layered silver rim, pale blue enamel, tiny paired pearl points, a restrained four-point silver star at each end, hand-painted tactile polish and delicate highlights. Straight front view, wide slim 8:1 proportion, symmetric ends. The uninterrupted center is an empty dark navy recessed channel for a runtime progress fill; clear straight inside edges and a restrained low profile. Render only this one complete gauge, centered with transparent clearance on all sides, no text or numbers. It must remain legible as a small mobile UI trim, with all ornaments confined to the end caps so the quiet center can stretch horizontally.
+```

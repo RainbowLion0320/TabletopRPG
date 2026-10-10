@@ -1068,10 +1068,12 @@ public class GameAndroidTest {
                 click("进入游戏"); configure("http://127.0.0.1:1/v1", "responses");
                 SystemClock.sleep(300); menu("返回首页");
                 // Seed an already-settled QA record through the actual encrypted storage port.
+                int clockValue = new int[] {0, 7, 6, 3}[index];
                 js("window.qaEndingReady=false;Capacitor.Plugins.GameStorage.readAll().then(async ({values})=>{"
                     + "const record=JSON.parse(values['trpg-android-session-v1']);const progress=record.state.scenarioProgress;"
                     + "progress.endingId=" + JSONObject.quote(endings[index]) + ";progress.settledEndingIds=[progress.endingId];"
                     + "progress.activeActId='A02';progress.objectiveStates.O01='completed';progress.objectiveStates.O03='active';"
+                    + "progress.clocks.fusangEscape={value:" + clockValue + ",active:false,visible:true};"
                     + "record.state.currentScene='S05';record.state.activeNpcName=null;record.state.activeNpcId=null;record.roll=null;"
                     + "window.qaEndingVitals=JSON.stringify(record.state.players.map(p=>[p.currentHp,p.currentMp,p.currentSan]));"
                     + "await Capacitor.Plugins.GameStorage.write({key:'trpg-android-session-v1',value:JSON.stringify(record)});window.qaEndingReady=true;})");
@@ -1093,6 +1095,12 @@ public class GameAndroidTest {
                 screenshot("ending-" + size[0] + "-sheet-focus-restored"); viewport(size[0], size[1]);
                 nativeTap(".ending-actions button:first-child"); until("document.querySelector('.investigation-ending')");
                 assertEquals("Review opens the progress page", "true", js("document.querySelector('.info-drawer-tabs button:first-child').getAttribute('aria-selected')==='true'"));
+                reachable("[aria-label='关闭资料']");
+                js("document.querySelector('.clock-row progress').scrollIntoView({block:'center'})");
+                reachable(".clock-row progress");
+                assertEquals("Public clock keeps its authored value and fits the painted track", "true", js("(()=>{const p=document.querySelector('.clock-row progress'),r=p.getBoundingClientRect();return p.value===" + clockValue + "&&p.max===7&&r.height>=24&&r.left>=0&&r.right<=innerWidth&&getComputedStyle(p).borderImageSource.includes('clock-gauge')})()"));
+                js("window.qaClockArtReady=false;const image=new Image();image.onload=()=>{const canvas=document.createElement('canvas');canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;const context=canvas.getContext('2d');context.drawImage(image,0,0);window.qaClockArtReady=image.naturalWidth===512&&image.naturalHeight===72&&context.getImageData(0,0,1,1).data[3]===0;};image.src=getComputedStyle(document.querySelector('.clock-row progress')).borderImageSource.slice(4,-1).replaceAll(String.fromCharCode(34),'').replaceAll(String.fromCharCode(39),'')");
+                until("window.qaClockArtReady"); screenshot("ending-" + size[0] + "-clock-gauge");
                 screenshot("ending-" + size[0] + "-review");
                 String authoredHistoryOpen = js("document.querySelector('.investigation-history').open");
                 viewport(size[0], 300);

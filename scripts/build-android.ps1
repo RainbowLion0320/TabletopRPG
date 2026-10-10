@@ -97,8 +97,8 @@ if ($NativeTests) {
     & $adb -s $Device install -r -t $testApk
     Check-Exit 'Install signed test runner'
     $testOutput = & $adb -s $Device shell am instrument -w -r com.rainbowlion.fogtrpg.test/androidx.test.runner.AndroidJUnitRunner 2>&1
-    Check-Exit 'Run Android instrumentation'
     $testOutput | Write-Output
+    Check-Exit 'Run Android instrumentation'
     $testText = $testOutput -join "`n"
     if ($testText -notmatch 'OK \([1-9]\d* tests?\)' -or $testText -match 'FAILURES!!!|INSTRUMENTATION_FAILED') { throw 'Android instrumentation failed or no tests were run.' }
 }
