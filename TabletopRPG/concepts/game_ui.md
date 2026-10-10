@@ -2,12 +2,14 @@
 type: concept
 title: 共享交互 UI
 tags: [ui, art, mobile, android, web, accessibility]
-sources: [../../docs/UI_SYSTEM.md, ../../assets/ui/artist/README.md, ../../src/styles/game-ui.css, ../../src/styles/motion.css, ../../design-qa.md]
+sources: [../../docs/UI_SYSTEM.md, ../../assets/ui/artist/README.md, ../../assets/ui/app-icon/README.md, ../../src/styles/game-ui.css, ../../src/styles/motion.css, ../../design-qa.md]
 created: 2026-09-09
 updated: 2026-10-10
 ---
 
 # 共享交互 UI
+
+0.5.57 按用户确认恢复美术同学提供的原版游戏图标：白色眼睛与四向尖角、深蓝底色。直角/圆角源图与原ICON.zip逐字节一致，安卓桌面、圆形/主题图标、系统启动引用及网页favicon/快捷图标统一恢复，移除被替换的人物图标与独立人物剪影。现有银蓝UI、等待/切换动效、剧情、规则和存档链路延续。
 
 0.5.56 等待区持续显示落笔动画、依次起伏的三个光点和银线流光，保留24句本地文案与正常字号36px固定行高。首页/选角/局内、菜单/设置/读档/详情、资料/档案页签、新剧情、立绘、行动人和控件补齐短动效；面板在原位置淡入，换景待新图载入后叠化。后台暂停等待动画和文案计时，系统减少动态时直接呈现静态状态；原阅读位置、焦点、草稿、触控和游戏结算保持。
 

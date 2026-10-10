@@ -4,6 +4,8 @@
 > Updated: 2026-10-10
 > Scope: current React/Vite implementation
 
+In 0.5.57, the supplied artist icon is restored from its original square/rounded PNGs and platform outputs. The sources match the supplied ICON.zip byte for byte; the five Android densities and adaptive/theme XML reuse the original symbol, and served web icons match production and APK bytes. The replaced detective source and five separate themed silhouettes are removed. No runtime game, persistence, UI-motion or model protocol changes are introduced.
+
 In 0.5.56, shared CSS adds continuous nib, dot and line motion during the actual model request, plus short opacity transitions for screens, dialogs and arriving content. Reading changes use a cancellable 160ms Web Animation on the retained content container; focus, DOM and scroll positions remain live. Scene replacement keeps the last loaded image behind the incoming image until its load event, then removes it after a 280ms crossfade. Visibility changes pause decorative loops and caption intervals; reduced-motion removes new transitions. No extra model calls, progress estimates, game-timing changes, animation library or media assets are added.
 
 In 0.5.55, phone home actions keep their source aspect ratio within a 240px width and at least 48px touch height. AI/audio settings share two named 44px utility icons, unavailable continuation is omitted, and the current investigation remains readable as a compact text summary. Quiet navigation uses readable light text and explicit selection on the shared blue surfaces; suggestion decoration is smaller than its 44px hit area. These presentation changes do not change persistence, model calls, reducer review or narrative rules.
