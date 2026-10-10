@@ -80,6 +80,34 @@ describe('audio preferences', () => {
 });
 
 describe('audio lifetime and races', () => {
+  it('keeps playing loop phases while backgrounded and resumes without restarting either track', async () => {
+    engine.setSoundscape({ music: 'theme', ambience: 'rain' }); engine.unlock(); await flush();
+    const context = Context.instances[0], loops = context.sources.filter(source => source.loop);
+    context.currentTime = 12;
+    engine.setVisible(false); await flush();
+    expect(context.state).toBe('suspended');
+    for (const loop of loops) expect(loop.stop).not.toHaveBeenCalled();
+    expect(context.gains.slice(0, 2).map(bus => bus.gain.value)).toEqual([0, 0]);
+    engine.setVisible(true); await flush();
+    expect(context.state).toBe('running');
+    expect(context.sources.filter(source => source.loop)).toEqual(loops);
+    for (const loop of loops) expect(loop.start).toHaveBeenCalledTimes(1);
+    expect(context.gains.slice(0, 2).every(bus => bus.gain.value > 0)).toBe(true);
+  });
+
+  it('remains silent when device suspension fails, including volume edits while backgrounded', async () => {
+    engine.setSoundscape({ music: 'theme', ambience: 'rain' }); engine.unlock(); await flush();
+    const context = Context.instances[0], loops = context.sources.filter(source => source.loop);
+    context.suspend.mockRejectedValueOnce(new Error('Device suspension denied'));
+    engine.setVisible(false); await flush();
+    for (const loop of loops) expect(loop.stop).toHaveBeenCalled();
+    engine.updateSettings({ musicVolume: .9, effectsVolume: .9 });
+    expect(context.gains.slice(0, 2).map(bus => bus.gain.value)).toEqual([0, 0]);
+    engine.setVisible(true); await flush();
+    expect(context.sources.filter(source => source.loop)).toHaveLength(4);
+    expect(context.gains.slice(0, 2).every(bus => bus.gain.value > 0)).toBe(true);
+  });
+
   it('retains crossfading buffers for quick returns, then releases inactive long tracks while reusing short effects', async () => {
     const cache = (engine as unknown as { buffers: Map<keyof typeof audioAssets, Promise<AudioBuffer>> }).buffers;
     engine.setSoundscape({ music: 'theme', ambience: 'rain' }); engine.unlock(); await flush();

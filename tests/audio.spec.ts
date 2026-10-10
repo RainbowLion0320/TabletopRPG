@@ -3,6 +3,42 @@ import { readFileSync } from 'node:fs';
 
 const manifest = JSON.parse(readFileSync('assets/audio/manifest.json', 'utf8')) as Array<{ file: string; seconds: number }>;
 
+test('background pause keeps the current music and ambience positions without starting new loops', async ({ page }) => {
+  await page.route('**/*', route => {
+    if (route.request().method() === 'POST') return route.abort();
+    if (new URL(route.request().url()).pathname === '/__api_config') return route.fulfill({ status: 404, body: '' });
+    return route.continue();
+  });
+  await page.addInitScript(() => {
+    const OriginalContext = window.AudioContext;
+    const probe = { context: null as AudioContext | null, loopStarts: 0, gains: [] as GainNode[] };
+    (window as Window & { audioPhaseProbe?: typeof probe }).audioPhaseProbe = probe;
+    window.AudioContext = class extends OriginalContext {
+      constructor() { super(); probe.context = this; }
+      createGain() { const gain = super.createGain(); probe.gains.push(gain); return gain; }
+      createBufferSource() {
+        const source = super.createBufferSource(), start = source.start.bind(source);
+        source.start = (...args) => { if (source.loop) probe.loopStarts++; return start(...args); };
+        return source;
+      }
+    };
+  });
+  await page.goto('/'); await page.getByRole('button', { name: '声音设置', exact: true }).click();
+  const output = () => page.evaluate(() => {
+    const p = (window as Window & { audioPhaseProbe?: { context: AudioContext | null; loopStarts: number; gains: GainNode[] } }).audioPhaseProbe!;
+    return { state: p.context?.state, time: p.context?.currentTime ?? 0, loops: p.loopStarts, buses: p.gains.slice(0, 2).map(g => g.gain.value) };
+  });
+  await expect.poll(async () => (await output()).loops).toBe(2);
+  await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, value: true }); document.dispatchEvent(new Event('visibilitychange')); });
+  await expect.poll(async () => (await output()).state).toBe('suspended');
+  const paused = await output(); expect(paused.buses).toEqual([0, 0]);
+  // An elapsed wall-clock interval verifies that the audio clock actually remains paused.
+  await page.waitForTimeout(300); expect((await output()).time).toBeCloseTo(paused.time, 2);
+  await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, value: false }); document.dispatchEvent(new Event('visibilitychange')); });
+  await expect.poll(async () => (await output()).state).toBe('running');
+  expect((await output()).loops).toBe(2); expect((await output()).buses.every(value => value > 0)).toBe(true);
+});
+
 test('releases inactive decoded music while retaining current loops and cached short effects', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');

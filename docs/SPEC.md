@@ -4,6 +4,8 @@
 > Updated: 2026-10-10
 > Scope: current React/Vite implementation
 
+In 0.5.52, visibility changes mute the output buses immediately and suspend active loops in place, preserving their playback positions on foreground return. Retiring crossfades and short effects are released; hidden scene/channel changes still cancel obsolete tracks. Suspension failure stops the current hidden context loops as a fallback, and hidden volume changes remain silent. Audio settings, assets, UI and game state are unchanged.
+
 In 0.5.51, unchanged story rows are memoized during action typing. Primitive snapshots cover message identity, type, text, player name/id and keyword contents; knowledge signatures, the latest-entry ref and the committed detail callback remain live. This avoids stale in-place legacy edits without discarding history or changing its reading position. Artwork, controls, AI requests, game rules and save formats remain unchanged.
 
 In 0.5.50, painted anonymous cameo and folded-map category emblems replace generic person and map-pin outlines on case records, preserving actual portraits and scene imagery. The two transparent 128px WebPs add 17,362 bytes; existing artwork is unchanged. The phone investigation menu uses one action per row and removes redundant group headings, keeping close/resume and independent body scrolling available when text is enlarged. Desktop retains two columns and the same art. Short web viewports reduce the menu's top clearance so at least a full action remains readable; mobile safe areas are unchanged. No new controls, search, filters, game rules or model calls.

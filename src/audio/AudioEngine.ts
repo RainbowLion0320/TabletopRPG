@@ -85,10 +85,17 @@ export class AudioEngine {
 
   setVisible(visible: boolean): void {
     this.visible = visible;
+    this.updateVolumes();
     if (!visible) {
       this.stopEffects();
-      this.stopAllLoops();
-      if (this.context) void this.context.suspend().catch(() => undefined);
+      // Suspend current loops in place, so returning keeps their playback position.
+      this.retiring.forEach(voice => this.stop(voice));
+      this.retiring.clear();
+      this.pruneBuffers();
+      const context = this.context;
+      if (context) void context.suspend().catch(() => {
+        if (this.context === context && !this.visible) this.stopAllLoops();
+      });
     } else if (this.unlocked) this.unlock();
   }
 
@@ -129,8 +136,8 @@ export class AudioEngine {
   private updateVolumes(): void {
     if (!this.context) return;
     // Set zero immediately, including sources fading out from an earlier scene.
-    if (this.musicBus) this.musicBus.gain.value = this.settings.musicEnabled ? this.settings.musicVolume : 0;
-    if (this.effectsBus) this.effectsBus.gain.value = this.settings.effectsEnabled ? this.settings.effectsVolume : 0;
+    if (this.musicBus) this.musicBus.gain.value = this.visible && this.settings.musicEnabled ? this.settings.musicVolume : 0;
+    if (this.effectsBus) this.effectsBus.gain.value = this.visible && this.settings.effectsEnabled ? this.settings.effectsVolume : 0;
   }
 
   private canPlay(lane: Lane): boolean {
