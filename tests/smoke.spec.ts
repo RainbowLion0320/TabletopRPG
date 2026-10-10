@@ -2900,14 +2900,14 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
     const last = dialog.getByRole('article').last();
     const deleteButton = last.getByRole('button', { name: /^删除存档/ });
     const deletePresentation = await deleteButton.evaluate(element => ({
-      frame: getComputedStyle(element, '::before').borderImageSource,
+      frameDisplay: getComputedStyle(element, '::before').display,
       font: parseFloat(getComputedStyle(element).fontSize),
       width: element.getBoundingClientRect().width,
       height: element.getBoundingClientRect().height
     }));
-    expect(deletePresentation.frame).toContain('button-secondary');
+    expect(deletePresentation.frameDisplay).toBe('none');
     expect(deletePresentation.font).toBeGreaterThanOrEqual(15);
-    expect(deletePresentation.width).toBeGreaterThanOrEqual(96);
+    expect(deletePresentation.width).toBeGreaterThanOrEqual(64);
     expect(deletePresentation.height).toBeGreaterThanOrEqual(44);
     await deleteButton.click();
     await expect(last.getByRole('button', { name: '保留存档' })).toBeFocused();
@@ -2987,8 +2987,39 @@ test('invalid save payloads are ignored on the title screen', async ({ page }) =
   await page.goto('/');
 
   await expect(page.getByRole('heading', { name: '雾中消逝' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '继续游戏' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '继续游戏' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '开始游戏', exact: true })).toBeEnabled();
   await expect(page.getByRole('region', { name: '继续调查摘要' })).toHaveCount(0);
+});
+
+test('portrait home keeps compact main actions and returns from utility settings with the current draft', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.route('**/__api_config', route => route.fulfill({ status: 404, body: '' }));
+  await page.addInitScript(() => {
+    localStorage.clear();
+    localStorage.setItem('trpg-api', JSON.stringify({ provider: 'custom', protocol: 'responses', endpoint: 'https://home-layout.test/v1', model: 'test-only', apiKey: 'test-only' }));
+  });
+  for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 562, height: 1000 }]) {
+    await page.setViewportSize(size); await page.goto('/');
+    await expect(page.locator('.title-actions > button')).toHaveCount(1);
+    const withinBudget = async () => page.locator('.title-actions > button').evaluateAll(buttons => buttons.every(button => {
+      const r = button.getBoundingClientRect(); return r.width <= 240.5 && r.height >= 48 && r.height <= 64 && r.left >= 0 && r.right <= innerWidth;
+    }));
+    await expect.poll(withinBudget).toBe(true);
+    for (const [name, close] of [['AI 设置', '关闭 AI DM 配置'], ['声音设置', '关闭声音设置']]) {
+      const utility = page.locator('.title-utilities').getByRole('button', { name, exact: true });
+      await expect(utility).toBeInViewport({ ratio: 1 }); await utility.click();
+      await page.getByRole('button', { name: close, exact: true }).click(); await expect(utility).toBeFocused();
+    }
+    await page.getByRole('button', { name: '开始游戏', exact: true }).click();
+    await page.getByRole('button', { name: '进入游戏', exact: true }).click();
+    await page.locator('.dock-input').fill('先查看信件。\n再检查门廊。');
+    await page.getByRole('button', { name: '菜单', exact: true }).click();
+    await page.getByRole('button', { name: '返回首页', exact: true }).click();
+    await expect(page.locator('.title-actions > button')).toHaveCount(2); await expect.poll(withinBudget).toBe(true);
+    const resume = page.getByRole('button', { name: '继续游戏', exact: true }); await expect(resume).toBeFocused(); await resume.click();
+    await expect(page.locator('.dock-input')).toHaveValue('先查看信件。\n再检查门廊。');
+  }
 });
 
 test('D100 fumble has priority over success thresholds', () => {

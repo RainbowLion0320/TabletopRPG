@@ -5,32 +5,33 @@
 .title-content { --title-width: min(100vw, calc(100dvh * 2048 / 1136)); position: relative; width: var(--title-width); height: calc(var(--title-width) * 1136 / 2048); text-align: center; }
 .title-mark { position: absolute; left: 50%; top: 12.323944%; width: 32.910156%; height: auto; transform: translateX(-50%); pointer-events: none; }
 .title-actions { position: absolute; top: 41.3732%; left: 51.025391%; width: 24.316406%; transform: translateX(-50%); display: flex; flex-direction: column; gap: calc(var(--title-width) * 41 / 2048); }
-.title-actions > button:nth-child(3) { margin-top: calc(var(--title-width) / 2048); }
 :root.fog-ui .title-actions > button { position: relative; display: block; width: 100%; min-width: 0; min-height: 48px; aspect-ratio: 498 / 127; padding: 0; border: 0; background: transparent; box-shadow: none; color: var(--ui-ink); text-shadow: none; letter-spacing: 0; transition: filter 150ms ease, transform 150ms ease; }
 :root.fog-ui .title-actions > button::before { display: none; }
 .title-actions > button > img { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
-:root.fog-ui .title-actions > button:focus-visible { outline: none; filter: drop-shadow(0 0 4px var(--ui-focus)); }
+:root.fog-ui .title-actions > button:focus-visible { outline: none; filter: drop-shadow(0 0 2px var(--ui-focus)); }
 :root.fog-ui .title-actions > button:enabled:active { transform: translateY(1px); background: transparent; color: var(--ui-ink); box-shadow: none; filter: brightness(.92); }
 :root.fog-ui .title-actions > button:disabled { background: transparent; color: var(--ui-ink); box-shadow: none; opacity: .5; filter: saturate(.35); }
 .title-completed-label { display: grid; place-items: center; width: 100%; height: 100%; background: url('../../../assets/ui/artist/button-secondary.webp') center / 100% 100% no-repeat; font: 400 clamp(18px, 2.6vw, 53px)/1.2 var(--ui-font); }
-:root.fog-ui .title-screen .title-audio { position: absolute; top: max(16px, env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); }
-.title-resume-preview { position: absolute; right: 2%; bottom: 2.5%; width: min(370px, 28%); padding: 8px 14px; text-align: left; border: 8px solid transparent; border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 8px / 0 stretch; background: var(--panel); background-clip: padding-box; }
+.title-utilities { position: absolute; top: max(16px, env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); display: flex; align-items: center; gap: 8px; }
+.title-resume-preview { position: absolute; right: 2%; bottom: 2.5%; width: min(370px, 28%); padding: 8px 14px; text-align: left; color: var(--text); background: rgb(var(--ui-strong-rgb) / .55); }
 .title-resume-preview > div { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .title-resume-preview > strong { display: block; margin-top: 4px; color: var(--text); font: 400 17px/1.4 var(--ui-font); }
 .title-resume-preview > p { margin: 3px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
 @media (hover: hover) { :root.fog-ui .title-actions > button:enabled:hover { background: transparent; box-shadow: none; color: var(--ui-ink); filter: brightness(1.08); } }
 .portrait-ui .title-screen { height: var(--mobile-height); min-height: 0; overflow-y: auto; padding: var(--mobile-top) var(--mobile-right) var(--mobile-bottom) var(--mobile-left); }
-.portrait-ui .title-content { position: relative; display: flex; flex-direction: column; align-items: center; gap: 18px; width: min(440px, 100%); height: auto; padding: 28px 0; }
-.portrait-ui .title-mark { position: static; width: min(380px, 100%); transform: none; }
-.portrait-ui .title-actions { position: static; width: min(310px, 100%); gap: 12px; transform: none; }
-.portrait-ui .title-actions > button:nth-child(3) { margin-top: 0; }
-.portrait-ui .title-resume-preview { position: static; order: 1; width: min(310px, 100%); margin: 0; padding: 5px 10px; }
-.portrait-ui .title-completed-label { font-size: 28px; }
-:root.fog-ui.portrait-ui .title-screen .title-audio { top: var(--mobile-top); right: var(--mobile-right); }
+.portrait-ui .title-content { position: relative; display: flex; flex-direction: column; align-items: center; gap: 24px; width: min(440px, 100%); height: auto; padding: 60px 0 28px; margin-top: -6dvh; }
+.portrait-ui .title-mark { position: static; width: min(320px, 86%); transform: none; }
+.portrait-ui .title-actions { position: static; width: min(240px, 72%); gap: 10px; transform: none; }
+.portrait-ui .title-resume-preview { position: static; order: 1; width: min(310px, 90%); margin: 0; padding: 0; text-align: center; background: transparent; text-shadow: 0 1px 3px #081321; }
+.portrait-ui .title-resume-preview > div { justify-content: center; font-size: 11px; gap: 2px 8px; }
+.portrait-ui .title-resume-preview > strong { font-size: 16px; }
+.portrait-ui .title-resume-preview > p { font-size: 12px; }
+.portrait-ui .title-completed-label { font-size: 23px; }
+:root.fog-ui.portrait-ui .title-utilities { top: var(--mobile-top); right: var(--mobile-right); }
 @media (max-height: 420px) {
-  .portrait-ui .title-content { gap: 8px; padding: 8px 0; }
+  .portrait-ui .title-content { gap: 8px; padding: 50px 0 6px; margin-top: 0; }
   .portrait-ui .title-mark { width: 150px; }
-  .portrait-ui .title-actions { width: 200px; gap: 6px; }
+  .portrait-ui .title-actions { width: 188px; gap: 6px; }
   .portrait-ui .title-resume-preview { padding-block: 3px; }
   .portrait-ui .title-resume-preview > div > span:last-child { display: none; }
   .portrait-ui .title-resume-preview > div { display: inline-flex; }

@@ -5,8 +5,8 @@ import fogPoster from '../../../assets/ui/artist/title-background.webp';
 import titleLogo from '../../../assets/ui/artist/title-logo.webp';
 import newArt from '../../../assets/ui/artist/home-new.webp';
 import continueArt from '../../../assets/ui/artist/home-continue.webp';
-import settingsArt from '../../../assets/ui/artist/home-settings.webp';
 import { AudioSettingsButton } from '../shared/AudioSettingsButton';
+import { TuningDialArt } from '../shared/TuningDialArt';
 import { continuationPreview } from '../../app/gameContinuation';
 import './title-screen.css';
 
@@ -68,13 +68,15 @@ export function TitleScreen({ hasSaves, latestSave, continuation, onLoadLatest, 
           <strong>{preview.scene}</strong><p>{preview.players}</p>
         </section>}
         <div className="title-actions">
-          {newAction}{continueAction}
-          <button className="ghost-btn title-settings" aria-label="AI 设置" onClick={onOpenApi}>
-            <img src={settingsArt} alt="" aria-hidden="true" /><span className="ui-visually-hidden">AI 设置</span>
-          </button>
+          {newAction}{hasSaves && continueAction}
         </div>
       </div>
-      <AudioSettingsButton className="icon-text-btn audio-icon-button title-audio" iconOnly onOpenChange={setAudioOpen} />
+      <nav className="title-utilities" aria-label="游戏设置">
+        <button type="button" className="icon-text-btn audio-icon-button title-settings" aria-label="AI 设置" title="AI 设置" aria-haspopup="dialog" onClick={onOpenApi}>
+          <TuningDialArt size={24} />
+        </button>
+        <AudioSettingsButton className="icon-text-btn audio-icon-button title-audio" iconOnly onOpenChange={setAudioOpen} />
+      </nav>
     </section>
   );
 }

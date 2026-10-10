@@ -373,6 +373,8 @@ public class GameAndroidTest {
                 reachable(".title-actions .primary-btn");
                 until("Array.from(document.querySelectorAll('.title-mark,.title-actions img')).every(e=>e.complete&&e.naturalWidth>0)");
                 assertEquals("Original artist logo and home buttons decode inside the APK", "true", js("document.querySelector('.title-mark').naturalWidth===674&&Array.from(document.querySelectorAll('.title-actions img')).every(e=>e.naturalWidth===498)"));
+                assertEquals("New players see one compact main action and separate settings", "true", js("document.querySelectorAll('.title-actions button').length===1&&Array.from(document.querySelectorAll('.title-actions button')).every(e=>{const r=e.getBoundingClientRect();return r.width<=240.5&&r.height>=48&&r.height<=64})&&document.querySelectorAll('.title-utilities button').length===2"));
+                reachable(".title-settings"); reachable(".title-audio");
                 if (size[0] == 320) {
                     js("window.qaPaintedArtReady=false;window.qaPaintedArtError=false;window.qaPaintedArtDiagnostics='';"
                         + "Promise.all(['panel-frame','icon-frame','dice-panel','portrait-mount','input-frame','heading-rule','control-stud'].map(name=>new Promise((resolve,reject)=>{"
@@ -663,7 +665,9 @@ public class GameAndroidTest {
                 reachable(".audio-close"); js("document.querySelector('.audio-close').click()");
                 until("document.querySelector('.game-menu').contains(document.activeElement)");
                 paintedHomeEmblem(".game-menu .home-emblem-art");
-                reachable(".game-menu-close"); reachable(".game-menu footer button"); screenshot(prefix + "-menu");
+                reachable(".game-menu-close"); reachable(".game-menu footer button");
+                assertEquals("Packaged menu labels stay readable on the blue panel", "true", js("(()=>{const p=getComputedStyle(document.documentElement).getPropertyValue('--panel').trim().slice(1).match(/../g).map(x=>parseInt(x,16));const lum=a=>a.map(v=>{v/=255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4)}).reduce((s,v,i)=>s+v*[.2126,.7152,.0722][i],0);return Array.from(document.querySelectorAll('.game-menu .menu-list button')).every(e=>{const c=getComputedStyle(e).color.match(/[\\d.]+/g).slice(0,3).map(Number);return(Math.max(lum(c),lum(p))+.05)/(Math.min(lum(c),lum(p))+.05)>=4.5})})()"));
+                screenshot(prefix + "-menu");
                 InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
                 until("!document.querySelector('.game-menu') && document.activeElement===document.querySelector('.menu-button')");
                 String currentDraft = js("document.querySelector('.dock-input').value");

@@ -4,6 +4,8 @@
 > Updated: 2026-10-10
 > Scope: current React/Vite implementation
 
+In 0.5.55, phone home actions keep their source aspect ratio within a 240px width and at least 48px touch height. AI/audio settings share two named 44px utility icons, unavailable continuation is omitted, and the current investigation remains readable as a compact text summary. Quiet navigation uses readable light text and explicit selection on the shared blue surfaces; suggestion decoration is smaller than its 44px hit area. These presentation changes do not change persistence, model calls, reducer review or narrative rules.
+
 In 0.5.54, portrait safe spacing uses the native-provided inset variables before falling back to browser environment values. An explicit native zero keeps only minimum game spacing, preventing duplicate padding after native handling. Keyboard changes update the bottom spacing through the same variables. Controls, fixed return and drawn panels share the safe area; art, narrative, drafts and audio continuity are retained.
 
 In 0.5.53, background scene and volume updates reconcile audio lanes independently. Unchanged enabled loops keep their suspended playback positions; replaced, cleared or disabled lanes release their old voices. Foreground return starts new loops only for changed enabled lanes; unchanged music resumes. Hidden output stays muted; crossfade cache release, independent controls, suspension-failure fallback and game UI are retained.
