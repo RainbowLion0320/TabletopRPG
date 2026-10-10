@@ -4,6 +4,8 @@
 > Updated: 2026-10-10
 > Scope: current React/Vite implementation
 
+In 0.5.54, portrait safe spacing uses the native-provided inset variables before falling back to browser environment values. An explicit native zero keeps only minimum game spacing, preventing duplicate padding after native handling. Keyboard changes update the bottom spacing through the same variables. Controls, fixed return and drawn panels share the safe area; art, narrative, drafts and audio continuity are retained.
+
 In 0.5.53, background scene and volume updates reconcile audio lanes independently. Unchanged enabled loops keep their suspended playback positions; replaced, cleared or disabled lanes release their old voices. Foreground return starts new loops only for changed enabled lanes; unchanged music resumes. Hidden output stays muted; crossfade cache release, independent controls, suspension-failure fallback and game UI are retained.
 
 In 0.5.52, visibility changes mute the output buses immediately and suspend active loops in place, preserving their playback positions on foreground return. Retiring crossfades and short effects are released; hidden scene/channel changes still cancel obsolete tracks. Suspension failure stops the current hidden context loops as a fallback, and hidden volume changes remain silent. Audio settings, assets, UI and game state are unchanged.

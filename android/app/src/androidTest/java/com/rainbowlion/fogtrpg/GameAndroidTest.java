@@ -114,13 +114,16 @@ public class GameAndroidTest {
         assertTrue("The target DOM has been drawn before sending real touch", painted.await(10, TimeUnit.SECONDS));
         if (!selector.equals(pointSelector)) assertEquals("The requested touch point reaches its original control", "true", js("(()=>{const e=document.querySelector(" + JSONObject.quote(selector) + "),r=document.querySelector(" + JSONObject.quote(pointSelector) + ").getBoundingClientRect();return e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))})()"));
         org.json.JSONArray point = new org.json.JSONArray(js("(()=>{const r=document.querySelector(" + JSONObject.quote(pointSelector) + ").getBoundingClientRect();return [(r.x+r.width/2)*devicePixelRatio,(r.y+r.height/2)*devicePixelRatio,devicePixelRatio]})()"));
+        int[] origin = new int[2];
+        activity.onActivity(a -> a.getBridge().getWebView().getLocationOnScreen(origin));
         long now = SystemClock.uptimeMillis();
-        MotionEvent down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, (float) point.getDouble(0), (float) point.getDouble(1), 0);
-        float endY = (float) (point.getDouble(1) + driftCssY * point.getDouble(2));
-        MotionEvent up = MotionEvent.obtain(now, now + 80, MotionEvent.ACTION_UP, (float) point.getDouble(0), endY, 0);
+        float screenX = (float) point.getDouble(0) + origin[0], screenY = (float) point.getDouble(1) + origin[1];
+        MotionEvent down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, screenX, screenY, 0);
+        float endY = (float) (screenY + driftCssY * point.getDouble(2));
+        MotionEvent up = MotionEvent.obtain(now, now + 80, MotionEvent.ACTION_UP, screenX, endY, 0);
         InstrumentationRegistry.getInstrumentation().sendPointerSync(down);
         if (driftCssY != 0) {
-            MotionEvent move = MotionEvent.obtain(now, now + 40, MotionEvent.ACTION_MOVE, (float) point.getDouble(0), endY, 0);
+            MotionEvent move = MotionEvent.obtain(now, now + 40, MotionEvent.ACTION_MOVE, screenX, endY, 0);
             InstrumentationRegistry.getInstrumentation().sendPointerSync(move);
             move.recycle();
         }
@@ -1234,6 +1237,25 @@ public class GameAndroidTest {
                 viewport(size[0], size[1]); screenshot("ending-" + size[0] + "-return");
             } finally { activity.close(); }
         }
+    }
+
+    @Test public void providedSafeInsetsKeepPhoneControlsReachable() throws Exception {
+        fresh();
+        try {
+            viewport(390, 844);
+            js("window.qaOriginalInsets=['top','right','bottom','left'].map(side=>document.documentElement.style.getPropertyValue('--safe-area-inset-'+side))");
+            for (int[] insets : new int[][] {{40,18,28,22},{0,0,0,0},{40,18,0,22}}) {
+                String values = "[" + insets[0] + "," + insets[1] + "," + insets[2] + "," + insets[3] + "]";
+                js("['top','right','bottom','left'].forEach((side,index)=>document.documentElement.style.setProperty('--safe-area-inset-'+side," + values + "[index]+'px'))");
+                String expected = "[" + Math.max(6,insets[0]) + "," + Math.max(10,insets[1]) + "," + Math.max(6,insets[2]) + "," + Math.max(10,insets[3]) + "]";
+                assertEquals("Phone safe margins use the provided values and minimum game spacing", expected, js("(()=>{const e=document.createElement('div');e.style.cssText='position:fixed;opacity:0;pointer-events:none;padding:var(--mobile-top) var(--mobile-right) var(--mobile-bottom) var(--mobile-left)';document.body.append(e);const s=getComputedStyle(e),v=[s.paddingTop,s.paddingRight,s.paddingBottom,s.paddingLeft].map(parseFloat);e.remove();return v})()"));
+                nativeTap("button[aria-label=声音设置]"); until("document.querySelector('.audio-settings')");
+                assertEquals("The drawn sound panel stays within the safe area", "true", js("(()=>{const r=document.querySelector('.audio-settings').getBoundingClientRect(),p=" + expected + ";return r.top>=p[0]-.5&&r.right<=innerWidth-p[1]+.5&&r.bottom<=innerHeight-p[2]+.5&&r.left>=p[3]-.5})()"));
+                if (insets[0] == 40 && insets[2] == 28) screenshot("provided-safe-area");
+                nativeTap(".audio-close"); until("!document.querySelector('.audio-settings')&&document.activeElement===document.querySelector('button[aria-label=声音设置]')");
+            }
+            js("['top','right','bottom','left'].forEach((side,index)=>{const p='--safe-area-inset-'+side,v=window.qaOriginalInsets[index];if(v)document.documentElement.style.setProperty(p,v);else document.documentElement.style.removeProperty(p)})");
+        } finally { activity.close(); }
     }
 
     @Test public void audioStartsOnTouchAndSwitchesPersist() throws Exception {
