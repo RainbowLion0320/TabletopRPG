@@ -89,10 +89,10 @@ describe('ApiConfigModal', () => {
     window.localStorage.setItem('trpg-api', JSON.stringify({ provider: 'custom', protocol: 'responses', endpoint: 'bad-address', apiKey: 'test-key', model: 'gateway-model' }));
     const onSave = vi.fn();
     render(<ApiConfigModal open onClose={vi.fn()} onSave={onSave} />);
-    const connection = screen.getByText('连接设置').closest('details')!;
-    connection.open = false; fireEvent(connection, new Event('toggle'));
+    const connection = screen.getByRole('button', { name: '连接设置' });
+    fireEvent.click(connection);
     fireEvent.click(screen.getByRole('button', { name: '保存' }));
-    expect(connection).toHaveAttribute('open');
+    expect(connection).toHaveAttribute('aria-expanded', 'true');
     const endpoint = screen.getByLabelText('服务地址（Endpoint）');
     expect(endpoint).toHaveFocus();
     expect(endpoint).toHaveAttribute('aria-invalid', 'true');
@@ -106,7 +106,7 @@ describe('ApiConfigModal', () => {
     const onSave = vi.fn();
     render(<ApiConfigModal open onClose={vi.fn()} onSave={onSave} />);
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(screen.getByText('连接设置').closest('details')).not.toHaveAttribute('open');
+    expect(screen.getByRole('button', { name: '连接设置' })).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(screen.getByRole('button', { name: '保存' }));
     expect(screen.getByRole('alert')).toHaveTextContent('请输入 API Key');
     expect(screen.getByLabelText('API Key')).toHaveFocus();
@@ -120,7 +120,7 @@ describe('ApiConfigModal', () => {
       provider: 'openai', protocol: 'chat-completions', endpoint: 'https://gateway.example/v1', apiKey: 'test-key', model: 'gateway-model'
     }));
     render(<ApiConfigModal open onClose={vi.fn()} onSave={vi.fn()} />);
-    expect(screen.getByText('连接设置').closest('details')).toHaveAttribute('open');
+    expect(screen.getByRole('button', { name: '连接设置' })).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByLabelText('协议')).toHaveValue('chat-completions');
     expect(screen.getByLabelText('服务地址（Endpoint）')).toHaveValue('https://gateway.example/v1');
     expect(screen.getByLabelText('模型')).toHaveValue('gateway-model');
@@ -136,18 +136,18 @@ describe('ApiConfigModal', () => {
     try {
       const callbacks = { onClose: vi.fn(), onSave: vi.fn() };
       const view = render(<ApiConfigModal open {...callbacks} />);
-      const connection = screen.getByText('连接设置').closest('details')!;
-      expect(connection).not.toHaveAttribute('open');
+      const connection = screen.getByRole('button', { name: '连接设置' });
+      expect(connection).toHaveAttribute('aria-expanded', 'false');
       expect(screen.getByLabelText('API Key')).toHaveAttribute('type', 'password');
       expect(screen.getByLabelText('模型')).toHaveValue(baseline.model);
-      connection.open = true; fireEvent(connection, new Event('toggle'));
+      fireEvent.click(connection);
       expect(screen.getByLabelText('服务地址（Endpoint）')).toHaveValue(baseline.endpoint);
       expect(screen.getByLabelText('协议')).toHaveValue(baseline.protocol);
       view.rerender(<ApiConfigModal open={false} {...callbacks} />);
       const saved = { ...baseline, endpoint: 'https://player-gateway.example/v1' };
       const encoded = JSON.stringify(saved); window.localStorage.setItem('trpg-api', encoded);
       view.rerender(<ApiConfigModal open {...callbacks} />);
-      expect(screen.getByText('连接设置').closest('details')).toHaveAttribute('open');
+      expect(screen.getByRole('button', { name: '连接设置' })).toHaveAttribute('aria-expanded', 'true');
       expect(screen.getByLabelText('服务地址（Endpoint）')).toHaveValue(saved.endpoint);
       expect(screen.getByLabelText('协议')).toHaveValue(saved.protocol);
       expect(window.localStorage.getItem('trpg-api')).toBe(encoded);

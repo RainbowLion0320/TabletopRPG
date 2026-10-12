@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ChevronDown, Eye, EyeOff, X } from 'lucide-react';
 import { useDialogFocus } from './useDialogFocus';
 import { useOverlayPresence } from './useOverlayPresence';
+import { DisclosureMotion } from './DisclosureMotion';
 import { TuningDialArt } from './TuningDialArt';
 import { usingNativeStorage } from '../../platform/storage';
 import {
@@ -73,6 +74,8 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
       if (active instanceof HTMLElement && active.matches('input, select') && body.contains(active)) revealField(active, body);
     });
     observer.observe(body);
+    const disclosure = body.querySelector('.disclosure-motion');
+    if (disclosure) observer.observe(disclosure);
     return () => observer.disconnect();
   }, [open]);
 
@@ -180,9 +183,10 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
           />
           {errorFor('model')}
         </div>
-        <details className="api-connection" open={connectionOpen} onToggle={(event) => setConnectionOpen(event.currentTarget.open)}>
-          <summary><TuningDialArt /><span>连接设置</span><ChevronDown size={16} aria-hidden="true" /></summary>
-          <div className="api-connection-fields">
+        <div className="api-connection">
+          <button className="api-connection-toggle" type="button" aria-expanded={connectionOpen} aria-controls="api-connection-content" onClick={() => setConnectionOpen(current => !current)}><TuningDialArt /><span>连接设置</span><ChevronDown className="api-connection-chevron" size={16} aria-hidden="true" /></button>
+          <DisclosureMotion open={connectionOpen} id="api-connection-content">
+          <div className="api-connection-fields" hidden={!connectionOpen}>
           <div className="api-field">
             <label htmlFor="api-endpoint">服务地址（Endpoint）</label>
             <input id="api-endpoint" type="url" inputMode="url" autoCapitalize="none" autoCorrect="off" spellCheck={false}
@@ -203,7 +207,8 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
             </div>
           </div>
           </div>
-        </details>
+          </DisclosureMotion>
+        </div>
         </fieldset>
         {errorFor(null)}
         </div>

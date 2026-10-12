@@ -7,6 +7,79 @@ import { parse as parseYaml } from 'yaml';
 import sharp from 'sharp';
 import { settleUiMotion } from './browserMotion';
 
+async function sampleDisclosure(page: Page, selector: string, activate: () => Promise<void>) {
+  await page.evaluate(selector => {
+    const record: number[] = [];
+    (window as typeof window & { disclosureFrames: number[] }).disclosureFrames = record;
+    document.addEventListener('click', () => {
+      const take = () => {
+        record.push(document.querySelector(selector)!.getBoundingClientRect().height);
+        if (record.length < 18) requestAnimationFrame(take);
+      };
+      take();
+    }, { once: true, capture: true });
+  }, selector);
+  await activate();
+  await expect.poll(() => page.evaluate(() => (window as typeof window & { disclosureFrames: number[] }).disclosureFrames.length)).toBe(18);
+  return page.evaluate(() => (window as typeof window & { disclosureFrames: number[] }).disclosureFrames);
+}
+
+for (const size of [
+  { width: 320, height: 568, party: 1, reduced: false }, { width: 390, height: 844, party: 2, reduced: false },
+  { width: 1440, height: 900, party: 4, reduced: false }, { width: 390, height: 844, party: 1, reduced: true }
+]) {
+  test(`inline disclosures animate natural height and preserve input at ${size.width}px${size.reduced ? ' with reduced motion' : ''}`, async ({ page }, testInfo) => {
+    await page.setViewportSize(size);
+    await page.emulateMedia({ reducedMotion: size.reduced ? 'reduce' : 'no-preference' });
+    await gotoClean(page);
+    await page.getByRole('button', { name: '开始游戏', exact: true }).click();
+    const card = page.getByRole('article', { name: '亨利·格雷档案', exact: true });
+    const choices = page.getByRole('checkbox');
+    for (let i = 1; i < size.party; i++) await page.locator('.preset-selection').nth(i).click();
+    await page.evaluate(() => document.fonts.ready); await settleUiMotion(page);
+    const footer = await page.locator('.setup-footer').boundingBox();
+    const verify = (frames: number[]) => {
+      const first = frames[0], last = frames.at(-1)!;
+      expect(Math.abs(last - first)).toBeGreaterThan(100);
+      expect(frames.some(height => height > Math.min(first, last) + 1 && height < Math.max(first, last) - 1)).toBe(!size.reduced);
+    };
+    verify(await sampleDisclosure(page, '.preset-card-modern', () => card.getByRole('button', { name: '档案详情', exact: true }).click()));
+    await expect(card.locator('.preset-attrs')).toBeVisible();
+    verify(await sampleDisclosure(page, '.preset-card-modern', () => card.getByRole('button', { name: '收起档案', exact: true }).click()));
+    await expect(card.locator('.disclosure-motion')).toHaveAttribute('aria-hidden', 'true');
+    await expect(card.locator('.disclosure-motion')).toHaveAttribute('inert', '');
+    expect(await page.locator('.setup-footer').boundingBox()).toEqual(footer);
+    await card.getByRole('button', { name: '档案详情', exact: true }).click();
+    await card.getByRole('button', { name: '收起档案', exact: true }).click();
+    await card.getByRole('button', { name: '档案详情', exact: true }).click();
+    await settleUiMotion(page);
+    await expect(card.locator('.preset-background-notes')).toBeVisible();
+    expect(await choices.evaluateAll(elements => elements.filter(element => (element as HTMLInputElement).checked).length)).toBe(size.party);
+    await page.getByRole('button', { name: '返回', exact: true }).click();
+    await page.getByRole('button', { name: 'AI 设置', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'AI DM 配置' });
+    await dialog.getByLabel('服务商', { exact: true }).selectOption('openai');
+    await dialog.getByLabel('模型', { exact: true }).fill('qa-preserved-draft');
+    const toggle = dialog.getByRole('button', { name: '连接设置', exact: true });
+    await settleUiMotion(page);
+    const record = async (key: string) => sampleDisclosure(page, '.api-connection', () => toggle.press(key));
+    await toggle.focus();
+    verify(await record('Enter'));
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await dialog.getByLabel('Endpoint').fill('https://qa-disclosure.example/v1');
+    verify(await record('Space'));
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(dialog.locator('#api-connection-content')).toHaveAttribute('inert', '');
+    await toggle.press('Enter'); await settleUiMotion(page);
+    await expect(dialog.getByLabel('Endpoint')).toHaveValue('https://qa-disclosure.example/v1');
+    await expect(dialog.getByLabel('模型', { exact: true })).toHaveValue('qa-preserved-draft');
+    await expect(dialog.getByRole('button', { name: '保存', exact: true })).toBeInViewport({ ratio: 1 });
+    await expect(dialog.getByRole('button', { name: '关闭 AI DM 配置', exact: true })).toBeInViewport({ ratio: 1 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('disclosure-motion.png') });
+  });
+}
+
 for (const size of [
   { width: 320, height: 568, party: 1 }, { width: 390, height: 844, party: 2 },
   { width: 720, height: 960, party: 4 }, { width: 1440, height: 900, party: 4 }
@@ -2927,7 +3000,7 @@ for (const width of [320, 390, 562, 1440]) {
     const model = dialog.getByLabel('模型');
     await expect(model).toBeFocused(); await expect(model).toHaveAttribute('aria-invalid', 'true');
     await expect(model).toHaveAccessibleDescription('请填写模型名。');
-    await expect(dialog.locator('.api-connection')).not.toHaveAttribute('open');
+    await expect(dialog.locator('.api-connection-toggle')).toHaveAttribute('aria-expanded', 'false');
     await save.click(); await expect(model).toBeFocused();
     await page.setViewportSize({ width, height: 300 });
     const verify = async (field: string) => {
@@ -2943,7 +3016,7 @@ for (const width of [320, 390, 562, 1440]) {
           && element.scrollTop === 0 && target.contains(document.elementFromPoint(input.x + input.width / 2, input.y + input.height / 2));
       }, field)).toBe(true);
       await expect(dialog.getByRole('button', { name: '关闭 AI DM 配置' })).toBeInViewport();
-      expect(await dialog.locator('label, summary, footer button, [role="alert"]').evaluateAll(elements => elements.every(element => parseFloat(getComputedStyle(element).fontSize) >= 15))).toBe(true);
+      expect(await dialog.locator('label, .api-connection-toggle, footer button, [role="alert"]').evaluateAll(elements => elements.every(element => parseFloat(getComputedStyle(element).fontSize) >= 15))).toBe(true);
     };
     await verify('api-model');
     await model.fill('ui-qa-model'); await expect(dialog.getByRole('alert')).toHaveCount(0);
@@ -2952,7 +3025,7 @@ for (const width of [320, 390, 562, 1440]) {
     await endpoint.fill('bad-address');
     await dialog.getByText('连接设置', { exact: true }).click();
     await save.click();
-    await expect(endpoint).toBeFocused(); await expect(dialog.locator('.api-connection')).toHaveAttribute('open');
+    await expect(endpoint).toBeFocused(); await expect(dialog.locator('.api-connection-toggle')).toHaveAttribute('aria-expanded', 'true');
     await expect(endpoint).toHaveAccessibleDescription('请输入完整的 HTTP(S) 服务地址。');
     await verify('api-endpoint');
     await page.screenshot({ path: testInfo.outputPath('api-repair-short.png') });
@@ -2970,7 +3043,7 @@ test('phone AI configuration keeps core inputs concise and preserves explicit cu
   await page.getByRole('button', { name: 'AI 设置', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'AI DM 配置' });
   await expect(dialog.getByRole('button', { name: '关闭 AI DM 配置' })).toBeFocused();
-  await expect(dialog.locator('.api-connection')).not.toHaveAttribute('open');
+  await expect(dialog.locator('.api-connection-toggle')).toHaveAttribute('aria-expanded', 'false');
   await expect(dialog.getByLabel('模型')).toBeVisible();
   await expect(dialog.getByRole('button', { name: '保存', exact: true })).toBeInViewport();
   await dialog.getByLabel('API Key', { exact: true }).fill('ui-qa-only-token');
@@ -2978,7 +3051,7 @@ test('phone AI configuration keeps core inputs concise and preserves explicit cu
   await expect(dialog.getByLabel('API Key', { exact: true })).toHaveAttribute('type', 'text');
   await dialog.getByRole('button', { name: '隐藏 API Key' }).click();
   await dialog.getByLabel('服务商', { exact: true }).selectOption('custom');
-  await expect(dialog.locator('.api-connection')).toHaveAttribute('open');
+  await expect(dialog.locator('.api-connection-toggle')).toHaveAttribute('aria-expanded', 'true');
   await expect(dialog.getByLabel('模型')).toHaveValue('');
   await dialog.getByLabel('Endpoint').fill('https://ui-qa.example/v1');
   await dialog.getByLabel('协议', { exact: true }).selectOption('responses');
@@ -3001,7 +3074,7 @@ test('phone AI configuration keeps core inputs concise and preserves explicit cu
   await expect(dialog).toHaveCount(0);
   await page.setViewportSize({ width: 320, height: 568 });
   await page.getByRole('button', { name: 'AI 设置', exact: true }).click();
-  await expect(dialog.locator('.api-connection')).toHaveAttribute('open');
+  await expect(dialog.locator('.api-connection-toggle')).toHaveAttribute('aria-expanded', 'true');
   await expect(dialog.getByLabel('Endpoint')).toHaveValue('https://ui-qa.example/v1');
   await expect(dialog.getByLabel('协议', { exact: true })).toHaveValue('responses');
   await expect(dialog.getByLabel('模型')).toHaveValue('ui-qa-model');

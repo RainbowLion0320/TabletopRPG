@@ -158,7 +158,7 @@ public class GameAndroidTest {
         }
         until("document.querySelector('#api-config-modal-title')");
         fill("#api-provider", "custom");
-        until("document.querySelector('#api-provider').value === 'custom' && document.querySelector('.api-connection').open");
+        until("document.querySelector('#api-provider').value === 'custom' && (document.querySelector('.api-connection-toggle').getAttribute('aria-expanded')==='true')");
         fill("#api-protocol", protocol);
         fill("#api-endpoint", endpoint);
         fill("#api-key", "android-qa-only-token");
@@ -287,9 +287,9 @@ public class GameAndroidTest {
             info.flags |= android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;
             automation.setServiceInfo(info);
             viewport(390, 844); click("AI 设置"); until("document.querySelector('#api-model')");
-            assertEquals("Bundled connection details stay collapsed", "true", js("!document.querySelector('.api-connection').open"));
+            assertEquals("Bundled connection details stay collapsed", "true", js("!(document.querySelector('.api-connection-toggle').getAttribute('aria-expanded')==='true')"));
             screenshot("native-bundled-compact-connection");
-            nativeTap(".api-connection summary"); until("document.querySelector('.api-connection').open");
+            nativeTap(".api-connection-toggle"); until("(document.querySelector('.api-connection-toggle').getAttribute('aria-expanded')==='true')");
             fill("#api-model", "android-unsaved-model");
             String[][] fields = {{"#api-provider", "自定义 / 兼容服务", "provider"}, {"#api-protocol", "Chat Completions compatible", "protocol"}};
             for (String[] field : fields) {
@@ -447,6 +447,53 @@ public class GameAndroidTest {
         } finally { activity.close(); }
     }
 
+    private void watchDisclosureSize(String selector) throws Exception {
+        js("window.qaDisclosureSizes=[];document.addEventListener('click',()=>{const take=()=>{window.qaDisclosureSizes.push(document.querySelector(" + JSONObject.quote(selector) + ").getBoundingClientRect().height);if(window.qaDisclosureSizes.length<18)requestAnimationFrame(take)};take()},{once:true,capture:true})");
+    }
+
+    private void assertDisclosureSizeChangesSmoothly() throws Exception {
+        until("window.qaDisclosureSizes.length===18");
+        assertEquals("The native compositor sees intermediate heights rather than a one-frame jump", "true", js("(()=>{const f=window.qaDisclosureSizes,a=f[0],b=f.at(-1);return Math.abs(b-a)>100&&f.some(h=>h>Math.min(a,b)+1&&h<Math.max(a,b)-1)})()"));
+        System.out.println("DISCLOSURE_NATIVE: " + js("JSON.stringify({first:window.qaDisclosureSizes[0],last:window.qaDisclosureSizes.at(-1),intermediate:window.qaDisclosureSizes.filter(h=>h>Math.min(window.qaDisclosureSizes[0],window.qaDisclosureSizes.at(-1))+1&&h<Math.max(window.qaDisclosureSizes[0],window.qaDisclosureSizes.at(-1))-1).length})"));
+    }
+
+    @Test public void inlineDisclosuresKeepNativeKeyboardValuesAndParty() throws Exception {
+        for (int party : new int[]{1, 2, 4}) {
+            fresh();
+            try {
+                viewport(390, 844); click("开始游戏");
+                for (int i = 1; i < party; i++) js("document.querySelectorAll('.preset-selection-input')[" + i + "].click()");
+                js("window.qaDisclosureFontsReady=false;document.fonts.ready.then(()=>window.qaDisclosureFontsReady=true)");
+                until("window.qaDisclosureFontsReady");
+                for (int width : new int[]{390, 720}) {
+                    viewport(width, width == 390 ? 844 : 960);
+                    watchDisclosureSize(".preset-card-modern"); nativeTap(".preset-attrs-toggle"); assertDisclosureSizeChangesSmoothly();
+                    watchDisclosureSize(".preset-card-modern"); nativeTap(".preset-attrs-toggle"); assertDisclosureSizeChangesSmoothly();
+                    assertEquals("A closed dossier is inert and has no retained visible content", "true", js("(()=>{const d=document.querySelector('.disclosure-motion');return d.hasAttribute('inert')&&d.getAttribute('aria-hidden')==='true'&&d.getBoundingClientRect().height===0})()"));
+                    assertEquals("Disclosure does not change the selected party", Integer.toString(party), js("document.querySelectorAll('.preset-selection-input:checked').length"));
+                }
+                viewport(390, 844); click("进入游戏"); fill(".dock-input", "先记录日期\n再检查门廊。"); menu("AI 设置");
+                fill("#api-provider", "openai"); fill("#api-model", "qa-preserved-draft");
+                until("document.querySelector('.api-connection-toggle').getAttribute('aria-expanded')==='false'"); awaitUiMotion();
+                js("document.querySelector('.api-connection-toggle').focus()");
+                watchDisclosureSize(".api-connection");
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_ENTER); assertDisclosureSizeChangesSmoothly();
+                fill("#api-endpoint", "https://qa-disclosure.example/v1");
+                watchDisclosureSize(".api-connection");
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_SPACE); assertDisclosureSizeChangesSmoothly();
+                assertEquals("Keyboard collapse releases its content from focus immediately", "true", js("document.querySelector('.api-connection-toggle').getAttribute('aria-expanded')==='false'&&document.querySelector('#api-connection-content').hasAttribute('inert')"));
+                nativeTap(".api-connection-toggle"); awaitUiMotion();
+                assertEquals("Reopening retains both edited connection values", "true", js("document.querySelector('#api-endpoint').value==='https://qa-disclosure.example/v1'&&document.querySelector('#api-model').value==='qa-preserved-draft'"));
+                reachable(".api-config-card footer .primary-btn"); reachable(".api-config-close");
+                if (party == 2) screenshot("disclosure-motion-native");
+                nativeTap(".api-config-close"); awaitUiMotion();
+                if ("true".equals(js("Boolean(document.querySelector('.game-menu'))"))) click("继续调查");
+                assertEquals("Unsaved settings and disclosure motion leave the complete action draft intact", "true", js("document.querySelector('.dock-input').value==='先记录日期'+String.fromCharCode(10)+'再检查门廊。'&&document.querySelectorAll('.party-compact').length===" + party));
+                assertNoResizeErrors();
+            } finally { if (activity != null) activity.close(); }
+        }
+    }
+
     @Test public void suggestionPreviewsKeepFullActionsAndResetBetweenInvestigators() throws Exception {
         String longAction = "沿着门廊与窗边逐处查看细小划痕，再向伊莎贝拉询问父亲失踪前几天来往的访客，记下姓名、时间和随身物品，以便之后与其他线索互相核对";
         for (int party : new int[]{1, 2, 4}) {
@@ -588,8 +635,8 @@ public class GameAndroidTest {
                 click("AI 设置");
                 until("document.querySelector('.api-config-fields')");
                 titlePlayback(true);
-                assertEquals("Bundled MiMo settings are quiet, masked and keep advanced connection fields collapsed", "true", js("!document.querySelector('.api-config-card [role=alert]')&&document.querySelector('#api-provider').value==='mimo'&&document.querySelector('#api-model').value==='mimo-v2.6-pro'&&document.querySelector('#api-key').type==='password'&&!document.querySelector('.api-connection').open"));
-                for (String field : new String[] {"#api-provider", "#api-key", "#api-model", ".api-connection summary"}) reachable(field);
+                assertEquals("Bundled MiMo settings are quiet, masked and keep advanced connection fields collapsed", "true", js("!document.querySelector('.api-config-card [role=alert]')&&document.querySelector('#api-provider').value==='mimo'&&document.querySelector('#api-model').value==='mimo-v2.6-pro'&&document.querySelector('#api-key').type==='password'&&!(document.querySelector('.api-connection-toggle').getAttribute('aria-expanded')==='true')"));
+                for (String field : new String[] {"#api-provider", "#api-key", "#api-model", ".api-connection-toggle"}) reachable(field);
                 reachable(".api-config-close");
                 reachable(".api-config-card footer .primary-btn"); screenshot(prefix + "-api");
                 if (size[0] == 390) {
@@ -962,10 +1009,10 @@ public class GameAndroidTest {
                 reachable(".api-config-fields input[type=password]"); reachable(".api-config-card footer .primary-btn");
                 screenshot(prefix + "-api-keyboard");
                 fill("#api-model", "");
-                js("document.querySelector('.api-connection summary').click()");
+                js("document.querySelector('.api-connection-toggle').click()");
                 nativeTap(".api-config-card footer .primary-btn");
                 until("document.activeElement===document.querySelector('#api-model')&&document.querySelector('#api-model').getAttribute('aria-invalid')==='true'");
-                assertEquals("Model correction leaves unrelated connection fields collapsed", "false", js("document.querySelector('.api-connection').open"));
+                assertEquals("Model correction leaves unrelated connection fields collapsed", "false", js("(document.querySelector('.api-connection-toggle').getAttribute('aria-expanded')==='true')"));
                 reachable("#api-model"); reachable(".api-config-close"); reachable(".api-config-card footer .primary-btn");
                 assertEquals("Model and its readable error fit within the keyboard body", "true", js("(()=>{const b=document.querySelector('.api-config-fields').getBoundingClientRect(),m=document.querySelector('#api-model').getBoundingClientRect(),e=document.querySelector('.api-field-error').getBoundingClientRect();return m.top>=b.top&&m.bottom<=b.bottom&&e.top>=b.top&&e.bottom<=b.bottom&&parseFloat(getComputedStyle(document.querySelector('.api-field-error')).fontSize)>=15&&document.querySelector('.api-config-card').scrollTop===0})()"));
                 fill("#api-model", "待确认的模型");
@@ -981,7 +1028,7 @@ public class GameAndroidTest {
                 assertEquals("Ordinary Tab still wraps inside the dialog", "true", js("document.activeElement===document.querySelector('.api-config-close')"));
                 fill("#api-model", "edited-qa-model"); fill("#api-endpoint", "bad-address");
                 nativeTap(".api-config-card footer .primary-btn");
-                until("document.activeElement===document.querySelector('#api-endpoint')&&document.querySelector('.api-connection').open");
+                until("document.activeElement===document.querySelector('#api-endpoint')&&(document.querySelector('.api-connection-toggle').getAttribute('aria-expanded')==='true')");
                 reachable("#api-endpoint");
                 assertEquals("Endpoint and its error fit without moving the dialog", "true", js("(()=>{const b=document.querySelector('.api-config-fields').getBoundingClientRect(),m=document.querySelector('#api-endpoint').getBoundingClientRect(),e=document.querySelector('.api-field-error').getBoundingClientRect();return m.top>=b.top&&m.bottom<=b.bottom&&e.top>=b.top&&e.bottom<=b.bottom&&document.querySelector('.api-config-card').scrollTop===0})()"));
                 screenshot(prefix + "-api-repair");

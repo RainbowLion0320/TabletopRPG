@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ArrowLeft, Check, ChevronDown } from 'lucide-react';
+import { DisclosureMotion } from '../shared/DisclosureMotion';
 import { deriveInvestigatorStats } from '../../data/gameRules';
 import { createInvestigatorFromPreset, presets } from '../../data/presets';
 import type { Investigator } from '../../types/game';
@@ -115,6 +116,7 @@ export function CharacterSetup({ onBack, onStart, portrait = false }: CharacterS
                 </button>
               </div>
 
+              <DisclosureMotion open={attrsExpanded}>
                 <div
                   className="preset-other-panel"
                   id={`${preset.id}-other-panel`}
@@ -141,6 +143,7 @@ export function CharacterSetup({ onBack, onStart, portrait = false }: CharacterS
                   <span>{preset.background.trait}</span>
                 </div>
               </div>
+              </DisclosureMotion>
             </article>
           );
         })}
