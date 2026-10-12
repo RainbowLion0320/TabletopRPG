@@ -2,12 +2,14 @@
 type: concept
 title: 共享交互 UI
 tags: [ui, art, mobile, android, web, accessibility]
-sources: [../../docs/UI_SYSTEM.md, ../../assets/ui/artist/README.md, ../../assets/ui/app-icon/README.md, ../../src/styles/game-ui.css, ../../src/styles/motion.css, ../../design-qa.md]
+sources: [../../docs/UI_SYSTEM.md, ../../assets/ui/artist/README.md, ../../assets/ui/app-icon/README.md, ../../src/styles/game-ui.css, ../../src/styles/motion.css, ../../src/components/game/ActionDock.tsx, ../../design-qa.md]
 created: 2026-09-09
 updated: 2026-10-12
 ---
 
 # 共享交互 UI
+
+0.5.59 修复桌面连续行动：DM 回复后恢复行动输入的键盘焦点，可直接描述下一轮；正在阅读资料或操作其他控件时保留原焦点。手机回复后先阅读，不自动聚焦输入或弹出输入法。单人、双人和四人行动顺序及原美术沿用。验收见 [连续行动检查](../../docs/reviews/2026-10-12-continuous-actions.md)。
 
 0.5.58 补齐进度、行动日志、手机案件列表与资料详情正文的键盘阅读入口。Tab 可进入正文，方向键、PageDown 和 End 沿用浏览器原生滚动，标题与关闭保持固定；键盘聚焦时使用既有银蓝焦点描边。切页与返回保留阅读位置、行动草稿和原关闭层级，触屏布局延续美术原版图标与银蓝 UI。
 

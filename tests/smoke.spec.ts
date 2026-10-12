@@ -233,6 +233,86 @@ async function gotoWithSave(page: Page, gameState: GameState, apiConfig?: Record
   await page.goto('/');
 }
 
+for (const party of [1, 2, 4]) {
+  test(`desktop keyboard actions continue after a DM reply for ${party} players`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    let replies = 0;
+    await page.route('https://action-focus.test/v1/**', async route => {
+      const narrator = route.request().postDataJSON().text?.format?.name === 'narrator_response';
+      const content = narrator
+        ? { narrative: `第 ${++replies} 轮回应：雨声仍在窗外回响，伊莎贝拉轻轻点头，等候调查员继续讲述。`, activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}, keywords: [] }
+        : { facts: [], nodes: [], edges: [] };
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ output_text: JSON.stringify(content) }) });
+    });
+    const state = createDynamicCaseBoardSave();
+    state.players = Array.from({ length: party }, (_, index) => makeInvestigator({ id: `focus-${index}`, name: ['亨利·格雷', '艾达·华莱士', '托马斯·贝尔', '罗伯特·肖'][index] }));
+    state.scenarioProgress = createSmokeScenarioProgress();
+    await gotoWithSave(page, state, { provider: 'custom', protocol: 'responses', endpoint: 'https://action-focus.test/v1', apiKey: 'qa-only', model: 'qa-only' });
+    await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+    const input = page.locator('.dock-input');
+    for (let turn = 1; turn <= 2; turn++) {
+      for (let actor = 0; actor < party; actor++) {
+        await expect(input).toBeFocused();
+        await expect(input).toHaveAttribute('aria-label', `${state.players[actor].name}的行动`);
+        const action = `第 ${turn} 轮，第 ${actor + 1} 位：继续听委托人讲述。`;
+        await page.keyboard.type(action);
+        await expect(input).toHaveValue(action);
+        await page.keyboard.press('Enter');
+      }
+      await expect(page.locator('.story-message.dm').last()).toContainText(`第 ${turn} 轮回应`);
+      await expect(input).toBeEnabled(); await expect(input).toBeFocused();
+      await expect(input).toHaveValue('');
+      await expect(page.locator('.story-message.player')).toHaveCount(party * turn);
+    }
+    expect(replies).toBe(2);
+    await page.screenshot({ path: testInfo.outputPath('keyboard-next-round.png') });
+  });
+}
+
+for (const phone of [false, true]) {
+  test(`DM completion respects ${phone ? 'phone reading without reopening input' : 'an open archive and its keyboard focus'}`, async ({ page }, testInfo) => {
+    await page.setViewportSize(phone ? { width: 390, height: 844 } : { width: 1440, height: 900 });
+    let releaseReply!: () => void;
+    const gate = new Promise<void>(resolve => { releaseReply = resolve; });
+    await page.route('https://focus-reading.test/v1/**', async route => {
+      const narrator = route.request().postDataJSON().text?.format?.name === 'narrator_response';
+      if (narrator) await gate;
+      const content = narrator
+        ? { narrative: '回应完成后，伊莎贝拉轻轻点头，窗外的雨声依旧。', activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}, keywords: [] }
+        : { facts: [], nodes: [], edges: [] };
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ output_text: JSON.stringify(content) }) });
+    });
+    const state = createDynamicCaseBoardSave(); state.players = state.players.slice(0, 1);
+    state.scenarioProgress = createSmokeScenarioProgress();
+    state.messages = Array.from({ length: 12 }, (_, index) => ({ id: `read-focus-${index}`, type: 'dm' as const, text: '伊莎贝拉讲述失踪前的经过，雨声响在门廊。\n\n'.repeat(8) }));
+    await gotoWithSave(page, state, { provider: 'custom', protocol: 'responses', endpoint: 'https://focus-reading.test/v1', apiKey: 'qa-only', model: 'qa-only' });
+    await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+    const input = page.locator('.dock-input'); await input.fill('继续听委托人讲述。');
+    if (phone) await page.getByRole('button', { name: '提交', exact: true }).click();
+    else await page.keyboard.press('Enter');
+    await expect(input).toBeDisabled();
+    const story = page.getByRole('region', { name: '剧情记录', exact: true });
+    await story.evaluate(element => element.scrollTop = 100);
+    if (!phone) {
+      await page.getByRole('button', { name: '资料', exact: true }).click();
+      await page.getByRole('tab', { name: '日志', exact: true }).click();
+      await page.getByRole('button', { name: '关闭资料', exact: true }).focus(); await page.keyboard.press('Tab');
+      await expect(page.getByRole('list', { name: '行动记录', exact: true })).toBeFocused();
+    }
+    releaseReply();
+    await expect(page.locator('.story-message.dm').last()).toContainText('回应完成后');
+    await expect(input).toBeEnabled(); await expect(input).not.toBeFocused();
+    await expect(story).toHaveJSProperty('scrollTop', 100);
+    await expect(page.getByRole('button', { name: '查看新剧情', exact: true })).toBeVisible();
+    if (!phone) {
+      await expect(page.getByRole('list', { name: '行动记录', exact: true })).toBeFocused();
+      await page.getByRole('button', { name: '关闭资料', exact: true }).click();
+      await expect(page.getByRole('button', { name: '资料', exact: true })).toBeFocused();
+    }
+    await page.screenshot({ path: testInfo.outputPath('reply-reading-focus.png') });
+  });
+}
+
 for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height: 420, party: 2 }, { width: 1440, height: 900, party: 4 }]) {
   test(`read-only records remain keyboard-readable inside dialogs at ${size.width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize(size);

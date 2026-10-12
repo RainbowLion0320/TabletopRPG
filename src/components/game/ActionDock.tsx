@@ -56,6 +56,17 @@ export function ActionDock({
   const ending = scenario.progression.endings.find((item) => item.id === progress.endingId);
   const hasPendingTurn = Boolean(state.pendingDmActions?.length);
   const canDeclare = !ending && !isDiceRolling && !state.isThinking && !hasPendingTurn && !state.pendingCheck;
+  const wasReady = useRef(canDeclare);
+
+  useLayoutEffect(() => {
+    const resumed = !wasReady.current && canDeclare;
+    wasReady.current = canDeclare;
+    // Disabling a focused textarea drops desktop keyboard focus to the body.
+    // Restore it only when no reader or dialog has taken ownership of focus.
+    if (!resumed || !autoFocusInput || document.activeElement !== document.body
+      || document.querySelector('[role="dialog"][aria-modal="true"]:not([aria-hidden="true"])')) return;
+    inputRef.current?.focus({ preventScroll: true });
+  }, [autoFocusInput, canDeclare]);
 
   useLayoutEffect(() => {
     if (inputRef.current) fitActionInput(inputRef.current);

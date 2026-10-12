@@ -977,6 +977,9 @@ public class GameAndroidTest {
                 assertEquals(1, narratorCalls.get());
                 until("document.querySelectorAll('.story-message.player').length === " + party);
                 assertEquals("Multiline player action is preserved in the actual turn", "true", js("document.querySelector('.story-message.player .player-message-text').textContent.includes('接受委托'+String.fromCharCode(10)+'询问失踪经过')"));
+                until("document.querySelector('.dock-input') && !document.querySelector('.dock-input').disabled");
+                assertEquals("Phone replies leave the input unfocused so players can read first", "false", js("document.activeElement===document.querySelector('.dock-input')"));
+                awaitSettledIme(false);
                 assertNoResizeErrors();
                 until("document.querySelectorAll('.suggestion-row button').length===3");
                 assertEquals("Distinct choices remain beside the existing story route", "true", js("Array.from(document.querySelectorAll('.suggestion-row button')).map(e=>e.textContent).join('|')==='前往老赫特酒吧继续调查|检查门锁|观察窗边'"));
