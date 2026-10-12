@@ -69,6 +69,22 @@ public class GameAndroidTest {
         }
         fail("Input method visibility did not settle to " + visible);
     }
+    private String awaitSettledScroll(String selector) throws Exception {
+        long deadline = SystemClock.elapsedRealtime() + 10000;
+        long stableSince = 0;
+        String previous = null;
+        while (SystemClock.elapsedRealtime() < deadline) {
+            String position = js("document.querySelector(" + JSONObject.quote(selector) + ").scrollTop");
+            if (position.equals(previous)) {
+                if (stableSince == 0) stableSince = SystemClock.elapsedRealtime();
+                if (SystemClock.elapsedRealtime() - stableSince >= 300) return position;
+            } else stableSince = 0;
+            previous = position;
+            SystemClock.sleep(50);
+        }
+        fail("Reading scroll did not settle: " + selector);
+        return null;
+    }
     private void click(String text) throws Exception {
         String match = "Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === " + JSONObject.quote(text) + " || b.getAttribute('aria-label') === " + JSONObject.quote(text) + ")";
         until(match + " && !" + match + ".disabled"); js(match + ".click()");
@@ -623,9 +639,13 @@ public class GameAndroidTest {
                 nativeTap("[aria-label='关闭资料详情']"); until("!document.querySelector('.case-board-inspector')");
                 nativeTap(".case-board-mobile-card[aria-label='地点 摩勒住宅']"); until("document.querySelector('.case-board-inspector h4').textContent==='摩勒住宅'");
                 viewport(size[0], 300);
-                js("document.querySelector('.case-board-inspector-scroll').scrollTop=99999");
+                js("document.querySelector(\"[aria-label='关闭资料详情']\").focus()");
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_TAB);
+                until("document.activeElement===document.querySelector('.case-board-inspector-scroll')");
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_PAGE_DOWN);
                 until("document.querySelector('.case-board-inspector-scroll').scrollTop>0");
-                String recordPosition = js("document.querySelector('.case-board-inspector-scroll').scrollTop");
+                // WebView animates PageDown; record its final position before following a relation.
+                String recordPosition = awaitSettledScroll(".case-board-inspector-scroll");
                 nativeTap("[aria-label='查看伊莎贝拉·摩勒资料']"); until("document.querySelector('.case-board-inspector h4').textContent==='伊莎贝拉·摩勒'");
                 assertEquals("A newly followed record starts at its beginning", "0", js("document.querySelector('.case-board-inspector-scroll').scrollTop"));
                 InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
@@ -639,10 +659,16 @@ public class GameAndroidTest {
                 until("!document.querySelector('.case-board-inspector') && document.querySelector('.info-drawer-react.open')"); click("进度");
                 assertEquals("Progress does not expose the script's undiscovered clue total", "true", js("!document.querySelector('.scenario-progress').textContent.match(/已发现\\s+0\\s*\\/\\s*8/)") );
                 assertEquals("Current objectives use readable text and omit empty clue statistics", "true", js("parseFloat(getComputedStyle(document.querySelector('.objective-row strong')).fontSize)>=15&&!document.querySelector('.progress-stat')"));
+                js("document.querySelector(\"[aria-label='关闭资料']\").focus()");
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_TAB);
+                until("document.activeElement===document.querySelector('.info-drawer-page.progress-page')");
                 reachable("[aria-label='关闭资料']"); screenshot(prefix + "-progress"); click("日志");
                 until("document.querySelector('.action-log-list p')");
                 assertEquals("The log body uses readable text without search controls", "true", js("parseFloat(getComputedStyle(document.querySelector('.action-log-list p')).fontSize)>=15&&!document.querySelector('input[type=search]')"));
                 assertEquals("Only player records appear in the log", "true", js("!document.querySelector('.action-log-list').textContent.match(/EV_[A-Z_]+|AI DM 返回格式无效/)&&document.querySelector('.action-log-list').textContent.includes('摩勒住宅')"));
+                js("document.querySelector(\"[aria-label='关闭资料']\").focus()");
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_TAB);
+                until("document.activeElement===document.querySelector('.action-log-list')");
                 viewport(size[0], 300); reachable("[aria-label='关闭资料']");
                 js("document.querySelector('.action-log-list').scrollTop=99999");
                 String logReadingPosition = js("document.querySelector('.action-log-list').scrollTop");

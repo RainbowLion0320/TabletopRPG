@@ -233,6 +233,64 @@ async function gotoWithSave(page: Page, gameState: GameState, apiConfig?: Record
   await page.goto('/');
 }
 
+for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height: 420, party: 2 }, { width: 1440, height: 900, party: 4 }]) {
+  test(`read-only records remain keyboard-readable inside dialogs at ${size.width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize(size);
+    const state = createDynamicCaseBoardSave();
+    state.players = Array.from({ length: size.party }, (_, index) => makeInvestigator({ id: `reader-${index}`, name: ['亨利·格雷', '艾达·华莱士', '托马斯·贝尔', '罗伯特·肖'][index] }));
+    state.declarations = { 'reader-0': '阅读资料之后，继续检查门廊。\n保留这段行动。' };
+    state.actionLog = Array.from({ length: 80 }, (_, index) => ({ time: `第 ${index + 1} 回合`, text: `调查记录 ${index + 1}：检查门廊脚印，核对现场痕迹，并询问委托人失踪前的情况。` }));
+    state.caseBoard!.nodes[0].detail = Array.from({ length: 12 }, (_, index) => `第 ${index + 1} 段观察：门廊和窗边留有新鲜擦痕，调查员记下脚印方向，等待同行者的观察相互印证。`).join('\n\n');
+    await gotoWithSave(page, state);
+    await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+    const opener = page.getByRole('button', { name: '资料', exact: true });
+    await opener.click();
+    const drawer = page.getByRole('dialog', { name: '资料', exact: true });
+    const close = drawer.getByRole('button', { name: '关闭资料', exact: true });
+    await drawer.getByRole('tab', { name: '日志', exact: true }).click();
+    const log = drawer.getByRole('list', { name: '行动记录', exact: true });
+    await close.focus(); await page.keyboard.press('Tab');
+    await expect(log).toBeFocused();
+    const headerTop = await drawer.locator('header').evaluate(element => element.getBoundingClientRect().top);
+    await page.keyboard.press('PageDown');
+    await expect.poll(() => log.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+    await page.keyboard.press('End');
+    await expect.poll(() => log.evaluate(element => element.scrollHeight - element.clientHeight - element.scrollTop)).toBeLessThanOrEqual(1);
+    expect(await drawer.locator('header').evaluate(element => element.getBoundingClientRect().top)).toBe(headerTop);
+    await expect(close).toBeInViewport({ ratio: 1 });
+    const readTop = await log.evaluate(element => element.scrollTop);
+    await drawer.getByRole('tab', { name: '进度', exact: true }).click();
+    await close.focus(); await page.keyboard.press('Tab');
+    await expect(drawer.getByRole('tabpanel', { name: '进度', exact: true })).toBeFocused();
+    await drawer.getByRole('tab', { name: '日志', exact: true }).click();
+    await expect(log).toHaveJSProperty('scrollTop', readTop);
+    await page.screenshot({ path: testInfo.outputPath('keyboard-log.png') });
+    await drawer.getByRole('tab', { name: '案件板', exact: true }).click();
+    const record = size.width <= 900
+      ? drawer.getByRole('button', { name: '事件 药店后门被撬', exact: true })
+      : drawer.locator('.case-flow-node.event.confirmed', { hasText: '药店后门被撬' });
+    await record.click();
+    const detail = page.getByRole('dialog', { name: '药店后门被撬详情', exact: true });
+    const body = detail.getByRole('region', { name: '药店后门被撬资料正文', exact: true });
+    await detail.getByRole('button', { name: '关闭资料详情', exact: true }).focus(); await page.keyboard.press('Tab');
+    await expect(body).toBeFocused(); await expect(body).toHaveJSProperty('scrollTop', 0);
+    await page.keyboard.press('PageDown');
+    await expect.poll(() => body.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+    await page.keyboard.press('Escape');
+    await expect(detail).toHaveCount(0); await expect(drawer).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(drawer).toBeHidden(); await expect(opener).toBeFocused();
+    const nameplate = page.locator('.npc-nameplate');
+    await nameplate.click();
+    const person = page.getByRole('dialog', { name: '伊莎贝拉·摩勒', exact: true });
+    await page.keyboard.press('Tab');
+    await expect(person.getByRole('region', { name: '伊莎贝拉·摩勒资料正文', exact: true })).toBeFocused();
+    await page.keyboard.press('Tab'); await expect(person.getByRole('button', { name: '关闭详情', exact: true })).toBeFocused();
+    await page.keyboard.press('Escape'); await expect(nameplate).toBeFocused();
+    await expect(page.locator('.dock-input')).toHaveValue(state.declarations['reader-0']);
+  });
+}
+
 for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }]) {
   test(`resumed suggestions stay distinct and only fill the current investigator at ${size.width}px`, async ({ page }) => {
     await page.setViewportSize(size);

@@ -74,7 +74,7 @@ export function ActionLogArchive({ entries, scrollPosition }: ActionLogArchivePr
 
   return <section className="action-log-archive" aria-label="行动日志">
     <div className="action-log-heading"><h3>行动日志</h3></div>
-    <ol ref={listRef} className="action-log-list" aria-label="行动记录" onScroll={(event) => {
+    <ol ref={listRef} className="action-log-list" aria-label="行动记录" tabIndex={visible.length ? 0 : -1} onScroll={(event) => {
       scrollPosition.current = event.currentTarget.scrollTop;
     }}>
       {visible.map((entry, index) => <li key={`${entry.time}-${index}`}>

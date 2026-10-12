@@ -48,7 +48,7 @@ export function EntityDetailModal({ detail, onClose }: EntityDetailModalProps) {
           </button>
         </header>
 
-        <div className="entity-detail-body" ref={bodyRef}>
+        <div className="entity-detail-body" ref={bodyRef} tabIndex={0} role="region" aria-label={`${detail.name}资料正文`}>
           <RecordDetailMedia src={detail.image ?? detail.portrait} kind={detail.image ? 'scene' : 'portrait'} name={detail.name} />
           <div className="entity-detail-section">
             <h4>已知信息</h4>

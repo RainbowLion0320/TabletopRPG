@@ -83,7 +83,8 @@ export function CaseBoard({ state, readingState }: CaseBoardProps) {
         </div>
       </div>
       {model.nodes.length ? (
-        <div className={`case-board-workspace${selectedNode ? ' has-inspector' : ''}`} ref={workspaceRef}
+        <div className={`case-board-workspace${selectedNode ? ' has-inspector' : ''}`} ref={workspaceRef} tabIndex={archive ? 0 : undefined}
+          role={archive ? 'region' : undefined} aria-label={archive ? '案件资料' : undefined}
           onScroll={(event) => {
             if (!archive) return;
             scrollPosition.current = event.currentTarget.scrollTop;

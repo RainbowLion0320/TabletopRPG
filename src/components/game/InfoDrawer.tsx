@@ -167,7 +167,7 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
           <button aria-label="关闭资料" onClick={onClose} title="关闭"><X size={18} /></button>
         </header>
 
-        <div ref={pageRef} className={`info-drawer-page ${activeTab}-page`} role="tabpanel" id={`${id}-page`} aria-labelledby={`${id}-${activeTab}`}>
+        <div ref={pageRef} className={`info-drawer-page ${activeTab}-page`} role="tabpanel" id={`${id}-page`} aria-labelledby={`${id}-${activeTab}`} tabIndex={activeTab === 'progress' ? 0 : undefined}>
         {open && activeTab === 'progress' ? <InvestigationProgress state={state} /> : null}
 
         {open && activeTab === 'board' ? (

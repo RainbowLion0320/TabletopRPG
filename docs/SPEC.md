@@ -1,8 +1,10 @@
 # TabletopRPG Technical Spec
 
 > Version: v0.7
-> Updated: 2026-10-10
+> Updated: 2026-10-12
 > Scope: current React/Vite implementation
+
+In 0.5.58, read-only scroll areas in progress, the action log, the native/mobile case archive and record details are explicitly keyboard-focusable inside the existing dialog boundary. Native PageDown, arrow and End navigation scroll only the reading body; fixed headers and close controls stay in place. Focus indicators use the existing silver-blue token and only appear for keyboard focus. Tab returns, reference chains and drafts retain their previous behavior; touch layout and the original artist icon are preserved.
 
 In 0.5.57, the supplied artist icon is restored from its original square/rounded PNGs and platform outputs. The sources match the supplied ICON.zip byte for byte; the five Android densities and adaptive/theme XML reuse the original symbol, and served web icons match production and APK bytes. The replaced detective source and five separate themed silhouettes are removed. No runtime game, persistence, UI-motion or model protocol changes are introduced.
 

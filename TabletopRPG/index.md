@@ -4,7 +4,7 @@ title: Wiki 内容目录
 tags: [index, aligned]
 sources: [../../docs/PRD.md, ../../docs/SPEC.md, ../../docs/GDD.md]
 created: 2026-05-14
-updated: 2026-10-10
+updated: 2026-10-12
 ---
 
 # TabletopRPG Wiki · 内容目录
@@ -60,5 +60,6 @@ updated: 2026-10-10
 | `docs/SPEC.md` | 技术架构与契约 |
 | `docs/GDD.md` | 游戏设计当前版本 |
 | `src/` | 运行时代码事实源 |
+| [2026-10-12 资料阅读审查](../docs/reviews/2026-10-12-reading-navigation.md) | 长日志与资料正文的键盘阅读、返回和触屏验收 |
 | [2026-09-07 全面审查](../docs/reviews/2026-09-07-game-review.md) | 本轮问题修复、范围与验证证据 |
 | [2026-10-08 控件与体验优化](../docs/reviews/2026-10-08-ui-polish.md) | 持续优化目标、档案/菜单/多行阅读、规则与默认 MiMo 接入验收 |

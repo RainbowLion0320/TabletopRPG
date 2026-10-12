@@ -137,7 +137,7 @@ export function CaseBoardInspector({ model, node, onClose, onSelect, onBack, ret
         </div>
         <button aria-label="关闭资料详情" onClick={onClose} title="关闭" type="button"><X size={17} /></button>
       </header>
-      <div className="case-board-inspector-scroll" ref={scrollRef} onScroll={rememberReading}>
+      <div className="case-board-inspector-scroll" ref={scrollRef} tabIndex={0} role="region" aria-label={`${node.title}资料正文`} onScroll={rememberReading}>
         <RecordDetailMedia src={caseRecordImage(node)} kind={node.type === 'scene' ? 'scene' : 'portrait'} name={node.title} />
         <section>
           <h5>已知信息</h5>
