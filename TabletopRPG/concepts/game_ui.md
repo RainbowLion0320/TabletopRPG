@@ -2,12 +2,14 @@
 type: concept
 title: 共享交互 UI
 tags: [ui, art, mobile, android, web, accessibility]
-sources: [../../docs/UI_SYSTEM.md, ../../assets/ui/artist/README.md, ../../assets/ui/app-icon/README.md, ../../src/styles/game-ui.css, ../../src/styles/motion.css, ../../src/components/game/ActionDock.tsx, ../../design-qa.md]
+sources: [../../docs/UI_SYSTEM.md, ../../assets/ui/artist/README.md, ../../assets/ui/app-icon/README.md, ../../src/styles/game-ui.css, ../../src/styles/motion.css, ../../src/components/game/ActionDock.tsx, ../../src/components/game/useNarrativeReading.ts, ../../design-qa.md]
 created: 2026-09-09
 updated: 2026-10-12
 ---
 
 # 共享交互 UI
+
+0.5.61 剧情展开再收起后仍接续末尾；长行动、输入法和窗口改变可用阅读空间时，末尾接续末尾，回看保留同一条记录和相对位置。暂时钳制的书签在空间恢复后接续，手动滚动更新书签；新回复从开头阅读，回看时仍通过原「新内容」入口继续。任务条、美术原图标、银蓝 UI、草稿与多人行动保持。见 [阅读接续验收](../../docs/reviews/2026-10-12-narrative-reading.md)。
 
 0.5.60 菜单、设置、存档、角色/案件详情、资料、骰子和安卓退出面板统一240ms轻抬起、170ms轻收回；手机菜单从底部舒展。关闭立即释放点击、焦点和系统返回，快速重开取消旧清理。页签190ms轻移淡入、按钮短促按压，固定标题、阅读位置、草稿与游戏结算保持。后台/减少动态直接移除收起画面，不新增设置或动画库。验收见 [面板动效](../../docs/reviews/2026-10-12-overlay-motion.md)。
 

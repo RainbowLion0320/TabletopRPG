@@ -109,6 +109,9 @@ public class GameAndroidTest {
         context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE).edit().clear().commit();
         activity = ActivityScenario.launch(MainActivity.class);
         until("document.querySelector('.title-screen')");
+        watchResizeErrors();
+    }
+    private void watchResizeErrors() throws Exception {
         js("window.__qaResizeErrors=[];window.addEventListener('error',e=>{if(e.message.includes('ResizeObserver'))window.__qaResizeErrors.push(e.message)})");
     }
     private void assertNoResizeErrors() throws Exception {
@@ -418,6 +421,62 @@ public class GameAndroidTest {
             until("!document.querySelector('[data-ui-phase=closing]')");
             assertNoResizeErrors(); screenshot("paired-motion-return");
         } finally { activity.close(); }
+    }
+
+    @Test public void storyReadingKeepsItsBookmarkAcrossFoldingAndNativeIme() throws Exception {
+        for (int party : new int[]{1, 2, 4}) {
+            fresh();
+            try {
+                viewport(390, 844); click("开始游戏");
+                for (int i = 1; i < party; i++) js("document.querySelectorAll('.preset-selection-input')[" + i + "].click()");
+                click("进入游戏"); fill(".dock-input", "先记录日期\n再检查门廊"); menu("返回首页");
+                js("window.qaReadingReady=false;Capacitor.Plugins.GameStorage.readAll().then(async ({values})=>{"
+                    + "const record=JSON.parse(values['trpg-android-session-v1']);"
+                    + "record.state.messages=Array.from({length:24},(_,i)=>({id:'reading-'+i,type:'dm',text:i===23?'伊莎贝拉静静地等待调查员回应。':'第'+(i+1)+'页。'+('伊莎贝拉轻声回忆门廊里的脚步，调查员听着雨声记下细节。'+String.fromCharCode(10,10)).repeat(3)}));"
+                    + "await Capacitor.Plugins.GameStorage.write({key:'trpg-android-session-v1',value:JSON.stringify(record)});window.qaReadingReady=true;})");
+                until("window.qaReadingReady"); activity.recreate(); until("document.querySelector('.title-resume-preview')");
+                watchResizeErrors();
+                viewport(390, 844); click("继续游戏"); until("document.querySelectorAll('.story-message.dm').length===24");
+                js("document.querySelector('.narrative-scroll').focus()");
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_MOVE_END);
+                String atEnd = "(()=>{const p=document.querySelector('.narrative-scroll');return p.scrollHeight-p.clientHeight-p.scrollTop<=1})()";
+                until(atEnd);
+                nativeTap(".narrative-toggle-btn"); awaitUiMotion(); until(atEnd);
+                nativeTap(".narrative-toggle-btn"); awaitUiMotion(); until(atEnd);
+                fill(".dock-input", "询问经过，再检查门廊。\n".repeat(8)); until(atEnd);
+                // Use the real available native height so the IME actually resizes the reader.
+                activity.onActivity(a -> {
+                    WebView web = a.getBridge().getWebView();
+                    ViewGroup.LayoutParams params = web.getLayoutParams();
+                    params.height = ViewGroup.LayoutParams.MATCH_PARENT; web.setLayoutParams(params);
+                });
+                until(atEnd); awaitSettledScroll(".narrative-scroll");
+                String beforeImeHeight = js("document.querySelector('.narrative-scroll').clientHeight");
+                nativeTap(".dock-input"); awaitSettledIme(true);
+                System.out.println("READING_IME: before=" + beforeImeHeight + ", viewport=" + js("JSON.stringify({innerHeight,visualHeight:visualViewport.height,story:document.querySelector('.narrative-scroll').clientHeight,top:document.querySelector('.narrative-scroll').scrollTop})"));
+                activity.onActivity(a -> {
+                    WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(a.getWindow().getDecorView());
+                    assertTrue("A real soft keyboard occupies native space", insets.getInsets(WindowInsetsCompat.Type.ime()).bottom > 0);
+                    System.out.println("READING_NATIVE: root=" + a.getWindow().getDecorView().getHeight() + ", web=" + a.getBridge().getWebView().getHeight() + ", ime=" + insets.getInsets(WindowInsetsCompat.Type.ime()).bottom);
+                });
+                screenshot("reading-ime-measurement");
+                until("document.querySelector('.narrative-scroll').clientHeight < " + beforeImeHeight); until(atEnd);
+                assertEquals("The real keyboard keeps the current actor's long draft", "true", js("document.activeElement===document.querySelector('.dock-input')&&document.querySelector('.dock-input').value===('询问经过，再检查门廊。'+String.fromCharCode(10)).repeat(8)"));
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK); awaitSettledIme(false); until(atEnd);
+                assertEquals("Folding and native IME retain the entire party", Integer.toString(party), js("document.querySelectorAll('.party-compact').length"));
+                if (party == 1) screenshot("reading-end-ime-return");
+                viewport(390, 844);
+                js("document.querySelector('.narrative-scroll').scrollTop=600"); awaitSettledScroll(".narrative-scroll");
+                js("window.qaReadingBookmark=(()=>{const p=document.querySelector('.narrative-scroll'),m=Array.from(p.children).reverse().find(e=>e.offsetTop<=p.scrollTop);return {id:m.dataset.messageId,fraction:(p.scrollTop-m.offsetTop)/m.offsetHeight}})()");
+                nativeTap(".narrative-toggle-btn"); awaitUiMotion(); nativeTap(".narrative-toggle-btn"); awaitUiMotion();
+                assertEquals("Folding keeps an older bookmark", "600", js("document.querySelector('.narrative-scroll').scrollTop"));
+                viewport(430, 932);
+                until("(()=>{const p=document.querySelector('.narrative-scroll'),m=p.querySelector('[data-message-id=\"'+window.qaReadingBookmark.id+'\"]');return Math.abs(p.scrollTop-m.offsetTop-window.qaReadingBookmark.fraction*m.offsetHeight)<=2})()");
+                assertEquals("Resize preserves every story entry without model requests", "24", js("document.querySelectorAll('.story-message.dm').length"));
+                assertEquals("No artificial unread indicator is added by folding or reflow", "0", js("document.querySelectorAll('.narrative-new-content').length"));
+                assertNoResizeErrors(); if (party == 4) screenshot("reading-older-reflow");
+            } finally { activity.close(); }
+        }
     }
 
     @Test public void portraitDialogsAndReadingStayWithinPhoneViewport() throws Exception {
@@ -1086,8 +1145,9 @@ public class GameAndroidTest {
                         + "await Capacitor.Plugins.GameStorage.write({key:'trpg-android-session-v1',value:JSON.stringify(record)});window.qaHistoryReady=true;})");
                     until("window.qaHistoryReady"); activity.recreate(); until("document.querySelector('.title-resume-preview')"); viewport(390, 844);
                     click("继续游戏"); until("document.querySelectorAll('.story-message.dm').length===200");
-                    nativeTap(".narrative-toggle-btn");
+                    nativeTap(".narrative-toggle-btn"); awaitUiMotion();
                     js("window.qaHistoryText=JSON.stringify(Array.from(document.querySelectorAll('.story-message.dm p'),e=>e.textContent));window.qaHistoryColors=JSON.stringify(Array.from(document.querySelector('.story-message.dm').querySelectorAll('.narrative-mark-person'),e=>e.style.getPropertyValue('--person-color')));document.querySelector('.narrative-scroll').scrollTop=100");
+                    awaitSettledScroll(".narrative-scroll");
                     SharedPreferences preferences = context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE);
                     AtomicInteger draftCommits = new AtomicInteger();
                     SharedPreferences.OnSharedPreferenceChangeListener commitListener = (store, key) -> {

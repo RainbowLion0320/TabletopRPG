@@ -7,6 +7,64 @@ import { parse as parseYaml } from 'yaml';
 import sharp from 'sharp';
 import { settleUiMotion } from './browserMotion';
 
+for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height: 844, party: 2 }, { width: 1440, height: 900, party: 4 }]) {
+  test(`story reading stays anchored across folding and viewport changes at ${size.width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize(size);
+    const state = createDynamicCaseBoardSave();
+    state.players = [
+      makeInvestigator({ id: 'inspector', name: '亨利·格雷' }),
+      makeInvestigator({ id: 'nurse', name: '艾达·华莱士', gender: '女' }),
+      makeInvestigator({ id: 'reporter', name: '托马斯·贝尔' }),
+      makeInvestigator({ id: 'constable', name: '罗伯特·肖' })
+    ].slice(0, size.party);
+    state.messages = Array.from({ length: 24 }, (_, index) => ({ id: `reading-${index}`, type: 'dm' as const,
+      text: index === 23 ? '伊莎贝拉静静地等待调查员回应。' : `第${index + 1}页。` + '伊莎贝拉轻声回忆门廊里的脚步，调查员听着雨声记下细节。\n\n'.repeat(3) }));
+    state.declarations = { inspector: '先记录日期。\n再检查门廊。' };
+    await gotoWithSave(page, state);
+    await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+    await page.evaluate(() => document.fonts.ready);
+    await settleUiMotion(page);
+    const story = page.getByRole('region', { name: '剧情记录', exact: true });
+    const remaining = () => story.evaluate(element => element.scrollHeight - element.clientHeight - element.scrollTop);
+    await story.press('End');
+    await expect.poll(remaining).toBeLessThanOrEqual(1);
+    await page.getByRole('button', { name: '展开剧情', exact: true }).click();
+    await settleUiMotion(page);
+    await expect.poll(remaining).toBeLessThanOrEqual(1);
+    await page.getByRole('button', { name: '收起剧情', exact: true }).click();
+    await settleUiMotion(page);
+    await expect.poll(remaining).toBeLessThanOrEqual(1);
+    const input = page.locator('.dock-input');
+    await input.fill('询问经过，再检查门廊。\n'.repeat(8));
+    await expect.poll(remaining).toBeLessThanOrEqual(1);
+    await page.setViewportSize({ width: size.width, height: size.width < 600 ? 300 : 560 });
+    await expect.poll(remaining).toBeLessThanOrEqual(1);
+    await page.setViewportSize(size);
+    await expect.poll(remaining).toBeLessThanOrEqual(1);
+    await expect(input).toHaveValue('询问经过，再检查门廊。\n'.repeat(8));
+    await expect(page.locator('.party-compact')).toHaveCount(size.party);
+    await story.evaluate(element => { element.scrollTop = 600; });
+    await expect(story).toHaveJSProperty('scrollTop', 600);
+    await page.getByRole('button', { name: '展开剧情', exact: true }).click();
+    await settleUiMotion(page);
+    await expect(story).toHaveJSProperty('scrollTop', 600);
+    await page.getByRole('button', { name: '收起剧情', exact: true }).click();
+    await settleUiMotion(page);
+    await expect(story).toHaveJSProperty('scrollTop', 600);
+    const mark = await story.evaluate(element => {
+      const message = [...element.children].reverse().find(item => (item as HTMLElement).offsetTop <= element.scrollTop) as HTMLElement;
+      return { id: message.dataset.messageId, fraction: (element.scrollTop - message.offsetTop) / message.offsetHeight };
+    });
+    await page.setViewportSize({ width: size.width < 600 ? 430 : 1100, height: size.height });
+    await expect.poll(() => story.evaluate((element, expected) => {
+      const message = element.querySelector<HTMLElement>(`[data-message-id="${expected.id}"]`)!;
+      return Math.abs(element.scrollTop - message.offsetTop - expected.fraction * message.offsetHeight);
+    }, mark)).toBeLessThanOrEqual(2);
+    await expect(page.locator('.narrative-new-content')).toHaveCount(0);
+    await page.screenshot({ path: testInfo.outputPath('anchored-reading.png') });
+  });
+}
+
 for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1440, height: 900 }]) {
   test(`long DM wait changes its caption without shifting the story at ${size.width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize(size);
@@ -332,6 +390,7 @@ for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height:
     const log = drawer.getByRole('list', { name: '行动记录', exact: true });
     await close.focus(); await page.keyboard.press('Tab');
     await expect(log).toBeFocused();
+    await settleUiMotion(page);
     const headerTop = await drawer.locator('header').evaluate(element => element.getBoundingClientRect().top);
     await page.keyboard.press('PageDown');
     await expect.poll(() => log.evaluate(element => element.scrollTop)).toBeGreaterThan(0);

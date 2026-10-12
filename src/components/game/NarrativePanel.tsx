@@ -9,6 +9,7 @@ import {
 } from '../../services/narrativeMarkup';
 import { ThinkingIndicator } from './ThinkingIndicator';
 import { useReadingMotion } from '../shared/useReadingMotion';
+import { useNarrativeReading } from './useNarrativeReading';
 import { isPlayerVisibleMessage } from '../../services/narrativeVisibility';
 import './narrative-tools.css';
 
@@ -110,14 +111,12 @@ const StoryMessage = memo(function StoryMessage({ id, arriving, type, text, play
 export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
   const ref = useRef<HTMLDivElement>(null);
   const latestMessageRef = useRef<HTMLDivElement>(null);
-  const previousLatestId = useRef<string | undefined>(undefined);
-  const previousLatestStart = useRef(0);
   const onMarkOpenRef = useRef(onMarkOpen);
   const scrollId = useId();
   const [expanded, setExpanded] = useState(false);
-  const [hasNewContent, setHasNewContent] = useState(false);
   const visibleMessages = state.messages.filter(isPlayerVisibleMessage);
   const latestId = visibleMessages[visibleMessages.length - 1]?.id;
+  const { hasNewContent, handleScroll, readNewContent } = useNarrativeReading(ref, latestMessageRef, visibleMessages);
   const initialLatestId = useRef(latestId);
   useReadingMotion(ref, expanded);
   const markup = createNarrativeMarkup(state);
@@ -127,44 +126,6 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
   const openMark = useCallback<NonNullable<NarrativePanelProps['onMarkOpen']>>(
     (target, sourceText) => onMarkOpenRef.current?.(target, sourceText), []
   );
-
-  useLayoutEffect(() => {
-    const panel = ref.current;
-    const latest = latestMessageRef.current;
-    if (!panel || !latest) return;
-    const previousId = previousLatestId.current;
-    // Replacing the history (loading a save) starts reading its latest entry.
-    const replaced = previousId !== undefined && !visibleMessages.some(message => message.id === previousId);
-    // Scroll events can arrive after a model reply. Read the actual position against
-    // the preceding entry's start before moving anything, rather than a stale flag.
-    const followLatest = previousId === undefined || replaced || panel.scrollTop >= previousLatestStart.current - 12;
-    previousLatestStart.current = Math.min(latest.offsetTop, Math.max(0, panel.scrollHeight - panel.clientHeight));
-    if (previousId === latestId) return;
-    previousLatestId.current = latestId;
-    if (followLatest) {
-      panel.scrollTo({ top: latest.offsetTop, behavior: 'auto' });
-      setHasNewContent(false);
-    } else {
-      setHasNewContent(true);
-    }
-  }, [latestId, visibleMessages]);
-
-  function handleScroll() {
-    const panel = ref.current, latest = latestMessageRef.current;
-    if (!panel || !latest) return;
-    // A long latest reply is followed from its beginning, not its final line.
-    const latestStart = Math.min(latest.offsetTop, Math.max(0, panel.scrollHeight - panel.clientHeight));
-    previousLatestStart.current = latestStart;
-    if (panel.scrollTop >= latestStart - 12) setHasNewContent(false);
-  }
-
-  function readNewContent() {
-    const panel = ref.current, latest = latestMessageRef.current;
-    if (!panel || !latest) return;
-    panel.scrollTo({ top: latest.offsetTop, behavior: 'auto' });
-    setHasNewContent(false);
-    panel.focus({ preventScroll: true });
-  }
 
   const activeNpc = state.activeNpcName ? storyData.npcs[state.activeNpcName] : null;
 
@@ -198,7 +159,7 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
             aria-label={expanded ? '收起剧情' : '展开剧情'}
             aria-expanded={expanded}
             aria-controls={scrollId}
-            onClick={() => setExpanded(!expanded)}
+            onClick={() => { handleScroll(); setExpanded(!expanded); }}
             title={expanded ? '收起' : '展开'}
             type="button"
           >

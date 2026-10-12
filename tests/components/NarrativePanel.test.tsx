@@ -227,6 +227,87 @@ describe('NarrativePanel', () => {
     expect(screen.getByRole('button', { name: '查看新剧情' })).toBeVisible();
   });
 
+  it('keeps the end pinned when folding or a growing action changes the reading height', () => {
+    const state = makeState();
+    state.messages = [{ id: 'old', type: 'dm', text: '此前的记录。' }, { id: 'latest', type: 'dm', text: '最新的一页。' }];
+    render(<NarrativePanel state={state} />);
+    const panel = screen.getByRole('region', { name: '剧情记录' });
+    let height = 200;
+    Object.defineProperties(panel, { clientWidth: { configurable: true, value: 300 },
+      clientHeight: { configurable: true, get: () => height }, scrollHeight: { configurable: true, value: 1600 } });
+    Object.defineProperties(panel.children[0], { offsetTop: { configurable: true, value: 0 }, offsetHeight: { configurable: true, value: 1000 } });
+    Object.defineProperties(panel.children[1], { offsetTop: { configurable: true, value: 1000 }, offsetHeight: { configurable: true, value: 600 } });
+    panel.scrollTop = 1400; fireEvent.scroll(panel);
+    height = 500; panel.scrollTop = 1100; // The browser clamps before delivering resize.
+    fireEvent.scroll(panel);
+    fireEvent(window, new Event('resize'));
+    expect(panel.scrollTop).toBe(1100);
+    height = 200; fireEvent(window, new Event('resize'));
+    expect(panel.scrollTop).toBe(1400);
+    height = 160; fireEvent(window, new Event('resize'));
+    expect(panel.scrollTop).toBe(1440);
+    expect(screen.queryByRole('button', { name: '查看新剧情' })).not.toBeInTheDocument();
+  });
+
+  it('keeps an older bookmark through temporary viewport clamping and generated scroll events', () => {
+    const state = makeState();
+    state.messages = [{ id: 'old', type: 'dm', text: '回看的长记录。' }, { id: 'latest', type: 'dm', text: '最新的一页。' }];
+    render(<NarrativePanel state={state} />);
+    const panel = screen.getByRole('region', { name: '剧情记录' });
+    let height = 200;
+    Object.defineProperties(panel, { clientWidth: { configurable: true, value: 300 },
+      clientHeight: { configurable: true, get: () => height }, scrollHeight: { configurable: true, value: 1600 } });
+    Object.defineProperties(panel.children[0], { offsetTop: { configurable: true, value: 0 }, offsetHeight: { configurable: true, value: 1500 } });
+    Object.defineProperties(panel.children[1], { offsetTop: { configurable: true, value: 1500 }, offsetHeight: { configurable: true, value: 100 } });
+    panel.scrollTop = 1190; fireEvent.scroll(panel);
+    height = 500; panel.scrollTop = 1100; fireEvent(window, new Event('resize'));
+    expect(panel.scrollTop).toBe(1100);
+    fireEvent.scroll(panel);
+    height = 200; fireEvent(window, new Event('resize'));
+    expect(panel.scrollTop).toBe(1190);
+    // A real manual scroll replaces the bookmark instead of snapping back later.
+    panel.scrollTop = 300; fireEvent.scroll(panel);
+    height = 350; fireEvent(window, new Event('resize'));
+    expect(panel.scrollTop).toBe(300);
+  });
+
+  it('keeps the same record and relative place after width reflow without ResizeObserver', () => {
+    vi.stubGlobal('ResizeObserver', undefined);
+    try {
+      const state = makeState();
+      state.messages = [{ id: 'old', type: 'dm', text: '正在回看的长记录。' }, { id: 'latest', type: 'dm', text: '当前记录。' }];
+      render(<NarrativePanel state={state} />);
+      const panel = screen.getByRole('region', { name: '剧情记录' });
+      let width = 400, messageTop = 200, messageHeight = 500;
+      Object.defineProperties(panel, { clientWidth: { configurable: true, get: () => width }, clientHeight: { configurable: true, value: 200 }, scrollHeight: { configurable: true, value: 2000 } });
+      Object.defineProperties(panel.children[0], { offsetTop: { configurable: true, get: () => messageTop }, offsetHeight: { configurable: true, get: () => messageHeight } });
+      Object.defineProperties(panel.children[1], { offsetTop: { configurable: true, value: 1300 }, offsetHeight: { configurable: true, value: 700 } });
+      panel.scrollTop = 450; fireEvent.scroll(panel);
+      width = 250; messageTop = 320; messageHeight = 750; fireEvent(window, new Event('resize'));
+      expect(panel.scrollTop).toBe(695);
+    } finally { vi.unstubAllGlobals(); }
+  });
+
+  it('releases the viewport observer and cannot move an abandoned reading panel', () => {
+    const disconnect = vi.fn();
+    let notify: () => void = () => {};
+    class Observer {
+      constructor(callback: () => void) { notify = callback; }
+      observe() {}
+      disconnect = disconnect;
+    }
+    vi.stubGlobal('ResizeObserver', Observer);
+    try {
+      const { unmount } = render(<NarrativePanel state={makeState()} />);
+      const panel = screen.getByRole('region', { name: '剧情记录' });
+      unmount();
+      expect(disconnect).toHaveBeenCalledOnce();
+      panel.scrollTop = 35;
+      fireEvent(window, new Event('resize')); notify();
+      expect(panel.scrollTop).toBe(35);
+    } finally { vi.unstubAllGlobals(); }
+  });
+
   it('follows new entries when reading the latest reply, and resumes from a replacement save without an unread badge', () => {
     const state = makeState();
     state.messages = [{ id: 'old', type: 'dm', text: '以前。' }, { id: 'latest', type: 'dm', text: '当前。' }];
