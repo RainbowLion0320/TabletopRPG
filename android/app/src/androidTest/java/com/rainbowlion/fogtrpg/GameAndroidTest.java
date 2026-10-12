@@ -494,6 +494,42 @@ public class GameAndroidTest {
         }
     }
 
+    private void watchStoryFold() throws Exception {
+        js("window.qaStoryFold=[];document.addEventListener('click',()=>{const take=()=>{const p=document.querySelector('.narrative-panel').getBoundingClientRect();window.qaStoryFold.push({top:p.top,height:p.height,nav:document.querySelector('.game-top').getBoundingClientRect().bottom,dock:document.querySelector('.action-dock').getBoundingClientRect().top,art:document.querySelector('.scene-art-canvas').getBoundingClientRect().height});if(window.qaStoryFold.length<24)requestAnimationFrame(take)};take()},{once:true,capture:true})");
+    }
+
+    private void assertStoryFoldIsSmoothAndAnchored() throws Exception {
+        until("window.qaStoryFold.length===24");
+        assertEquals("Real native frames interpolate layout while retaining the original illustration size and fixed navigation/actions", "true", js("(()=>{const f=window.qaStoryFold,a=f[0],b=f.at(-1);return Math.abs(b.top-a.top)>100&&f.some(p=>p.top>Math.min(a.top,b.top)+1&&p.top<Math.max(a.top,b.top)-1)&&f.every(p=>Math.abs(p.nav-a.nav)<=1&&Math.abs(p.dock-a.dock)<=1&&Math.abs(p.art-a.art)<=1&&p.top>=p.nav-.5&&Math.abs(p.top+p.height-p.dock)<=1)})()"));
+        System.out.println("STORY_FOLD_NATIVE: " + js("JSON.stringify({first:window.qaStoryFold[0],last:window.qaStoryFold.at(-1),intermediate:window.qaStoryFold.filter(p=>p.top>Math.min(window.qaStoryFold[0].top,window.qaStoryFold.at(-1).top)+1&&p.top<Math.max(window.qaStoryFold[0].top,window.qaStoryFold.at(-1).top)-1).length})"));
+    }
+
+    @Test public void storyFoldMotionKeepsPortraitArtDraftAndParty() throws Exception {
+        for (int party : new int[]{1, 2, 4}) {
+            fresh();
+            try {
+                viewport(390, 844); click("开始游戏");
+                for (int i = 1; i < party; i++) js("document.querySelectorAll('.preset-selection-input')[" + i + "].click()");
+                click("进入游戏"); fill(".dock-input", "先记录门廊痕迹\n再请同伴核对时间。");
+                js("window.qaFoldFontsReady=false;document.fonts.ready.then(()=>window.qaFoldFontsReady=true)"); until("window.qaFoldFontsReady"); awaitUiMotion();
+                for (int width : new int[]{390, 720}) {
+                    viewport(width, width == 390 ? 844 : 960);
+                    watchStoryFold(); nativeTap(".narrative-toggle-btn"); assertStoryFoldIsSmoothAndAnchored();
+                    assertEquals("Expanded story yields the scene row completely", "0", js("document.querySelector('.scene-stage').getBoundingClientRect().height"));
+                    watchStoryFold(); nativeTap(".narrative-toggle-btn"); assertStoryFoldIsSmoothAndAnchored();
+                    assertEquals("Closing preserves the complete multiline action and chosen party", "true", js("document.querySelector('.dock-input').value==='先记录门廊痕迹'+String.fromCharCode(10)+'再请同伴核对时间。'&&document.querySelectorAll('.party-compact').length===" + party));
+                    reachable(".dock-input"); reachable(".narrative-toggle-btn");
+                }
+                viewport(390, 844); nativeTap(".narrative-toggle-btn"); viewport(390, 360);
+                assertEquals("A short keyboard-sized viewport settles directly without delayed layout", "0", js("document.querySelector('.game-screen').getAnimations().length"));
+                reachable(".dock-input"); nativeTap(".narrative-toggle-btn"); reachable(".dock-input");
+                viewport(390, 844); awaitUiMotion();
+                assertEquals("Original scene composition is restored after resize", "true", js("(()=>{const s=document.querySelector('.scene-stage'),c=document.querySelector('.scene-art-canvas');return getComputedStyle(s).opacity==='1'&&Math.abs(s.getBoundingClientRect().height-c.getBoundingClientRect().height)<=1})()"));
+                assertNoResizeErrors(); if (party == 2) screenshot("story-fold-native-return");
+            } finally { if (activity != null) activity.close(); }
+        }
+    }
+
     @Test public void suggestionPreviewsKeepFullActionsAndResetBetweenInvestigators() throws Exception {
         String longAction = "沿着门廊与窗边逐处查看细小划痕，再向伊莎贝拉询问父亲失踪前几天来往的访客，记下姓名、时间和随身物品，以便之后与其他线索互相核对";
         for (int party : new int[]{1, 2, 4}) {

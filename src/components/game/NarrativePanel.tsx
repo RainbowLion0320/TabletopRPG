@@ -8,7 +8,6 @@ import {
   type NarrativeMarkTarget
 } from '../../services/narrativeMarkup';
 import { ThinkingIndicator } from './ThinkingIndicator';
-import { useReadingMotion } from '../shared/useReadingMotion';
 import { useNarrativeReading } from './useNarrativeReading';
 import { isPlayerVisibleMessage } from '../../services/narrativeVisibility';
 import './narrative-tools.css';
@@ -118,7 +117,6 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
   const latestId = visibleMessages[visibleMessages.length - 1]?.id;
   const { hasNewContent, handleScroll, readNewContent } = useNarrativeReading(ref, latestMessageRef, visibleMessages);
   const initialLatestId = useRef(latestId);
-  useReadingMotion(ref, expanded);
   const markup = createNarrativeMarkup(state);
 
   // Cached prose uses the latest committed callback when opening live details.

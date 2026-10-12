@@ -38,6 +38,26 @@ function ScenePortrait({ src }: { src: string }) {
 }
 
 export function SceneStage({ state }: SceneStageProps) {
+  const stageRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const stage = stageRef.current, canvas = stage?.querySelector<HTMLElement>('.scene-art-canvas');
+    const screen = stage?.closest<HTMLElement>('.game-screen');
+    if (!stage || !canvas || !screen) return;
+    const capture = () => {
+      if (screen.querySelector('.narrative-panel.expanded')) return;
+      // Hold the painted frame while its outer row retracts; never squeeze the illustration.
+      if (screen.getAnimations?.().some(a => 'transitionProperty' in a && a.transitionProperty === 'grid-template-rows' && a.playState === 'running')) return;
+      const height = stage.getBoundingClientRect().height;
+      if (height > 0) canvas.style.setProperty('--scene-art-height', `${height}px`);
+      else canvas.style.removeProperty('--scene-art-height');
+    };
+    const resized = () => { canvas.style.removeProperty('--scene-art-height'); capture(); };
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(capture);
+    capture(); observer?.observe(stage);
+    screen.addEventListener('transitionend', capture);
+    window.addEventListener('resize', resized);
+    return () => { observer?.disconnect(); screen.removeEventListener('transitionend', capture); window.removeEventListener('resize', resized); };
+  }, []);
   const scene = storyData.scenes[state.currentScene];
   const activeNpcName = state.activeNpcName && scene.npcs.includes(state.activeNpcName)
     ? state.activeNpcName
@@ -45,12 +65,14 @@ export function SceneStage({ state }: SceneStageProps) {
   const npc = activeNpcName ? storyData.npcs[activeNpcName] : null;
 
   return (
-    <div className="scene-stage">
-      <SceneBackdrop src={scene.image} />
-      <div className="scene-shade" />
-      {npc?.portrait ? (
-        <ScenePortrait key={npc.portrait} src={npc.portrait} />
-      ) : null}
+    <div className="scene-stage" ref={stageRef}>
+      <div className="scene-art-canvas">
+        <SceneBackdrop src={scene.image} />
+        <div className="scene-shade" />
+        {npc?.portrait ? (
+          <ScenePortrait key={npc.portrait} src={npc.portrait} />
+        ) : null}
+      </div>
     </div>
   );
 }

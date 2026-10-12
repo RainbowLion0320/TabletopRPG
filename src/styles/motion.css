@@ -38,6 +38,15 @@
 .scene-backdrop-retiring { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; filter: saturate(.75) brightness(.66); pointer-events: none; }
 .portrait-ui .scene-backdrop-retiring { object-fit: contain; object-position: center; filter: saturate(.85) brightness(.86); }
 :root.fog-ui .dock-actor-avatar img { animation: fog-content-enter 140ms ease-out; }
+/* Keep the same reading row and scroll node while giving the scene space back. */
+:root.fog-ui .game-screen { transition: grid-template-rows 240ms var(--ui-ease); }
+:root.fog-ui .scene-stage { opacity: 1; transition: opacity 100ms ease 80ms; }
+:root.fog-ui .scene-art-canvas { position: relative; width: 100%; height: var(--scene-art-height, 100%); }
+:root.fog-ui .game-screen:has(.narrative-panel.expanded) .scene-stage { opacity: 0; transition-delay: 0ms; }
+/* Keyboard and short windows need their final usable layout immediately. */
+@media (max-height: 500px) {
+  :root.fog-ui .game-screen, :root.fog-ui .scene-stage { transition: none; }
+}
 /* The clip has no padding, so 0fr really collapses to zero rather than leaving a jump. */
 :root.fog-ui .disclosure-motion {
   display: grid; grid-template-rows: 0fr; min-height: 0; opacity: 0;
@@ -81,6 +90,7 @@
 @keyframes fog-portrait-enter { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fog-scene-enter { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
+  :root.fog-ui .game-screen, :root.fog-ui .scene-stage { transition: none !important; }
   :root.fog-ui .disclosure-motion { transition: none !important; }
   :root.fog-ui :is(.title-content, .setup-screen, .game-screen, .modal-backdrop, .game-menu-backdrop,
     .save-manager-backdrop, .entity-detail-overlay, .investigator-overlay, .modal-card, .save-manager-card,

@@ -7,6 +7,104 @@ import { parse as parseYaml } from 'yaml';
 import sharp from 'sharp';
 import { settleUiMotion } from './browserMotion';
 
+interface StoryFoldFrame { top: number; height: number; nav: number; dock: number; scene: number; art: number; overflow: boolean; }
+async function sampleStoryFold(page: Page, activate: () => Promise<void>) {
+  await page.evaluate(() => {
+    const frames: StoryFoldFrame[] = [];
+    (window as typeof window & { storyFoldFrames: StoryFoldFrame[] }).storyFoldFrames = frames;
+    document.addEventListener('click', () => {
+      const take = () => {
+        const panel = document.querySelector('.narrative-panel')!.getBoundingClientRect();
+        frames.push({ top: panel.top, height: panel.height,
+          nav: document.querySelector('.game-top')!.getBoundingClientRect().bottom,
+          dock: document.querySelector('.action-dock')!.getBoundingClientRect().top,
+          scene: document.querySelector('.scene-stage')!.getBoundingClientRect().height,
+          art: document.querySelector('.scene-art-canvas')!.getBoundingClientRect().height,
+          overflow: document.documentElement.scrollWidth > innerWidth || document.documentElement.scrollHeight > innerHeight });
+        if (frames.length < 24) requestAnimationFrame(take);
+      };
+      take();
+    }, { once: true, capture: true });
+  });
+  await activate();
+  await expect.poll(() => page.evaluate(() => (window as typeof window & { storyFoldFrames: StoryFoldFrame[] }).storyFoldFrames.length)).toBe(24);
+  return page.evaluate(() => (window as typeof window & { storyFoldFrames: StoryFoldFrame[] }).storyFoldFrames);
+}
+
+for (const size of [
+  { width: 320, height: 568, party: 1, reduced: false }, { width: 390, height: 844, party: 2, reduced: false },
+  { width: 1440, height: 900, party: 4, reduced: false }, { width: 390, height: 844, party: 1, reduced: true }
+]) {
+  test(`story folding moves smoothly without losing reading or actions at ${size.width}px${size.reduced ? ' with reduced motion' : ''}`, async ({ page }, testInfo) => {
+    await page.setViewportSize(size);
+    await page.emulateMedia({ reducedMotion: size.reduced ? 'reduce' : 'no-preference' });
+    await page.addInitScript(() => {
+      (window as Window & { foldResizeErrors: string[] }).foldResizeErrors = [];
+      window.addEventListener('error', e => { if (e.message.includes('ResizeObserver')) (window as Window & { foldResizeErrors: string[] }).foldResizeErrors.push(e.message); });
+    });
+    const state = createDynamicCaseBoardSave();
+    const names = ['亨利·格雷', '艾达·华莱士', '托马斯·贝尔', '罗伯特·肖'];
+    state.players = names.slice(0, size.party).map((name, index) => makeInvestigator({ id: `fold-${index}`, name }));
+    state.messages = Array.from({ length: 12 }, (_, index) => ({ id: `fold-record-${index}`, type: 'dm' as const,
+      text: `第${index + 1}页。调查员沿门廊仔细查看，伊莎贝拉回忆起那天走廊里急促的脚步声。\n\n` .repeat(8) }));
+    await gotoWithSave(page, state);
+    await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+    await page.evaluate(() => document.fonts.ready); await settleUiMotion(page);
+    const input = page.locator('.dock-input'), toggle = page.locator('.narrative-toggle-btn'), scroll = page.locator('.narrative-scroll');
+    const draft = '先记录窗边痕迹。\n再请同伴核对时间。';
+    await input.fill(draft); await input.press('Tab'); await settleUiMotion(page);
+    await scroll.evaluate(el => { el.scrollTop = 460; });
+    const bookmark = await scroll.evaluate(el => el.scrollTop);
+    const verify = (frames: StoryFoldFrame[]) => {
+      const first = frames[0], last = frames.at(-1)!;
+      expect(Math.abs(first.top - last.top)).toBeGreaterThan(100);
+      expect(frames.some(f => f.top > Math.min(first.top, last.top) + 1 && f.top < Math.max(first.top, last.top) - 1)).toBe(!size.reduced);
+      for (const f of frames) {
+        expect(f.top).toBeGreaterThanOrEqual(f.nav - .5);
+        expect(f.top + f.height).toBeCloseTo(f.dock, 0);
+        expect(f.nav).toBeCloseTo(first.nav, 0);
+        expect(f.dock).toBeCloseTo(first.dock, 0);
+        expect(f.art).toBeCloseTo(first.art, 0);
+        expect(f.overflow).toBe(false);
+      }
+    };
+    const opening = await sampleStoryFold(page, () => toggle.click()); verify(opening);
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(opening.at(-1)!.scene).toBe(0);
+    expect(await scroll.evaluate(el => el.scrollTop)).toBeCloseTo(bookmark, 0);
+    await expect(toggle).toBeFocused(); await expect(input).toHaveValue(draft);
+    const closing = await sampleStoryFold(page, () => toggle.click()); verify(closing);
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(await scroll.evaluate(el => el.scrollTop)).toBeCloseTo(bookmark, 0);
+    await expect(input).toHaveValue(draft);
+    // Reverse the actual transition while it is moving, then use the menu immediately.
+    const reversal = await page.evaluate(async () => {
+      const button = document.querySelector<HTMLButtonElement>('.narrative-toggle-btn')!, panel = document.querySelector('.narrative-panel')!;
+      button.click(); await new Promise(resolve => setTimeout(resolve, 55));
+      const before = panel.getBoundingClientRect().top; button.click();
+      return { before, after: panel.getBoundingClientRect().top };
+    });
+    expect(Math.abs(reversal.after - reversal.before)).toBeLessThan(1);
+    await page.getByRole('button', { name: '菜单', exact: true }).click();
+    await page.getByRole('button', { name: '继续调查', exact: true }).click(); await settleUiMotion(page);
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false'); await expect(input).toHaveValue(draft);
+    expect(await page.locator('.party-compact').count()).toBe(size.party);
+    if (size.width < 700) {
+      await toggle.click();
+      await page.setViewportSize({ width: size.width, height: 360 });
+      await expect(input).toBeInViewport({ ratio: 1 });
+      expect(await page.locator('.game-screen').evaluate(el => el.getAnimations().length)).toBe(0);
+      await expect(toggle).toBeInViewport();
+      await toggle.click(); await expect(input).toHaveValue(draft);
+      await page.setViewportSize(size); await settleUiMotion(page);
+      await expect(page.locator('.scene-stage')).toBeVisible();
+    }
+    expect(await page.evaluate(() => (window as Window & { foldResizeErrors: string[] }).foldResizeErrors)).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('story-fold-stable.png') });
+    writeFileSync(testInfo.outputPath('story-fold-frames.json'), JSON.stringify({ opening, closing, reversal }, null, 2));
+  });
+}
+
 async function sampleDisclosure(page: Page, selector: string, activate: () => Promise<void>) {
   await page.evaluate(selector => {
     const record: number[] = [];
@@ -22,6 +120,33 @@ async function sampleDisclosure(page: Page, selector: string, activate: () => Pr
   await activate();
   await expect.poll(() => page.evaluate(() => (window as typeof window & { disclosureFrames: number[] }).disclosureFrames.length)).toBe(18);
   return page.evaluate(() => (window as typeof window & { disclosureFrames: number[] }).disclosureFrames);
+}
+
+for (const size of [
+  { width: 1440, height: 280, party: 1 }, { width: 1440, height: 280, party: 4 },
+  { width: 820, height: 360, party: 2 }, { width: 1440, height: 550, party: 4 }
+]) {
+  test(`short desktop story folds keep long input and actions within ${size.width}x${size.height} with ${size.party} players`, async ({ page }, testInfo) => {
+    await page.setViewportSize(size); await startNewGame(page, size.party);
+    const input = page.locator('.dock-input'), toggle = page.locator('.narrative-toggle-btn');
+    const draft = '先记录门廊痕迹。\n再请同伴核对时间。\n观察窗台。\n记录脚步方向。\n最后整理目击经过。';
+    await input.fill(draft); await page.evaluate(() => document.fonts.ready); await settleUiMotion(page);
+    for (const expanded of [true, false, true]) {
+      await toggle.click(); await settleUiMotion(page);
+      await expect(toggle).toHaveAttribute('aria-expanded', String(expanded));
+      await expect(input).toHaveValue(draft); await expect(input).toBeInViewport({ ratio: 1 });
+      await expect(page.getByRole('button', { name: size.party === 1 ? '提交' : '下一位', exact: true })).toBeInViewport({ ratio: 1 });
+      expect(await page.locator('.game-screen').evaluate(el => {
+        const panel = el.querySelector('.narrative-panel')!.getBoundingClientRect(), dock = el.querySelector('.action-dock')!.getBoundingClientRect();
+        const nav = el.querySelector('.game-top')!.getBoundingClientRect();
+        return panel.top >= nav.bottom - .5 && panel.height > 50 && panel.bottom <= dock.top + .5 && dock.bottom <= innerHeight
+          && el.querySelector('.scene-stage')!.getBoundingClientRect().height === 0 && document.documentElement.scrollWidth <= innerWidth;
+      })).toBe(true);
+    }
+    await page.locator('.dock-actor-avatar').click(); await page.getByRole('button', { name: '关闭调查员档案', exact: true }).click();
+    await expect(input).toHaveValue(draft); await expect(toggle).toBeInViewport();
+    await page.screenshot({ path: testInfo.outputPath('short-expanded-draft.png') });
+  });
 }
 
 for (const size of [
@@ -1127,6 +1252,7 @@ for (const size of [{ width: 320, height: 568, party: 4 }, { width: 390, height:
     })).toBeLessThanOrEqual(1);
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await settleUiMotion(page);
     const header = await page.locator('.narrative-header').boundingBox();
     expect(header).not.toBeNull();
     for (const fraction of [0, 0.5, 1]) {
@@ -1199,6 +1325,7 @@ for (const size of [{ width: 320, height: 568, party: 4 }, { width: 390, height:
     }
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await settleUiMotion(page);
     await expect(page.locator('.scene-stage')).toBeVisible();
     await expect(page.locator('.dock-input')).toBeInViewport();
     await expect(page.locator('.narrative-header')).toBeInViewport();
