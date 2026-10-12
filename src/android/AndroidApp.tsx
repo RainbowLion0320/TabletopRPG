@@ -83,7 +83,8 @@ export function AndroidApp({ partialRecovery = false }: { partialRecovery?: bool
   }, [screen, game.state, game.diceRoll, rememberSession]);
 
   backHandler.current = () => {
-    const dialogs = document.querySelectorAll('[role="dialog"][aria-modal="true"]');
+    const dialogs = Array.from(document.querySelectorAll('[role="dialog"][aria-modal="true"]'))
+      .filter(element => !element.closest('[inert], [aria-hidden="true"]'));
     if (dialogs.length) { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return; }
     if (game.drawerOpen) { game.setDrawerOpen(false); return; }
     if (game.menuOpen) { game.setMenuOpen(false); return; }

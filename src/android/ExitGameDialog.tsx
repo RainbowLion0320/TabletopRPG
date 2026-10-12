@@ -1,16 +1,18 @@
 import { LogOut } from 'lucide-react';
 import { useId, useRef } from 'react';
 import { useDialogFocus } from '../components/shared/useDialogFocus';
+import { useOverlayPresence } from '../components/shared/useOverlayPresence';
 
 export function ExitGameDialog({ open, busy, error, onClose, onExit }: {
   open: boolean; busy: boolean; error: string; onClose: () => void; onExit: () => void;
 }) {
   const dialog = useRef<HTMLDivElement>(null);
+  const motion = useOverlayPresence(open);
   const id = useId();
   useDialogFocus(open, dialog, onClose);
-  if (!open) return null;
-  return <div className="android-exit-backdrop" onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
-    <div ref={dialog} className="android-exit-card" role="dialog" aria-modal="true" aria-busy={busy}
+  if (!motion.present) return null;
+  return <div {...motion.layerProps} className="android-exit-backdrop" onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
+    <div ref={dialog} className="android-exit-card" role={open ? 'dialog' : undefined} aria-modal={open || undefined} aria-busy={busy}
       aria-labelledby={`${id}-title`} aria-describedby={`${id}-description`} tabIndex={-1}>
       <header><LogOut size={20} aria-hidden="true" /><h2 id={`${id}-title`}>退出游戏？</h2></header>
       <div className="android-exit-body">

@@ -110,8 +110,8 @@ export function CaseBoard({ state, readingState }: CaseBoardProps) {
             })}
           </div>}
 
-          {selectedNode ? <CaseBoardInspector model={model} node={selectedNode} onClose={() => setSelection([])} state={state} archive={archive}
-            onSelect={followRelation} onBack={selection.length > 1 ? () => setSelection((current) => current.slice(0, -1)) : undefined} returnFocusRef={returnFocusRef} /> : null}
+          <CaseBoardInspector model={model} node={selectedNode} onClose={() => setSelection([])} state={state} archive={archive}
+            onSelect={followRelation} onBack={selection.length > 1 ? () => setSelection((current) => current.slice(0, -1)) : undefined} returnFocusRef={returnFocusRef} />
         </div>
       ) : <ArchiveEmptyState className="case-board-empty">案件板还没有足够资料，先调查现场或询问 NPC。</ArchiveEmptyState>}
     </section>

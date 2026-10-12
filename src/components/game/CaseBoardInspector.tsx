@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, type RefObject } from 'react';
 import { ArrowLeft, ChevronRight, X } from 'lucide-react';
 import { useDialogFocus } from '../shared/useDialogFocus';
 import { useReadingMotion } from '../shared/useReadingMotion';
+import { useOverlayPresence } from '../shared/useOverlayPresence';
 import { useCaseBoardListLayout, useShortViewport } from '../../platform/layout';
 import { storyData } from '../../data/storyData';
 import { getClueDetail, getNpcDetail } from '../../dm/entityDetail';
@@ -14,7 +15,7 @@ import './record-detail.css';
 interface CaseBoardInspectorProps {
   archive?: boolean;
   model: CaseBoardGraphModel;
-  node: CaseBoardDisplayNode;
+  node: CaseBoardDisplayNode | null;
   state: GameState;
   onClose: () => void;
   onSelect: (id: string) => void;
@@ -82,33 +83,47 @@ const INSIGHT_LABEL = {
   status: '状态'
 } as const;
 
-export function CaseBoardInspector({ model, node, onClose, onSelect, onBack, returnFocusRef, state, archive = false }: CaseBoardInspectorProps) {
+export function CaseBoardInspector({ model, node: currentNode, onClose, onSelect, onBack, returnFocusRef, state, archive = false }: CaseBoardInspectorProps) {
+  const motion = useOverlayPresence(currentNode);
+  const node = motion.value;
   const mobile = useCaseBoardListLayout() || archive;
   const shortViewport = useShortViewport();
   const modal = mobile || shortViewport;
   const dialogRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  useReadingMotion(scrollRef, node.id);
+  useReadingMotion(scrollRef, node?.id ?? '', Boolean(currentNode));
   const sourcesRef = useRef<HTMLDetailsElement>(null);
   const recordReading = useRef(new Map<string, { scrollTop: number; sourcesOpen: boolean }>());
   const headingRef = useRef<HTMLHeadingElement>(null);
   const previousNode = useRef<string | null>(null);
 
   function rememberReading() {
-    if (scrollRef.current) recordReading.current.set(node.id, {
+    if (scrollRef.current && node) recordReading.current.set(node.id, {
       scrollTop: scrollRef.current.scrollTop, sourcesOpen: sourcesRef.current?.open ?? false
     });
   }
   function backToRecord() { rememberReading(); onBack?.(); }
 
-  useDialogFocus(true, dialogRef, mobile && onBack ? backToRecord : onClose, returnFocusRef, { trapFocus: modal });
+  useDialogFocus(Boolean(currentNode), dialogRef, mobile && onBack ? backToRecord : onClose, returnFocusRef, { trapFocus: modal });
   useLayoutEffect(() => {
+    if (motion.present) return;
+    previousNode.current = null;
+    recordReading.current.clear();
+  }, [motion.present]);
+  useLayoutEffect(() => {
+    if (!currentNode) return;
+    previousNode.current = null;
+    recordReading.current.clear();
+  }, [Boolean(currentNode)]);
+  useLayoutEffect(() => {
+    if (!currentNode || !node) return;
     const reading = recordReading.current.get(node.id);
     if (sourcesRef.current) sourcesRef.current.open = reading?.sourcesOpen ?? false;
     if (scrollRef.current) scrollRef.current.scrollTop = reading?.scrollTop ?? 0;
     if (previousNode.current && previousNode.current !== node.id) headingRef.current?.focus({ preventScroll: true });
     previousNode.current = node.id;
-  }, [node.id]);
+  }, [currentNode?.id]);
+  if (!motion.present || !node) return null;
   const base = nodeBaseInfo(node, state);
   const relations = model.edges.filter((edge) => edge.from === node.id || edge.to === node.id);
   const insights = model.insights
@@ -122,11 +137,12 @@ export function CaseBoardInspector({ model, node, onClose, onSelect, onBack, ret
 
   return (
     <aside
+      {...motion.layerProps}
       aria-label={`${node.title}详情`}
-      aria-modal={modal ? 'true' : undefined}
+      aria-modal={currentNode && modal ? 'true' : undefined}
       className={`case-board-inspector${modal ? ' modal' : ''}${!mobile && shortViewport ? ' case-details-short' : ''}`}
       ref={dialogRef}
-      role="dialog"
+      role={currentNode ? 'dialog' : undefined}
       tabIndex={-1}
     >
       <header>

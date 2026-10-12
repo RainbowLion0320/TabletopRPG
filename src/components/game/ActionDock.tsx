@@ -64,7 +64,8 @@ export function ActionDock({
     // Disabling a focused textarea drops desktop keyboard focus to the body.
     // Restore it only when no reader or dialog has taken ownership of focus.
     if (!resumed || !autoFocusInput || document.activeElement !== document.body
-      || document.querySelector('[role="dialog"][aria-modal="true"]:not([aria-hidden="true"])')) return;
+      || Array.from(document.querySelectorAll('[role="dialog"][aria-modal="true"]'))
+        .some(element => !element.closest('[inert], [aria-hidden="true"]'))) return;
     inputRef.current?.focus({ preventScroll: true });
   }, [autoFocusInput, canDeclare]);
 

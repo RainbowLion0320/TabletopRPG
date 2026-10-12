@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { settleUiMotion } from './browserMotion';
 
 for (const width of [320, 390, 430, 562]) {
   test(`portrait controls respect native safe areas and browser fallback at ${width}px`, async ({ page }) => {
@@ -19,6 +20,7 @@ for (const width of [320, 390, 430, 562]) {
       { browser: browserInsets, native: { top: 40, right: 18, bottom: 0, left: 22 } },
     ];
     await page.getByRole('button', { name: '声音设置', exact: true }).click();
+    await settleUiMotion(page);
     for (const variant of variants) {
       await session.send('Emulation.setSafeAreaInsetsOverride', { insets: variant.browser });
       const margins = await page.evaluate(native => {

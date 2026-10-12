@@ -6,12 +6,13 @@ import { getDifficultyThreshold } from '../../data/gameRules';
 import { getSkillTotal } from '../../services/dice';
 import { useDialogFocus } from '../shared/useDialogFocus';
 import { useReadingMotion } from '../shared/useReadingMotion';
+import { useOverlayPresence } from '../shared/useOverlayPresence';
 import { ArchiveEmptyState } from '../shared/ArchiveEmptyState';
 import './investigatorSheet.css';
 
 interface InvestigatorSheetProps {
   players: Investigator[];
-  selectedId: string;
+  selectedId: string | null;
   onSelect: (id: string) => void;
   onClose: () => void;
 }
@@ -20,7 +21,10 @@ const attributes = [['STR', '力量'], ['CON', '体质'], ['SIZ', '体型'], ['D
 const tabs = [['overview', '属性'], ['skills', '技能'], ['background', '随身与背景']] as const;
 type SheetTab = typeof tabs[number][0];
 
-export function InvestigatorSheet({ players, selectedId, onSelect, onClose }: InvestigatorSheetProps) {
+export function InvestigatorSheet({ players, selectedId: currentId, onSelect, onClose }: InvestigatorSheetProps) {
+  const motion = useOverlayPresence(currentId);
+  const selectedId = motion.value ?? '';
+  const open = Boolean(currentId);
   const player = players.find((item) => item.id === selectedId);
   const dialogRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -28,15 +32,22 @@ export function InvestigatorSheet({ players, selectedId, onSelect, onClose }: In
   const id = useId();
   const [tab, setTab] = useState<SheetTab>('overview');
   const [failedPortrait, setFailedPortrait] = useState<string | null>(null);
-  useReadingMotion(bodyRef, `${selectedId}:${tab}`, Boolean(player));
-  useDialogFocus(Boolean(player), dialogRef, onClose, undefined, {
+  useReadingMotion(bodyRef, `${selectedId}:${tab}`, open && Boolean(player));
+  useDialogFocus(open && Boolean(player), dialogRef, onClose, undefined, {
     getFallbackFocus: () => document.querySelector<HTMLButtonElement>('.dock-actor-avatar, .ending-actions button')
   });
   useLayoutEffect(() => {
-    if (bodyRef.current) bodyRef.current.scrollTop = readingPositions.current.get(selectedId)?.[tab] ?? 0;
-  }, [selectedId, tab]);
+    if (!open) return;
+    setTab('overview');
+    readingPositions.current.clear();
+    setFailedPortrait(null);
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+  }, [open]);
+  useLayoutEffect(() => {
+    if (open && bodyRef.current) bodyRef.current.scrollTop = readingPositions.current.get(selectedId)?.[tab] ?? 0;
+  }, [open, selectedId, tab]);
 
-  if (!player) return null;
+  if (!motion.present || !player) return null;
 
   function rememberReadingPosition() {
     if (!bodyRef.current) return;
@@ -75,8 +86,8 @@ export function InvestigatorSheet({ players, selectedId, onSelect, onClose }: In
   ].filter((entry) => entry[1]);
 
   return createPortal(
-    <div className="investigator-overlay" onClick={onClose}>
-      <div className="investigator-sheet" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={`${id}-title`} tabIndex={-1} onClick={(event) => event.stopPropagation()}>
+    <div {...motion.layerProps} className="investigator-overlay" onClick={onClose}>
+      <div className="investigator-sheet" ref={dialogRef} role={open ? 'dialog' : undefined} aria-modal={open || undefined} aria-labelledby={`${id}-title`} tabIndex={-1} onClick={(event) => event.stopPropagation()}>
         <header className="investigator-heading">
           <div className="investigator-portrait" aria-hidden="true">
             <span>{player.name.slice(0, 1)}</span>

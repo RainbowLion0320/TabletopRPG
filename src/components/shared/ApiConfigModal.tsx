@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ChevronDown, Eye, EyeOff, X } from 'lucide-react';
 import { useDialogFocus } from './useDialogFocus';
+import { useOverlayPresence } from './useOverlayPresence';
 import { TuningDialArt } from './TuningDialArt';
 import { usingNativeStorage } from '../../platform/storage';
 import {
@@ -22,6 +23,7 @@ interface ApiConfigModalProps {
 }
 
 export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
+  const motion = useOverlayPresence(open);
   const [config, setConfig] = useState<ApiConfig>(() => readApiConfig() ?? getEnvDefaultApiConfig());
   const [feedback, setFeedback] = useState<{ field: ApiConfigField | null; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
@@ -74,7 +76,7 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
     return () => observer.disconnect();
   }, [open]);
 
-  if (!open) return null;
+  if (!motion.present) return null;
 
   const updateProvider = (provider: AiProvider) => {
     setFeedback(null);
@@ -126,8 +128,8 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
   });
 
   return (
-    <div className="modal-backdrop api-config-backdrop">
-      <form ref={dialogRef} noValidate tabIndex={-1} className="modal-card api-config-card" role="dialog" aria-modal="true" aria-labelledby={titleId} aria-busy={saving}
+    <div {...motion.layerProps} className="modal-backdrop api-config-backdrop">
+      <form ref={dialogRef} noValidate tabIndex={-1} className="modal-card api-config-card" role={open ? 'dialog' : undefined} aria-modal={open || undefined} aria-labelledby={titleId} aria-busy={saving}
         onSubmit={(event) => { event.preventDefault(); void save(); }}>
         <header className="api-config-header">
           <h2 id={titleId}><TuningDialArt size={24} />AI DM 配置</h2>

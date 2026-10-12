@@ -88,6 +88,7 @@ public class GameAndroidTest {
     private void click(String text) throws Exception {
         String match = "Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === " + JSONObject.quote(text) + " || b.getAttribute('aria-label') === " + JSONObject.quote(text) + ")";
         until(match + " && !" + match + ".disabled"); js(match + ".click()");
+        awaitUiMotion();
     }
     private void fill(String selector, String value) throws Exception {
         js("(()=>{const e=document.querySelector(" + JSONObject.quote(selector) + ");Object.getOwnPropertyDescriptor(e.tagName==='SELECT'?HTMLSelectElement.prototype:e.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype,'value').set.call(e," + JSONObject.quote(value) + ");e.dispatchEvent(new Event(e.tagName==='SELECT'?'change':'input',{bubbles:true}));})()");
@@ -165,6 +166,11 @@ public class GameAndroidTest {
         }
     }
 
+    private void awaitUiMotion() throws Exception {
+        js("window.qaUiMotionSettled=false;Promise.all(document.getAnimations().filter(a=>a.playState==='running'&&Number.isFinite(a.effect?.getTiming().iterations??1)).map(a=>a.finished.catch(()=>{}))).then(()=>window.qaUiMotionSettled=true)");
+        until("window.qaUiMotionSettled");
+    }
+
     private void viewport(int width, int height) throws Exception {
         double scale = Double.parseDouble(js("devicePixelRatio"));
         activity.onActivity(a -> {
@@ -175,10 +181,12 @@ public class GameAndroidTest {
             web.setLayoutParams(params);
         });
         until("Math.abs(innerWidth-" + width + ")<2 && Math.abs(innerHeight-" + height + ")<2");
+        awaitUiMotion();
     }
 
     /** Check actual visible bounds, ancestor clipping, and touch occlusion after transitions. */
     private void reachable(String selector) throws Exception {
+        awaitUiMotion();
         until("(()=>{const e=document.querySelector(" + JSONObject.quote(selector) + ");if(!e)return false;"
             + "const r=e.getBoundingClientRect();if(r.width<1||r.height<1||r.left<0||r.top<0||r.right>innerWidth+.5||r.bottom>innerHeight+.5)return false;"
             + "for(let p=e.parentElement;p;p=p.parentElement){const s=getComputedStyle(p),b=p.getBoundingClientRect();"
@@ -375,6 +383,40 @@ public class GameAndroidTest {
                 assertEquals("Wide phone party remains in two readable columns", "true", js("getComputedStyle(document.querySelector('.party-strip-compact')).gridTemplateColumns.split(' ').length===2"));
             }
             screenshot("party-dossiers-wide-phone");
+        } finally { activity.close(); }
+    }
+
+    @Test public void pairedPanelMotionKeepsNativeBackAndDraftResponsive() throws Exception {
+        fresh();
+        try {
+            viewport(390, 844); click("开始游戏"); click("进入游戏");
+            fill(".dock-input", "先记录日期\n再检查门廊");
+            js("window.qaPanelMotion=[];document.addEventListener('animationstart',e=>{"
+                + "if(!e.animationName.startsWith('fog-panel-')&&e.animationName!=='fog-drawer-enter')return;"
+                + "const layer=e.target.closest('[data-ui-phase]');if(!layer)return;"
+                + "window.qaPanelMotion.push({name:e.animationName,phase:layer.dataset.uiPhase,inert:layer.inert,hidden:layer.getAttribute('aria-hidden'),role:e.target.getAttribute('role')});})");
+            nativeTap(".menu-button"); until("document.querySelector('.game-menu[role=dialog]')");
+            until("window.qaPanelMotion.some(s=>s.name==='fog-panel-enter'&&s.phase==='open'&&!s.inert)");
+            screenshot("paired-motion-menu");
+            nativeTap(".game-menu button[aria-label='声音设置']"); until("document.querySelector('.audio-settings[role=dialog]')");
+            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+            until("!document.querySelector('.audio-settings[role=dialog]')");
+            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+            until("!document.querySelector('.game-menu[role=dialog]')");
+            assertEquals("Closing visuals release system Back and return to the original menu control", "true", js("!document.querySelector('.android-exit-card')&&document.activeElement===document.querySelector('.menu-button')"));
+            until("window.qaPanelMotion.filter(s=>s.name==='fog-panel-exit'&&s.phase==='closing'&&s.inert&&s.hidden==='true'&&s.role===null).length>=2");
+            until("!document.querySelector('[data-ui-phase=closing]')");
+            nativeTap(".dock-actor-avatar"); until("document.querySelector('.investigator-sheet[role=dialog]')");
+            nativeTap(".investigator-close"); until("!document.querySelector('.investigator-sheet[role=dialog]')");
+            nativeTap(".dock-input"); awaitSettledIme(true);
+            until("!document.querySelector('[data-ui-phase=closing]')");
+            assertEquals("Retiring a character sheet cannot take focus from the next action", "true", js("document.activeElement===document.querySelector('.dock-input')&&document.querySelector('.dock-input').value==='先记录日期'+String.fromCharCode(10)+'再检查门廊'"));
+            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK); awaitSettledIme(false);
+            nativeTap(".drawer-tab"); until("document.querySelector('.info-drawer-react[role=dialog]')");
+            until("window.qaPanelMotion.some(s=>s.name==='fog-drawer-enter'&&s.phase==='open')");
+            nativeTap(".info-drawer-react button[aria-label='关闭资料']"); until("!document.querySelector('.info-drawer-react[role=dialog]')");
+            until("!document.querySelector('[data-ui-phase=closing]')");
+            assertNoResizeErrors(); screenshot("paired-motion-return");
         } finally { activity.close(); }
     }
 

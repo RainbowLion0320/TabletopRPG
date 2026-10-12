@@ -4,6 +4,7 @@ import { JournalArt } from '../shared/JournalArt';
 import type { GameState } from '../../types/game';
 import { useDialogFocus } from '../shared/useDialogFocus';
 import { useReadingMotion } from '../shared/useReadingMotion';
+import { useOverlayPresence } from '../shared/useOverlayPresence';
 import { usePortraitLayout } from '../../platform/layout';
 import { storyData } from '../../data/storyData';
 import { ActionLogArchive, InvestigationProgress } from './InvestigationRecords';
@@ -22,7 +23,9 @@ interface InfoDrawerProps {
 }
 
 export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' }: InfoDrawerProps) {
+  const motion = useOverlayPresence(open);
   const [activeTab, setActiveTab] = useState<InfoDrawerTab>(initialTab);
+  const [opening, setOpening] = useState(0);
   const logScrollPosition = useRef(0);
   const progressReading = useRef<{ scrollTop: number; historyOpen?: boolean } | null>(null);
   const caseReadingState = useRef<CaseBoardReadingState | null>(null);
@@ -74,10 +77,16 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
     if (pointerId !== undefined && tabRef.current?.hasPointerCapture(pointerId)) tabRef.current.releasePointerCapture(pointerId);
   }, [portrait]);
 
-  useEffect(() => {
-    if (open) setActiveTab(initialTab);
-    else { logScrollPosition.current = 0; progressReading.current = null; caseReadingState.current = null; }
-  }, [open, initialTab]);
+  useLayoutEffect(() => {
+    if (!open && motion.present) return;
+    logScrollPosition.current = 0;
+    progressReading.current = null;
+    caseReadingState.current = null;
+    if (open) {
+      setActiveTab(initialTab);
+      setOpening((current) => current + 1);
+    }
+  }, [open, initialTab, motion.present]);
 
   function selectTab(tab: InfoDrawerTab) {
     if (activeTab === 'progress' && pageRef.current) {
@@ -90,7 +99,7 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
   }
   useLayoutEffect(() => {
     const page = pageRef.current;
-    if (!page) return;
+    if (!page || !open) return;
     const reading = open && activeTab === 'progress' ? progressReading.current : null;
     const history = page.querySelector<HTMLDetailsElement>('.investigation-history');
     if (history && reading?.historyOpen !== undefined) history.open = reading.historyOpen;
@@ -145,11 +154,13 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
         <span>资料</span>
       </button>
       <aside
+        {...motion.layerProps}
+        data-ui-phase={motion.present ? motion.layerProps['data-ui-phase'] : undefined}
         aria-hidden={!open}
         aria-label="资料"
         role={open ? 'dialog' : undefined}
         aria-modal={open ? true : undefined}
-        className={`info-drawer-react fullscreen ${open ? 'open' : ''}`}
+        className={`info-drawer-react fullscreen ${motion.present ? 'open' : ''}`}
         id="game-info-drawer"
         tabIndex={-1}
         ref={drawerRef}
@@ -167,14 +178,14 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
           <button aria-label="关闭资料" onClick={onClose} title="关闭"><X size={18} /></button>
         </header>
 
-        <div ref={pageRef} className={`info-drawer-page ${activeTab}-page`} role="tabpanel" id={`${id}-page`} aria-labelledby={`${id}-${activeTab}`} tabIndex={activeTab === 'progress' ? 0 : undefined}>
-        {open && activeTab === 'progress' ? <InvestigationProgress state={state} /> : null}
+        <div key={opening} ref={pageRef} className={`info-drawer-page ${activeTab}-page`} role="tabpanel" id={`${id}-page`} aria-labelledby={`${id}-${activeTab}`} tabIndex={activeTab === 'progress' ? 0 : undefined}>
+        {motion.present && activeTab === 'progress' ? <InvestigationProgress state={state} /> : null}
 
-        {open && activeTab === 'board' ? (
+        {motion.present && activeTab === 'board' ? (
           <CaseBoard state={state} readingState={caseReadingState} />
         ) : null}
 
-        {open && activeTab === 'log' ? <ActionLogArchive entries={state.actionLog} scrollPosition={logScrollPosition} /> : null}
+        {motion.present && activeTab === 'log' ? <ActionLogArchive entries={state.actionLog} scrollPosition={logScrollPosition} /> : null}
         </div>
       </aside>
     </>

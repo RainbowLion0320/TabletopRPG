@@ -5,6 +5,7 @@ import type { CheckRequest, GameState, ScenarioProgress } from '../src/types/gam
 import { makeInvestigator } from './dm/fixtures';
 import { parse as parseYaml } from 'yaml';
 import sharp from 'sharp';
+import { settleUiMotion } from './browserMotion';
 
 for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1440, height: 900 }]) {
   test(`long DM wait changes its caption without shifting the story at ${size.width}px`, async ({ page }, testInfo) => {
@@ -931,6 +932,7 @@ for (const size of [{ width: 390, height: 844, party: 1 }, { width: 1440, height
     expect(avatarBox!.width).toBeGreaterThanOrEqual(44); expect(avatarBox!.height).toBeGreaterThanOrEqual(44);
     await avatar.click();
     const sheet = page.locator('.investigator-sheet');
+    await settleUiMotion(page);
     await expect(sheet).toHaveAccessibleName('亨利·格雷');
     await expect(sheet.locator('[data-stat="hp"] dd')).toHaveText('12 / 12');
     await expect(sheet.locator('.investigator-attributes > div')).toHaveCount(8);
@@ -1418,12 +1420,18 @@ for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height:
     });
     await expect.poll(bounds).toEqual({ listInside: true, closeInside: true, noOverflow: true });
     const closeArchive = async () => {
-      await page.getByRole('button', { name: '关闭资料' }).click();
-      const firstFrame = await page.locator('.info-drawer-react').evaluate(el => new Promise(resolve => {
-        requestAnimationFrame(() => resolve({ visible: getComputedStyle(el).visibility !== 'hidden',
-          hasPage: !!el.querySelector('.action-log-archive, .investigation-progress, .case-board-view') }));
-      }));
-      expect(firstFrame).toEqual({ visible: false, hasPage: false });
+      const firstFrame = await page.evaluate(async () => {
+        const close = document.querySelector<HTMLButtonElement>('[aria-label="关闭资料"]')!;
+        close.focus(); close.click();
+        await new Promise(requestAnimationFrame);
+        const el = document.querySelector<HTMLElement>('.info-drawer-react')!;
+        return { inert: el.inert, hidden: el.getAttribute('aria-hidden'), role: el.getAttribute('role'),
+          pageRetained: !!el.querySelector('.action-log-archive, .investigation-progress, .case-board-view'),
+          reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
+      });
+      expect(firstFrame).toEqual({ inert: true, hidden: 'true', role: null, pageRetained: !firstFrame.reduced, reduced: firstFrame.reduced });
+      await settleUiMotion(page);
+      await expect.poll(() => page.locator('.info-drawer-react.open').count()).toBe(0);
       await expect(draft).toHaveValue('继续查看门廊上的痕迹。');
     };
     await closeArchive();
@@ -1649,6 +1657,7 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
       await page.evaluate(() => document.fonts.ready);
       await page.getByRole('textbox', { name: '亨利·格雷的行动' }).fill(draft);
       if (expanded) await page.getByRole('button', { name: '展开剧情', exact: true }).click();
+      await settleUiMotion(page);
       const reading = await page.locator('.narrative-scroll').evaluate(element => element.getBoundingClientRect().height);
       await page.getByRole('button', { name: '菜单', exact: true }).click();
       await page.getByRole('button', { name: '保存游戏', exact: true }).click();
@@ -1677,6 +1686,7 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
         expect(bounds).toEqual({ inside: true, readable: true, drawn: true, passive: true, caption: true, party: true, horizontalOverflow: false });
       }
       await verifyNotice();
+      await settleUiMotion(page);
       expect(await page.locator('.narrative-scroll').evaluate(element => element.getBoundingClientRect().height)).toBe(reading);
       await page.screenshot({ path: testInfo.outputPath('save-feedback.png') });
       if (size.width === 320 && !expanded) await page.screenshot({ path: 'output/ui-2026-10-08/62-save-notice-four-player.png' });
@@ -2179,6 +2189,7 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     expect(page.workers()).toHaveLength(0);
     await expect(drawer.locator('.case-board-heading')).not.toContainText('0 个');
     const header = drawer.locator(':scope > header');
+    await settleUiMotion(page);
     const headerTop = (await header.boundingBox())!.y;
     const workspace = drawer.locator('.case-board-workspace');
     await expect.poll(() => workspace.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
@@ -2213,6 +2224,7 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     expect(readingPosition).toBeGreaterThan(0);
     await relatedRecord.click();
     const eventDetail = page.getByRole('dialog', { name: '现场记录 1详情', exact: true });
+    await settleUiMotion(page);
     await expect(eventDetail.locator('.case-record-sources')).not.toHaveAttribute('open', '');
     expect(await eventDetail.locator('.case-board-inspector-scroll').evaluate(element => element.scrollTop)).toBe(0);
     await eventDetail.locator('.case-record-sources summary').click();
@@ -2517,6 +2529,7 @@ test('desktop case details own Escape while keyboard navigation stays in the enc
   await expect(detail).toHaveCount(0); await expect(drawer).toBeVisible(); await expect(node).toBeFocused();
   for (const height of [500, 420, 300]) {
     await node.click(); await page.setViewportSize({ width: 1440, height });
+    await settleUiMotion(page);
     await expect(detail).toHaveAttribute('aria-modal', 'true');
     expect(await detail.locator('.case-board-inspector-scroll').evaluate(element => element.clientHeight)).toBeGreaterThan(height / 2);
     const close = detail.getByRole('button', { name: '关闭资料详情', exact: true });
@@ -2557,6 +2570,7 @@ for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height:
     const detail = page.getByRole('dialog', { name: '伊莎贝拉·摩勒', exact: true });
     await expect.poll(() => detail.locator('.record-detail-media img').evaluate((element) => (element as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
     const header = detail.locator('.entity-detail-header');
+    await settleUiMotion(page);
     await detail.locator('.entity-detail-known p').first().evaluate((element) => { element.textContent = '长篇公开调查记录，门廊下留有雨水与细微划痕。'.repeat(160); });
     const top = (await header.boundingBox())!.y;
     const body = detail.locator('.entity-detail-body'); await body.evaluate((element) => { element.scrollTop = element.scrollHeight; });
@@ -2601,6 +2615,7 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     await opener.click();
     const menu = page.getByRole('dialog', { name: '调查菜单', exact: true });
     await expect(opener).toHaveAttribute('aria-expanded', 'true');
+    await settleUiMotion(page);
     await expect(menu.getByRole('button', { name: '关闭调查菜单' })).toBeFocused();
     await expect(menu.getByRole('button', { name: '保存游戏' })).toBeInViewport();
     await expect(menu.getByRole('button', { name: '继续调查' })).toBeInViewport();
@@ -3045,6 +3060,7 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
     await expect(dialog.getByText('最近保存', { exact: true })).toHaveCount(1);
     const last = dialog.getByRole('article').last();
     const deleteButton = last.getByRole('button', { name: /^删除存档/ });
+    await settleUiMotion(page);
     const deletePresentation = await deleteButton.evaluate(element => ({
       frameDisplay: getComputedStyle(element, '::before').display,
       font: parseFloat(getComputedStyle(element).fontSize),
@@ -3168,6 +3184,70 @@ test('portrait home keeps compact main actions and returns from utility settings
   }
 });
 
+for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1440, height: 900 }]) {
+  test(`paired panel motion releases input and cancels rapid dismissal at ${size.width}px`, async ({ page }) => {
+    await page.setViewportSize(size);
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await startNewGame(page, 2);
+    const draft = '先记录日期。\n再查看门廊。';
+    await page.locator('.dock-input').fill(draft);
+    const enter = await page.evaluate(async () => {
+      document.querySelector<HTMLButtonElement>('.menu-button')!.click();
+      await new Promise(requestAnimationFrame);
+      const panel = document.querySelector('.game-menu')!;
+      return { opacity: +getComputedStyle(panel).opacity, transform: getComputedStyle(panel).transform,
+        running: panel.getAnimations().some(animation => animation.playState === 'running') };
+    });
+    expect(enter.running).toBe(true); expect(enter.opacity).toBeLessThan(1); expect(enter.transform).not.toBe('none');
+    const menu = page.getByRole('dialog', { name: '调查菜单', exact: true });
+    await expect.poll(() => menu.evaluate(element => getComputedStyle(element).transform)).toBe('none');
+    const race = await page.evaluate(async () => {
+      document.querySelector<HTMLButtonElement>('.game-menu-close')!.click();
+      await new Promise(requestAnimationFrame);
+      const layer = document.querySelector<HTMLElement>('.game-menu-backdrop')!;
+      const closing = { phase: layer.dataset.uiPhase, inert: layer.inert, hidden: layer.getAttribute('aria-hidden'),
+        pointers: getComputedStyle(layer).pointerEvents, activeDialogs: document.querySelectorAll('[role="dialog"][aria-modal="true"]').length,
+        focus: document.activeElement === document.querySelector('.menu-button'),
+        animation: getComputedStyle(layer.querySelector('.game-menu')!).animationName };
+      document.querySelector<HTMLButtonElement>('.menu-button')!.click();
+      await new Promise(requestAnimationFrame);
+      return { closing, reopened: layer.dataset.uiPhase === 'open' && !layer.inert };
+    });
+    expect(race.closing).toEqual({ phase: 'closing', inert: true, hidden: 'true', pointers: 'none', activeDialogs: 0, focus: true, animation: 'fog-panel-exit' });
+    expect(race.reopened).toBe(true);
+    await expect.poll(() => menu.evaluate(element => getComputedStyle(element).transform)).toBe('none');
+    await expect(menu).toHaveCount(1);
+    await menu.getByRole('button', { name: '声音设置', exact: true }).click();
+    const audio = page.getByRole('dialog', { name: '声音设置', exact: true });
+    await expect(audio.getByRole('button', { name: '关闭声音设置', exact: true })).toBeFocused();
+    await audio.getByRole('button', { name: '关闭声音设置', exact: true }).click();
+    await expect(audio).toHaveCount(0);
+    await expect(menu.getByRole('button', { name: '声音设置', exact: true })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0);
+    await expect(page.locator('.menu-button')).toBeFocused();
+    await page.locator('.dock-input').click(); await page.locator('.dock-input').press('End');
+    await expect(page.locator('.dock-input')).toBeFocused(); await expect(page.locator('.dock-input')).toHaveValue(draft);
+    await expect.poll(() => page.locator('[data-ui-phase="closing"]').count()).toBe(0);
+    await expect(page.locator('.dock-input')).toBeFocused();
+  });
+}
+
+test('reduced motion closes actual game layers immediately without leaving a visual or focus trap', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 }); await page.emulateMedia({ reducedMotion: 'reduce' });
+  await startNewGame(page);
+  await page.getByRole('button', { name: '查看亨利·格雷的属性', exact: true }).click();
+  const result = await page.evaluate(async () => {
+    const panel = document.querySelector('.investigator-sheet')!;
+    const animations = panel.getAnimations({ subtree: true }).length;
+    document.querySelector<HTMLButtonElement>('.investigator-close')!.click(); await new Promise(requestAnimationFrame);
+    return { animations, removed: !document.querySelector('.investigator-sheet'),
+      closing: document.querySelectorAll('[data-ui-phase="closing"]').length,
+      focused: document.activeElement === document.querySelector('.dock-actor-avatar') };
+  });
+  expect(result).toEqual({ animations: 0, removed: true, closing: 0, focused: true });
+});
+
 for (const motion of ['no-preference', 'reduce'] as const) {
   test(`phone interaction motion preserves fixed controls, reading positions and drafts with ${motion}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -3181,6 +3261,7 @@ for (const motion of ['no-preference', 'reduce'] as const) {
     await page.getByRole('button', { name: '查看亨利·格雷的属性', exact: true }).click();
     const sheet = page.locator('.investigator-sheet');
     expect(await sheet.evaluate(element => getComputedStyle(element).animationName)).toBe(motion === 'reduce' ? 'none' : 'fog-panel-enter');
+    await expect.poll(() => sheet.evaluate(element => getComputedStyle(element).transform)).toBe('none');
     const headerTop = (await sheet.locator('.investigator-heading').boundingBox())!.y;
     await sheet.getByRole('tab', { name: '技能', exact: true }).click();
     const body = sheet.locator('.investigator-body');
@@ -3207,6 +3288,7 @@ for (const motion of ['no-preference', 'reduce'] as const) {
     await expect(page.locator('.dock-input')).toHaveValue(draft);
     await page.getByRole('button', { name: '菜单', exact: true }).click();
     const menu = page.getByRole('dialog', { name: '调查菜单', exact: true });
+    await expect.poll(() => menu.evaluate(element => getComputedStyle(element).transform)).toBe('none');
     const menuTop = (await menu.locator('header').boundingBox())!.y;
     await menu.locator('.game-menu-body').evaluate(element => { element.scrollTop = element.scrollHeight; });
     expect((await menu.locator('header').boundingBox())!.y).toBe(menuTop);

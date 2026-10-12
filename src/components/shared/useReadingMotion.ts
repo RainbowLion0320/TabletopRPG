@@ -7,8 +7,8 @@ export function useReadingMotion(ref: RefObject<HTMLElement>, page: string | boo
     if (!enabled || !element?.animate || document.hidden) return;
     const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
     if (preference.matches) return;
-    const animation = element.animate([{ opacity: .72 }, { opacity: 1 }], {
-      duration: 160, easing: 'cubic-bezier(.2,.7,.2,1)'
+    const animation = element.animate([{ opacity: .45, transform: 'translateY(3px)' }, { opacity: 1, transform: 'none' }], {
+      duration: 190, easing: 'cubic-bezier(.2,.7,.2,1)'
     });
     const stop = () => { if (document.hidden || preference.matches) animation.cancel(); };
     document.addEventListener('visibilitychange', stop);

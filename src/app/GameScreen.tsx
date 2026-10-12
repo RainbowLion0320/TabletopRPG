@@ -106,7 +106,7 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
       <DiceRollOverlay onConfirm={controller.confirmDiceResult} roll={controller.diceRoll} />
       <ApiConfigModal open={controller.apiOpen} onClose={() => controller.setApiOpen(false)} onSave={controller.saveApi} />
       <EntityDetailModal detail={narrativeDetail} onClose={() => setNarrativeDetail(null)} />
-      {inspectedPlayerId && <InvestigatorSheet players={state.players} selectedId={inspectedPlayerId} onSelect={setInspectedPlayerId} onClose={() => setInspectedPlayerId(null)} />}
+      <InvestigatorSheet players={state.players} selectedId={inspectedPlayerId} onSelect={setInspectedPlayerId} onClose={() => setInspectedPlayerId(null)} />
       <GameNotice message={controller.toast} />
       <DmDebugDrawer onOpenJournal={controller.openJournal} />
     </main>

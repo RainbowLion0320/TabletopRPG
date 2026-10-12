@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Trash2, X } from 'lucide-react';
 import type { IncompatibleSaveSlot, SaveSlot } from '../../types/game';
 import { useDialogFocus } from '../shared/useDialogFocus';
+import { useOverlayPresence } from '../shared/useOverlayPresence';
 import { ArchiveEmptyArt } from '../shared/ArchiveEmptyArt';
 import { JournalArt } from '../shared/JournalArt';
 import './save-manager.css';
@@ -17,6 +18,7 @@ interface SaveManagerModalProps {
 }
 
 export function SaveManagerModal({ incompatibleSaves = [], onClose, onDelete, onLoad, open, saves }: SaveManagerModalProps) {
+  const motion = useOverlayPresence(open);
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -48,11 +50,17 @@ export function SaveManagerModal({ incompatibleSaves = [], onClose, onDelete, on
     getFallbackFocus: () => document.querySelector<HTMLButtonElement>('.dock-actor-avatar, .ending-actions button')
   });
   useEffect(() => {
-    if (!open) {
+    if (!motion.present) {
       setConfirmationId(null);
       setError(null);
       focusAfterChange.current = null;
     }
+  }, [motion.present]);
+  useLayoutEffect(() => {
+    if (!open) return;
+    setConfirmationId(null);
+    setError(null);
+    focusAfterChange.current = null;
   }, [open]);
   useLayoutEffect(() => {
     if (!open || deletingId !== null) return;
@@ -101,13 +109,13 @@ export function SaveManagerModal({ incompatibleSaves = [], onClose, onDelete, on
     }
   }
 
-  if (!open) return null;
+  if (!motion.present) return null;
   const busy = deletingId !== null;
   const slots = [...saves, ...incompatibleSaves];
 
   return createPortal(
-    <div className="save-manager-backdrop" onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
-      <div ref={dialogRef} tabIndex={-1} aria-modal="true" aria-labelledby={`${id}-title`} className="save-manager-card" role="dialog">
+    <div {...motion.layerProps} className="save-manager-backdrop" onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
+      <div ref={dialogRef} tabIndex={-1} aria-modal={open || undefined} aria-labelledby={`${id}-title`} className="save-manager-card" role={open ? 'dialog' : undefined}>
         <header className="save-manager-heading">
           <div><h2 id={`${id}-title`}><JournalArt size={24} />读取存档</h2><p>{slots.length ? `${slots.length} 份本地调查记录` : '保存调查后，可在这里选择记录继续。'}</p></div>
           <button type="button" className="ghost-btn save-manager-close" aria-label="关闭存档列表" disabled={busy} onClick={close}><X size={18} aria-hidden="true" /></button>

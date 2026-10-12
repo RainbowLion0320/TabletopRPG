@@ -1,6 +1,7 @@
 import { useId, useRef } from 'react';
 import { useDialogFocus } from '../shared/useDialogFocus';
 import { useReadingMotion } from '../shared/useReadingMotion';
+import { useOverlayPresence } from '../shared/useOverlayPresence';
 import { X } from 'lucide-react';
 import type { EntityDetail } from '../../dm/entityDetail';
 import { RecordDetailMedia } from './RecordDetailMedia';
@@ -11,24 +12,27 @@ interface EntityDetailModalProps {
   onClose: () => void;
 }
 
-export function EntityDetailModal({ detail, onClose }: EntityDetailModalProps) {
+export function EntityDetailModal({ detail: currentDetail, onClose }: EntityDetailModalProps) {
+  const open = Boolean(currentDetail);
+  const motion = useOverlayPresence(currentDetail);
+  const detail = motion.value;
   const dialogRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
-  useDialogFocus(Boolean(detail), dialogRef, onClose);
-  useReadingMotion(bodyRef, detail?.name ?? '', Boolean(detail));
+  useDialogFocus(open, dialogRef, onClose);
+  useReadingMotion(bodyRef, detail?.name ?? '', open);
 
-  if (!detail) return null;
+  if (!motion.present || !detail) return null;
 
   return (
-    <div className="entity-detail-overlay" onClick={onClose}>
+    <div {...motion.layerProps} className="entity-detail-overlay" onClick={onClose}>
       <div
         aria-labelledby={titleId}
-        aria-modal="true"
+        aria-modal={open || undefined}
         className="entity-detail-card"
         onClick={(e) => e.stopPropagation()}
-        role="dialog"
+        role={open ? 'dialog' : undefined}
         ref={dialogRef}
         tabIndex={-1}
       >

@@ -3,12 +3,14 @@ import { useId, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { gameAudio } from '../../audio/audio';
 import { useDialogFocus } from './useDialogFocus';
+import { useOverlayPresence } from './useOverlayPresence';
 import { AudioEmblemArt } from './AudioEmblemArt';
 import { TuningDialArt } from './TuningDialArt';
 import './audio-settings.css';
 
 export function AudioSettingsButton({ className, iconOnly = false, onOpenChange }: { className?: string; iconOnly?: boolean; onOpenChange?: (open: boolean) => void }) {
   const [open, setOpen] = useState(false);
+  const motion = useOverlayPresence(open);
   const settings = useSyncExternalStore(gameAudio.subscribe, gameAudio.getSnapshot);
   const volumeId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -23,11 +25,11 @@ export function AudioSettingsButton({ className, iconOnly = false, onOpenChange 
       title={iconOnly ? '声音设置' : undefined} onClick={() => changeOpen(true)}>
       <AudioEmblemArt size={iconOnly ? 24 : 20} />{!iconOnly && '声音设置'}
     </button>
-    {open && createPortal(
-      <div className="modal-backdrop audio-settings-backdrop" onClick={(event) => {
+    {motion.present && createPortal(
+      <div {...motion.layerProps} className="modal-backdrop audio-settings-backdrop" onClick={(event) => {
         if (event.target === event.currentTarget) changeOpen(false);
       }}>
-        <div className="modal-card audio-settings" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="audio-settings-title" tabIndex={-1}>
+        <div className="modal-card audio-settings" ref={dialogRef} role={open ? 'dialog' : undefined} aria-modal={open || undefined} aria-labelledby="audio-settings-title" tabIndex={-1}>
           <header>
             <h2 id="audio-settings-title"><TuningDialArt size={24} />声音设置</h2>
             <button className="audio-close" aria-label="关闭声音设置" onClick={() => changeOpen(false)}><X size={20} /></button>

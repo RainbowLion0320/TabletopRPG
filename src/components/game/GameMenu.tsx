@@ -7,6 +7,7 @@ import { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AudioSettingsButton } from '../shared/AudioSettingsButton';
 import { useDialogFocus } from '../shared/useDialogFocus';
+import { useOverlayPresence } from '../shared/useOverlayPresence';
 import './game-menu.css';
 
 interface GameMenuProps {
@@ -21,13 +22,14 @@ interface GameMenuProps {
 
 export function GameMenu({ onClose, onHome, onLoad, onOpenApi, onRestart, onSave, open }: GameMenuProps) {
   const dialogRef = useRef<HTMLElement>(null);
+  const motion = useOverlayPresence(open);
   useDialogFocus(open, dialogRef, onClose, undefined, {
     getFallbackFocus: () => document.querySelector<HTMLButtonElement>('.dock-actor-avatar, .ending-actions button')
   });
-  if (!open) return null;
+  if (!motion.present) return null;
   return createPortal(
-    <div className="game-menu-backdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-    <aside ref={dialogRef} id="game-menu-panel" className="modal-card game-menu open" role="dialog" aria-modal="true" aria-labelledby="game-menu-title" tabIndex={-1}>
+    <div {...motion.layerProps} className="game-menu-backdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <aside ref={dialogRef} id="game-menu-panel" className="modal-card game-menu open" role={open ? 'dialog' : undefined} aria-modal={open || undefined} aria-labelledby="game-menu-title" tabIndex={-1}>
       <header className="game-menu-header">
         <h2 id="game-menu-title">调查菜单</h2>
         <button type="button" className="ghost-btn game-menu-close" aria-label="关闭调查菜单" onClick={onClose}><X size={20} aria-hidden="true" /></button>

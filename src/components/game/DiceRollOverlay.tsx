@@ -3,6 +3,7 @@ import { Check } from 'lucide-react';
 import type { DiceResult } from '../../types/game';
 import { DICE_ROLL_DURATION_MS, type DiceRollPresentation } from '../../app/diceRollAnimation';
 import { useDialogFocus } from '../shared/useDialogFocus';
+import { useOverlayPresence } from '../shared/useOverlayPresence';
 import idleArt from '../../../assets/ui/dice/ui_dice_idle.webp';
 import rollArt from '../../../assets/ui/dice/ui_dice_roll.webp';
 
@@ -41,19 +42,21 @@ function RollingDice({ revealed }: { revealed: boolean }) {
   );
 }
 
-export function DiceRollOverlay({ onConfirm, roll }: DiceRollOverlayProps) {
+export function DiceRollOverlay({ onConfirm, roll: currentRoll }: DiceRollOverlayProps) {
+  const motion = useOverlayPresence(currentRoll);
+  const roll = motion.value;
   const dialogRef = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
   const revealed = roll?.phase === 'revealed';
-  useDialogFocus(Boolean(roll), dialogRef, () => {
+  useDialogFocus(Boolean(currentRoll), dialogRef, () => {
     if (revealed) onConfirm();
   });
 
   useEffect(() => {
-    if (revealed) confirmRef.current?.focus();
-  }, [revealed]);
+    if (currentRoll?.phase === 'revealed') confirmRef.current?.focus();
+  }, [currentRoll?.phase]);
 
-  if (!roll) return null;
+  if (!motion.present || !roll) return null;
 
   // Only the authoritative result supplies settled digits. The animation has
   // blank faces and consumes no randomness or media playback callbacks.
@@ -61,13 +64,14 @@ export function DiceRollOverlay({ onConfirm, roll }: DiceRollOverlayProps) {
 
   return (
     <div
+      {...motion.layerProps}
       aria-labelledby="dice-roll-title"
       aria-describedby="dice-roll-context"
-      aria-modal="true"
+      aria-modal={currentRoll ? true : undefined}
       aria-busy={!revealed}
       className={`dice-roll-overlay ${revealed ? `revealed result-${roll.result.level}` : 'rolling'}`}
       ref={dialogRef}
-      role="dialog"
+      role={currentRoll ? 'dialog' : undefined}
       tabIndex={-1}
       style={{ '--dice-roll-duration': `${DICE_ROLL_DURATION_MS}ms` } as CSSProperties}
     >
