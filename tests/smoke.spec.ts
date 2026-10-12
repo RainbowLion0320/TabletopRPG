@@ -7,6 +7,104 @@ import { parse as parseYaml } from 'yaml';
 import sharp from 'sharp';
 import { settleUiMotion } from './browserMotion';
 
+for (const size of [
+  { width: 320, height: 568, party: 1, reduced: false },
+  { width: 390, height: 844, party: 2, reduced: false },
+  { width: 1440, height: 900, party: 4, reduced: false },
+  { width: 390, height: 844, party: 1, reduced: true }
+]) {
+  test(`delayed scene art enters after loading at ${size.width}px${size.reduced ? ' with reduced motion' : ''}`, async ({ page }, testInfo) => {
+    await page.setViewportSize(size);
+    if (size.reduced) await page.emulateMedia({ reducedMotion: 'reduce' });
+    const state = createDynamicCaseBoardSave();
+    state.players = [
+      makeInvestigator({ id: 'inspector', name: '亨利·格雷' }),
+      makeInvestigator({ id: 'nurse', name: '艾达·华莱士', gender: '女' }),
+      makeInvestigator({ id: 'reporter', name: '托马斯·贝尔' }),
+      makeInvestigator({ id: 'constable', name: '罗伯特·肖' })
+    ].slice(0, size.party);
+    await gotoWithSave(page, state);
+    let release!: () => void;
+    const pending = new Promise<void>(resolve => { release = resolve; });
+    await page.route('**/output/android-art/*.webp', async route => { await pending; await route.continue(); });
+    try {
+      await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+      const art = page.locator('.scene-backdrop-img, .scene-npc');
+      await expect(art).toHaveCount(2);
+      await page.waitForTimeout(350); // Longer than both original mount-time entrances.
+      expect(await art.evaluateAll(elements => elements.map(element => ({
+        ready: (element as HTMLImageElement).naturalWidth > 0,
+        opacity: getComputedStyle(element).opacity, animation: getComputedStyle(element).animationName
+      })))).toEqual([
+        { ready: false, opacity: '0', animation: 'none' },
+        { ready: false, opacity: '0', animation: 'none' }
+      ]);
+      await page.locator('.dock-input').fill('记下委托经过，再检查门廊。');
+      await page.evaluate(() => document.fonts.ready);
+      await settleUiMotion(page);
+      const stageHeight = await page.locator('.scene-stage').evaluate(element => element.getBoundingClientRect().height);
+      await page.evaluate(reduced => {
+        const observations: Record<string, { started: boolean; loaded: boolean; opacity: number; animation: string }> = {};
+        (window as typeof window & { artArrival: typeof observations }).artArrival = observations;
+        const capture = (image: HTMLImageElement, started: boolean) => {
+          const style = getComputedStyle(image);
+          observations[image.classList.contains('scene-npc') ? 'portrait' : 'painting'] = {
+            started, loaded: image.complete && image.naturalWidth > 0,
+            opacity: Number(style.opacity), animation: style.animationName
+          };
+        };
+        if (reduced) {
+          const observer = new MutationObserver(() => {
+            for (const image of document.querySelectorAll<HTMLImageElement>('.scene-stage img.scene-image-arriving')) capture(image, false);
+            if (Object.keys(observations).length === 2) observer.disconnect();
+          });
+          observer.observe(document.querySelector('.scene-stage')!, { subtree: true, attributes: true, attributeFilter: ['class'] });
+        } else {
+          document.addEventListener('animationstart', event => {
+            const image = event.target as HTMLImageElement;
+            if (image.matches('.scene-stage img') && event.elapsedTime === 0) capture(image, true);
+          });
+        }
+      }, size.reduced);
+      release();
+      await expect.poll(() => art.evaluateAll(elements => elements.every(element =>
+        (element as HTMLImageElement).complete && (element as HTMLImageElement).naturalWidth > 0))).toBe(true);
+      await expect.poll(() => page.evaluate(() => Object.keys((window as typeof window & {
+        artArrival: Record<string, unknown>
+      }).artArrival).length)).toBe(2);
+      const frames = await page.evaluate(() => (window as typeof window & {
+        artArrival: Record<string, { started: boolean; loaded: boolean; opacity: number; animation: string }>
+      }).artArrival);
+      for (const [kind, frame] of Object.entries(frames)) {
+        expect(frame.started).toBe(!size.reduced);
+        expect(frame.loaded).toBe(true);
+        expect(frame.animation).toBe(size.reduced ? 'none' : kind === 'portrait' ? 'fog-portrait-enter' : 'fog-scene-enter');
+        expect(frame.opacity).toBeGreaterThanOrEqual(0);
+        expect(frame.opacity).toBeLessThanOrEqual(1);
+      }
+      await settleUiMotion(page);
+      expect(await art.evaluateAll(elements => elements.map(element => getComputedStyle(element).opacity))).toEqual(['1', '1']);
+      expect(await page.locator('.scene-stage').evaluate(element => element.getBoundingClientRect().height)).toBe(stageHeight);
+      await expect(page.locator('.dock-input')).toHaveValue('记下委托经过，再检查门廊。');
+      await expect(page.locator('.party-compact')).toHaveCount(size.party);
+      await page.screenshot({ path: testInfo.outputPath('ready-art.png') });
+    } finally { release(); }
+  });
+}
+
+test('failed scene art leaves the game usable without broken images or a wrong painting', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await gotoWithSave(page, createDynamicCaseBoardSave());
+  await page.route('**/output/android-art/*.webp', route => route.abort());
+  await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+  await expect(page.locator('.scene-stage img')).toHaveCount(0);
+  await expect(page.getByRole('region', { name: '剧情记录' })).toBeVisible();
+  await page.locator('.dock-input').fill('记下委托经过。');
+  await expect(page.getByRole('button', { name: '下一位', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: '查看亨利·格雷的属性', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: '亨利·格雷', exact: true })).toBeVisible();
+});
+
 for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height: 844, party: 2 }, { width: 1440, height: 900, party: 4 }]) {
   test(`story reading stays anchored across folding and viewport changes at ${size.width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize(size);

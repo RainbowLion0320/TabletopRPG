@@ -249,6 +249,30 @@ describe('NarrativePanel', () => {
     expect(screen.queryByRole('button', { name: '查看新剧情' })).not.toBeInTheDocument();
   });
 
+  it('preserves a manual scroll queued immediately before folding changes the viewport', () => {
+    const state = makeState();
+    state.messages = [{ id: 'old', type: 'dm', text: '回看的长记录。' }, { id: 'latest', type: 'dm', text: '最新的一页。' }];
+    const { rerender } = render(<NarrativePanel state={state} />);
+    const panel = screen.getByRole('region', { name: '剧情记录' });
+    let height = 200;
+    Object.defineProperties(panel, { clientWidth: { configurable: true, value: 300 },
+      clientHeight: { configurable: true, get: () => height }, scrollHeight: { configurable: true, value: 1600 } });
+    Object.defineProperties(panel.children[0], { offsetTop: { configurable: true, value: 0 }, offsetHeight: { configurable: true, value: 1500 } });
+    Object.defineProperties(panel.children[1], { offsetTop: { configurable: true, value: 1500 }, offsetHeight: { configurable: true, value: 100 } });
+    panel.scrollTop = 1400; fireEvent.scroll(panel);
+    panel.scrollTop = 600; // The browser's scroll event is still queued.
+    height = 500; rerender(<NarrativePanel state={{ ...state }} />);
+    expect(panel.scrollTop).toBe(600);
+    fireEvent.scroll(panel);
+    height = 200; fireEvent(window, new Event('resize'));
+    expect(panel.scrollTop).toBe(600);
+    // Returning to the end just before the next resize should restore end affinity.
+    panel.scrollTop = 1400; height = 160;
+    rerender(<NarrativePanel state={{ ...state }} />);
+    expect(panel.scrollTop).toBe(1440);
+    expect(screen.queryByRole('button', { name: '查看新剧情' })).not.toBeInTheDocument();
+  });
+
   it('keeps an older bookmark through temporary viewport clamping and generated scroll events', () => {
     const state = makeState();
     state.messages = [{ id: 'old', type: 'dm', text: '回看的长记录。' }, { id: 'latest', type: 'dm', text: '最新的一页。' }];

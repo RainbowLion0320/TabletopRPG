@@ -9,10 +9,12 @@ interface SceneStageProps {
 function SceneBackdrop({ src }: { src: string }) {
   const lastLoaded = useRef<string | null>(null);
   const [loaded, setLoaded] = useState<string | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
   const [retiring, setRetiring] = useState<string | null>(null);
   useLayoutEffect(() => {
     // Keep the last decoded scene behind a new picture until it is ready.
     setRetiring(lastLoaded.current !== src ? lastLoaded.current : null);
+    setFailed(null);
   }, [src]);
   useEffect(() => {
     if (!retiring || loaded !== src) return;
@@ -22,10 +24,17 @@ function SceneBackdrop({ src }: { src: string }) {
   }, [retiring, loaded, src]);
   return <>
     {retiring && <img className="scene-backdrop-retiring" src={retiring} alt="" aria-hidden="true" />}
-    <img key={src} className={`scene-backdrop-img${retiring ? loaded === src ? ' scene-image-arriving' : ' scene-image-loading' : ''}`}
+    {failed !== src && <img key={src} className={`scene-backdrop-img ${loaded === src ? 'scene-image-arriving' : 'scene-image-loading'}`}
       src={src} alt="" onLoad={() => { lastLoaded.current = src; setLoaded(src); }}
-      onError={() => { lastLoaded.current = null; setLoaded(src); setRetiring(null); }} />
+      onError={() => { lastLoaded.current = null; setFailed(src); setRetiring(null); }} />}
   </>;
+}
+
+function ScenePortrait({ src }: { src: string }) {
+  const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>('loading');
+  if (status === 'failed') return null;
+  return <img className={`scene-npc ${status === 'ready' ? 'scene-image-arriving' : 'scene-image-loading'}`}
+    src={src} alt="" onLoad={() => setStatus('ready')} onError={() => setStatus('failed')} />;
 }
 
 export function SceneStage({ state }: SceneStageProps) {
@@ -40,7 +49,7 @@ export function SceneStage({ state }: SceneStageProps) {
       <SceneBackdrop src={scene.image} />
       <div className="scene-shade" />
       {npc?.portrait ? (
-        <img key={npc.portrait} className="scene-npc" src={npc.portrait} alt="" />
+        <ScenePortrait key={npc.portrait} src={npc.portrait} />
       ) : null}
     </div>
   );

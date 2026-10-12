@@ -4,6 +4,8 @@ import type { NarrativeMessage } from '../../types/game';
 interface ReadingPosition {
   width: number;
   height: number;
+  scrollTop: number;
+  maximum: number;
   bottom: boolean;
   message: HTMLElement | null;
   offset: number;
@@ -22,6 +24,7 @@ function capturePosition(panel: HTMLElement): ReadingPosition {
   const message = messages[Math.max(0, low - 1)] as HTMLElement | undefined;
   return {
     width: panel.clientWidth, height: panel.clientHeight,
+    scrollTop: panel.scrollTop, maximum: Math.max(0, panel.scrollHeight - panel.clientHeight),
     bottom: panel.scrollHeight - panel.clientHeight - panel.scrollTop <= 1,
     message: message ?? null,
     offset: panel.scrollTop - (message?.offsetTop ?? 0),
@@ -43,11 +46,20 @@ export function useNarrativeReading(panelRef: RefObject<HTMLDivElement>, latestR
   }
 
   function preservePosition() {
-    const panel = panelRef.current, latest = latestRef.current, position = reading.current;
+    const panel = panelRef.current, latest = latestRef.current;
+    let position = reading.current;
     if (!panel || !latest) return;
     if (!position || !position.height) { reading.current = capturePosition(panel); return; }
-    if (position.width === panel.clientWidth && position.height === panel.clientHeight) return;
     const maximum = Math.max(0, panel.scrollHeight - panel.clientHeight);
+    // A user scroll may precede its event. Only a natural height clamp should
+    // keep the old bookmark; a different actual top belongs to the reader.
+    if (position.width === panel.clientWidth && panel.scrollTop !== Math.min(position.scrollTop, maximum)) {
+      position = { ...capturePosition(panel), width: position.width, height: position.height,
+        bottom: panel.scrollTop >= position.maximum - 1 };
+      reading.current = position;
+      restoredTop.current = null;
+    }
+    if (position.width === panel.clientWidth && position.height === panel.clientHeight) return;
     const message = position.message && panel.contains(position.message) ? position.message : null;
     if (!position.bottom && !message) { reading.current = capturePosition(panel); return; }
     // A width change reflows prose. Keep the same record and relative place in it.
@@ -58,7 +70,7 @@ export function useNarrativeReading(panelRef: RefObject<HTMLDivElement>, latestR
     restoredTop.current = panel.scrollTop;
     // Keep the intended bookmark even if a larger reading area temporarily clamps it.
     reading.current = { ...position, width: panel.clientWidth, height: panel.clientHeight,
-      offset, messageHeight: message?.offsetHeight ?? position.messageHeight };
+      scrollTop: panel.scrollTop, maximum, offset, messageHeight: message?.offsetHeight ?? position.messageHeight };
     previousLatestStart.current = latestStart(panel, latest);
   }
 

@@ -389,6 +389,30 @@ public class GameAndroidTest {
         } finally { activity.close(); }
     }
 
+    @Test public void loadedSceneArtStartsMotionAndSurvivesCachedReturn() throws Exception {
+        fresh();
+        try {
+            viewport(390, 844); click("开始游戏");
+            js("window.qaArtMotion=[];document.addEventListener('animationstart',e=>{"
+                + "if(!e.target.matches('.scene-stage img'))return;window.qaArtMotion.push({name:e.animationName,"
+                + "loaded:e.target.complete&&e.target.naturalWidth>0,arriving:e.target.classList.contains('scene-image-arriving')});})");
+            click("进入游戏");
+            until("window.qaArtMotion.length===2&&window.qaArtMotion.every(e=>e.loaded&&e.arriving)"
+                + "&&window.qaArtMotion.some(e=>e.name==='fog-scene-enter')&&window.qaArtMotion.some(e=>e.name==='fog-portrait-enter')");
+            awaitUiMotion();
+            assertEquals("Loaded APK paintings and portraits finish at full visibility", "true", js("Array.from(document.querySelectorAll('.scene-stage img')).every(e=>e.complete&&e.naturalWidth>0&&getComputedStyle(e).opacity==='1')"));
+            fill(".dock-input", "先记录日期\n再检查门廊");
+            menu("返回首页"); click("继续游戏");
+            until("window.qaArtMotion.length===4&&window.qaArtMotion.every(e=>e.loaded&&e.arriving)");
+            awaitUiMotion();
+            assertEquals("Cached artwork reveals normally while the action draft stays intact", "true", js("document.querySelector('.dock-input').value==='先记录日期'+String.fromCharCode(10)+'再检查门廊'&&document.querySelectorAll('.scene-stage img.scene-image-arriving').length===2"));
+            nativeTap(".dock-actor-avatar"); until("document.querySelector('.investigator-sheet[role=dialog]')");
+            nativeTap(".investigator-close"); until("!document.querySelector('[data-ui-phase=closing]')");
+            assertEquals("Inspecting a dossier does not restart loaded scene motion", "4", js("window.qaArtMotion.length"));
+            assertNoResizeErrors(); screenshot("loaded-scene-art");
+        } finally { activity.close(); }
+    }
+
     @Test public void pairedPanelMotionKeepsNativeBackAndDraftResponsive() throws Exception {
         fresh();
         try {
