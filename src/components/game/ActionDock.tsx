@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import actionPen from '../../../assets/ui/artist/action-pen.webp';
 import caseSeal from '../../../assets/ui/artist/case-seal.webp';
 import diceEmblem from '../../../assets/ui/artist/dice-emblem.webp';
@@ -48,6 +48,8 @@ export function ActionDock({
   const currentSuggestions = currentActor
     ? state.suggestionsByPlayerId[currentActor.id] ?? state.suggestions
     : state.suggestions;
+  const suggestionKey = useMemo(() => JSON.stringify([currentActor?.id, currentSuggestions.slice(0, 3)]),
+    [currentActor?.id, currentSuggestions]);
 
   const allFilled = Boolean(declaration.trim());
   const submitLabel = isLastActor ? '提交' : '下一位';
@@ -139,9 +141,9 @@ export function ActionDock({
       ) : null}
 
       {!hasPendingTurn && !state.pendingCheck && !state.isThinking && currentSuggestions.length ? (
-        <div className="suggestion-row">
+        <div className="suggestion-row" key={suggestionKey}>
           {currentSuggestions.slice(0, 3).map((text) => (
-            <button key={text} onClick={() => onSuggestion(text)}>{text}</button>
+            <button key={text} onClick={() => onSuggestion(text)}><span className="action-suggestion-text">{text}</span></button>
           ))}
         </div>
       ) : null}

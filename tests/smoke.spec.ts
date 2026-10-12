@@ -8,6 +8,71 @@ import sharp from 'sharp';
 import { settleUiMotion } from './browserMotion';
 
 for (const size of [
+  { width: 320, height: 568, party: 1 }, { width: 390, height: 844, party: 2 },
+  { width: 720, height: 960, party: 4 }, { width: 1440, height: 900, party: 4 }
+]) {
+  test(`long suggestion previews stay compact and reset for the next actor at ${size.width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize(size);
+    const state = createDynamicCaseBoardSave();
+    state.players = [...state.players, makeInvestigator({ id: 'reporter', name: '托马斯·贝尔' }),
+      makeInvestigator({ id: 'constable', name: '罗伯特·肖' })].slice(0, size.party);
+    const options = [
+      '沿着门廊与窗边逐处查看细小划痕，再向伊莎贝拉询问父亲失踪前几天来往的访客，记下姓名、时间和随身物品，以便之后与其他线索互相核对',
+      '礼貌地询问委托人最后一次见到父亲时的穿着和情绪，并记录有没有陌生访客或异常声音',
+      '查看屋内座钟和门廊的足迹，比较能够确认的时间与行走方向'
+    ];
+    state.suggestionsByPlayerId = Object.fromEntries(state.players.map(player => [player.id, options.map(text => `${player.name}：${text}`)]));
+    await gotoWithSave(page, state);
+    let requests = 0;
+    page.on('request', request => { if (request.resourceType() === 'fetch' && /responses|chat\/completions/.test(request.url())) requests++; });
+    await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+    await page.evaluate(() => document.fonts.ready);
+    await settleUiMotion(page);
+    const portrait = await page.locator('html').evaluate(element => element.classList.contains('portrait-ui'));
+    const row = page.locator('.suggestion-row'), input = page.locator('.dock-input');
+    const previews = page.locator('.suggestion-row button');
+    for (const box of await previews.evaluateAll(elements => elements.map(element => ({
+      width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height
+    })))) {
+      expect(box.width).toBeLessThanOrEqual(portrait ? Math.min(260, size.width * .72) + .5 : 320.5);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeLessThanOrEqual(64);
+    }
+    const full = state.suggestionsByPlayerId.inspector[0];
+    await expect(page.getByRole('button', { name: full, exact: true })).toBeVisible();
+    expect(await previews.first().locator('.action-suggestion-text').evaluate(element => ({
+      clamped: getComputedStyle(element).webkitLineClamp === '2', hiddenOverflow: element.scrollHeight > element.clientHeight,
+      readable: Number.parseFloat(getComputedStyle(element).fontSize) >= 14
+    }))).toEqual({ clamped: true, hiddenOverflow: true, readable: true });
+    await previews.first().click();
+    await expect(input).toHaveValue(full);
+    await expect(page.locator('.story-message.player')).toHaveCount(0);
+    await previews.nth(2).click();
+    const picked = state.suggestionsByPlayerId.inspector[2];
+    const left = await row.evaluate(element => element.scrollLeft);
+    if (portrait) expect(left).toBeGreaterThan(0);
+    await input.fill(picked + '\n补充自己的判断。');
+    await expect(row).toHaveJSProperty('scrollLeft', left);
+    await page.getByRole('button', { name: '查看亨利·格雷的属性', exact: true }).click();
+    await page.getByRole('button', { name: '关闭调查员档案', exact: true }).click();
+    await settleUiMotion(page);
+    await expect(row).toHaveJSProperty('scrollLeft', left);
+    for (let actor = 1; actor < size.party; actor++) {
+      await page.getByRole('button', { name: '下一位', exact: true }).click();
+      await expect(row).toHaveJSProperty('scrollLeft', 0);
+      await expect(input).toHaveAttribute('aria-label', `${state.players[actor].name}的行动`);
+      await expect(previews.first()).toBeInViewport({ ratio: 1 });
+      await previews.nth(2).click();
+      await expect(input).toHaveValue(state.suggestionsByPlayerId[state.players[actor].id][2]);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect(await page.getByRole('region', { name: '剧情记录' }).evaluate(element => element.clientHeight)).toBeGreaterThanOrEqual(24);
+    expect(requests).toBe(0);
+    await page.screenshot({ path: testInfo.outputPath('compact-suggestions.png') });
+  });
+}
+
+for (const size of [
   { width: 320, height: 568, party: 1, reduced: false },
   { width: 390, height: 844, party: 2, reduced: false },
   { width: 1440, height: 900, party: 4, reduced: false },

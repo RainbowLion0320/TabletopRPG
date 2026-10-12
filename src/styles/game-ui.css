@@ -238,7 +238,7 @@
 :root.fog-ui :is(.preset-card-modern .preset-attrs-toggle, .save-manager-card .save-slot-delete)::before { display: none; }
 :root.fog-ui .save-manager-card .save-slot-delete:enabled { color: var(--red); }
 :root.fog-ui .preset-attrs-toggle { padding-inline: 10px; }
-:root.fog-ui .game-screen .action-dock .suggestion-row button { color: var(--muted); font-size: 13px; padding-inline: 11px; }
+:root.fog-ui .game-screen .action-dock .suggestion-row button { color: var(--muted); font-size: 14px; padding-inline: 11px; }
 :root.fog-ui .game-screen .action-dock .suggestion-row button::before {
   inset: 5px 0; border: 3px solid transparent;
   border-image: var(--ui-input-frame) 90 100 90 100 fill / 3px 5px / 0 stretch; opacity: .55;

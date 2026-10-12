@@ -447,6 +447,59 @@ public class GameAndroidTest {
         } finally { activity.close(); }
     }
 
+    @Test public void suggestionPreviewsKeepFullActionsAndResetBetweenInvestigators() throws Exception {
+        String longAction = "沿着门廊与窗边逐处查看细小划痕，再向伊莎贝拉询问父亲失踪前几天来往的访客，记下姓名、时间和随身物品，以便之后与其他线索互相核对";
+        for (int party : new int[]{1, 2, 4}) {
+            fresh();
+            try {
+                viewport(390, 844); click("开始游戏");
+                for (int i = 1; i < party; i++) js("document.querySelectorAll('.preset-selection-input')[" + i + "].click()");
+                click("进入游戏"); fill(".dock-input", "检查门廊"); menu("返回首页");
+                js("window.qaSuggestionsReady=false;Capacitor.Plugins.GameStorage.readAll().then(async({values})=>{"
+                    + "const record=JSON.parse(values['trpg-android-session-v1']);"
+                    + "const options=[" + JSONObject.quote(longAction) + ", '礼貌地询问委托人最后一次见到父亲时的穿着和情绪，并记录有没有陌生访客或异常声音', '查看屋内座钟和门廊的足迹，比较能够确认的时间与行走方向'];"
+                    + "record.state.suggestionsByPlayerId=Object.fromEntries(record.state.players.map(p=>[p.id,options.map(text=>p.name+'：'+text)]));"
+                    + "record.state.declarations={};record.state.currentActorIndex=0;"
+                    + "await Capacitor.Plugins.GameStorage.write({key:'trpg-android-session-v1',value:JSON.stringify(record)});window.qaSuggestionsReady=true;})");
+                until("window.qaSuggestionsReady"); activity.recreate(); until("document.querySelector('.title-resume-preview')");
+                watchResizeErrors(); viewport(390, 844); click("继续游戏");
+                until("document.querySelectorAll('.suggestion-row button').length===3");
+                js("window.qaSuggestionFontsReady=false;document.fonts.ready.then(()=>window.qaSuggestionFontsReady=true)");
+                until("window.qaSuggestionFontsReady");
+                for (int width : new int[]{390, 720}) {
+                    viewport(width, width == 390 ? 844 : 960);
+                    assertEquals("Native portrait previews stay bounded, legible and have two lines", "true", js("Array.from(document.querySelectorAll('.suggestion-row button')).every(e=>{const r=e.getBoundingClientRect(),t=e.querySelector('.action-suggestion-text');return r.width<=260.5&&r.height>=44&&r.height<=64&&getComputedStyle(t).webkitLineClamp==='2'&&parseFloat(getComputedStyle(t).fontSize)>=14})"));
+                }
+                viewport(390, 844);
+                js("window.qaFirstFullSuggestion=document.querySelector('.suggestion-row button').textContent");
+                nativeTap(".suggestion-row button");
+                assertEquals("A real touch fills the complete action without submitting", "true", js("document.querySelector('.dock-input').value===window.qaFirstFullSuggestion&&document.querySelectorAll('.story-message.player').length===0"));
+                for (int actor = 0; actor < party; actor++) {
+                    js("(()=>{const row=document.querySelector('.suggestion-row');row.scrollLeft=row.scrollWidth;window.qaSuggestionLeft=row.scrollLeft})()");
+                    until("window.qaSuggestionLeft>0");
+                    nativeTap(".suggestion-row button:last-child");
+                    js("window.qaPickedSuggestion=document.querySelector('.suggestion-row button:last-child').textContent");
+                    assertEquals("The selected preview keeps its entire text", "true", js("document.querySelector('.dock-input').value===window.qaPickedSuggestion"));
+                    String picked = new org.json.JSONArray("[" + js("window.qaPickedSuggestion") + "]").getString(0);
+                    fill(".dock-input", picked + "\n补充自己的判断。");
+                    assertEquals("Editing keeps the suggestion row where the player left it", "true", js("document.querySelector('.suggestion-row').scrollLeft===window.qaSuggestionLeft"));
+                    nativeTap(".dock-actor-avatar"); nativeTap(".investigator-close"); awaitUiMotion();
+                    assertEquals("Opening and closing a dossier keeps the row and the multiline draft", "true", js("document.querySelector('.suggestion-row').scrollLeft===window.qaSuggestionLeft&&document.querySelector('.dock-input').value===window.qaPickedSuggestion+String.fromCharCode(10)+'补充自己的判断。'"));
+                    if (actor < party - 1) {
+                        nativeTap(".dock-submit");
+                        awaitSettledIme(true);
+                        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK); awaitSettledIme(false);
+                        until("document.querySelector('.dock-input').value===''");
+                        assertEquals("The next investigator starts with their own first suggestion visible", "true", js("(()=>{const row=document.querySelector('.suggestion-row'),first=row.firstElementChild,r=first.getBoundingClientRect(),b=row.getBoundingClientRect();return row.scrollLeft===0&&r.left>=b.left-.5&&r.right<=b.right+.5})()"));
+                    }
+                }
+                assertEquals("All party controls remain and the page does not overflow", "true", js("document.querySelectorAll('.party-compact').length===" + party + "&&document.documentElement.scrollWidth<=innerWidth"));
+                assertNoResizeErrors();
+                if (party == 2) screenshot("compact-suggestions-native");
+            } finally { if (activity != null) activity.close(); }
+        }
+    }
+
     @Test public void storyReadingKeepsItsBookmarkAcrossFoldingAndNativeIme() throws Exception {
         for (int party : new int[]{1, 2, 4}) {
             fresh();

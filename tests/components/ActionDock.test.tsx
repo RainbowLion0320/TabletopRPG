@@ -95,6 +95,31 @@ describe('ActionDock player-specific suggestions', () => {
     fireEvent.click(screen.getByRole('button', { name: '重试本轮' }));
     expect(retry).toHaveBeenCalledOnce();
   });
+  it('keeps the full suggestion action while its preview and context change', () => {
+    const henry = makeInvestigator({ id: 'p-henry', name: '亨利' });
+    const ada = makeInvestigator({ id: 'p-ada', name: '艾达' });
+    const long = '沿着门廊与窗边逐处查看细小划痕，再询问委托人失踪前几天来往的访客，记下姓名和时间。';
+    const state = makeState({ players: [henry, ada] });
+    state.suggestionsByPlayerId = { 'p-henry': [long], 'p-ada': ['询问访客'] };
+    const onSuggestion = vi.fn();
+    const props = { onInspectPlayer: vi.fn(), isDiceRolling: false, onDeclarationChange: vi.fn(), onSubmit: vi.fn(), onRoll: vi.fn(), onSuggestion };
+    const { container, rerender } = render(<ActionDock {...props} state={state} />);
+    const row = container.querySelector('.suggestion-row');
+    const input = container.querySelector('.dock-input');
+    fireEvent.click(screen.getByRole('button', { name: long }));
+    expect(onSuggestion).toHaveBeenCalledWith(long);
+    expect(container.querySelector('.action-suggestion-text')).toHaveTextContent(long);
+    rerender(<ActionDock {...props} state={{ ...state, declarations: { 'p-henry': '编辑自己的行动。' } }} />);
+    expect(container.querySelector('.suggestion-row')).toBe(row);
+    expect(container.querySelector('.dock-input')).toBe(input);
+    rerender(<ActionDock {...props} state={{ ...state, currentActorIndex: 1 }} />);
+    expect(container.querySelector('.suggestion-row')).not.toBe(row);
+    expect(container.querySelector('.dock-input')).toBe(input);
+    const secondRow = container.querySelector('.suggestion-row');
+    rerender(<ActionDock {...props} state={{ ...state, currentActorIndex: 1, suggestionsByPlayerId: { 'p-ada': ['检查足迹'] } }} />);
+    expect(container.querySelector('.suggestion-row')).not.toBe(secondRow);
+  });
+
   it('shows suggestions for the current actor only', () => {
     const henry = makeInvestigator({ id: 'p-henry', name: '亨利' });
     const ada = makeInvestigator({ id: 'p-ada', name: '艾达' });
