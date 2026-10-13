@@ -1,6 +1,6 @@
 /* The outgoing visual is inert; game actions and focus never wait for motion. */
 :root.fog-ui { --ui-ease: cubic-bezier(.2,.7,.2,1); --ui-panel-distance: 12px; }
-:root.fog-ui :is(.title-content, .setup-screen, .game-screen) {
+:root.fog-ui :is(.title-screen, .setup-screen, .game-screen) {
   animation: fog-screen-enter 220ms var(--ui-ease);
 }
 :root.fog-ui :is(.modal-backdrop, .game-menu-backdrop, .save-manager-backdrop, .entity-detail-overlay, .investigator-overlay, .android-exit-backdrop, .dice-roll-overlay) {
@@ -114,7 +114,7 @@
     .entity-detail-card, .investigator-sheet, .android-exit-card, .dice-roll-card) { transition: none !important; }
   :root.fog-ui .game-screen, :root.fog-ui .scene-stage { transition: none !important; }
   :root.fog-ui .disclosure-motion { transition: none !important; }
-  :root.fog-ui :is(.title-content, .setup-screen, .game-screen, .modal-backdrop, .game-menu-backdrop,
+  :root.fog-ui :is(.title-screen, .setup-screen, .game-screen, .modal-backdrop, .game-menu-backdrop,
     .save-manager-backdrop, .entity-detail-overlay, .investigator-overlay, .modal-card, .save-manager-card,
     .entity-detail-card, .investigator-sheet, .android-exit-backdrop, .android-exit-card, .dice-roll-overlay, .dice-roll-card, .info-drawer-react.fullscreen.open, .preset-other-panel,
     .check-card, .ending-dock, .narrative-new-content,

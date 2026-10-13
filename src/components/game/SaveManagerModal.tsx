@@ -27,6 +27,9 @@ export function SaveManagerModal({ incompatibleSaves = [], onClose, onDelete, on
   const cancelRef = useRef<HTMLButtonElement>(null);
   const deletingRef = useRef(false);
   const focusAfterChange = useRef<{ id: number; index: number; removed: boolean } | null>(null);
+  const rowPositions = useRef(new Map<string, { element: HTMLElement; top: number }>());
+  const rowAnimations = useRef(new Map<HTMLElement, Animation>());
+  const removalRequested = useRef<number | null>(null);
   const [confirmationId, setConfirmationId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,14 +43,35 @@ export function SaveManagerModal({ incompatibleSaves = [], onClose, onDelete, on
       cancelDeletion(confirmationId, Math.max(0, index));
     } else onClose();
   }
+  function rowMotionY(row: HTMLElement | null) {
+    if (!row || !rowAnimations.current.has(row)) return 0;
+    const transform = getComputedStyle(row).transform;
+    return transform === 'none' ? 0 : new DOMMatrixReadOnly(transform).m42;
+  }
+  function cancelRowMotion() {
+    rowAnimations.current.forEach(animation => animation.cancel());
+    rowAnimations.current.clear();
+  }
+  function keepFocusedRowReachable(target: HTMLButtonElement) {
+    const row = target.closest<HTMLElement>('.save-slot-card'), animation = row && rowAnimations.current.get(row);
+    const list = row?.closest<HTMLElement>('.save-list');
+    if (!row || !animation || !list) return;
+    const control = target.getBoundingClientRect(), bounds = list.getBoundingClientRect();
+    if (control.top < bounds.top || control.bottom > bounds.bottom
+      || !target.contains(document.elementFromPoint(control.x + control.width / 2, control.y + control.height / 2))) {
+      animation.cancel(); rowAnimations.current.delete(row);
+    }
+  }
   function focusInList(target: HTMLButtonElement | null | undefined) {
     if (!target) return;
     target.focus({ preventScroll: true });
     const list = dialogRef.current?.querySelector<HTMLElement>('.save-list');
     if (!list?.contains(target)) return;
     const control = target.getBoundingClientRect(), body = list.getBoundingClientRect();
-    if (control.bottom > body.bottom) list.scrollTop += control.bottom - body.bottom + 8;
-    else if (control.top < body.top) list.scrollTop += control.top - body.top - 8;
+    const y = rowMotionY(target.closest<HTMLElement>('.save-slot-card')) * (target.offsetHeight ? control.height / target.offsetHeight : 1);
+    if (control.bottom - y > body.bottom) list.scrollTop += control.bottom - y - body.bottom + 8;
+    else if (control.top - y < body.top) list.scrollTop += control.top - y - body.top - 8;
+    keepFocusedRowReachable(target);
   }
   function settleControls(event: TransitionEvent<HTMLDivElement>) {
     if (!open || deletingRef.current || event.propertyName !== 'grid-template-rows'
@@ -93,6 +117,53 @@ export function SaveManagerModal({ incompatibleSaves = [], onClose, onDelete, on
       focusAfterChange.current = null;
     } else if (confirmationId !== null) focusInList(cancelRef.current);
   }, [open, confirmationId, deletingId, saves, incompatibleSaves]);
+  useLayoutEffect(() => {
+    const list = dialogRef.current?.querySelector<HTMLElement>('.save-list');
+    if (!open || !list) {
+      cancelRowMotion(); rowPositions.current.clear(); removalRequested.current = null;
+      return;
+    }
+    const rows = Array.from(list.querySelectorAll<HTMLElement>('.save-slot-card'));
+    const preference = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    const cache = () => {
+      rowPositions.current = new Map(rows.map(element => [element.dataset.saveId!, { element, top: element.offsetTop }]));
+    };
+    const removed = removalRequested.current !== null
+      && rowPositions.current.has(String(removalRequested.current))
+      && !rows.some(row => row.dataset.saveId === String(removalRequested.current));
+    for (const [row, animation] of rowAnimations.current) {
+      if (!row.isConnected) { animation.cancel(); rowAnimations.current.delete(row); }
+    }
+    if (removed) {
+      removalRequested.current = null;
+      if (document.hidden || !preference || preference.matches) cancelRowMotion();
+      else for (const row of rows) {
+        const before = rowPositions.current.get(row.dataset.saveId!);
+        if (!before || before.element !== row || !row.animate || Math.abs(before.top - row.offsetTop) < 1) continue;
+        const from = before.top + rowMotionY(row) - row.offsetTop;
+        rowAnimations.current.get(row)?.cancel();
+        const animation = row.animate([{ transform: `translateY(${from}px)` }, { transform: 'none' }], {
+          duration: 170, easing: 'cubic-bezier(.2,.7,.2,1)'
+        });
+        rowAnimations.current.set(row, animation);
+        const release = () => { if (rowAnimations.current.get(row) === animation) rowAnimations.current.delete(row); };
+        void animation.finished.then(release, release);
+      }
+      // Keep the immediately restored button touchable, even if its former row was below the clip.
+      const focused = document.activeElement;
+      if (focused instanceof HTMLButtonElement && list.contains(focused)) keepFocusedRowReachable(focused);
+    }
+    cache();
+    // Natural confirmation/image sizes update only layout baselines; scrolling never starts reflow.
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(cache);
+    rows.forEach(row => observer?.observe(row));
+    const stop = () => {
+      if (document.hidden || !preference || preference.matches) { cancelRowMotion(); cache(); removalRequested.current = null; }
+    };
+    document.addEventListener('visibilitychange', stop); preference?.addEventListener('change', stop);
+    return () => { observer?.disconnect(); document.removeEventListener('visibilitychange', stop); preference?.removeEventListener('change', stop); };
+  }, [open, saves, incompatibleSaves]);
+  useEffect(() => () => { cancelRowMotion(); rowPositions.current.clear(); removalRequested.current = null; }, []);
 
   function askToDelete(slotId: number) {
     if (deletingRef.current) return;
@@ -107,6 +178,7 @@ export function SaveManagerModal({ incompatibleSaves = [], onClose, onDelete, on
   async function confirmDeletion(slotId: number, index: number) {
     if (deletingRef.current) return;
     deletingRef.current = true;
+    removalRequested.current = slotId;
     setDeletingId(slotId);
     setError(null);
     try {
@@ -114,6 +186,7 @@ export function SaveManagerModal({ incompatibleSaves = [], onClose, onDelete, on
       focusAfterChange.current = { id: slotId, index, removed: true };
       setConfirmationId(null);
     } catch {
+      removalRequested.current = null;
       setError('未能删除，存档已保留。请稍后重试。');
     } finally {
       deletingRef.current = false;
