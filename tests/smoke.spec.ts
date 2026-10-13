@@ -2255,6 +2255,115 @@ test('pending check plays the dice ritual before revealing its result', async ({
   await expect(page.locator('.story-message.system').filter({ hasText: /艾达·华莱士 · 侦查：/ })).toHaveCount(0);
 });
 
+for (const mode of [
+  { width: 320, height: 568, party: 1, label: 'solo phone', reduced: false, missing: false },
+  { width: 390, height: 844, party: 2, label: 'two-player phone', reduced: false, missing: false },
+  { width: 1440, height: 900, party: 4, label: 'four-player desktop', reduced: false, missing: false },
+  { width: 390, height: 844, party: 1, label: 'reduced motion', reduced: true, missing: false },
+  { width: 320, height: 568, party: 1, label: 'missing rolling art', reduced: false, missing: true }
+]) {
+  test(`dice result reveals smoothly without shifting its painted panel for ${mode.label}`, async ({ page }, testInfo) => {
+    await page.setViewportSize(mode);
+    await page.emulateMedia({ reducedMotion: mode.reduced ? 'reduce' : 'no-preference' });
+    if (mode.missing) await page.route('**/ui_dice_roll.webp', route => route.abort());
+    await page.addInitScript(() => { Math.random = () => .549; });
+    const state = createPendingCheckSave();
+    state.players = ['亨利·格雷', '艾达·华莱士', '托马斯·贝尔', '罗伯特·肖'].slice(0, mode.party)
+      .map((name, index) => makeInvestigator({ id: `reveal-${index}`, name }, { 侦查: 75 }));
+    state.pendingCheck = { ...state.pendingCheck!, player: state.players[0].name, skillVal: 75, threshold: 75 };
+    await gotoWithSave(page, state);
+    await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+    await page.evaluate(() => document.fonts.ready);
+    // Observe the actual phase transition before Playwright's visibility checks can
+    // consume the brief fade. Keep the last rolling geometry after entry settles.
+    await page.evaluate(() => {
+      const probe = { rolling: [] as number[], frames: [] as Array<{ ms: number; boxes: number[]; parts: Array<{ text: string; opacity: number; durations: number[] }>; enabled: boolean; focused: boolean }> };
+      (window as typeof window & { diceRevealProbe: typeof probe }).diceRevealProbe = probe;
+      const boxes = (overlay: Element) => Array.from(overlay.querySelectorAll('.dice-roll-card, .dice-roll-panel, .dice-roll-card > footer'))
+        .flatMap(el => { const r = el.getBoundingClientRect(); return [r.x, r.y, r.width, r.height]; });
+      let rollingStarted = 0;
+      const trackRolling = () => {
+        const overlay = document.querySelector('.dice-roll-overlay');
+        if (!overlay || overlay.classList.contains('revealed')) return;
+        if (!rollingStarted) rollingStarted = performance.now();
+        if (performance.now() - rollingStarted > 400) probe.rolling = boxes(overlay);
+        requestAnimationFrame(trackRolling);
+      };
+      const observer = new MutationObserver(() => {
+        const overlay = document.querySelector('.dice-roll-overlay');
+        if (!overlay) return;
+        if (!overlay.classList.contains('revealed')) {
+          if (!rollingStarted) trackRolling();
+          return;
+        }
+        observer.disconnect();
+        const began = performance.now();
+        const take = () => {
+          const confirm = overlay.querySelector<HTMLButtonElement>('.dice-roll-confirm')!;
+          probe.frames.push({ ms: performance.now() - began, boxes: boxes(overlay),
+            parts: Array.from(overlay.querySelectorAll('.dice-roll-total, .dice-face, .dice-roll-outcome h3, .dice-roll-confirm')).map(el => ({
+              text: el.textContent!.trim(), opacity: Number(getComputedStyle(el).opacity),
+              durations: el.getAnimations().map(a => Number(a.effect!.getTiming().duration))
+            })), enabled: !confirm.disabled, focused: document.activeElement === confirm });
+          if (probe.frames.length < 24) requestAnimationFrame(take);
+        };
+        take();
+      });
+      observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+    });
+    await page.getByRole('button', { name: '掷骰', exact: true }).click();
+    await expect.poll(() => page.evaluate(() => (window as typeof window & { diceRevealProbe: { frames: unknown[] } }).diceRevealProbe.frames.length), { timeout: 6_000 }).toBe(24);
+    const probe = await page.evaluate(() => (window as typeof window & { diceRevealProbe: {
+      rolling: number[]; frames: Array<{ ms: number; boxes: number[]; parts: Array<{ text: string; opacity: number; durations: number[] }>; enabled: boolean; focused: boolean }>;
+    } }).diceRevealProbe);
+    writeFileSync(testInfo.outputPath('reveal-frames.json'), JSON.stringify(probe, null, 2));
+    expect(probe.rolling).toHaveLength(12);
+    for (const frame of probe.frames) {
+      frame.boxes.forEach((value, index) => expect(Math.abs(value - probe.rolling[index])).toBeLessThanOrEqual(.5));
+      expect(frame.parts.map(part => part.text)).toEqual(['55', '50', '5', '普通成功', '确认结果']);
+      expect(frame.enabled).toBe(true);
+    }
+    expect(probe.frames.slice(0, 3).some(frame => frame.focused)).toBe(true);
+    expect(probe.frames.slice(3).every(frame => frame.focused)).toBe(true);
+    for (let part = 0; part < 5; part++) {
+      expect(probe.frames.some(frame => frame.parts[part].opacity > .01 && frame.parts[part].opacity < .99)).toBe(!mode.reduced);
+      expect(probe.frames[0].parts[part].durations).toEqual(mode.reduced ? [] : [160]);
+      expect(probe.frames.at(-1)!.parts[part].opacity).toBe(1);
+    }
+    await page.screenshot({ path: testInfo.outputPath('dice-revealed.png') });
+  });
+}
+
+test('dice confirmation can settle immediately during reveal and only once', async ({ page }) => {
+  await page.addInitScript(() => { Math.random = () => .549; });
+  let narratorRequests = 0;
+  await page.route('https://dice-reveal.test/v1/**', route => {
+    const narrator = route.request().postDataJSON().text?.format?.name === 'narrator_response';
+    if (narrator) narratorRequests++;
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ output_text: JSON.stringify(narrator
+      ? { narrative: '调查员完成了观察，继续沿窗边调查。', activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}, keywords: [] }
+      : { facts: [], nodes: [], edges: [] }) }) });
+  });
+  await gotoWithSave(page, createPendingCheckSave(), { provider: 'custom', protocol: 'responses', endpoint: 'https://dice-reveal.test/v1', apiKey: 'qa-only', model: 'qa-only' });
+  await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+  await page.evaluate(() => {
+    const observer = new MutationObserver(() => {
+      const overlay = document.querySelector('.dice-roll-overlay.revealed');
+      if (!overlay) return;
+      observer.disconnect();
+      const confirm = overlay.querySelector<HTMLButtonElement>('.dice-roll-confirm')!;
+      (window as typeof window & { immediateDiceOpacity: number }).immediateDiceOpacity = Number(getComputedStyle(confirm).opacity);
+      confirm.click(); confirm.click();
+    });
+    observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+  });
+  await page.getByRole('button', { name: '掷骰', exact: true }).click();
+  await expect(page.locator('.story-message.system').filter({ hasText: '艾达·华莱士 · 侦查：普通成功（55）' })).toHaveCount(1);
+  await expect(page.locator('.dice-roll-overlay')).toHaveCount(0);
+  expect(await page.evaluate(() => (window as typeof window & { immediateDiceOpacity: number }).immediateDiceOpacity)).toBeLessThan(.1);
+  expect(narratorRequests).toBeLessThanOrEqual(1);
+});
+
 for (const mode of ['animated', 'reduced motion', 'missing animation', 'missing audio'] as const) {
 test(`dice art remains readable and confirms once with ${mode}`, async ({ page }) => {
   const audioRequests: string[] = [];

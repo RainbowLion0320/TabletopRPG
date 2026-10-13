@@ -1,8 +1,10 @@
 # TabletopRPG Technical Spec
 
 > Version: v0.7
-> Updated: 2026-10-12
+> Updated: 2026-10-13
 > Scope: current React/Vite implementation
+
+In 0.5.66, only the five settled dice/result elements receive a 160ms opacity animation. The footer reserves the existing 48px confirmation height throughout rolling; card/panel/footer geometry remains unchanged at reveal. Confirmation is enabled and focus proceeds immediately through the existing effect; the deadline, authoritative random result, idempotent settlement and recovery are unchanged. Reduced motion disables the reveal animation. Browser MutationObserver/RAF traces cover phone/desktop and 1/2/4 players, missing rolling art, and actual double confirmation before the fade completes; native traces measure initial hit-testing/focus and then real confirmation. No new image, animation dependency, prompt or rule is introduced. See [reveal verification](reviews/2026-10-13-dice-reveal-motion.md).
 
 In 0.5.65, the narrative stays in its original grid row while the scene track transitions to zero over 240ms. SceneStage retains a measured art canvas through the fold, avoiding thumbnail-sized scene/portrait compression; ResizeObserver and transition completion refresh the normal frame, and viewport resize releases the cached dimensions. Scene opacity exits in 100ms and returns with an 80ms delay. The same narrative DOM and existing bookmark observer retain reading intent; no redundant reading fade is applied. Navigation and action rows remain fixed. Reduced motion and viewports at or below 500px settle without a transition. Browser and signed native tests sample real geometry, including reversal, original paint size, 1/2/4-player drafts and resize-observer errors. At desktop heights <=600px, normal and expanded states share the same zero-scene track and a minmax(0, 1fr) reader, so long drafts cannot force the actions beyond the bottom; the portrait reading minimum remains unchanged. Existing UI layers, art, game state, model transport and rules remain unchanged.
 

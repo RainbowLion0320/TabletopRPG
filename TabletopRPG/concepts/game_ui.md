@@ -4,10 +4,12 @@ title: 共享交互 UI
 tags: [ui, art, mobile, android, web, accessibility]
 sources: [../../docs/UI_SYSTEM.md, ../../assets/ui/artist/README.md, ../../assets/ui/app-icon/README.md, ../../src/styles/game-ui.css, ../../src/styles/motion.css, ../../src/components/game/ActionDock.tsx, ../../src/components/game/useNarrativeReading.ts, ../../design-qa.md]
 created: 2026-09-09
-updated: 2026-10-12
+updated: 2026-10-13
 ---
 
 # 共享交互 UI
+
+0.5.66 骰子揭晓时，总点数、两颗骰面数字、单一结论和确认按钮以160ms透明度平滑显现。确认区从翻滚开始预留48px，面板与原画位置保持；结果一出现即可确认，不增加等待或额外提示。系统减少动态时立即显示，素材失败仍能继续；原骰子、字体、绘制面板、检定时长、骰点与结算保持。见 [本轮验收](../../docs/reviews/2026-10-13-dice-reveal-motion.md)。
 
 0.5.65 剧情展开与场景收放改为同一网格内240ms连续过渡；场景100ms淡出，恢复时延后80ms淡入。独立画布保留原尺寸，背景与立绘不会被压成小图。顶部任务与底部行动区固定，正文保留同一DOM、回看书签、最新内容提示、焦点及完整多行草稿。快速反向接续，减少动态与500px以下短窗立即呈现可用布局；原美术、规则和自由行动保持。网页矮窗口的展开/收起共用剩余高度，不再由142px正文下限把长输入顶出下缘；手机阅读下限保持。见 [本轮验收](../../docs/reviews/2026-10-12-story-fold-motion.md)。
 

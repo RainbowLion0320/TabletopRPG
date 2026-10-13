@@ -1412,6 +1412,81 @@ public class GameAndroidTest {
         } finally { if (activity != null) activity.close(); }
     }
 
+    private void watchDiceReveal() throws Exception {
+        js("(()=>{"
+                + "window.qaDiceReveal={rolling:null,frames:[],immediate:null};"
+                + "const selectors=['.dice-roll-total','.tens-die','.ones-die','.dice-roll-outcome h3','.dice-roll-confirm'];"
+                + "const rects=()=>['.dice-roll-card','.dice-roll-panel','.dice-roll-card > footer'].map(s=>{const r=document.querySelector(s).getBoundingClientRect();return {top:r.top,left:r.left,width:r.width,height:r.height}});"
+                + "let frame,timer,started=false;"
+                + "const take=()=>{const button=document.querySelector('.dice-roll-confirm');"
+                + "window.qaDiceReveal.frames.push({rects:rects(),focused:document.activeElement===button,items:selectors.map(s=>{const e=document.querySelector(s),a=e.getAnimations().find(a=>a.animationName==='dice-result-reveal');return {opacity:Number(getComputedStyle(e).opacity),name:a?.animationName??'none',duration:a?.effect.getTiming().duration??0}})});"
+                + "if(window.qaDiceReveal.frames.length<24)frame=requestAnimationFrame(take);else observer.disconnect()};"
+                + "const observer=new MutationObserver(()=>{if(started||!document.querySelector('.dice-roll-overlay.revealed'))return;started=true;"
+                + "const button=document.querySelector('.dice-roll-confirm'),r=button.getBoundingClientRect();"
+                + "window.qaDiceReveal.immediate={enabled:!button.disabled,live:button.closest('[role=dialog][aria-modal=true]')!==null&&!button.closest('[inert],[aria-hidden=true]'),hit:document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)?.closest('.dice-roll-confirm')===button};take()});"
+                + "observer.observe(document.body,{childList:true,attributes:true,attributeFilter:['class'],subtree:true});"
+                + "const start=()=>{timer=setTimeout(()=>{if(document.querySelector('.dice-roll-overlay.rolling'))window.qaDiceReveal.rolling=rects()},400)};"
+                + "document.addEventListener('click',start,{once:true,capture:true});"
+                + "window.qaDiceRevealCleanup=()=>{observer.disconnect();clearTimeout(timer);cancelAnimationFrame(frame);document.removeEventListener('click',start,true)};"
+                + "})()");
+    }
+
+    @Test public void diceRevealMotionKeepsGeometryAndImmediateConfirmationForParty() throws Exception {
+        for (int party : new int[]{1, 2, 4}) {
+            AtomicInteger narratorCalls = new AtomicInteger();
+            try (MockWebServer server = new MockWebServer()) {
+                server.setDispatcher(new Dispatcher() {
+                    @Override public MockResponse dispatch(RecordedRequest request) {
+                        boolean narrator = request.getBody().readUtf8().contains("COC 第七版 AI DM Agent");
+                        if (narrator) narratorCalls.incrementAndGet();
+                        String content = narrator
+                                ? "{\"narrative\":\"调查员留在门廊，准备继续调查。\",\"activeNpc\":null,\"nextPrompt\":\"继续调查。\",\"playerChoices\":{}}"
+                                : "{\"facts\":[],\"nodes\":[],\"edges\":[]}";
+                        return new MockResponse().setHeader("Content-Type", "application/json")
+                                .setBody("{\"output_text\":" + JSONObject.quote(content) + ",\"output\":[]}");
+                    }
+                });
+                server.start(); fresh(); viewport(390, 844); click("开始游戏");
+                for (int i = 1; i < party; i++) js("document.querySelectorAll('.preset-selection-input')[" + i + "].click()");
+                click("进入游戏"); configure(server.url("/v1").toString(), "responses");
+                for (int i = 0; i < party; i++) {
+                    fill(".dock-input", i == 0 ? "检查门锁。" : "留在原地思考下一步。");
+                    click(i == party - 1 ? "提交" : "下一位");
+                }
+                until("document.querySelector('.check-card > button')&&!document.querySelector('.check-card > button').disabled");
+                assertEquals("The authored first check needs no remote model", 0, narratorCalls.get());
+                until("document.fonts.status==='loaded'");
+                js("Math.random=()=>.549");
+                watchDiceReveal(); nativeTap(".check-card > button");
+                until("window.qaDiceReveal.frames.length===24");
+                assertEquals("The result, faces, verdict and confirmation reveal in place with their own 160ms opacity animation", "true", js("(()=>{const f=window.qaDiceReveal.frames;return f.length>=12&&f[0].items.length===5&&f[0].items.every(e=>e.name==='dice-result-reveal'&&e.duration===160&&e.opacity<1)&&f[0].items.every((_,i)=>f.some(p=>p.items[i].opacity>0&&p.items[i].opacity<.999))&&f.at(-1).items.every(e=>e.opacity>=.999)})()"));
+                assertEquals("The confirmation is enabled and hit-testable at the reveal mutation, with focus in its first frames", "true", js("(()=>{const q=window.qaDiceReveal;return q.immediate.enabled&&q.immediate.live&&q.immediate.hit&&q.frames.slice(0,3).some(f=>f.focused)})()"));
+                assertEquals("Stable rolling and every result frame retain card, painted panel and reserved footer geometry", "true", js("(()=>{const q=window.qaDiceReveal;return q.rolling!==null&&q.rolling[2].height>=48&&q.frames.every(f=>f.rects.every((r,i)=>['top','left','width','height'].every(k=>Math.abs(r[k]-q.rolling[i][k])<=1)))})()"));
+                assertEquals("Only the authoritative 55 and one verdict are shown", "true", js("document.querySelector('.dice-roll-total').textContent==='55'&&document.querySelector('.tens-die').textContent==='50'&&document.querySelector('.ones-die').textContent==='5'&&document.querySelectorAll('.dice-roll-outcome h3').length===1"));
+                System.out.println("DICE_REVEAL_NATIVE: " + js("JSON.stringify({party:" + party + ",first:window.qaDiceReveal.frames[0].items,last:window.qaDiceReveal.frames.at(-1).items.map(e=>e.opacity),intermediate:window.qaDiceReveal.frames[0].items.map((_,i)=>window.qaDiceReveal.frames.filter(f=>f.items[i].opacity>0&&f.items[i].opacity<.999).length),footer:window.qaDiceReveal.rolling[2].height,immediate:window.qaDiceReveal.immediate})"));
+                if (party == 2) screenshot("dice-reveal-native");
+                js("window.qaConfirmedButton=document.querySelector('.dice-roll-confirm')");
+                nativeTap(".dice-roll-confirm");
+                js("window.qaConfirmedButton.click()");
+                until("Array.from(document.querySelectorAll('.story-message.dm')).some(message=>message.textContent.includes('调查员留在门廊，准备继续调查。'))&&!document.querySelector('.dice-roll-overlay[role=dialog]')&&!document.querySelector('.dock-input').disabled");
+                assertEquals("Repeated confirmation settles the local check once", 1, narratorCalls.get());
+                assertEquals("One declaration per chosen investigator is retained", String.valueOf(party), js("document.querySelectorAll('.story-message.player').length"));
+                assertEquals("Portrait confirmation leaves no focus in the outgoing result and does not force the action input", "true", js("(()=>{const active=document.activeElement;return !active.closest('.dice-roll-overlay,[inert],[aria-hidden=true]')&&active!==document.querySelector('.dock-input')})()"));
+                awaitSettledIme(false);
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                until("document.querySelector('.game-menu[role=dialog]')");
+                assertEquals("System Back after confirmation opens the game menu, without reviving the result", "0", js("document.querySelectorAll('.dice-roll-overlay[role=dialog]').length"));
+                assertNoResizeErrors();
+            } finally {
+                if (activity != null) {
+                    try { js("window.qaDiceRevealCleanup?.();window.qaConfirmedButton=null"); }
+                    catch (Exception ignored) { /* Closing the activity also releases its observer and RAF. */ }
+                    activity.close();
+                }
+            }
+        }
+    }
+
     @Test public void diceRecoveryReducedViewportAndSystemBack() throws Exception {
         fresh();
         try {
