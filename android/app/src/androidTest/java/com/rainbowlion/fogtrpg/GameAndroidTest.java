@@ -489,6 +489,20 @@ public class GameAndroidTest {
                 nativeTap(".api-config-close"); awaitUiMotion();
                 if ("true".equals(js("Boolean(document.querySelector('.game-menu'))"))) click("继续调查");
                 assertEquals("Unsaved settings and disclosure motion leave the complete action draft intact", "true", js("document.querySelector('.dock-input').value==='先记录日期'+String.fromCharCode(10)+'再检查门廊。'&&document.querySelectorAll('.party-compact').length===" + party));
+                menu("声音设置"); until("document.querySelector('.audio-settings[role=dialog]')"); awaitUiMotion();
+                js("document.querySelector('.audio-credits-toggle').scrollIntoView({block:'nearest'})");
+                watchDisclosureSize(".audio-credits"); nativeTap(".audio-credits-toggle"); assertDisclosureSizeChangesSmoothly();
+                assertEquals("Credits keep their license links in the existing phone panel", "true", js("document.querySelector('.audio-credits-toggle').getAttribute('aria-expanded')==='true'&&document.querySelector('.audio-credit-links a[href*=zero]')!==null"));
+                js("document.querySelector('.audio-credits-toggle').focus()");
+                watchDisclosureSize(".audio-credits");
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_SPACE); assertDisclosureSizeChangesSmoothly();
+                assertEquals("Credits collapse to the same 44px title and release their body from focus", "true", js("(()=>{const c=document.querySelector('.audio-credits'),b=c.querySelector('.disclosure-motion');return c.querySelector('button').getAttribute('aria-expanded')==='false'&&c.getBoundingClientRect().height>=44&&c.getBoundingClientRect().height<45&&b.inert&&b.getAttribute('aria-hidden')==='true'&&b.getBoundingClientRect().height===0&&document.activeElement===c.querySelector('button')})()"));
+                nativeTap(".audio-credits-toggle"); awaitUiMotion();
+                if (party == 2) screenshot("record-disclosure-native");
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                until("!document.querySelector('.audio-settings[role=dialog]')&&document.querySelector('.game-menu[role=dialog]')");
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK); awaitUiMotion();
+                assertEquals("System Back releases the audio and menu without changing the party or multiline draft", "true", js("!document.querySelector('.audio-settings')&&!document.querySelector('.game-menu')&&document.querySelector('.dock-input').value==='先记录日期'+String.fromCharCode(10)+'再检查门廊。'&&document.querySelectorAll('.party-compact').length===" + party));
                 assertNoResizeErrors();
             } finally { if (activity != null) activity.close(); }
         }
@@ -948,7 +962,7 @@ public class GameAndroidTest {
                 nativeTap("[aria-label='关闭资料']"); until("!document.querySelector('.info-drawer-react.open')");
                 menu("声音设置"); reachable("[role='switch'][aria-label='背景音乐']"); reachable("[role='switch'][aria-label='游戏音效']");
                 screenshot(prefix + "-audio");
-                js("document.querySelector('.audio-credits').open=true;document.querySelector('.audio-settings-body').scrollTop=99999");
+                js("document.querySelector('.audio-credits-toggle').click();document.querySelector('.audio-settings-body').scrollTop=99999");
                 reachable(".audio-close"); js("document.querySelector('.audio-close').click()");
                 until("document.querySelector('.game-menu').contains(document.activeElement)");
                 paintedHomeEmblem(".game-menu .home-emblem-art");
@@ -1571,25 +1585,25 @@ public class GameAndroidTest {
                 js("window.qaClockArtReady=false;const image=new Image();image.onload=()=>{const canvas=document.createElement('canvas');canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;const context=canvas.getContext('2d');context.drawImage(image,0,0);window.qaClockArtReady=image.naturalWidth===512&&image.naturalHeight===72&&context.getImageData(0,0,1,1).data[3]===0;};image.src=getComputedStyle(document.querySelector('.clock-row progress')).borderImageSource.slice(4,-1).replaceAll(String.fromCharCode(34),'').replaceAll(String.fromCharCode(39),'')");
                 until("window.qaClockArtReady"); screenshot("ending-" + size[0] + "-clock-gauge");
                 screenshot("ending-" + size[0] + "-review");
-                String authoredHistoryOpen = js("document.querySelector('.investigation-history').open");
+                String authoredHistoryOpen = js("(document.querySelector('.investigation-history-toggle').getAttribute('aria-expanded')==='true')");
                 viewport(size[0], 300);
-                if (!"true".equals(authoredHistoryOpen)) nativeTap(".investigation-history summary");
-                until("document.querySelector('.investigation-history').open");
+                if (!"true".equals(authoredHistoryOpen)) nativeTap(".investigation-history-toggle");
+                until("(document.querySelector('.investigation-history-toggle').getAttribute('aria-expanded')==='true')");
                 js("const page=document.querySelector('.info-drawer-page');page.scrollTop=page.scrollHeight");
                 String progressPosition = js("document.querySelector('.info-drawer-page').scrollTop");
                 assertTrue("Short-screen review has independently scrollable past objectives", Double.parseDouble(progressPosition) > 0);
                 nativeTap(".info-drawer-tabs button:nth-child(2)"); until("document.querySelector('.case-board-view')");
                 nativeTap(".info-drawer-tabs button:first-child");
-                until("document.querySelector('.investigation-history')?.open&&document.querySelector('.info-drawer-page').scrollTop===" + progressPosition);
+                until("(document.querySelector('.investigation-history-toggle')?.getAttribute('aria-expanded')==='true')&&document.querySelector('.info-drawer-page').scrollTop===" + progressPosition);
                 reachable("[aria-label='关闭资料']"); screenshot("ending-" + size[0] + "-progress-reading");
-                nativeTap(".investigation-history summary"); until("!document.querySelector('.investigation-history').open");
+                nativeTap(".investigation-history-toggle"); until("!(document.querySelector('.investigation-history-toggle').getAttribute('aria-expanded')==='true')");
                 nativeTap(".info-drawer-tabs button:last-child"); until("document.querySelector('.action-log-archive')");
-                nativeTap(".info-drawer-tabs button:first-child"); until("document.querySelector('.investigation-history')&&!document.querySelector('.investigation-history').open");
+                nativeTap(".info-drawer-tabs button:first-child"); until("document.querySelector('.investigation-history')&&!(document.querySelector('.investigation-history-toggle').getAttribute('aria-expanded')==='true')");
                 InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
                 until("!document.querySelector('.info-drawer-react.open')&&document.activeElement===document.querySelector('.ending-actions button:first-child')");
                 viewport(size[0], 300); reachable(".ending-actions button:first-child"); reachable(".ending-actions button:last-child");
                 nativeTap(".ending-actions button:first-child"); until("document.querySelector('.investigation-ending')"); reachable("[aria-label='关闭资料']");
-                assertEquals("A new review starts from its authored default", "true", js("document.querySelector('.investigation-history').open===" + authoredHistoryOpen + "&&document.querySelector('.info-drawer-page').scrollTop===0"));
+                assertEquals("A new review starts from its authored default", "true", js("(document.querySelector('.investigation-history-toggle').getAttribute('aria-expanded')==='true')===" + authoredHistoryOpen + "&&document.querySelector('.info-drawer-page').scrollTop===0"));
                 nativeTap("[aria-label='关闭资料']"); until("document.activeElement===document.querySelector('.ending-actions button:first-child')"); viewport(size[0], size[1]);
                 until("document.querySelector('.info-drawer-react').getBoundingClientRect().left>=innerWidth-.5");
                 screenshot("ending-" + size[0]); nativeTap(".ending-actions button:last-child"); until("document.querySelector('.title-screen')"); click("回顾调查"); until("document.querySelector('.ending-dock')");
@@ -1687,9 +1701,10 @@ public class GameAndroidTest {
                 fill("input[aria-label='音效音量']", "0"); until("document.querySelector('.audio-preview').disabled");
                 fill("input[aria-label='音效音量']", "23"); until("!document.querySelector('.audio-preview').disabled");
                 js("document.querySelector('.audio-settings-body').scrollTop=0"); screenshot("audio-track-" + size[0]);
-                js("document.querySelector('.audio-credits summary').scrollIntoView({block:'nearest'})"); reachable(".audio-credits summary");
-                if (!"true".equals(js("document.querySelector('.audio-credits').open"))) nativeTap(".audio-credits summary");
-                until("document.querySelector('.audio-credits').open");
+                js("document.querySelector('.audio-credits-toggle').scrollIntoView({block:'nearest'})"); reachable(".audio-credits-toggle");
+                if (!"true".equals(js("(document.querySelector('.audio-credits-toggle').getAttribute('aria-expanded')==='true')"))) nativeTap(".audio-credits-toggle");
+                until("(document.querySelector('.audio-credits-toggle').getAttribute('aria-expanded')==='true')");
+                awaitUiMotion();
                 String closeY = js("document.querySelector('.audio-close').getBoundingClientRect().y");
                 js("document.querySelector('.audio-credit-links a[href*=zero]').scrollIntoView({block:'nearest'})"); reachable(".audio-credit-links a[href*=zero]");
                 assertEquals("License link keeps a full touch target", "true", js("(()=>{const r=document.querySelector('.audio-credit-links a[href*=zero]').getBoundingClientRect();return r.width>=44&&r.height>=44})()"));
@@ -1699,7 +1714,7 @@ public class GameAndroidTest {
                 assertEquals("Focus cannot scroll the fixed panel frame", "0", js("document.querySelector('.audio-settings').scrollTop"));
                 nativeTap(".audio-close"); until("!document.querySelector('.audio-settings')&&document.activeElement===document.querySelector('button[aria-label=声音设置]')");
                 viewport(size[0], size[1]); nativeTap("button[aria-label=声音设置]"); until("document.querySelector('.audio-settings')");
-                assertEquals("Reopen keeps settings and folds credits", "true", js("!document.querySelector('.audio-credits').open&&document.querySelector('input[aria-label=音乐音量]').value==='38'&&document.querySelector('input[aria-label=音效音量]').value==='23'"));
+                assertEquals("Reopen keeps settings and folds credits", "true", js("!(document.querySelector('.audio-credits-toggle').getAttribute('aria-expanded')==='true')&&document.querySelector('input[aria-label=音乐音量]').value==='38'&&document.querySelector('input[aria-label=音效音量]').value==='23'"));
             }
             screenshot("audio-controls");
             SystemClock.sleep(300);

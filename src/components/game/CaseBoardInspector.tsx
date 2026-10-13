@@ -1,8 +1,9 @@
-import { useLayoutEffect, useRef, type RefObject } from 'react';
+import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { ArrowLeft, ChevronRight, X } from 'lucide-react';
 import { useDialogFocus } from '../shared/useDialogFocus';
 import { useReadingMotion } from '../shared/useReadingMotion';
 import { useOverlayPresence } from '../shared/useOverlayPresence';
+import { CollapsibleSection } from '../shared/CollapsibleSection';
 import { useCaseBoardListLayout, useShortViewport } from '../../platform/layout';
 import { storyData } from '../../data/storyData';
 import { getClueDetail, getNpcDetail } from '../../dm/entityDetail';
@@ -92,15 +93,21 @@ export function CaseBoardInspector({ model, node: currentNode, onClose, onSelect
   const dialogRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   useReadingMotion(scrollRef, node?.id ?? '', Boolean(currentNode));
-  const sourcesRef = useRef<HTMLDetailsElement>(null);
   const recordReading = useRef(new Map<string, { scrollTop: number; sourcesOpen: boolean }>());
+  const [sourcesState, setSourcesState] = useState<{ nodeId: string | null; open: boolean }>({ nodeId: null, open: false });
+  const sourcesOpen = node && sourcesState.nodeId === node.id ? sourcesState.open : recordReading.current.get(node?.id ?? '')?.sourcesOpen ?? false;
   const headingRef = useRef<HTMLHeadingElement>(null);
   const previousNode = useRef<string | null>(null);
 
   function rememberReading() {
     if (scrollRef.current && node) recordReading.current.set(node.id, {
-      scrollTop: scrollRef.current.scrollTop, sourcesOpen: sourcesRef.current?.open ?? false
+      scrollTop: scrollRef.current.scrollTop, sourcesOpen
     });
+  }
+  function changeSourcesOpen(open: boolean) {
+    if (!node) return;
+    recordReading.current.set(node.id, { scrollTop: scrollRef.current?.scrollTop ?? 0, sourcesOpen: open });
+    setSourcesState({ nodeId: node.id, open });
   }
   function backToRecord() { rememberReading(); onBack?.(); }
 
@@ -109,16 +116,11 @@ export function CaseBoardInspector({ model, node: currentNode, onClose, onSelect
     if (motion.present) return;
     previousNode.current = null;
     recordReading.current.clear();
+    setSourcesState((current) => current.nodeId === null ? current : { nodeId: null, open: false });
   }, [motion.present]);
-  useLayoutEffect(() => {
-    if (!currentNode) return;
-    previousNode.current = null;
-    recordReading.current.clear();
-  }, [Boolean(currentNode)]);
   useLayoutEffect(() => {
     if (!currentNode || !node) return;
     const reading = recordReading.current.get(node.id);
-    if (sourcesRef.current) sourcesRef.current.open = reading?.sourcesOpen ?? false;
     if (scrollRef.current) scrollRef.current.scrollTop = reading?.scrollTop ?? 0;
     if (previousNode.current && previousNode.current !== node.id) headingRef.current?.focus({ preventScroll: true });
     previousNode.current = node.id;
@@ -186,10 +188,11 @@ export function CaseBoardInspector({ model, node: currentNode, onClose, onSelect
           </section>
         ) : null}
         {sources.length ? (
-          <details className="case-record-sources" key={node.id} ref={sourcesRef} onToggle={rememberReading}>
-            <summary><span>信息来源</span><ChevronRight size={17} aria-hidden="true" /></summary>
+          <CollapsibleSection className="case-record-sources" triggerClassName="case-record-sources-toggle" key={node.id}
+            open={sourcesOpen} onOpenChange={changeSourcesOpen}
+            label={<><span>信息来源</span><ChevronRight size={17} aria-hidden="true" /></>}>
             <ul>{sources.map((source) => <li key={source}>{source}</li>)}</ul>
-          </details>
+          </CollapsibleSection>
         ) : null}
       </div>
     </aside>

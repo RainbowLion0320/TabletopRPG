@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { settleUiMotion } from './browserMotion';
 
 const manifest = JSON.parse(readFileSync('assets/audio/manifest.json', 'utf8')) as Array<{ file: string; seconds: number }>;
 
@@ -337,7 +338,7 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     const music = dialog.getByRole('slider', { name: '音乐音量' });
     const effects = dialog.getByRole('slider', { name: '音效音量' });
     const preview = dialog.getByRole('button', { name: '试听骰子音效' });
-    const credits = dialog.locator('summary');
+    const credits = dialog.getByRole('button', { name: '音乐与音效鸣谢', exact: true });
     const reachable = async (locator: typeof close) => {
       await locator.scrollIntoViewIfNeeded();
       const result = await locator.evaluate(e => {
@@ -365,15 +366,15 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     await effects.fill('23'); await preview.click();
     await credits.focus(); await page.keyboard.press('Tab'); await expect(close).toBeFocused();
     await credits.click(); await expect(dialog.getByRole('link', { name: 'Kevin MacLeod' })).toBeVisible();
-    await page.evaluate(() => document.fonts.ready);
+    await page.evaluate(() => document.fonts.ready); await settleUiMotion(page);
     const headerBefore = await close.boundingBox();
     for (const name of ['Kevin MacLeod', 'CC BY 4.0', 'Kenney', 'CC0']) await reachable(dialog.getByRole('link', { name, exact: true }));
     const headerAfter = await close.boundingBox(); expect(headerAfter!.y).toBeCloseTo(headerBefore!.y, 1);
     await dialog.getByRole('link', { name: 'CC0', exact: true }).focus(); await page.keyboard.press('Tab'); await expect(close).toBeFocused();
-    if (size.width === 390) { await credits.click(); await body.evaluate(e => { e.scrollTop = 0; }); await page.screenshot({ path: testInfo.outputPath('audio-controls.png') }); }
+    if (size.width === 390) { await credits.click(); await settleUiMotion(page); await body.evaluate(e => { e.scrollTop = 0; }); await page.screenshot({ path: testInfo.outputPath('audio-controls.png') }); }
     await page.setViewportSize({ width: size.width, height: 300 }); await expect(close).toBeInViewport(); await reachable(close);
     await reachable(credits);
-    if (!await dialog.locator('.audio-credits').evaluate(e => (e as HTMLDetailsElement).open)) await credits.click();
+    if (await credits.getAttribute('aria-expanded') !== 'true') await credits.click();
     await reachable(dialog.getByRole('link', { name: 'CC0', exact: true }));
     await reachable(close); expect(await dialog.evaluate(e => e.scrollTop)).toBe(0);
     await close.click(); await expect(dialog).not.toBeVisible(); await expect(entry).toBeFocused();

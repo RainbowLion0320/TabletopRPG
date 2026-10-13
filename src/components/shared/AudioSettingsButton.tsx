@@ -1,15 +1,17 @@
 import { ChevronDown, X } from 'lucide-react';
-import { useId, useRef, useState, useSyncExternalStore } from 'react';
+import { useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { gameAudio } from '../../audio/audio';
 import { useDialogFocus } from './useDialogFocus';
 import { useOverlayPresence } from './useOverlayPresence';
 import { AudioEmblemArt } from './AudioEmblemArt';
 import { TuningDialArt } from './TuningDialArt';
+import { CollapsibleSection } from './CollapsibleSection';
 import './audio-settings.css';
 
 export function AudioSettingsButton({ className, iconOnly = false, onOpenChange }: { className?: string; iconOnly?: boolean; onOpenChange?: (open: boolean) => void }) {
   const [open, setOpen] = useState(false);
+  const [creditsOpen, setCreditsOpen] = useState(false);
   const motion = useOverlayPresence(open);
   const settings = useSyncExternalStore(gameAudio.subscribe, gameAudio.getSnapshot);
   const volumeId = useId();
@@ -20,6 +22,9 @@ export function AudioSettingsButton({ className, iconOnly = false, onOpenChange 
     onOpenChange?.(next);
   }
   useDialogFocus(open, dialogRef, () => changeOpen(false), openerRef);
+  useLayoutEffect(() => {
+    if (!motion.present) setCreditsOpen(false);
+  }, [motion.present]);
   return <>
     <button ref={openerRef} type="button" className={className} aria-label="声音设置"
       title={iconOnly ? '声音设置' : undefined} onClick={() => changeOpen(true)}>
@@ -67,8 +72,8 @@ export function AudioSettingsButton({ className, iconOnly = false, onOpenChange 
               onClick={() => gameAudio.play('diceLand')}>试听骰子音效</button>
           </section>
           <p className="audio-note">设置自动记住。切到后台时暂停声音。</p>
-          <details className="audio-credits">
-            <summary>音乐与音效鸣谢<ChevronDown size={18} aria-hidden="true" /></summary>
+          <CollapsibleSection className="audio-credits" triggerClassName="audio-credits-toggle" open={creditsOpen} onOpenChange={setCreditsOpen}
+            label={<>音乐与音效鸣谢<ChevronDown size={18} aria-hidden="true" /></>}>
             <div className="audio-credit-item">
               <div className="audio-credit-links"><a href="https://incompetech.com/" target="_blank" rel="noreferrer">Kevin MacLeod</a>
                 <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a></div>
@@ -79,7 +84,7 @@ export function AudioSettingsButton({ className, iconOnly = false, onOpenChange 
                 <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noreferrer">CC0</a></div>
               <p>骰子、界面与翻书音效。环境音与检定提示音由项目合成。</p>
             </div>
-          </details>
+          </CollapsibleSection>
           </div>
         </div>
       </div>, document.body)}

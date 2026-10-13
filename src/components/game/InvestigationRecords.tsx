@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type MutableRefObject } from 'react';
+import { useLayoutEffect, useRef, useState, type MutableRefObject } from 'react';
 import { Check, ChevronDown } from 'lucide-react';
 import type { GameState } from '../../types/game';
 import { getScenarioDefinition, getScenarioProgressForState, getVisibleScenarioObjectives } from '../../scenario/engine';
@@ -6,6 +6,7 @@ import { isPlayerVisibleLogEntry } from '../../services/narrativeVisibility';
 import { ArchiveEmptyArt } from '../shared/ArchiveEmptyArt';
 import { JournalArt } from '../shared/JournalArt';
 import { InvestigationEmblemArt } from '../shared/InvestigationEmblemArt';
+import { CollapsibleSection } from '../shared/CollapsibleSection';
 import './investigation-records.css';
 
 type Progress = ReturnType<typeof getScenarioProgressForState>;
@@ -21,12 +22,19 @@ function ObjectiveRows({ objectives, progress }: { objectives: Objectives; progr
   })}</ul>;
 }
 
-export function InvestigationProgress({ state }: { state: GameState }) {
+export function InvestigationProgress({ state, initialHistoryOpen, onHistoryOpenChange }: {
+  state: GameState;
+  initialHistoryOpen?: boolean;
+  onHistoryOpenChange?: (open: boolean) => void;
+}) {
   const progress = getScenarioProgressForState(state);
   const objectives = getVisibleScenarioObjectives(progress);
   const ending = getScenarioDefinition().progression.endings.find((item) => item.id === progress.endingId);
   const current = objectives.filter((objective) => !['completed', 'failed'].includes(progress.objectiveStates[objective.id]));
   const past = objectives.filter((objective) => ['completed', 'failed'].includes(progress.objectiveStates[objective.id]));
+  const [historyPreference, setHistoryPreference] = useState(initialHistoryOpen);
+  const historyOpen = historyPreference ?? current.length === 0;
+  useLayoutEffect(() => { onHistoryOpenChange?.(historyOpen); }, [historyOpen, onHistoryOpenChange]);
   const clueStates = Object.values(progress.clueStates);
   const found = clueStates.filter((status) => status !== 'unknown').length;
   const analyzed = clueStates.filter((status) => status === 'analyzed').length;
@@ -53,10 +61,11 @@ export function InvestigationProgress({ state }: { state: GameState }) {
       <h3><JournalArt />线索进度</h3>
       <p className="progress-stat">已发现 {found}{' · '}已分析 {analyzed}</p>
     </section>}
-    {past.length > 0 && <details className="investigation-card investigation-history" open={current.length === 0}>
-      <summary><Check size={16} aria-hidden="true" /><span>调查回顾</span><ChevronDown size={16} aria-hidden="true" /></summary>
+    {past.length > 0 && <CollapsibleSection className="investigation-card investigation-history" triggerClassName="investigation-history-toggle"
+      open={historyOpen} onOpenChange={setHistoryPreference}
+      label={<><Check size={16} aria-hidden="true" /><span>调查回顾</span><ChevronDown size={16} aria-hidden="true" /></>}>
       <ObjectiveRows objectives={past} progress={progress} />
-    </details>}
+    </CollapsibleSection>}
   </section>;
 }
 

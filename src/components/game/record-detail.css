@@ -32,12 +32,11 @@
 .case-board-insight-list article.hypothesis { border-left-style: dashed; border-left-color: #c17d6f; }
 .case-board-insight-list span { display: block; margin-bottom: 4px; font-size: 14px; color: var(--muted); }
 .case-record-sources { margin: 0; border-bottom: 1px solid var(--line-soft); }
-.case-record-sources summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; padding: 0 8px; border: 6px solid transparent; border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 6px / 0 stretch; list-style: none; background: var(--panel); color: var(--accent); font: 400 15px/1.5 var(--ui-font); cursor: pointer; touch-action: manipulation; }
-.case-record-sources summary::-webkit-details-marker { display: none; }
-.case-record-sources summary > svg { flex: 0 0 auto; }
-.case-record-sources[open] summary > svg { transform: rotate(90deg); }
-.case-record-sources summary:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: -2px; }
-.case-record-sources summary:active { filter: brightness(1.15); }
+.case-record-sources .case-record-sources-toggle { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-width: 0; min-height: 48px; margin: 0; padding: 0 8px; border: 6px solid transparent; border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 6px / 0 stretch; border-radius: 0; background: var(--panel); box-shadow: none; color: var(--accent); font: 400 15px/1.5 var(--ui-font); text-align: left; cursor: pointer; touch-action: manipulation; }
+.case-record-sources-toggle > svg:last-child { flex: 0 0 auto; transition: transform 130ms ease; }
+.case-record-sources[data-expanded='true'] .case-record-sources-toggle > svg:last-child { transform: rotate(90deg); }
+.case-record-sources-toggle:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: -2px; }
 .case-record-sources ul { display: grid; gap: 10px; margin: 0; padding: 12px 0 12px 18px; }
 :root .case-record-sources li { color: var(--text); font-size: 15px; }
 @media (max-height: 420px) { .record-detail-media { display: none; } }
+@media (prefers-reduced-motion: reduce) { .case-record-sources-toggle > svg:last-child { transition: none; } }

@@ -27,8 +27,7 @@
   animation: fog-panel-exit 170ms ease-in both;
 }
 :root.fog-ui :is(.save-delete-confirmation,
-  .check-card, .ending-dock, .toast, .narrative-new-content,
-  details[open] > :not(summary)) {
+  .check-card, .ending-dock, .toast, .narrative-new-content) {
   animation: fog-content-enter 190ms var(--ui-ease);
 }
 :root.fog-ui .story-message.arriving { animation: fog-message-enter 180ms var(--ui-ease); }
@@ -49,7 +48,7 @@
 }
 /* The clip has no padding, so 0fr really collapses to zero rather than leaving a jump. */
 :root.fog-ui .disclosure-motion {
-  display: grid; grid-template-rows: 0fr; min-height: 0; opacity: 0;
+  display: grid; grid-template-rows: 0fr; min-height: 0; padding: 0; border: 0; opacity: 0;
   transition: grid-template-rows 190ms var(--ui-ease), opacity 150ms ease;
 }
 :root.fog-ui .disclosure-motion[data-ui-phase='open'] { grid-template-rows: 1fr; opacity: 1; }
@@ -67,7 +66,7 @@
   .game-menu-close, .api-config-close, .api-key-reveal, .investigator-close, .save-manager-close,
   .preset-attrs-toggle, .menu-list button, .info-drawer-tabs button, .investigator-tabs button,
   .investigator-party button, .suggestion-row button, .case-related-record, .party-compact,
-  .dock-actor-avatar, .api-connection-toggle, summary) {
+  .dock-actor-avatar, .api-connection-toggle) {
   transition: filter 130ms ease, translate 100ms var(--ui-ease), scale 100ms var(--ui-ease), background-color 130ms ease, color 130ms ease;
 }
 :root.fog-ui :is(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
@@ -76,6 +75,9 @@
   .preset-attrs-toggle, .menu-list button, .info-drawer-tabs button, .investigator-tabs button,
   .investigator-party button, .suggestion-row button, .case-related-record, .party-compact,
   .dock-actor-avatar, .api-connection-toggle):enabled:active { translate: 0 1px; scale: .975; }
+/* Disclosure headings give quiet feedback without moving the whole reading row. */
+:root.fog-ui .collapsible-section-trigger { transition: filter 130ms ease; }
+:root.fog-ui .collapsible-section-trigger:enabled:active { filter: brightness(1.1); }
 /* Decorative animations stop in the background; no animation-frame JS loop. */
 :root.fog-ui.ui-motion-paused :is(.thinking-line-nib, .thinking-line-dots i) { animation-play-state: paused; }
 :root.fog-ui.ui-motion-paused .thinking-line::after { animation-play-state: paused; }
@@ -96,9 +98,9 @@
     .save-manager-backdrop, .entity-detail-overlay, .investigator-overlay, .modal-card, .save-manager-card,
     .entity-detail-card, .investigator-sheet, .android-exit-backdrop, .android-exit-card, .dice-roll-overlay, .dice-roll-card, .info-drawer-react.fullscreen.open, .preset-other-panel,
     .save-delete-confirmation, .check-card, .ending-dock, .toast, .narrative-new-content,
-    .case-board-inspector, details[open] > :not(summary),
+    .case-board-inspector,
     .story-message.arriving, .scene-npc, .scene-backdrop-img, .dock-actor-avatar img) { animation: none !important; }
-  :root.fog-ui :is(button, summary, .preset-card-modern, .preset-select-mark, .preset-select-mark svg,
+  :root.fog-ui :is(button, .preset-card-modern, .preset-select-mark, .preset-select-mark svg,
     .preset-attrs-toggle svg, .party-compact) { transition: none !important; }
   :root.fog-ui button:active { translate: none; scale: none; }
 }

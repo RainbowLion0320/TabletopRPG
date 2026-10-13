@@ -122,6 +122,223 @@ async function sampleDisclosure(page: Page, selector: string, activate: () => Pr
   return page.evaluate(() => (window as typeof window & { disclosureFrames: number[] }).disclosureFrames);
 }
 
+interface RecordDisclosureState { expanded: boolean; inert: boolean; hidden: boolean; focused: boolean; }
+interface RecordDisclosureFrame extends RecordDisclosureState { at: number; height: number; body: number; overflow: boolean; }
+interface RecordDisclosureSample { frames: RecordDisclosureFrame[]; committed: RecordDisclosureState | null; }
+async function sampleRecordDisclosure(page: Page, selector: string, activate: () => Promise<void>) {
+  const before = await page.evaluate(selector => {
+    const wrapper = document.querySelector(selector)!;
+    const trigger = wrapper.querySelector<HTMLButtonElement>('button[aria-expanded]')!;
+    const body = document.getElementById(trigger.getAttribute('aria-controls')!)!;
+    const sample: RecordDisclosureSample = { frames: [], committed: null };
+    (window as typeof window & { recordDisclosureSample: RecordDisclosureSample }).recordDisclosureSample = sample;
+    const logicalState = (): RecordDisclosureState => ({ expanded: trigger.getAttribute('aria-expanded') === 'true',
+      inert: body.hasAttribute('inert'), hidden: body.getAttribute('aria-hidden') === 'true', focused: document.activeElement === trigger });
+    const previous = trigger.getAttribute('aria-expanded');
+    const observer = new MutationObserver(() => {
+      if (trigger.getAttribute('aria-expanded') === previous) return;
+      observer.disconnect();
+      // Verify the committed semantics immediately without forcing layout at a stale animation timestamp.
+      sample.committed = logicalState();
+    });
+    observer.observe(trigger, { attributes: true, attributeFilter: ['aria-expanded'] });
+    trigger.addEventListener('click', () => {
+      const take = (at: number) => {
+        if (!sample.committed) { requestAnimationFrame(take); return; }
+        sample.frames.push({ at, height: wrapper.getBoundingClientRect().height, body: body.getBoundingClientRect().height,
+          ...logicalState(),
+          overflow: document.documentElement.scrollWidth > innerWidth || document.documentElement.scrollHeight > innerHeight });
+        if (sample.frames.length < 24) requestAnimationFrame(take);
+      };
+      requestAnimationFrame(take);
+    }, { once: true, capture: true });
+    return wrapper.getBoundingClientRect().height;
+  }, selector);
+  await activate();
+  await expect.poll(() => page.evaluate(() => (window as typeof window & { recordDisclosureSample: RecordDisclosureSample }).recordDisclosureSample.frames.length)).toBe(24);
+  return { before, ...await page.evaluate(() => (window as typeof window & { recordDisclosureSample: RecordDisclosureSample }).recordDisclosureSample) };
+}
+
+async function reverseRecordDisclosure(page: Page, selector: string) {
+  return page.evaluate(async selector => {
+    const wrapper = document.querySelector(selector)!;
+    const trigger = wrapper.querySelector<HTMLButtonElement>('button[aria-expanded]')!;
+    const body = document.getElementById(trigger.getAttribute('aria-controls')!)!;
+    async function change() {
+      const previous = trigger.getAttribute('aria-expanded');
+      const changed = new Promise<void>(resolve => {
+        const observer = new MutationObserver(() => {
+          if (trigger.getAttribute('aria-expanded') === previous) return;
+          observer.disconnect(); resolve();
+        });
+        observer.observe(trigger, { attributes: true, attributeFilter: ['aria-expanded'] });
+      });
+      const before = wrapper.getBoundingClientRect().height;
+      trigger.click(); await changed;
+      return { before, after: wrapper.getBoundingClientRect().height, expanded: trigger.getAttribute('aria-expanded') === 'true',
+        inert: body.hasAttribute('inert'), hidden: body.getAttribute('aria-hidden') === 'true' };
+    }
+    await change(); await new Promise(resolve => setTimeout(resolve, 55));
+    const closing = await change(); await new Promise(resolve => setTimeout(resolve, 35));
+    const reopening = await change();
+    return { closing, reopening };
+  }, selector);
+}
+
+for (const size of [
+  { width: 320, height: 568, party: 1, reduced: false }, { width: 390, height: 844, party: 2, reduced: false },
+  { width: 1440, height: 900, party: 4, reduced: false }, { width: 390, height: 844, party: 1, reduced: true },
+  { width: 320, height: 300, party: 4, reduced: false }
+]) {
+  test(`record disclosures close smoothly and restore reading at ${size.width}x${size.height}${size.reduced ? ' with reduced motion' : ''}`, async ({ page }, testInfo) => {
+    test.setTimeout(60_000);
+    await page.setViewportSize(size); await page.emulateMedia({ reducedMotion: size.reduced ? 'reduce' : 'no-preference' });
+    const state = createDynamicCaseBoardSave();
+    state.players = ['亨利·格雷', '艾达·华莱士', '托马斯·贝尔', '罗伯特·肖'].slice(0, size.party)
+      .map((name, index) => makeInvestigator({ name, id: `disclosure-${index}` }));
+    state.scenarioProgress = createSmokeScenarioProgress();
+    state.scenarioProgress.beatStates.B01 = 'completed'; state.scenarioProgress.beatStates.B02 = 'active';
+    state.scenarioProgress.objectiveStates.O01 = 'completed'; state.scenarioProgress.objectiveStates.O02 = 'active';
+    state.scenarioProgress.variables.commissionAccepted = true;
+    state.eventLog[0].description = '玩家发现药店后门有被撬痕迹。把门锁、门槛与周围脚印分别记在调查本上，随后核对目击者的说法。'.repeat(4);
+    await gotoWithSave(page, state);
+    let requests = 0;
+    page.on('request', request => { if (request.resourceType() === 'fetch' && /responses|chat\/completions/.test(request.url())) requests++; });
+    const evidence: Record<string, unknown> = {};
+    async function exercise(selector: string, label: string) {
+      const wrapper = page.locator(selector), trigger = wrapper.getByRole('button', { name: label, exact: true });
+      await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+      await trigger.scrollIntoViewIfNeeded(); await trigger.focus(); await settleUiMotion(page);
+      expect((await trigger.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      const opening = await sampleRecordDisclosure(page, selector, () => trigger.press('Enter'));
+      await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+      const closing = await sampleRecordDisclosure(page, selector, () => trigger.press('Space'));
+      evidence[selector] = { opening, closing };
+      writeFileSync(testInfo.outputPath('record-disclosure-frames.json'), JSON.stringify(evidence, null, 2));
+      for (const [record, expanded] of [[opening, true], [closing, false]] as const) {
+        expect(record.committed).toEqual({ expanded, inert: !expanded, hidden: !expanded, focused: true });
+        const final = record.frames.at(-1)!;
+        expect(Math.abs(record.before - final.height)).toBeGreaterThan(30);
+        expect(record.frames.some(frame => frame.height > Math.min(record.before, final.height) + 1
+          && frame.height < Math.max(record.before, final.height) - 1)).toBe(!size.reduced);
+        for (const frame of record.frames) {
+          expect(frame.expanded).toBe(expanded); expect(frame.inert).toBe(!expanded); expect(frame.hidden).toBe(!expanded);
+          expect(frame.focused).toBe(true); expect(frame.overflow).toBe(false);
+        }
+      }
+      expect(closing.frames.at(-1)!.body).toBeLessThan(.5);
+      if (!size.reduced) expect(closing.frames.some(frame => frame.body > 1 && frame.inert && frame.hidden)).toBe(true);
+      const controlledId = await trigger.getAttribute('aria-controls');
+      expect(controlledId).toBeTruthy(); await expect(page.locator(`[id="${controlledId}"]`)).toHaveAttribute('inert', '');
+      const reversal = await reverseRecordDisclosure(page, selector);
+      expect(reversal.closing.expanded).toBe(false); expect(reversal.closing.inert && reversal.closing.hidden).toBe(true);
+      expect(reversal.reopening.expanded).toBe(true); expect(reversal.reopening.inert || reversal.reopening.hidden).toBe(false);
+      if (!size.reduced) {
+        expect(Math.abs(reversal.closing.after - reversal.closing.before)).toBeLessThan(1);
+        expect(Math.abs(reversal.reopening.after - reversal.reopening.before)).toBeLessThan(1);
+      }
+      await settleUiMotion(page); await expect(trigger).toBeFocused();
+      await page.screenshot({ path: testInfo.outputPath(`${selector.slice(1)}-open.png`) });
+      evidence[selector] = { opening, closing, reversal };
+      return trigger;
+    }
+
+    await page.getByRole('button', { name: '声音设置', exact: true }).click();
+    const audio = page.getByRole('dialog', { name: '声音设置', exact: true });
+    const settings = await audio.locator('input, button[role="switch"]').evaluateAll(elements => elements.map(el => ({
+      value: el instanceof HTMLInputElement ? el.value : el.getAttribute('aria-checked'), disabled: el.hasAttribute('disabled')
+    })));
+    await page.evaluate(() => document.fonts.ready); await settleUiMotion(page);
+    const credits = await exercise('.audio-credits', '音乐与音效鸣谢');
+    await audio.getByRole('link', { name: 'Kevin MacLeod', exact: true }).focus();
+    await credits.evaluate(element => (element as HTMLButtonElement).click());
+    await expect(credits).toBeFocused(); await expect(audio.getByRole('link', { name: 'Kevin MacLeod', exact: true })).toHaveCount(0);
+    await expect(audio.locator('.audio-credits .disclosure-motion')).toHaveAttribute('inert', '');
+    expect(await audio.locator('input, button[role="switch"]').evaluateAll(elements => elements.map(el => ({
+      value: el instanceof HTMLInputElement ? el.value : el.getAttribute('aria-checked'), disabled: el.hasAttribute('disabled')
+    })))).toEqual(settings);
+    if (!size.reduced) {
+      await credits.press('Enter'); await settleUiMotion(page);
+      const race = await page.evaluate(async () => {
+        const section = document.querySelector('.audio-credits')!;
+        document.querySelector<HTMLButtonElement>('[aria-label="关闭声音设置"]')!.click(); await new Promise(requestAnimationFrame);
+        const closing = { outerInert: document.querySelector('.audio-settings-backdrop')!.hasAttribute('inert'),
+          childExpanded: section.querySelector('button')!.getAttribute('aria-expanded') === 'true' };
+        document.querySelector<HTMLButtonElement>('[aria-label="声音设置"]')!.click(); await new Promise(requestAnimationFrame);
+        return { closing, sameSection: section === document.querySelector('.audio-credits') };
+      });
+      expect(race).toEqual({ closing: { outerInert: true, childExpanded: true }, sameSection: true });
+      await page.waitForTimeout(220); await expect(credits).toHaveAttribute('aria-expanded', 'true');
+      evidence.audioReopen = race;
+    }
+    await audio.getByRole('button', { name: '关闭声音设置', exact: true }).click();
+    // A keyboard-height phone intentionally hides navigation; enter the archive before shrinking.
+    if (size.height === 300) await page.setViewportSize({ width: size.width, height: 568 });
+    await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+    const draft = '记下门廊痕迹。\n再听听同伴的判断。'; await page.locator('.dock-input').fill(draft);
+    await page.getByRole('button', { name: '资料', exact: true }).click();
+    if (size.height === 300) await page.setViewportSize(size);
+    const drawer = page.getByRole('dialog', { name: '资料', exact: true });
+    await drawer.getByRole('tab', { name: '进度', exact: true }).click(); await settleUiMotion(page);
+    const history = await exercise('.investigation-history', '调查回顾');
+    await expect(page.getByText('与伊莎贝拉确认委托和埃里克失踪的基本情况。')).toBeVisible();
+    const progress = page.locator('.info-drawer-page.progress-page');
+    await progress.evaluate(element => { element.scrollTop = element.scrollHeight; });
+    const progressPosition = await progress.evaluate(element => element.scrollTop);
+    await drawer.getByRole('tab', { name: '日志', exact: true }).click();
+    await drawer.getByRole('tab', { name: '进度', exact: true }).click();
+    await expect(history).toHaveAttribute('aria-expanded', 'true');
+    await expect.poll(() => progress.evaluate(element => element.scrollTop)).toBe(progressPosition);
+    if (!size.reduced && size.height !== 300) {
+      const race = await page.evaluate(async () => {
+        const section = document.querySelector('.investigation-history')!;
+        document.querySelector<HTMLButtonElement>('[aria-label="关闭资料"]')!.click(); await new Promise(requestAnimationFrame);
+        const closing = { outerInert: document.querySelector('.info-drawer-react')!.hasAttribute('inert'),
+          childExpanded: section.querySelector('button')!.getAttribute('aria-expanded') === 'true' };
+        document.querySelector<HTMLButtonElement>('[aria-label="资料"]')!.click(); await new Promise(requestAnimationFrame);
+        return { closing, sameSection: section === document.querySelector('.investigation-history') };
+      });
+      expect(race).toEqual({ closing: { outerInert: true, childExpanded: true }, sameSection: true });
+      await page.waitForTimeout(220); await expect(history).toHaveAttribute('aria-expanded', 'true');
+      await expect(drawer.getByRole('tab', { name: '进度', exact: true })).toHaveAttribute('aria-selected', 'true');
+      await expect.poll(() => progress.evaluate(element => element.scrollTop)).toBe(progressPosition);
+      evidence.progressReopen = race;
+    }
+    await drawer.getByRole('tab', { name: '案件板', exact: true }).click();
+    await drawer.getByRole('button', { name: '推测 可能有内应协助', exact: true }).click(); await settleUiMotion(page);
+    const detail = page.getByRole('dialog', { name: '可能有内应协助详情', exact: true });
+    const sources = await exercise('.case-record-sources', '信息来源');
+    const related = detail.getByRole('button', { name: '查看药店后门被撬资料', exact: true });
+    await related.scrollIntoViewIfNeeded();
+    const recordPosition = await detail.locator('.case-board-inspector-scroll').evaluate(element => element.scrollTop);
+    await related.click();
+    const event = page.getByRole('dialog', { name: '药店后门被撬详情', exact: true });
+    await expect(event.getByRole('button', { name: '信息来源', exact: true })).toHaveAttribute('aria-expanded', 'false');
+    await event.getByRole('button', { name: '返回上一份资料', exact: true }).click();
+    await expect(sources).toHaveAttribute('aria-expanded', 'true');
+    await expect.poll(() => detail.locator('.case-board-inspector-scroll').evaluate(element => element.scrollTop)).toBe(recordPosition);
+    if (!size.reduced) {
+      const race = await page.evaluate(async () => {
+        const section = document.querySelector('.case-record-sources')!;
+        document.querySelector<HTMLButtonElement>('[aria-label="关闭资料详情"]')!.click(); await new Promise(requestAnimationFrame);
+        const closing = { outerInert: document.querySelector('.case-board-inspector')!.hasAttribute('inert'),
+          childExpanded: section.querySelector('button')!.getAttribute('aria-expanded') === 'true' };
+        document.querySelector<HTMLButtonElement>('[aria-label="推测 可能有内应协助"]')!.click(); await new Promise(requestAnimationFrame);
+        return { closing, sameSection: section === document.querySelector('.case-record-sources') };
+      });
+      expect(race).toEqual({ closing: { outerInert: true, childExpanded: true }, sameSection: true });
+      await page.waitForTimeout(220); await expect(sources).toHaveAttribute('aria-expanded', 'true');
+      await expect.poll(() => detail.locator('.case-board-inspector-scroll').evaluate(element => element.scrollTop)).toBe(recordPosition);
+      evidence.recordReopen = race;
+    }
+    await detail.getByRole('button', { name: '关闭资料详情', exact: true }).click();
+    await drawer.getByRole('button', { name: '关闭资料', exact: true }).click();
+    await expect(page.locator('.dock-input')).toHaveValue(draft); await expect(page.locator('.party-compact')).toHaveCount(size.party);
+    expect(requests).toBe(0);
+    writeFileSync(testInfo.outputPath('record-disclosure-frames.json'), JSON.stringify(evidence, null, 2));
+  });
+}
+
 for (const size of [
   { width: 1440, height: 280, party: 1 }, { width: 1440, height: 280, party: 4 },
   { width: 820, height: 360, party: 2 }, { width: 1440, height: 550, party: 4 }
@@ -1796,10 +2013,10 @@ for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height:
     await expect(current).toBeVisible();
     expect(await current.evaluate(el => Number.parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(15);
     await expect(page.locator('.progress-stat')).toHaveText('已发现 2 · 已分析 1');
-    await expect(page.locator('.investigation-history')).not.toHaveAttribute('open');
-    await expect(page.getByText('与伊莎贝拉确认委托和埃里克失踪的基本情况。')).not.toBeVisible();
+    await expect(page.locator('.investigation-history button[aria-expanded]')).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('.investigation-history').getByRole('listitem')).toHaveCount(0);
     await expect(page.getByText('先听懂对方诉求，再说服其释放埃里克。')).toHaveCount(0);
-    await page.locator('.investigation-history summary').click();
+    await page.locator('.investigation-history button[aria-expanded]').click();
     await expect(page.getByText('与伊莎贝拉确认委托和埃里克失踪的基本情况。')).toBeVisible();
     await page.setViewportSize({ width: size.width, height: 300 });
     const progressPage = page.locator('.info-drawer-page.progress-page');
@@ -1816,7 +2033,7 @@ for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height:
     const position = await list.evaluate(el => el.scrollTop);
     await page.getByRole('tab', { name: '进度' }).click();
     await page.screenshot({ path: testInfo.outputPath('progress-reading-return.png') });
-    await expect(page.locator('.investigation-history')).toHaveAttribute('open');
+    await expect(page.locator('.investigation-history button[aria-expanded]')).toHaveAttribute('aria-expanded', 'true');
     await expect.poll(() => progressPage.evaluate(element => element.scrollTop)).toBe(progressPosition);
     expect((await header.boundingBox())!.y).toBeCloseTo(headerTop, 0);
     await page.setViewportSize(size); await expect(current).toBeVisible();
@@ -1867,7 +2084,7 @@ for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height:
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.getByRole('button', { name: '资料', exact: true }).click();
     await page.getByRole('tab', { name: '进度' }).click(); await expect(current).toBeVisible();
-    await expect(page.locator('.investigation-history')).not.toHaveAttribute('open');
+    await expect(page.locator('.investigation-history button[aria-expanded]')).toHaveAttribute('aria-expanded', 'false');
     expect(await progressPage.evaluate(element => element.scrollTop)).toBe(0);
     await closeArchive();
     await expect(page.getByRole('button', { name: '资料', exact: true })).toBeFocused();
@@ -2595,12 +2812,12 @@ test('reference panel renders saved dynamic case board hypotheses', async ({ pag
   await expect(inspector.getByText(/e1/)).toHaveCount(0);
   await inspector.getByRole('button', { name: '查看药店后门被撬资料', exact: true }).click();
   const eventDetail = page.getByRole('dialog', { name: '药店后门被撬详情', exact: true });
-  await expect(eventDetail.locator('.case-record-sources')).not.toHaveAttribute('open', '');
+  await expect(eventDetail.getByRole('button', { name: '信息来源', exact: true })).toHaveAttribute('aria-expanded', 'false');
   await eventDetail.getByRole('button', { name: '返回上一份资料', exact: true }).click();
-  await expect(inspector.locator('.case-record-sources')).toHaveAttribute('open', '');
+  await expect(inspector.getByRole('button', { name: '信息来源', exact: true })).toHaveAttribute('aria-expanded', 'true');
   await inspector.getByRole('button', { name: '关闭资料详情', exact: true }).click();
   await board.locator('.case-flow-node.theory.hypothesis', { hasText: '可能有内应协助' }).click();
-  await expect(inspector.locator('.case-record-sources')).not.toHaveAttribute('open', '');
+  await expect(inspector.getByRole('button', { name: '信息来源', exact: true })).toHaveAttribute('aria-expanded', 'false');
   expect(await inspector.locator('.case-board-inspector-scroll').evaluate(element => element.scrollTop)).toBe(0);
 });
 
@@ -2668,8 +2885,8 @@ test('a failed desktop graph download falls back to usable known dossiers withou
   await theory.click();
   const detail = page.getByRole('dialog', { name: '可能有内应协助详情' });
   await expect(detail).toHaveAttribute('aria-modal', 'true');
-  await expect(detail.getByText('第 1 回合：玩家发现药店后门有被撬痕迹')).toBeHidden();
-  await detail.locator('.case-record-sources summary').click();
+  await expect(detail.locator('.case-record-sources').getByRole('listitem')).toHaveCount(0);
+  await detail.getByRole('button', { name: '信息来源', exact: true }).click();
   await expect(detail.getByText('第 1 回合：玩家发现药店后门有被撬痕迹')).toBeVisible();
   await detail.getByRole('button', { name: '查看药店后门被撬资料', exact: true }).click();
   await expect(page.getByRole('dialog', { name: '药店后门被撬详情' })).toBeVisible();
@@ -2685,6 +2902,8 @@ test('a failed desktop graph download falls back to usable known dossiers withou
   await drawer.getByRole('tab', { name: '日志', exact: true }).click();
   await expect(drawer.getByRole('list', { name: '行动记录' })).toBeVisible();
   await drawer.getByRole('button', { name: '关闭资料', exact: true }).click();
+  // This is a fresh visit; reopening during the retained exit intentionally keeps its tab.
+  await expect(page.locator('.info-drawer-react')).not.toHaveAttribute('data-ui-phase', /.+/);
   await expect(page.locator('.dock-input')).toHaveValue('查看案件资料\n然后继续调查');
   await expect(page.locator('.party-compact')).toHaveCount(2);
   await page.getByRole('button', { name: '资料', exact: true }).click();
@@ -2746,8 +2965,8 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     await expect(sceneDetail.locator('.record-detail-media img')).toHaveCSS('object-fit', 'contain');
     await page.setViewportSize({ width: size.width, height: 300 });
     const sources = sceneDetail.locator('.case-record-sources');
-    await sources.locator('summary').click();
-    await expect(sources).toHaveAttribute('open', '');
+    await sources.getByRole('button', { name: '信息来源', exact: true }).click();
+    await expect(sources.getByRole('button', { name: '信息来源', exact: true })).toHaveAttribute('aria-expanded', 'true');
     await expect(sources).toContainText('第 1 回合：玩家发现药店后门有被撬痕迹');
     const relatedRecord = sceneDetail.getByRole('button', { name: '查看现场记录 1资料', exact: true });
     await relatedRecord.scrollIntoViewIfNeeded();
@@ -2756,12 +2975,12 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     await relatedRecord.click();
     const eventDetail = page.getByRole('dialog', { name: '现场记录 1详情', exact: true });
     await settleUiMotion(page);
-    await expect(eventDetail.locator('.case-record-sources')).not.toHaveAttribute('open', '');
+    await expect(eventDetail.getByRole('button', { name: '信息来源', exact: true })).toHaveAttribute('aria-expanded', 'false');
     expect(await eventDetail.locator('.case-board-inspector-scroll').evaluate(element => element.scrollTop)).toBe(0);
-    await eventDetail.locator('.case-record-sources summary').click();
-    await expect(eventDetail.locator('.case-record-sources')).toHaveAttribute('open', '');
+    await eventDetail.getByRole('button', { name: '信息来源', exact: true }).click();
+    await expect(eventDetail.getByRole('button', { name: '信息来源', exact: true })).toHaveAttribute('aria-expanded', 'true');
     await eventDetail.getByRole('button', { name: '返回上一份资料', exact: true }).click();
-    await expect(sources).toHaveAttribute('open', '');
+    await expect(sources.getByRole('button', { name: '信息来源', exact: true })).toHaveAttribute('aria-expanded', 'true');
     await expect.poll(() => sceneDetail.locator('.case-board-inspector-scroll').evaluate(element => element.scrollTop)).toBe(readingPosition);
     await page.setViewportSize(size);
     await sceneDetail.getByRole('button', { name: '返回上一份资料' }).click();
@@ -2787,6 +3006,8 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     await expect.poll(() => workspace.evaluate(element => element.scrollTop)).toBe(casePosition);
     await page.screenshot({ path: testInfo.outputPath('case-archive.png') });
     await drawer.getByRole('button', { name: '关闭资料', exact: true }).click(); await expect(opener).toBeFocused();
+    // A complete dismissal starts a fresh reading session; a reversal retains the current one.
+    await expect.poll(() => page.locator('.info-drawer-react[data-ui-phase="closing"]').count()).toBe(0);
     await opener.click();
     await expect(drawer.getByRole('searchbox')).toHaveCount(0);
     expect(await workspace.evaluate(element => element.scrollTop)).toBe(0);

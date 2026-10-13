@@ -11,6 +11,8 @@ export default defineConfig({
     timeout: 5_000
   },
   fullyParallel: true,
+  // Keep real compositor-frame checks reliable on a shared development machine.
+  workers: 4,
   reporter: [['list']],
   use: {
     baseURL: `http://127.0.0.1:${port}`,

@@ -28,8 +28,12 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
   const [opening, setOpening] = useState(0);
   const logScrollPosition = useRef(0);
   const progressReading = useRef<{ scrollTop: number; historyOpen?: boolean } | null>(null);
+  const historyOpen = useRef<boolean | undefined>(undefined);
+  const readingSession = useRef(false);
+  const sessionTab = useRef(initialTab);
   const caseReadingState = useRef<CaseBoardReadingState | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
+  const restoredPage = useRef<{ page: HTMLDivElement; tab: InfoDrawerTab } | null>(null);
   useReadingMotion(pageRef, activeTab, open);
   const portrait = usePortraitLayout();
   const id = useId();
@@ -78,11 +82,17 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
   }, [portrait]);
 
   useLayoutEffect(() => {
-    if (!open && motion.present) return;
+    if (!motion.present) {
+      readingSession.current = false;
+      restoredPage.current = null;
+    } else if (!open || (readingSession.current && sessionTab.current === initialTab)) return;
     logScrollPosition.current = 0;
     progressReading.current = null;
+    historyOpen.current = undefined;
     caseReadingState.current = null;
     if (open) {
+      readingSession.current = true;
+      sessionTab.current = initialTab;
       setActiveTab(initialTab);
       setOpening((current) => current + 1);
     }
@@ -92,7 +102,7 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
     if (activeTab === 'progress' && pageRef.current) {
       progressReading.current = {
         scrollTop: pageRef.current.scrollTop,
-        historyOpen: pageRef.current.querySelector<HTMLDetailsElement>('.investigation-history')?.open
+        historyOpen: historyOpen.current
       };
     }
     setActiveTab(tab);
@@ -100,11 +110,11 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
   useLayoutEffect(() => {
     const page = pageRef.current;
     if (!page || !open) return;
+    if (restoredPage.current?.page === page && restoredPage.current.tab === activeTab) return;
     const reading = open && activeTab === 'progress' ? progressReading.current : null;
-    const history = page.querySelector<HTMLDetailsElement>('.investigation-history');
-    if (history && reading?.historyOpen !== undefined) history.open = reading.historyOpen;
     page.scrollTop = reading?.scrollTop ?? 0;
-  }, [activeTab, open]);
+    restoredPage.current = { page, tab: activeTab };
+  }, [activeTab, open, opening]);
 
   useEffect(() => {
     if (drawerRef.current) drawerRef.current.inert = !open;
@@ -179,7 +189,8 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
         </header>
 
         <div key={opening} ref={pageRef} className={`info-drawer-page ${activeTab}-page`} role="tabpanel" id={`${id}-page`} aria-labelledby={`${id}-${activeTab}`} tabIndex={activeTab === 'progress' ? 0 : undefined}>
-        {motion.present && activeTab === 'progress' ? <InvestigationProgress state={state} /> : null}
+        {motion.present && activeTab === 'progress' ? <InvestigationProgress state={state}
+          initialHistoryOpen={progressReading.current?.historyOpen} onHistoryOpenChange={(value) => { historyOpen.current = value; }} /> : null}
 
         {motion.present && activeTab === 'board' ? (
           <CaseBoard state={state} readingState={caseReadingState} />

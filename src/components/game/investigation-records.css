@@ -10,13 +10,14 @@
 .objective-row > strong { color: var(--text); font-size: 15px; line-height: 1.8; font-weight: 400; overflow-wrap: anywhere; }
 .objective-row.completed > span { color: #b6c4ab; }
 .objective-row.failed > span { color: #d7a593; }
-.investigation-history summary { display: flex; align-items: center; gap: 8px; min-height: 44px; list-style: none; color: var(--accent); font: 400 14px/1.5 var(--ui-font); cursor: pointer; }
-.investigation-history summary::-webkit-details-marker { display: none; }
-.investigation-history summary > span { flex: 1; }
-.investigation-history summary > svg:last-child { transition: transform 130ms ease; }
-.investigation-history[open] summary > svg:last-child { transform: rotate(180deg); }
-.investigation-history summary:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: -2px; }
-.investigation-history[open] .objective-list { padding: 8px 0 2px; border-top: 1px solid var(--line-soft); }
+.investigation-history .investigation-history-toggle { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; min-height: 44px; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: var(--accent); font: 400 14px/1.5 var(--ui-font); text-align: left; cursor: pointer; touch-action: manipulation; }
+.investigation-history-toggle > span { flex: 1; }
+.investigation-history-toggle > svg { flex: 0 0 auto; }
+.investigation-history-toggle > svg:last-child { transition: transform 130ms ease; }
+.investigation-history[data-expanded='true'] .investigation-history-toggle > svg:last-child { transform: rotate(180deg); }
+.investigation-history-toggle:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: -2px; }
+/* Keep the body's spacing while it is clipped, so closing has no first-frame jump. */
+.investigation-history .objective-list { padding: 8px 0 2px; border-top: 1px solid var(--line-soft); }
 .progress-stat, .investigation-note { margin: 0; font-size: 15px; line-height: 1.8; color: var(--text); }
 .investigation-ending p { margin: 0; color: var(--text); font-size: 15px; line-height: 1.8; overflow-wrap: anywhere; }
 .clock-row { display: grid; gap: 8px; padding: 2px 0 8px; }
@@ -42,4 +43,4 @@
 .action-log-list > .action-log-empty::before { display: none; }
 @media (max-height: 500px) { .action-log-list > .action-log-empty { gap: 0; padding: 0; } }
 @media (max-height: 420px) { .action-log-heading { display: none; } }
-@media (prefers-reduced-motion: reduce) { .investigation-history summary > svg:last-child { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .investigation-history-toggle > svg:last-child { transition: none; } }
