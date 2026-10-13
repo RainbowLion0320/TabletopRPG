@@ -597,6 +597,45 @@ public class GameAndroidTest {
         }
     }
 
+    @Test public void shortWindowNavigationRemainsTouchableWithNativeIme() throws Exception {
+        for (int party : new int[]{1, 2, 4}) {
+            fresh();
+            try {
+                viewport(320, 568); click("开始游戏");
+                for (int i = 1; i < party; i++) js("document.querySelectorAll('.preset-selection-input')[" + i + "].click()");
+                until("document.querySelectorAll('.preset-selection-input:checked').length===" + party);
+                click("进入游戏");
+                String draft = "先记录目击者的话。\n再查看门廊细节。\n".repeat(4);
+                fill(".dock-input", draft); viewport(320, 300);
+                nativeTap(".narrative-toggle-btn"); awaitUiMotion();
+                assertEquals("Android's late-loaded styles keep the short toolbar out of layout and reserve heading space", "true", js("(()=>{const top=document.querySelector('.game-top'),header=document.querySelector('.narrative-header'),panel=document.querySelector('.narrative-panel'),ts=getComputedStyle(top),hs=getComputedStyle(header);return ts.position==='absolute'&&top.getBoundingClientRect().height===0&&parseFloat(ts.minHeight)===0&&parseFloat(hs.paddingRight)>=100&&Math.abs(panel.getBoundingClientRect().top-document.querySelector('.game-screen').getBoundingClientRect().top-parseFloat(getComputedStyle(document.querySelector('.game-screen')).paddingTop))<=1})()"));
+                for (String selector : new String[]{".menu-button", ".drawer-tab"}) {
+                    reachable(selector);
+                    assertEquals("Short-window navigation keeps real touch targets", "true", js("(()=>{const r=document.querySelector(" + JSONObject.quote(selector) + ").getBoundingClientRect();return r.width>=44&&r.height>=44})()"));
+                }
+                nativeTap(".dock-input"); awaitSettledIme(true);
+                assertEquals("A real keyboard is visible with the native WebView explicitly sized to 300 CSS pixels", "true", js("Math.abs(innerHeight-300)<2&&document.activeElement===document.querySelector('.dock-input')"));
+                screenshot("short-controls-ime-" + party);
+                nativeTap(".menu-button"); until("document.querySelector('.game-menu.open')"); awaitSettledIme(false);
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                until("!document.querySelector('.game-menu')");
+                assertEquals("System Back returns focus to the visible menu entry", "true", js("document.activeElement===document.querySelector('.menu-button')"));
+                nativeTap(".dock-input"); awaitSettledIme(true);
+                nativeTap(".drawer-tab"); until("document.querySelector('.info-drawer-react.open')"); awaitSettledIme(false);
+                reachable("[aria-label='关闭资料']"); nativeTap("[aria-label='关闭资料']");
+                until("!document.querySelector('.info-drawer-react.open')"); awaitUiMotion();
+                assertEquals("Closing references returns focus to the visible book entry", "true", js("document.activeElement===document.querySelector('.drawer-tab')"));
+                assertEquals("Both navigation paths preserve every draft line", JSONObject.quote(draft), js("document.querySelector('.dock-input').value"));
+                assertEquals("Navigation preserves the complete selected party", Integer.toString(party), js("document.querySelectorAll('.party-compact').length"));
+                assertEquals("Navigation preserves the current actor", JSONObject.quote("亨利·格雷"), js("document.querySelector('.party-compact.active strong').textContent"));
+                reachable(".dock-input"); reachable(".dock-submit");
+                assertEquals("Short navigation keeps a 140-pixel story frame, a 75-pixel reading body and no page overflow", "true", js("document.querySelector('.narrative-panel').getBoundingClientRect().height>=140&&document.querySelector('.narrative-scroll').clientHeight>=75&&document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight"));
+                assertNoResizeErrors(); screenshot("short-controls-return-" + party);
+                System.out.println("SHORT_CONTROLS_NATIVE: " + js("JSON.stringify({party:document.querySelectorAll('.party-compact').length,innerWidth,innerHeight,top:document.querySelector('.game-top').getBoundingClientRect().toJSON(),topPosition:getComputedStyle(document.querySelector('.game-top')).position,headingPadding:getComputedStyle(document.querySelector('.narrative-header')).paddingRight,story:document.querySelector('.narrative-scroll').clientHeight,menu:document.querySelector('.menu-button').getBoundingClientRect().toJSON(),book:document.querySelector('.drawer-tab').getBoundingClientRect().toJSON()})"));
+            } finally { activity.close(); }
+        }
+    }
+
     @Test public void storyReadingKeepsItsBookmarkAcrossFoldingAndNativeIme() throws Exception {
         for (int party : new int[]{1, 2, 4}) {
             fresh();
@@ -954,7 +993,7 @@ public class GameAndroidTest {
                 viewport(size[0], size[1]); screenshot(prefix + "-log"); reachable("[aria-label='关闭资料']");
                 String referenceDraft = js("document.querySelector('.dock-input').value");
                 viewport(size[0], 300); nativeTap("[aria-label='关闭资料']");
-                until("!document.querySelector('.info-drawer-react.open')&&document.activeElement===document.querySelector('.dock-actor-avatar')");
+                until("!document.querySelector('.info-drawer-react.open')&&document.activeElement===document.querySelector('.drawer-tab')");
                 assertEquals("Closing short-window references keeps the action draft", referenceDraft, js("document.querySelector('.dock-input').value"));
                 screenshot(prefix + "-reference-focus-restored"); viewport(size[0], size[1]);
                 nativeTap(".drawer-tab"); until("document.querySelector('.case-board-mobile-card')");
@@ -973,7 +1012,7 @@ public class GameAndroidTest {
                 until("!document.querySelector('.game-menu') && document.activeElement===document.querySelector('.menu-button')");
                 String currentDraft = js("document.querySelector('.dock-input').value");
                 menu("AI 设置"); until("document.querySelector('.api-config-card')"); viewport(size[0], 300);
-                nativeTap(".api-config-close"); until("!document.querySelector('.api-config-card')&&document.activeElement===document.querySelector('.dock-actor-avatar')");
+                nativeTap(".api-config-close"); until("!document.querySelector('.api-config-card')&&document.activeElement===document.querySelector('.menu-button')");
                 assertEquals("Closing short-window AI settings keeps the action draft", currentDraft, js("document.querySelector('.dock-input').value"));
                 screenshot(prefix + "-api-focus-restored"); viewport(size[0], size[1]);
                 String currentActor = js("document.querySelector('.party-compact.active strong').textContent");
@@ -1032,7 +1071,7 @@ public class GameAndroidTest {
                 viewport(size[0], 300);
                 reachable(".save-manager-close"); nativeTap(".save-manager-close");
                 until("!document.querySelector('.save-manager-card')");
-                assertEquals("Closing the reader in a short viewport returns focus to the visible investigator", "true", js("document.activeElement.classList.contains('dock-actor-avatar')"));
+                assertEquals("Closing the reader in a short viewport returns focus to its visible menu opener", "true", js("document.activeElement.classList.contains('menu-button')"));
                 assertEquals("Cancelling the reader keeps the current draft", currentDraft, js("document.querySelector('.dock-input').value"));
                 screenshot(prefix + "-save-focus-restored");
                 viewport(size[0], size[1]);
@@ -1043,7 +1082,7 @@ public class GameAndroidTest {
                 viewport(size[0], 300);
                 reachable(".game-menu footer button"); nativeTap(".game-menu footer button");
                 until("!document.querySelector('.game-menu')");
-                assertEquals("Closing the menu in a short viewport returns focus to the visible investigator", "true", js("document.activeElement.classList.contains('dock-actor-avatar')"));
+                assertEquals("Closing the menu in a short viewport returns focus to its visible menu entry", "true", js("document.activeElement.classList.contains('menu-button')"));
                 assertEquals("Closing the menu keeps the current draft", currentDraft, js("document.querySelector('.dock-input').value"));
                 viewport(size[0], size[1]);
                 viewport(size[0], 300); fill(".dock-input", "输入法占位后仍可完成输入。");
@@ -1614,12 +1653,12 @@ public class GameAndroidTest {
                 assertEquals("The ending is settled only once", "true", js("window.qaEndingSaved.state.scenarioProgress.settledEndingIds.length===1&&window.qaEndingSaved.state.scenarioProgress.endingId===" + JSONObject.quote(endings[index])));
                 nativeTap(".menu-button"); until("document.querySelector('.game-menu')"); viewport(size[0], 300);
                 nativeTap(".game-menu-close"); until("!document.querySelector('.game-menu')");
-                assertEquals("Closing a short-window menu returns to the ending review", "true", js("document.activeElement===document.querySelector('.ending-actions button:first-child')"));
+                assertEquals("Closing a short-window menu returns to its visible menu entry", "true", js("document.activeElement===document.querySelector('.menu-button')"));
                 viewport(size[0], size[1]); menu("读取存档"); until("document.querySelector('.save-slot-card')"); viewport(size[0], 300);
                 nativeTap(".save-manager-close"); until("!document.querySelector('.save-manager-card')");
-                assertEquals("Closing short-window saves returns to the read-only ending", "true", js("document.activeElement===document.querySelector('.ending-actions button:first-child')&&!document.querySelector('.dock-input')&&!document.querySelector('.thinking-line')"));
+                assertEquals("Closing short-window saves returns to the visible menu opener on the read-only ending", "true", js("document.activeElement===document.querySelector('.menu-button')&&!document.querySelector('.dock-input')&&!document.querySelector('.thinking-line')"));
                 viewport(size[0], size[1]); menu("AI 设置"); until("document.querySelector('.api-config-card')"); viewport(size[0], 300);
-                nativeTap(".api-config-card footer .ghost-btn"); until("!document.querySelector('.api-config-card')&&document.activeElement===document.querySelector('.ending-actions button:first-child')");
+                nativeTap(".api-config-card footer .ghost-btn"); until("!document.querySelector('.api-config-card')&&document.activeElement===document.querySelector('.menu-button')");
                 viewport(size[0], size[1]); screenshot("ending-" + size[0] + "-return");
             } finally { activity.close(); }
         }

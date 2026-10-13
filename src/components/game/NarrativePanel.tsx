@@ -151,7 +151,7 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
           <div className="narrative-title">对话记录</div>
         )}
         <div className="narrative-tools">
-          {hasNewContent && <button className="narrative-new-content" onClick={readNewContent} aria-label="查看新剧情" aria-controls={scrollId} type="button"><ChevronDown size={14} />新内容</button>}
+          {hasNewContent && <button className="narrative-new-content" onClick={readNewContent} aria-label="查看新剧情" aria-controls={scrollId} type="button"><ChevronDown size={14} /><span className="narrative-new-content-label">新内容</span></button>}
           <button
             className="narrative-toggle-btn"
             aria-label={expanded ? '收起剧情' : '展开剧情'}

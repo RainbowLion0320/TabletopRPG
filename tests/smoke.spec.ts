@@ -340,6 +340,242 @@ for (const size of [
 }
 
 for (const size of [
+  { width: 320, height: 300, party: 1 }, { width: 320, height: 300, party: 4 },
+  { width: 390, height: 300, party: 4 }, { width: 430, height: 280, party: 1 },
+  { width: 320, height: 301, party: 4 }, { width: 320, height: 340, party: 4 },
+  { width: 320, height: 300, party: 4, safe: true },
+  { width: 1440, height: 300, party: 4 }
+]) {
+  test(`short-screen controls open directly without covering story or long actions at ${size.width}x${size.height} with ${size.party} players${'safe' in size ? ' and safe insets' : ''}`, async ({ page }, testInfo) => {
+    test.setTimeout(45_000);
+    await page.setViewportSize(size);
+    if ('safe' in size) await page.addInitScript(() => {
+      document.addEventListener('DOMContentLoaded', () => {
+        for (const edge of ['top', 'right', 'bottom', 'left']) document.documentElement.style.setProperty(`--safe-area-inset-${edge}`, '20px');
+      }, { once: true });
+    });
+    const state = createDynamicCaseBoardSave();
+    state.players = ['亨利·格雷', '艾达·华莱士', '托马斯·贝尔', '罗伯特·肖'].slice(0, size.party)
+      .map((name, index) => makeInvestigator({ name, id: `short-control-${index}` }));
+    state.messages = Array.from({ length: 16 }, (_, index) => ({ id: `short-record-${index}`, type: 'dm' as const,
+      text: `第${index + 1}页。` + '窗外的雨声与远处钟声交织，调查员翻看随身本上的记录。\n\n'.repeat(4) }));
+    let narratorRequests = 0, externalRequests = 0;
+    const reply = '雨声仍在窗外回响，伊莎贝拉点点头，示意调查员继续。';
+    await page.route('https://short-controls.test/v1/responses', async route => {
+      const narrator = (route.request().postData() ?? '').includes('COC 第七版 AI DM Agent');
+      if (narrator) narratorRequests++;
+      const content = narrator ? { narrative: reply, activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}, keywords: [] }
+        : { facts: [], nodes: [], edges: [] };
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ output_text: JSON.stringify(content) }) });
+    });
+    page.on('request', request => {
+      if (/\/(responses|chat\/completions)$/.test(new URL(request.url()).pathname) && !request.url().startsWith('https://short-controls.test/')) externalRequests++;
+    });
+    await gotoWithSave(page, state, { apiKey: 'test-only', provider: 'custom', protocol: 'responses', endpoint: 'https://short-controls.test/v1', model: 'test-only' });
+    await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+    await page.evaluate(() => document.fonts.ready); await settleUiMotion(page);
+    const input = page.locator('.dock-input'), story = page.getByRole('region', { name: '剧情记录', exact: true });
+    await story.evaluate(element => { element.scrollTop = 0; });
+    await input.fill('礼貌地问好，等待委托人继续讲述。');
+    await page.getByRole('button', { name: size.party === 1 ? '提交' : '下一位', exact: true }).click();
+    if (size.party === 1) await expect(page.locator('.story-message.dm').last()).toContainText(reply);
+    await expect(input).toBeEnabled();
+    const actor = size.party === 1 ? 0 : 1;
+    const draft = '先记录门廊与窗框的细节。\n再询问失踪前来访者的时间。\n'.repeat(8);
+    await input.fill(draft); await settleUiMotion(page);
+    const newContent = page.getByRole('button', { name: '查看新剧情', exact: true });
+    await expect(newContent).toBeVisible();
+    const menuEntry = page.getByRole('button', { name: '菜单', exact: true }), referenceEntry = page.getByRole('button', { name: '资料', exact: true });
+    const toggle = page.locator('.narrative-toggle-btn'), measures: unknown[] = [];
+    async function verifyControls(expanded: boolean) {
+      await expect(menuEntry).toHaveCount(1); await expect(referenceEntry).toHaveCount(1);
+      await expect(toggle).toHaveAttribute('aria-expanded', String(expanded));
+      await expect(newContent).toBeVisible();
+      const geometry = await page.evaluate(() => {
+        const controls = Array.from(document.querySelectorAll<HTMLButtonElement>('.menu-button, .drawer-tab, .narrative-new-content, .narrative-toggle-btn'))
+          .filter(element => element.getBoundingClientRect().height > 0)
+          .map(element => { const rect = element.getBoundingClientRect(); return { name: element.getAttribute('aria-label') ?? element.title,
+            x: rect.x, y: rect.y, width: rect.width, height: rect.height,
+            inside: rect.left >= -.5 && rect.top >= -.5 && rect.right <= innerWidth + .5 && rect.bottom <= innerHeight + .5,
+            hit: element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)) }; });
+        const input = document.querySelector('.dock-input')!.getBoundingClientRect(), submit = document.querySelector('.dock-submit')!.getBoundingClientRect();
+        const npc = document.querySelector('.npc-nameplate')!.getBoundingClientRect();
+        return { controls, inputHeight: input.height, inputInside: input.top >= 0 && input.bottom <= innerHeight + .5, submitInside: submit.top >= 0 && submit.bottom <= innerHeight + .5,
+          panelHeight: document.querySelector('.narrative-panel')!.getBoundingClientRect().height, npcWidth: npc.width,
+          npcClear: !controls.some(control => control.x < npc.right && control.x + control.width > npc.left && control.y < npc.bottom && control.y + control.height > npc.top),
+          storyHeight: document.querySelector('.narrative-scroll')!.getBoundingClientRect().height,
+          overflow: document.documentElement.scrollWidth > innerWidth || document.documentElement.scrollHeight > innerHeight };
+      });
+      measures.push({ expanded, geometry });
+      writeFileSync(testInfo.outputPath('short-control-measures.json'), JSON.stringify({ size, measures }, null, 2));
+      expect(geometry.controls).toHaveLength(4);
+      for (const control of geometry.controls) {
+        expect(control.width, `${control.name} width`).toBeGreaterThanOrEqual(44);
+        expect(control.height, `${control.name} height`).toBeGreaterThanOrEqual(44);
+        expect(control.inside, `${control.name} remains on screen`).toBe(true);
+        expect(control.hit, `${control.name} is not covered`).toBe(true);
+      }
+      expect(geometry.inputInside && geometry.submitInside).toBe(true); expect(geometry.storyHeight).toBeGreaterThanOrEqual(75);
+      expect(geometry.npcClear).toBe(true); expect(geometry.npcWidth).toBeGreaterThanOrEqual(44);
+      if (size.width < 700) expect(geometry.panelHeight).toBeGreaterThanOrEqual(140);
+      expect(geometry.overflow).toBe(false);
+      await expect(input).toHaveValue(draft); await expect(input).toHaveAttribute('aria-label', `${state.players[actor].name}的行动`);
+      await expect(page.locator('.party-compact')).toHaveCount(size.party);
+      await page.screenshot({ path: testInfo.outputPath(`short-controls-${expanded ? 'expanded' : 'collapsed'}.png`) });
+    }
+    for (const expanded of [false, true]) {
+      if (expanded) { await toggle.click(); await settleUiMotion(page); }
+      await verifyControls(expanded);
+      await menuEntry.click();
+      const menu = page.getByRole('dialog', { name: '调查菜单', exact: true }); await expect(menu).toBeVisible();
+      if (expanded) await menu.getByRole('button', { name: '关闭调查菜单', exact: true }).click(); else await page.keyboard.press('Escape');
+      await expect(menu).toHaveCount(0); await expect(menuEntry).toBeFocused(); await settleUiMotion(page);
+      await referenceEntry.click();
+      const drawer = page.getByRole('dialog', { name: '资料', exact: true }); await expect(drawer).toBeVisible();
+      await expect(drawer.getByRole('tab', { name: '案件板', exact: true })).toBeVisible();
+      if (expanded) await page.keyboard.press('Escape'); else await drawer.getByRole('button', { name: '关闭资料', exact: true }).click();
+      await expect(drawer).toHaveCount(0); await expect(referenceEntry).toBeFocused(); await settleUiMotion(page);
+      await verifyControls(expanded);
+    }
+    await newContent.click(); await expect(newContent).toHaveCount(0);
+    await expect(story).toBeFocused(); await expect(input).toHaveValue(draft);
+    await expect.poll(() => story.evaluate(element => element.scrollHeight - element.clientHeight - element.scrollTop)).toBeLessThanOrEqual(1);
+    expect(narratorRequests).toBe(size.party === 1 ? 1 : 0); expect(externalRequests).toBe(0);
+  });
+}
+
+for (const party of [1, 4]) {
+  test(`Android entry keeps short-screen controls and save feedback aligned for ${party} players`, async ({ page, browser }, testInfo) => {
+    test.setTimeout(60_000);
+    const size = { width: 320, height: 300 };
+    await page.setViewportSize(size);
+    const state = createDynamicCaseBoardSave();
+    state.players = ['亨利·格雷', '艾达·华莱士', '托马斯·贝尔', '罗伯特·肖'].slice(0, party)
+      .map((name, index) => makeInvestigator({ name, id: `android-short-${index}` }));
+    state.messages = Array.from({ length: 16 }, (_, index) => ({ id: `android-short-record-${index}`, type: 'dm' as const,
+      text: `第${index + 1}页。` + '雨声在门廊回响，调查员核对随身本上的来访记录。\n\n'.repeat(4) }));
+    const apiConfig = { apiKey: 'qa-only', provider: 'custom', protocol: 'responses', endpoint: 'https://android-short.test/v1', model: 'qa-only' };
+    let narratorRequests = 0, externalRequests = 0;
+    const reply = '伊莎贝拉轻轻点头，示意调查员继续询问。';
+    await page.route('https://android-short.test/v1/responses', async route => {
+      const narrator = (route.request().postData() ?? '').includes('COC 第七版 AI DM Agent');
+      if (narrator) narratorRequests++;
+      const content = narrator ? { narrative: reply, activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}, keywords: [] }
+        : { facts: [], nodes: [], edges: [] };
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ output_text: JSON.stringify(content) }) });
+    });
+    await page.route('**/__api_config', route => route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }));
+    page.on('request', request => {
+      if (/\/(responses|chat\/completions)$/.test(new URL(request.url()).pathname) && !request.url().startsWith('https://android-short.test/')) externalRequests++;
+    });
+    await page.addInitScript(({ gameState, apiConfig }) => {
+      localStorage.clear();
+      localStorage.setItem('trpg-api', JSON.stringify(apiConfig));
+      localStorage.setItem('trpg-saves-v2', JSON.stringify([{
+        id: 1718400000000, savedAt: '2026/6/15 20:00:00', scene: '摩勒住宅',
+        players: gameState.players.map(player => player.name).join('、'), gameState,
+        moduleId: gameState.scenarioProgress?.moduleId, moduleVersion: gameState.scenarioProgress?.moduleVersion,
+        contentHash: gameState.scenarioProgress?.contentHash, version: gameState.scenarioProgress ? 8 : 6
+      }]));
+    }, { gameState: state, apiConfig });
+    // Load the real async Android module graph first; do not inject CSS, classes or native plugins.
+    await page.goto('/mobile/index.html');
+    await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'AI 设置', exact: true })).toHaveCount(0);
+    await page.evaluate(() => document.fonts.ready); await settleUiMotion(page);
+    const entry = await page.evaluate(() => ({
+      module: document.querySelector<HTMLScriptElement>('script[type="module"][src="/src/android/main.tsx"]')?.getAttribute('src'),
+      androidUi: document.documentElement.classList.contains('android-app'),
+      platform: (window as typeof window & { Capacitor?: { getPlatform(): string } }).Capacitor?.getPlatform() ?? 'web',
+      styles: Array.from(document.querySelectorAll('style[data-vite-dev-id]'), style => style.getAttribute('data-vite-dev-id'))
+    }));
+    writeFileSync(testInfo.outputPath('android-entry-initialization.json'), JSON.stringify(entry, null, 2));
+    expect(entry.module).toBe('/src/android/main.tsx'); expect(entry.androidUi).toBe(true); expect(entry.platform).toBe('web');
+    const input = page.locator('.dock-input'), story = page.getByRole('region', { name: '剧情记录', exact: true });
+    await story.evaluate(element => { element.scrollTop = 0; });
+    await input.fill('先问候委托人，请她继续讲述。');
+    await page.getByRole('button', { name: party === 1 ? '提交' : '下一位', exact: true }).click();
+    if (party === 1) await expect(page.locator('.story-message.dm').last()).toContainText(reply);
+    await expect(input).toBeEnabled();
+    const draft = '先记录门廊痕迹。\n再核对来访时间。\n'.repeat(8);
+    await input.fill(draft); await settleUiMotion(page);
+    const toggle = page.locator('.narrative-toggle-btn'), newContent = page.getByRole('button', { name: '查看新剧情', exact: true });
+    const menuEntry = page.getByRole('button', { name: '菜单', exact: true }), referenceEntry = page.getByRole('button', { name: '资料', exact: true });
+    const measures: { expanded: boolean; storyHeight: number; [key: string]: unknown }[] = [];
+    for (const expanded of [false, true]) {
+      if (expanded) { await toggle.click(); await settleUiMotion(page); }
+      await expect(toggle).toHaveAttribute('aria-expanded', String(expanded)); await expect(newContent).toBeVisible();
+      const geometry = await page.evaluate(() => {
+        const box = (selector: string) => { const r = document.querySelector(selector)!.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height, right: r.right, bottom: r.bottom }; };
+        const top = document.querySelector('.game-top')!, topStyle = getComputedStyle(top), header = box('.narrative-header'), npc = box('.npc-nameplate');
+        const controls = Array.from(document.querySelectorAll<HTMLButtonElement>('.menu-button, .drawer-tab, .narrative-new-content, .narrative-toggle-btn'), element => {
+          const r = element.getBoundingClientRect(); return { name: element.getAttribute('aria-label') ?? element.title, width: r.width, height: r.height,
+            inside: r.left >= -.5 && r.top >= -.5 && r.right <= innerWidth + .5 && r.bottom <= innerHeight + .5,
+            sameHeading: r.top >= header.y - .5 && r.bottom <= header.bottom + .5,
+            npcClear: r.right <= npc.x || r.left >= npc.right || r.bottom <= npc.y || r.top >= npc.bottom,
+            hit: element.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)) };
+        });
+        const dock = box('.action-dock'), field = box('.dock-input'), submit = box('.dock-submit');
+        return { top: box('.game-top'), topPosition: topStyle.position, topMinHeight: topStyle.minHeight, topPadding: topStyle.padding,
+          header, headerPaddingRight: getComputedStyle(document.querySelector('.narrative-header')!).paddingRight, npc, controls,
+          panel: box('.narrative-panel'), storyHeight: box('.narrative-scroll').height,
+          actionInside: field.y >= 0 && submit.y >= 0 && dock.bottom <= innerHeight + .5 && field.bottom <= innerHeight + .5 && submit.bottom <= innerHeight + .5,
+          overflow: document.documentElement.scrollWidth > innerWidth || document.documentElement.scrollHeight > innerHeight };
+      });
+      measures.push({ expanded, ...geometry });
+      writeFileSync(testInfo.outputPath('android-entry-measures.json'), JSON.stringify({ party, entry, measures }, null, 2));
+      await page.screenshot({ path: testInfo.outputPath(`android-entry-${expanded ? 'expanded' : 'normal'}.png`) });
+      expect(geometry.topPosition).toBe('absolute'); expect(geometry.top.height).toBe(0); expect(geometry.topMinHeight).toBe('0px'); expect(geometry.topPadding).toBe('0px');
+      expect(geometry.headerPaddingRight).toBe('100px'); expect(geometry.controls).toHaveLength(4);
+      for (const control of geometry.controls) {
+        expect(control.width, control.name).toBeGreaterThanOrEqual(44); expect(control.height, control.name).toBeGreaterThanOrEqual(44);
+        expect(control.inside && control.sameHeading && control.npcClear && control.hit, control.name).toBe(true);
+      }
+      expect(geometry.npc.width).toBeGreaterThanOrEqual(44); expect(geometry.panel.height).toBeGreaterThanOrEqual(140);
+      expect(geometry.storyHeight).toBeGreaterThanOrEqual(75); expect(geometry.actionInside).toBe(true); expect(geometry.overflow).toBe(false);
+      await menuEntry.click();
+      const menu = page.getByRole('dialog', { name: '调查菜单', exact: true }); await expect(menu).toBeVisible();
+      await menu.getByRole('button', { name: '保存游戏', exact: true }).click(); await expect(menu).toHaveCount(0);
+      await settleUiMotion(page);
+      const status = page.locator('.game-notice[role="status"]'); await expect(status).toHaveText('已保存');
+      const notice = await status.evaluate(element => {
+        const toast = element.querySelector('.toast')!, r = toast.getBoundingClientRect(), style = getComputedStyle(toast);
+        const header = document.querySelector('.narrative-header')!.getBoundingClientRect(), dock = document.querySelector('.action-dock')!.getBoundingClientRect();
+        return { top: r.top, bottom: r.bottom, headerBottom: header.bottom,
+          inside: r.left >= 0 && r.right <= innerWidth && r.top >= header.bottom && r.bottom <= dock.top,
+          fontSize: parseFloat(style.fontSize), drawn: style.borderImageSource.includes('panel-frame'),
+          readable: toast.scrollWidth <= toast.clientWidth + 1, passive: getComputedStyle(element).pointerEvents === 'none' };
+      });
+      measures.at(-1)!.notice = notice;
+      writeFileSync(testInfo.outputPath('android-entry-measures.json'), JSON.stringify({ party, entry, measures }, null, 2));
+      expect(notice.inside && notice.drawn && notice.readable && notice.passive).toBe(true); expect(notice.fontSize).toBeGreaterThanOrEqual(15);
+      await page.screenshot({ path: testInfo.outputPath(`android-save-${expanded ? 'expanded' : 'normal'}.png`) });
+      await referenceEntry.click(); const drawer = page.getByRole('dialog', { name: '资料', exact: true }); await expect(drawer).toBeVisible();
+      if (expanded) await drawer.getByRole('button', { name: '关闭资料', exact: true }).click(); else await page.keyboard.press('Escape');
+      await expect(drawer).toHaveCount(0); await expect(referenceEntry).toBeFocused();
+      await menuEntry.click(); await expect(menu).toBeVisible(); await page.keyboard.press('Escape'); await expect(menu).toHaveCount(0); await expect(menuEntry).toBeFocused();
+      await expect(input).toHaveValue(draft); await expect(input).toHaveAttribute('aria-label', `${state.players[party === 1 ? 0 : 1].name}的行动`);
+      await expect(page.locator('.party-compact')).toHaveCount(party); await settleUiMotion(page);
+    }
+    // Compare against the actual web entry in isolated storage, not a relaxed native-only height limit.
+    const webContext = await browser.newContext({ viewport: size });
+    try {
+      const web = await webContext.newPage(); await gotoWithSave(web, state, apiConfig);
+      await web.getByRole('button', { name: '继续游戏', exact: true }).click(); await web.locator('.dock-input').fill(draft);
+      await web.evaluate(() => document.fonts.ready); await settleUiMotion(web);
+      for (const native of measures) {
+        if (native.expanded) { await web.locator('.narrative-toggle-btn').click(); await settleUiMotion(web); }
+        const webStoryHeight = await web.locator('.narrative-scroll').evaluate(element => element.getBoundingClientRect().height);
+        native.webStoryHeight = webStoryHeight;
+        expect(native.storyHeight).toBeGreaterThanOrEqual(webStoryHeight - 1);
+      }
+    } finally { await webContext.close(); }
+    writeFileSync(testInfo.outputPath('android-entry-measures.json'), JSON.stringify({ party, entry, measures }, null, 2));
+    expect(narratorRequests).toBe(party === 1 ? 1 : 0); expect(externalRequests).toBe(0);
+  });
+}
+
+for (const size of [
   { width: 1440, height: 280, party: 1 }, { width: 1440, height: 280, party: 4 },
   { width: 820, height: 360, party: 2 }, { width: 1440, height: 550, party: 4 }
 ]) {
@@ -2074,7 +2310,7 @@ for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height:
       await expect(draft).toHaveValue('继续查看门廊上的痕迹。');
     };
     await closeArchive();
-    await expect(page.locator('.dock-actor-avatar')).toBeFocused();
+    await expect(page.getByRole('button', { name: '资料', exact: true })).toBeFocused();
     await page.setViewportSize(size); await page.getByRole('button', { name: '资料', exact: true }).click();
     await page.getByRole('tab', { name: '日志' }).click();
     await expect.poll(() => list.evaluate(el => el.scrollTop)).toBe(0);
@@ -2186,20 +2422,20 @@ for (const size of [{ width: 320, height: 568, party: 1, endingId: 'END_C' }, { 
       await page.getByRole('button', { name: '菜单', exact: true }).click();
       await page.setViewportSize({ width: size.width, height: 300 });
       await page.getByRole('button', { name: '关闭调查菜单' }).click();
-      await expect(review).toBeFocused();
+      await expect(page.getByRole('button', { name: '菜单', exact: true })).toBeFocused();
       await page.setViewportSize(size);
       await page.getByRole('button', { name: '菜单', exact: true }).click();
       await page.getByRole('button', { name: '读取存档', exact: true }).click();
       await page.setViewportSize({ width: size.width, height: 300 });
       await page.getByRole('button', { name: '关闭存档列表' }).click();
-      await expect(review).toBeFocused();
+      await expect(page.getByRole('button', { name: '菜单', exact: true })).toBeFocused();
       await expect(ending).toContainText(outcome.summary);
       await page.setViewportSize(size);
       await page.getByRole('button', { name: '菜单', exact: true }).click();
       await page.getByRole('button', { name: 'AI 设置', exact: true }).click();
       await page.setViewportSize({ width: size.width, height: 300 });
       await page.getByRole('dialog', { name: 'AI DM 配置' }).getByRole('button', { name: '取消', exact: true }).click();
-      await expect(review).toBeFocused();
+      await expect(page.getByRole('button', { name: '菜单', exact: true })).toBeFocused();
       await expect(ending).toContainText(outcome.summary);
       await page.setViewportSize(size);
       expect(aiCalls).toBe(0);
@@ -3074,7 +3310,7 @@ test('desktop reference stays fully reachable after a low drag and short-window 
   await entry.click(); await expect(drawer).toBeVisible();
   await page.keyboard.press('Escape'); await expect(entry).toBeFocused();
   await page.setViewportSize({ width: 1440, height: 300 });
-  expect(await entry.evaluate(element => (element as HTMLElement).style.top)).toBe(lowPosition);
+  await expect.poll(() => entry.evaluate(element => (element as HTMLElement).style.top)).toBe(lowPosition);
   const moved = (await entry.boundingBox())!;
   await page.mouse.move(moved.x + moved.width / 2, moved.y + moved.height / 2);
   await page.mouse.down(); await page.mouse.move(moved.x + moved.width / 2, 1, { steps: 10 }); await page.mouse.up();
@@ -3435,7 +3671,7 @@ for (const size of [{ width: 320, height: 300 }, { width: 390, height: 844 }, { 
       await page.setViewportSize({ width: size.width, height: 300 });
       await dialog.getByRole('button', { name: '关闭 AI DM 配置' }).click();
       await expect(dialog).toHaveCount(0);
-      await expect(page.locator('.dock-actor-avatar')).toBeFocused();
+      await expect(opener).toBeFocused();
       await expect(draft).toHaveValue('查看信件，稍后继续描述。');
       await page.setViewportSize(fullSize);
     }
@@ -3876,14 +4112,14 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
       await page.getByRole('button', { name: '读取存档', exact: true }).click();
       await page.setViewportSize({ width: size.width, height: 300 });
       await dialog.getByRole('button', { name: '关闭存档列表' }).click();
-      await expect(page.locator('.dock-actor-avatar')).toBeFocused();
+      await expect(page.getByRole('button', { name: '菜单', exact: true })).toBeFocused();
       await expect(page.locator('.dock-input')).toHaveValue(draft);
       await page.setViewportSize({ width: size.width, height: size.height });
       await expect(page.locator('.dock-input')).toHaveValue(draft);
       await page.getByRole('button', { name: '菜单', exact: true }).click();
       await page.setViewportSize({ width: size.width, height: 300 });
       await page.getByRole('button', { name: '关闭调查菜单' }).click();
-      await expect(page.locator('.dock-actor-avatar')).toBeFocused();
+      await expect(page.getByRole('button', { name: '菜单', exact: true })).toBeFocused();
       await expect(page.locator('.dock-input')).toHaveValue(draft);
       await page.setViewportSize({ width: size.width, height: size.height });
     }

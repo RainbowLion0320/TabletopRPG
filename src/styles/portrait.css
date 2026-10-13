@@ -107,8 +107,17 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
   .portrait-ui .dock-input { max-height: 66px; }
 }
 @media (max-height: 300px) {
-  .portrait-ui .game-screen { --game-top: 0px; }
-  .portrait-ui .game-top, .portrait-ui .drawer-tab, .portrait-ui .suggestion-row { display: none; }
+  .portrait-ui .game-screen { --game-top: 0px; padding-top: var(--mobile-top); }
+  /* Keep the original controls in the existing story heading; no second toolbar row. */
+  :root.fog-ui.portrait-ui .game-screen > .game-top { position: absolute; top: 0; left: 0; right: 0; width: 100%; height: 0; min-height: 0; margin: 0; padding: 0; display: block; border: 0; background: transparent; z-index: 25; pointer-events: none; }
+  :root.fog-ui.portrait-ui .game-top .brand-block, .portrait-ui .suggestion-row { display: none; }
+  :root.fog-ui.portrait-ui .menu-button { position: fixed; top: calc(var(--mobile-top) + 1px); right: calc(var(--mobile-right) + 9px); pointer-events: auto; }
+  .portrait-ui .drawer-tab { display: grid; top: calc(var(--mobile-top) + 1px) !important; right: calc(var(--mobile-right) + 59px); z-index: 25; }
+  :root.fog-ui.portrait-ui .game-screen .narrative-header { padding-right: 100px; grid-template-columns: minmax(44px, 1fr) auto; }
+  :root.fog-ui.portrait-ui .game-screen > .game-notice { top: calc(var(--mobile-top) + 56px); }
+  .portrait-ui .npc-nameplate .npc-role, .portrait-ui .narrative-new-content-label { display: none; }
+  :root.fog-ui.portrait-ui .narrative-new-content { flex: 0 0 44px; width: 44px; padding: 0; gap: 0; }
+  .portrait-ui .narrative-title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .portrait-ui .action-dock { max-height: 55dvh; }
   .portrait-ui .info-drawer-tabs { grid-column: 1; grid-row: 1; }
   .portrait-ui .info-drawer-title { display: none; }
