@@ -94,7 +94,7 @@ export function CaseBoardInspector({ model, node: currentNode, onClose, onSelect
   const dialogRef = useRef<HTMLElement>(null);
   useOverlayEntry(motion.present, dialogRef);
   const scrollRef = useRef<HTMLDivElement>(null);
-  useReadingMotion(scrollRef, node?.id ?? '', Boolean(currentNode));
+  useReadingMotion(scrollRef, node?.id ?? '', motion.present && Boolean(node));
   const recordReading = useRef(new Map<string, { scrollTop: number; sourcesOpen: boolean }>());
   const [sourcesState, setSourcesState] = useState<{ nodeId: string | null; open: boolean }>({ nodeId: null, open: false });
   const sourcesOpen = node && sourcesState.nodeId === node.id ? sourcesState.open : recordReading.current.get(node?.id ?? '')?.sourcesOpen ?? false;

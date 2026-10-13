@@ -23,7 +23,7 @@ export function EntityDetailModal({ detail: currentDetail, onClose }: EntityDeta
   const titleId = useId();
 
   useDialogFocus(open, dialogRef, onClose);
-  useReadingMotion(bodyRef, detail?.name ?? '', open);
+  useReadingMotion(bodyRef, detail?.name ?? '', motion.present && Boolean(detail));
 
   if (!motion.present || !detail) return null;
 

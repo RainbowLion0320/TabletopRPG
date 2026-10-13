@@ -565,6 +565,130 @@ public class GameAndroidTest {
         }
     }
 
+    // Initial entry is real native touch; precision reversal invokes the existing buttons in observed RAFs.
+    private void watchSecondaryReading(String[] route, boolean cold) throws Exception {
+        JSONObject selectors = new JSONObject();
+        String[] keys = {"kind", "entry", "opener", "layer", "card", "body", "scroll", "close"};
+        for (int i = 0; i < keys.length; i++) selectors.put(keys[i], route[i]);
+        js("(()=>{const s=" + selectors + ",cold=" + cold + ";" + """
+            window.qaSecondaryCleanup?.();
+            if(window.qaSecondary?.done)(window.qaSecondaryRecords??=[]).push(window.qaSecondary);
+            const prior=window.qaSecondaryBody??document.querySelector(s.body);
+            const q=window.qaSecondary={kind:s.kind,cold,source:cold?'native initial touch and actual cold reading RAF; no rapid handler':'native initial touch; observed-RAF real close/opener button handlers; final native Back',
+                done:false,error:null,frames:[],reduced:matchMedia('(prefers-reduced-motion:reduce)').matches,finishError:null};
+            let body,card,layer,scroll,original,frame,timer;const cleanups=[];
+            const targetAnimations=()=>body.getAnimations().filter(a=>a.effect?.target===body&&a.effect.getTiming().duration===190);
+            const take=()=>{const style=getComputedStyle(body),m=new DOMMatrixReadOnly(style.transform==='none'||!style.transform?undefined:style.transform),outer=getComputedStyle(card),n=new DOMMatrixReadOnly(outer.transform==='none'||!outer.transform?undefined:outer.transform),button=document.querySelector(s.close),r=button?.getBoundingClientRect();
+                return{at:performance.now(),connected:body.isConnected,sameBody:document.querySelector(s.body)===body,sameCard:document.querySelector(s.card)===card,
+                    sameLayer:document.querySelector(s.layer)===layer,sameScroll:document.querySelector(s.scroll)===scroll,scroll:scroll.scrollTop,scrollHeight:scroll.scrollHeight,clientHeight:scroll.clientHeight,
+                    page:body.className,title:card.querySelector('h2,h3,h4')?.textContent??null,phase:layer.dataset.uiPhase??null,inert:layer.inert,hidden:layer.getAttribute('aria-hidden'),role:card.getAttribute('role'),modal:card.getAttribute('aria-modal'),
+                    focusInside:card.contains(document.activeElement),focusReturned:document.activeElement===document.querySelector(s.opener),opacity:Number(style.opacity),matrix:[m.a,m.b,m.c,m.d,m.e,m.f],
+                    outerOpacity:Number(outer.opacity),outerMatrix:[n.a,n.b,n.c,n.d,n.e,n.f],entryMarker:card.hasAttribute('data-ui-enter'),running:targetAnimations().filter(a=>a.playState==='running').length,
+                    currentTime:original?.currentTime??null,progress:original?.effect.getComputedTiming().progress??null,closeSize:r?[r.width,r.height]:null,
+                    closeHit:!!r&&button.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))};};
+            const raf=()=>new Promise(resolve=>{frame=requestAnimationFrame(()=>{if(body&&q.frames.length<24)q.frames.push(take());resolve()})});
+            const committed=test=>new Promise((resolve,reject)=>{let observer,deadline;const probe=()=>{if(!test())return;observer?.disconnect();clearTimeout(deadline);resolve()};
+                observer=new MutationObserver(probe);observer.observe(document.body,{childList:true,attributes:true,subtree:true});
+                deadline=setTimeout(()=>{observer.disconnect();reject(new Error('Missing actual '+s.kind+' commit'))},2000);
+                cleanups.push(()=>{observer.disconnect();clearTimeout(deadline)});probe()});
+            const run=async()=>{
+                await committed(()=>document.querySelector(s.card)?.getAttribute('role')==='dialog'&&document.querySelector(s.layer)?.dataset.uiPhase==='open'&&document.querySelector(s.scroll));
+                await raf();body=document.querySelector(s.body);card=document.querySelector(s.card);layer=document.querySelector(s.layer);scroll=document.querySelector(s.scroll);window.qaSecondaryBody=body;window.qaSecondaryCard=card;
+                q.changedBody=prior!==body;original=targetAnimations().find(a=>a.playState==='running');q.first=take();q.frames.push(q.first);
+                if(!q.reduced&&!original)throw new Error('Actual committed reading body has no running 190ms effect');
+                const completion=original?original.finished.then(()=>{q.finished=true;q.finishedAt=performance.now()},error=>{q.finished=false;q.finishError=String(error)}):Promise.resolve();
+                q.originalAnimation=original?{duration:original.effect.getTiming().duration,currentTime:original.currentTime,progress:original.effect.getComputedTiming().progress,observedAt:performance.now()}:null;
+                if(!cold&&!q.reduced){
+                    if(scroll.scrollHeight-scroll.clientHeight<=1)throw new Error('Authored record has no natural overflow; see first geometry');
+                    let scrolled=scroll.scrollTop>0;const observedScroll=()=>{scrolled=true};scroll.addEventListener('scroll',observedScroll);cleanups.push(()=>scroll.removeEventListener('scroll',observedScroll));
+                    if(!scrolled)scroll.scrollTop=Math.round((scroll.scrollHeight-scroll.clientHeight)*.35);await raf();scroll.removeEventListener('scroll',observedScroll);q.bookmark=scroll.scrollTop;
+                    if(!scrolled||q.bookmark<=0)throw new Error('Real nonzero scroll event did not reach the reading body');
+                    q.beforeClose=take();
+                    while(original.playState==='running'&&!(q.beforeClose.progress>0&&q.beforeClose.progress<1)){await raf();q.beforeClose=take();}
+                    if(original.playState!=='running'||!(q.beforeClose.progress>0&&q.beforeClose.progress<1))throw new Error('Missed actual running close window');
+                    const closed=committed(()=>layer.dataset.uiPhase==='closing'&&card.getAttribute('role')===null);document.querySelector(s.close).click();await closed;q.closed=take();q.closedAt=performance.now();
+                    await raf();q.closedFocus=take();q.beforeReopen=take();
+                    if(!body.isConnected||original.playState!=='running')throw new Error('Missed retained running reopen window');
+                    const opened=committed(()=>layer.dataset.uiPhase==='open'&&card.getAttribute('role')==='dialog');document.querySelector(s.opener).click();await opened;q.openAt=performance.now();q.reopened=take();
+                    q.sameAnimation=targetAnimations().includes(original);q.sameOriginalTime=original.currentTime>=q.beforeReopen.currentTime;
+                }
+                while(q.frames.length<24)await raf();await completion;q.terminal=take();q.done=true;
+            };
+            const start=event=>{if(!(event.target instanceof Element)||!event.target.closest(s.entry))return;document.removeEventListener('click',start,true);clearTimeout(timer);
+                timer=setTimeout(()=>{q.error='Secondary reading trace deadline';q.done=true;window.qaSecondaryCleanup()},4000);
+                run().catch(error=>{q.error=String(error);q.done=true}).finally(()=>{clearTimeout(timer);cleanups.forEach(clean=>clean())})};
+            document.addEventListener('click',start,true);timer=setTimeout(()=>{q.error='No actual native entry click';q.done=true;window.qaSecondaryCleanup()},20000);
+            window.qaSecondaryCleanup=()=>{document.removeEventListener('click',start,true);cancelAnimationFrame(frame);clearTimeout(timer);cleanups.forEach(clean=>clean())};
+            })()
+            """);
+    }
+
+    @Test public void secondaryReadingKeepsRunningEffectsAcrossRetainedReturns() throws Exception {
+        String[][] routes = {
+            {"info", ".info-drawer-tabs button[id$='-log']", ".drawer-tab", ".info-drawer-react", ".info-drawer-react", ".info-drawer-page", ".action-log-list", ".info-drawer-react button[aria-label='关闭资料']"},
+            {"case", ".case-board-mobile-card[aria-label='地点 摩勒住宅']", ".case-board-mobile-card[aria-label='地点 摩勒住宅']", ".case-board-inspector", ".case-board-inspector", ".case-board-inspector-scroll", ".case-board-inspector-scroll", "[aria-label='关闭资料详情']"},
+            {"entity", ".narrative-scroll button.narrative-mark[aria-label='查看摩勒住宅详情']", ".narrative-scroll button.narrative-mark[aria-label='查看摩勒住宅详情']", ".entity-detail-overlay", ".entity-detail-card", ".entity-detail-body", ".entity-detail-body", ".entity-detail-close"}
+        };
+        for (int party : new int[]{1, 2, 4}) {
+            AtomicInteger modelCalls = new AtomicInteger(); MockWebServer server = new MockWebServer();
+            server.setDispatcher(new Dispatcher() { @Override public MockResponse dispatch(RecordedRequest request) { modelCalls.incrementAndGet(); return new MockResponse().setResponseCode(503); } }); server.start();
+            try {
+                fresh(); viewport(390, 844); configure(server.url("/v1").toString(), "chat-completions"); click("开始游戏");
+                for (int i = 1; i < party; i++) js("document.querySelectorAll('.preset-selection-input')[" + i + "].click()");
+                until("document.querySelectorAll('.preset-selection-input:checked').length===" + party); click("进入游戏"); fill(".dock-input", "先核对门廊痕迹\n再记录委托资料。"); menu("返回首页");
+                // Repeat the authored visible log entry, and render the existing S01 title/description through real state.
+                js("window.qaSecondaryFixtureReady=false;window.qaSecondaryFixtureError=null;Capacitor.Plugins.GameStorage.readAll().then(async({values})=>{const record=JSON.parse(values['trpg-android-session-v1']);const original=record.state.actionLog[0];"
+                    + "record.state.actionLog=Array.from({length:32},()=>({...original}));record.state.messages.push({...record.state.messages[0],id:'qa-secondary-public-scene',text:'摩勒住宅'+String.fromCharCode(10)+'纽伦上街101-102号的维多利亚式别墅，伊莎贝拉·摩勒在此等待调查员。'});"
+                    + "await Capacitor.Plugins.GameStorage.write({key:'trpg-android-session-v1',value:JSON.stringify(record)});window.qaSecondaryFixtureReady=true}).catch(error=>{window.qaSecondaryFixtureError=String(error);window.qaSecondaryFixtureReady=true})");
+                until("window.qaSecondaryFixtureReady"); assertEquals("Public reading fixture uses the real encrypted checkpoint", "null", js("window.qaSecondaryFixtureError"));
+                activity.recreate(); until("document.querySelector('.title-resume-preview')"); watchResizeErrors(); viewport(390, 430); click("继续游戏");
+                until("document.querySelector('.scene-backdrop-img')?.complete&&document.querySelector('.scene-backdrop-img').naturalWidth>0");
+                assertEquals("The exact multiline action survives encrypted fixture recovery", JSONObject.quote("先核对门廊痕迹\n再记录委托资料。"), js("document.querySelector('.dock-input').value"));
+                assertEquals("The restored reading party is actual native Android", "true", js("Capacitor.isNativePlatform()&&Capacitor.getPlatform()==='android'&&document.querySelectorAll('.party-compact').length===" + party));
+                js("window.qaSecondaryRecords=[];window.qaSecondaryGameBefore={draft:document.querySelector('.dock-input').value,actor:document.querySelector('.dock-input').getAttribute('aria-label'),party:Array.from(document.querySelectorAll('.party-compact strong'),e=>e.textContent),world:document.querySelector('.brand-scene').textContent+document.querySelector('.world-time').textContent,messages:document.querySelectorAll('.story-message.player').length}");
+                for (String[] route : routes) {
+                    if (!route[0].equals("entity")) {
+                        String[] drawer = {"info-first", ".drawer-tab", ".drawer-tab", ".info-drawer-react", ".info-drawer-react", ".info-drawer-page", ".case-board-workspace", ".info-drawer-react button[aria-label='关闭资料']"};
+                        watchSecondaryReading(drawer, true); nativeTap(".drawer-tab"); until("window.qaSecondary.done");
+                        assertEquals("The new InfoDrawer keyed body really enters at 190ms", "true", js("(()=>{const q=window.qaSecondary;return q.error===null&&q.changedBody&&q.frames.length===24&&(q.reduced||q.originalAnimation?.duration===190&&q.frames.some(f=>f.progress>0&&f.progress<1&&f.opacity>.001&&f.opacity<.999)&&q.finished&&q.finishError===null)&&q.terminal.opacity>=.999&&q.terminal.running===0})()"));
+                    }
+                    if (route[0].equals("info")) {
+                        nativeTap(route[1]); awaitUiMotion(); js("document.querySelector('.action-log-list').scrollTop=240");
+                        String bookmark = awaitSettledScroll(".action-log-list"); assertTrue("Authored log entries give a nonzero native reading bookmark", Double.parseDouble(bookmark) > 0);
+                        js("window.qaSecondaryLogBookmark=" + bookmark); nativeTap(".info-drawer-tabs button[id$='-board']");
+                    } else if (route[0].equals("entity")) js("document.querySelector(" + JSONObject.quote(route[1]) + ").scrollIntoView({block:'center',inline:'nearest'})");
+                    watchSecondaryReading(route, false); nativeTap(route[1]); until("window.qaSecondary.done");
+                    assertEquals("The real reading trace completes without fake events or guessed scheduling", "null", js("window.qaSecondary.error"));
+                    assertEquals("Retained reopening keeps the actual running Animation, bookmark, AX and focus", "true", js("(()=>{const q=window.qaSecondary;if(q.reduced)return q.frames.length===24&&q.terminal.running===0;const a=q.beforeReopen,b=q.reopened,c=q.closed;return q.sameAnimation&&q.sameOriginalTime&&a.running===1&&b.running===1&&q.openAt-q.closedAt<170&&c.phase==='closing'&&c.inert&&c.hidden==='true'&&c.role===null&&c.modal===null&&q.closedFocus.focusReturned&&!q.closedFocus.focusInside&&b.phase==='open'&&!b.inert&&b.hidden!=='true'&&b.role==='dialog'&&b.modal==='true'&&b.focusInside&&b.sameBody&&b.sameCard&&b.sameLayer&&b.sameScroll&&!b.entryMarker&&b.page===q.first.page&&b.title===q.first.title&&q.bookmark>0&&Math.abs(b.scroll-q.bookmark)<=1&&Math.abs(a.opacity-b.opacity)<=.02&&a.matrix.every((v,i)=>Math.abs(v-b.matrix[i])<=(i<4?.002:1))&&Math.abs(a.outerOpacity-b.outerOpacity)<=.02&&a.outerMatrix.every((v,i)=>Math.abs(v-b.outerMatrix[i])<=(i<4?.002:1))})()"));
+                    assertEquals("Twenty-four real frames plus natural completion leave a usable reading surface", "true", js("(()=>{const q=window.qaSecondary,t=q.terminal;return q.frames.length===24&&(q.reduced||q.finished&&q.finishError===null)&&t.opacity>=.999&&t.matrix.every((v,i)=>Math.abs(v-([1,0,0,1,0,0][i]))<.001)&&t.running===0&&t.closeSize[0]>=44&&t.closeSize[1]>=44&&t.closeHit&&(q.reduced||Math.abs(t.scroll-q.bookmark)<=1)&&(q.kind!=='info'||q.first.scroll===window.qaSecondaryLogBookmark)})()"));
+                    if (party == 2) screenshot("secondary-reading-native-" + route[0]);
+                    InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                    if (route[0].equals("info")) until("!document.querySelector('.info-drawer-react').hasAttribute('data-ui-phase')&&document.querySelector('.info-drawer-react').inert&&document.activeElement===document.querySelector('.drawer-tab')");
+                    else until("!document.querySelector(" + JSONObject.quote(route[4]) + ")&&!window.qaSecondaryBody.isConnected&&document.activeElement===document.querySelector(" + JSONObject.quote(route[2]) + ")");
+                    js("window.qaSecondary.completeClose={source:'native system Back',at:performance.now(),bodyConnected:window.qaSecondaryBody.isConnected,focusReturned:document.activeElement===document.querySelector(" + JSONObject.quote(route[2]) + "),parentDrawerOpen:document.querySelector('.info-drawer-react')?.getAttribute('role')==='dialog'}");
+                    String[] freshRoute = route.clone(); freshRoute[1] = route[2]; if (route[0].equals("info")) freshRoute[6] = ".case-board-workspace";
+                    watchSecondaryReading(freshRoute, true); nativeTap(freshRoute[1]); until("window.qaSecondary.done");
+                    assertEquals("Complete exit creates a new authored reading session and actual first-entry frames", "true", js("(()=>{const q=window.qaSecondary;return q.error===null&&q.changedBody&&q.frames.length===24&&q.first.scroll===0&&(q.reduced||q.originalAnimation?.duration===190&&q.frames.some(f=>f.progress>0&&f.progress<1&&f.opacity>.001&&f.opacity<.999)&&q.finished&&q.finishError===null)&&q.terminal.opacity>=.999&&q.terminal.running===0&&(q.kind!=='info'||q.terminal.page.includes('board-page'))})()"));
+                    InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                    until("!document.querySelector(" + JSONObject.quote(route[4]) + ")?.hasAttribute('role')&&!document.querySelector(" + JSONObject.quote(route[3]) + ")?.hasAttribute('data-ui-phase')");
+                    js("window.qaSecondary.freshClose={source:'native system Back',at:performance.now(),focusReturned:document.activeElement===document.querySelector(" + JSONObject.quote(route[2]) + ")}");
+                    assertEquals("The fresh native visit returns to its actual opener", "true", js("window.qaSecondary.freshClose.focusReturned"));
+                    if (route[0].equals("case")) { InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK); until("!document.querySelector('.info-drawer-react').hasAttribute('data-ui-phase')"); }
+                }
+                js("window.qaSecondaryGameAfter={draft:document.querySelector('.dock-input').value,actor:document.querySelector('.dock-input').getAttribute('aria-label'),party:Array.from(document.querySelectorAll('.party-compact strong'),e=>e.textContent),world:document.querySelector('.brand-scene').textContent+document.querySelector('.world-time').textContent,messages:document.querySelectorAll('.story-message.player').length}");
+                assertEquals("Reading does not mutate the action, actor, party, world or submitted messages", "true", js("JSON.stringify(window.qaSecondaryGameBefore)===JSON.stringify(window.qaSecondaryGameAfter)"));
+                assertEquals("Reading never calls any model endpoint", 0, modelCalls.get()); awaitSettledIme(false); assertNoResizeErrors();
+                System.out.println("SECONDARY_READING_NATIVE: " + js("JSON.stringify({party:" + party + ",frames:window.qaSecondaryRecords.filter(q=>!q.cold).map(q=>({kind:q.kind,frames:q.frames.length,sameAnimation:q.sameAnimation??null,bookmark:q.bookmark??null,reduced:q.reduced})),modelCalls:0})"));
+            } finally {
+                try { if (activity != null) {
+                        js("window.qaSecondaryCleanup?.()");
+                        savePanelMotionTrace("secondary-reading-native-party-" + party, "({completed:window.qaSecondaryRecords??[],current:window.qaSecondary??null,nativeContext:{native:Capacitor.isNativePlatform(),platform:Capacitor.getPlatform()},viewport:{width:innerWidth,height:innerHeight,scope:'fixed WebView CSS pixels'},gameBefore:window.qaSecondaryGameBefore??null,gameAfter:window.qaSecondaryGameAfter??null,imeVisible:" + imeVisible() + ",modelCalls:" + modelCalls.get() + "})");
+                    }
+                } finally { try { if (activity != null) activity.close(); } finally { server.shutdown(); } }
+            }
+        }
+    }
+
     private void watchNativeDossierReopen() throws Exception {
         js("(()=>{window.qaDossierReopenCleanup?.();const sheet=document.querySelector('.investigator-sheet'),body=document.querySelector('.investigator-body'),layer=sheet.closest('[data-ui-phase]');"
                 + "const q=window.qaDossierReopen={source:'native Back then button click',done:false,error:null};let timer,changed;"

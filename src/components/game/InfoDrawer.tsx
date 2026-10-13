@@ -35,7 +35,7 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
   const caseReadingState = useRef<CaseBoardReadingState | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const restoredPage = useRef<{ page: HTMLDivElement; tab: InfoDrawerTab } | null>(null);
-  useReadingMotion(pageRef, activeTab, open);
+  useReadingMotion(pageRef, `${opening}:${activeTab}`, motion.present);
   const portrait = usePortraitLayout();
   const id = useId();
 

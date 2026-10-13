@@ -4964,6 +4964,210 @@ function expectReadingContinuity(sample: Awaited<ReturnType<typeof sampleReading
   expect(sample.final).toMatchObject({ opacity: 1, x: 0, y: 0, scale: 1, active: false });
 }
 
+interface SecondaryReadingSurface {
+  root: string; body: string; scroll: string; opener: string; close: string;
+  dialog?: string; permanent?: boolean; disclosure?: string;
+}
+
+async function sampleSecondaryReadingReturn(page: Page, surface: SecondaryReadingSurface) {
+  return page.evaluate(async surface => {
+    const previousRoot = document.querySelector<HTMLElement>(surface.root);
+    const previousBody = previousRoot?.querySelector<HTMLElement>(surface.body);
+    const opener = document.querySelector<HTMLButtonElement>(surface.opener)!;
+    const activate = async (button: HTMLButtonElement) => {
+      button.focus({ preventScroll: true }); button.click(); await Promise.resolve();
+    };
+    await activate(opener);
+    const root = document.querySelector<HTMLElement>(surface.root)!;
+    const body = root.querySelector<HTMLElement>(surface.body)!;
+    const scroll = root.querySelector<HTMLElement>(surface.scroll)!;
+    const dialog = () => surface.dialog ? root.querySelector(surface.dialog)! : root;
+    const read = () => {
+      const style = getComputedStyle(body), matrix = new DOMMatrixReadOnly(style.transform === 'none' ? undefined : style.transform);
+      const animations = body.getAnimations().filter(animation => animation.playState === 'running');
+      return { opacity: Number(style.opacity), y: matrix.f, active: animations.length > 0,
+        durations: animations.map(animation => Number(animation.effect!.getTiming().duration)),
+        sameRoot: document.querySelector(surface.root) === root, sameBody: root.querySelector(surface.body) === body,
+        top: scroll.scrollTop, expanded: surface.disclosure ? root.querySelector(surface.disclosure)?.getAttribute('aria-expanded') : null };
+    };
+    const entry = { initial: read(), replacedOldBody: previousBody ? previousBody !== body : true,
+      oldBodyDisconnected: previousBody ? !previousBody.isConnected : true };
+    const entryFrames: ReturnType<typeof read>[] = [];
+    let reading: Animation | undefined;
+    // Observe this exact, newly mounted reading node. An animation on the old
+    // opening-key node cannot satisfy this surface's entrance or reversal.
+    for (let index = 0; index < 24; index++) {
+      await new Promise(requestAnimationFrame); const frame = read(); entryFrames.push(frame);
+      reading = body.getAnimations().find(animation => animation.playState === 'running' && animation.effect?.getTiming().duration === 190);
+      if (reading && frame.opacity > .45 && frame.opacity < .99 && frame.y > 0 && frame.y < 3) break;
+    }
+    const empty = { entry, entryFrames, error: null as string | null, closing: null as null | Record<string, unknown>,
+      reopening: null as null | Record<string, unknown>, frames: [] as ReturnType<typeof read>[],
+      terminal: null as null | ReturnType<typeof read>, fresh: null as null | Record<string, unknown> };
+    if (!reading) return { ...empty, error: 'the actual reading body never owned a running 190ms entrance' };
+    if (surface.disclosure) await activate(root.querySelector<HTMLButtonElement>(surface.disclosure)!);
+    scroll.scrollTop = 180; const position = scroll.scrollTop;
+    const beforeClose = read(), closedAt = performance.now();
+    await activate(root.querySelector<HTMLButtonElement>(surface.close)!);
+    const closing = { before: beforeClose, after: read(), phase: root.dataset.uiPhase, inert: root.inert,
+      hidden: root.getAttribute('aria-hidden'), dialog: dialog().getAttribute('role'), focusReleased: !root.contains(document.activeElement),
+      sameReading: body.getAnimations().includes(reading), position };
+    let exitFrame = { opacity: Number(getComputedStyle(root).opacity), active: false, elapsed: 0 };
+    for (let index = 0; index < 12; index++) {
+      await new Promise(requestAnimationFrame);
+      exitFrame = { opacity: Number(getComputedStyle(root).opacity),
+        active: root.getAnimations().some(animation => animation.playState === 'running'), elapsed: performance.now() - closedAt };
+      if (exitFrame.active && exitFrame.opacity < 1 && exitFrame.opacity > 0) break;
+      if (!root.isConnected || root.dataset.uiPhase !== 'closing') break;
+    }
+    const beforeReopen = read(); await activate(opener);
+    const reopening = { before: beforeReopen, after: read(), exitFrame, elapsed: performance.now() - closedAt,
+      phase: root.dataset.uiPhase, inert: root.inert, sameReading: body.getAnimations().includes(reading),
+      sameScroll: root.querySelector(surface.scroll) === scroll, heading: dialog().getAttribute('aria-label') };
+    const frames: ReturnType<typeof read>[] = [];
+    for (let index = 0; index < 24; index++) { await new Promise(requestAnimationFrame); frames.push(read()); }
+    await Promise.all(root.getAnimations({ subtree: true }).filter(animation => animation.playState === 'running'
+      && Number.isFinite(animation.effect?.getTiming().iterations ?? 1)).map(animation => animation.finished.catch(() => {})));
+    const terminal = read();
+    await activate(root.querySelector<HTMLButtonElement>(surface.close)!);
+    // Retirement is the actual presence lifecycle, rather than a guessed sleep
+    // or a fabricated animation/transition event.
+    let retired = false;
+    for (let index = 0; index < 60; index++) {
+      await new Promise(requestAnimationFrame);
+      retired = surface.permanent ? !root.hasAttribute('data-ui-phase') : !root.isConnected;
+      if (retired) break;
+    }
+    await activate(opener);
+    const freshRoot = document.querySelector<HTMLElement>(surface.root)!;
+    const freshBody = freshRoot.querySelector<HTMLElement>(surface.body)!;
+    const freshScroll = freshRoot.querySelector<HTMLElement>(surface.scroll)!;
+    const freshRead = () => { const style = getComputedStyle(freshBody); return { opacity: Number(style.opacity),
+      y: new DOMMatrixReadOnly(style.transform === 'none' ? undefined : style.transform).f,
+      active: freshBody.getAnimations().some(animation => animation.playState === 'running'),
+      durations: freshBody.getAnimations().map(animation => Number(animation.effect!.getTiming().duration)) }; };
+    const freshFrames: ReturnType<typeof freshRead>[] = [];
+    const fresh = { retired, sameRoot: freshRoot === root, sameBody: freshBody === body, oldBodyDisconnected: !body.isConnected,
+      top: freshScroll.scrollTop, expanded: surface.disclosure ? freshRoot.querySelector(surface.disclosure)?.getAttribute('aria-expanded') : null,
+      tab: freshRoot.querySelector('[role="tab"][aria-selected="true"]')?.textContent ?? null,
+      first: freshRead(), frames: freshFrames };
+    for (let index = 0; index < 24; index++) { await new Promise(requestAnimationFrame); freshFrames.push(freshRead()); }
+    await Promise.all(freshRoot.getAnimations({ subtree: true }).filter(animation => animation.playState === 'running'
+      && Number.isFinite(animation.effect?.getTiming().iterations ?? 1)).map(animation => animation.finished.catch(() => {})));
+    return { ...empty, closing, reopening, frames, terminal, fresh };
+  }, surface);
+}
+
+function expectSecondaryReadingReturn(sample: Awaited<ReturnType<typeof sampleSecondaryReadingReturn>>, surface: SecondaryReadingSurface) {
+  expect(sample.error).toBeNull();
+  expect(sample.entry).toMatchObject({ replacedOldBody: true, oldBodyDisconnected: true });
+  expect(sample.entryFrames.some(frame => frame.active && frame.durations.includes(190) && frame.opacity > .45 && frame.opacity < .99)).toBe(true);
+  const closing = sample.closing!, reopening = sample.reopening!;
+  expect(closing).toMatchObject({ phase: 'closing', inert: true, hidden: 'true', dialog: null, focusReleased: true, sameReading: true });
+  expect(Number(closing.position)).toBeGreaterThan(0);
+  expect(reopening).toMatchObject({ phase: 'open', inert: false, sameReading: true, sameScroll: true, exitFrame: { active: true } });
+  expect(Number(reopening.elapsed)).toBeLessThan(170);
+  for (const turn of [closing, reopening]) {
+    const before = turn.before as { opacity: number; y: number }, after = turn.after as typeof before;
+    expect(turn.after).toMatchObject({ active: true, durations: [190] });
+    expect(Math.abs(after.opacity - before.opacity)).toBeLessThan(.04); expect(Math.abs(after.y - before.y)).toBeLessThan(.25);
+  }
+  for (const frame of sample.frames) expect(frame).toMatchObject({ sameRoot: true, sameBody: true, top: closing.position });
+  expect(sample.terminal).toMatchObject({ opacity: 1, y: 0, active: false });
+  expect(sample.fresh).toMatchObject({ retired: true, sameRoot: Boolean(surface.permanent), sameBody: false, oldBodyDisconnected: true, top: 0 });
+  const fresh = sample.fresh as { first: { active: boolean; durations: number[] }; frames: Array<{ active: boolean; opacity: number; y: number; durations: number[] }> };
+  expect(fresh.first).toMatchObject({ active: true, durations: [190] });
+  expect(fresh.frames.some(frame => frame.active && frame.durations.includes(190) && frame.opacity > .45 && frame.opacity < .99 && frame.y > 0 && frame.y < 3)).toBe(true);
+  if (surface.disclosure) { expect(sample.terminal!.expanded).toBe('true'); expect(sample.fresh!.expanded).toBe('false'); }
+  if (surface.permanent) expect(sample.fresh!.tab).toBe('案件板');
+}
+
+for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height: 300, party: 4 }] as const) {
+  test(`secondary reading keeps its actual animation and bookmarks across quick returns at ${size.width}x${size.height} for ${size.party} players`, async ({ page }, testInfo) => {
+    test.setTimeout(60_000); await page.setViewportSize(size); await page.emulateMedia({ reducedMotion: 'no-preference' });
+    const state = createDynamicCaseBoardSave(), names = ['亨利·格雷', '艾达·华莱士', '托马斯·贝尔', '罗伯特·肖'].slice(0, size.party);
+    state.players = names.map((name, index) => makeInvestigator({ name, id: `secondary-reading-${index}` }));
+    state.currentActorIndex = size.party > 1 ? 1 : 0;
+    state.caseBoard!.nodes[0].detail = '公开调查记录：门廊下留有雨水与细微划痕，证词仍需与现场核对。'.repeat(30);
+    state.caseBoard!.nodes.push(...Array.from({ length: 12 }, (_, index) => ({ ...state.caseBoard!.nodes[0], id: `reading-record-${index}`, title: `公开记录 ${index + 1}` })));
+    state.messages[0].text = '浓雾压在摩勒住宅的窗外。调查记录提到了药店后门被撬。';
+    await gotoWithSave(page, state); await page.getByRole('button', { name: '继续游戏', exact: true }).click(); await settleUiMotion(page);
+    const actor = names[state.currentActorIndex], draft = '先核对门廊记录。\n读完资料，再询问同伴。'; await page.locator('.dock-input').fill(draft);
+    const surfaces: SecondaryReadingSurface[] = [
+      { root: '.info-drawer-react', body: '.info-drawer-page', scroll: '.case-board-workspace', opener: '.drawer-tab', close: '[aria-label="关闭资料"]', permanent: true },
+      { root: '.case-board-inspector', body: '.case-board-inspector-scroll', scroll: '.case-board-inspector-scroll', opener: '.case-board-mobile-card.event', close: '[aria-label="关闭资料详情"]', disclosure: '.case-record-sources-toggle' },
+      { root: '.entity-detail-overlay', body: '.entity-detail-body', scroll: '.entity-detail-body', opener: '.narrative-mark[aria-label="查看药店后门被撬详情"]', close: '[aria-label="关闭详情"]', dialog: '.entity-detail-card' }
+    ];
+    for (const [index, surface] of surfaces.entries()) {
+      const result = await sampleSecondaryReadingReturn(page, surface);
+      writeFileSync(testInfo.outputPath(`secondary-reading-${index}.json`), JSON.stringify({ size, surface, result }, null, 2));
+      await page.screenshot({ path: testInfo.outputPath(`secondary-reading-${index}.png`) });
+      expectSecondaryReadingReturn(result, surface);
+      if (index === 0) continue; // Its fresh session supplies the real parent drawer for the nested case record.
+      await page.locator(surface.root).locator(surface.close).click(); await settleUiMotion(page);
+      if (index === 1) { await page.getByRole('button', { name: '关闭资料', exact: true }).click(); await settleUiMotion(page); }
+    }
+    await expect(page.locator('.dock-input')).toHaveValue(draft); await expect(page.locator('.party-compact.active')).toContainText(actor);
+    await expect(page.locator('.party-compact')).toHaveCount(size.party); await expect(page.locator('[data-ui-phase="closing"]')).toHaveCount(0);
+  });
+}
+
+test('secondary reading releases retained content on motion preference and controlled background changes', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 }); await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await gotoWithSave(page, createDynamicCaseBoardSave()); await page.getByRole('button', { name: '继续游戏', exact: true }).click(); await settleUiMotion(page);
+  const draft = '读完资料后继续这段行动。\n不要改变当前调查员。'; await page.locator('.dock-input').fill(draft);
+  const begin = async (opener: string, body: string) => page.evaluate(async ({ opener, body }) => {
+    const button = document.querySelector<HTMLButtonElement>(opener)!;
+    button.focus({ preventScroll: true }); button.click(); await Promise.resolve();
+    const element = document.querySelector<HTMLElement>(body)!;
+    const read = () => ({ opacity: Number(getComputedStyle(element).opacity), transform: getComputedStyle(element).transform,
+      active: element.getAnimations().some(animation => animation.playState === 'running'),
+      durations: element.getAnimations().map(animation => Number(animation.effect!.getTiming().duration)) });
+    const frames: ReturnType<typeof read>[] = [];
+    for (let index = 0; index < 24; index++) {
+      await new Promise(requestAnimationFrame); const frame = read(); frames.push(frame);
+      if (frame.active && frame.durations.includes(190) && frame.opacity > .45 && frame.opacity < .99) break;
+    }
+    return { frames, current: read() };
+  }, { opener, body });
+  const drawer = page.locator('.info-drawer-react'), drawerBody = drawer.locator('.info-drawer-page');
+  const beforeReduce = await begin('.drawer-tab', '.info-drawer-page');
+  writeFileSync(testInfo.outputPath('secondary-reading-before-reduce.json'), JSON.stringify(beforeReduce, null, 2));
+  expect(beforeReduce.current.active).toBe(true); expect(beforeReduce.current.durations).toContain(190);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const read = (selector: string) => page.locator(selector).evaluate(element => ({ opacity: getComputedStyle(element).opacity,
+    transform: getComputedStyle(element).transform, active: element.getAnimations().some(animation => animation.playState === 'running') }));
+  await expect.poll(() => read('.info-drawer-page')).toEqual({ opacity: '1', transform: 'none', active: false });
+  await drawer.getByRole('button', { name: '关闭资料', exact: true }).click();
+  await expect(drawer).not.toHaveAttribute('data-ui-phase'); await expect(drawerBody.locator('.case-board-view')).toHaveCount(0);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  const beforeHide = await begin('.npc-nameplate', '.entity-detail-body');
+  writeFileSync(testInfo.outputPath('secondary-reading-before-background.json'), JSON.stringify(beforeHide, null, 2));
+  expect(beforeHide.current.active).toBe(true); expect(beforeHide.current.durations).toContain(190);
+  let hiddenResult: Record<string, unknown>;
+  // This controlled getter exercises the application's real visibility listener;
+  // it is not a claim that a headless tab underwent native Android backgrounding.
+  await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange')); });
+  try {
+    expect(await read('.entity-detail-body')).toEqual({ opacity: '1', transform: 'none', active: false });
+    hiddenResult = await page.evaluate(async () => {
+      const root = document.querySelector('.entity-detail-overlay')!;
+      root.querySelector<HTMLButtonElement>('[aria-label="关闭详情"]')!.click(); await Promise.resolve();
+      return { retired: !root.isConnected, remaining: document.querySelectorAll('.entity-detail-overlay').length,
+        focus: document.activeElement === document.querySelector('.npc-nameplate') };
+    });
+    expect(hiddenResult).toEqual({ retired: true, remaining: 0, focus: true });
+    await expect(page.locator('html')).toHaveClass(/ui-motion-paused/);
+  } finally { await page.evaluate(() => { Reflect.deleteProperty(document, 'hidden'); document.dispatchEvent(new Event('visibilitychange')); }); }
+  const resumed = await begin('.npc-nameplate', '.entity-detail-body');
+  expect(resumed.current.active).toBe(true); expect(resumed.current.durations).toEqual([190]);
+  await settleUiMotion(page); await page.screenshot({ path: testInfo.outputPath('secondary-reading-media-resumed.png') });
+  await page.getByRole('button', { name: '关闭详情', exact: true }).click(); await settleUiMotion(page);
+  await expect(page.locator('.dock-input')).toHaveValue(draft); await expect(page.locator('.party-compact.active')).toContainText('亨利·格雷');
+  await expect(page.locator('.party-compact')).toHaveCount(2); await expect(page.locator('[data-ui-phase="closing"]')).toHaveCount(0);
+  writeFileSync(testInfo.outputPath('secondary-reading-media.json'), JSON.stringify({ beforeReduce, beforeHide, hiddenResult: hiddenResult!, resumed }, null, 2));
+});
+
 for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height: 844, party: 2 }, { width: 1440, height: 900, party: 4 }]) {
   test(`investigator reading remains continuous across quick returns and starts fresh after dismissal for ${size.party} players`, async ({ page }, testInfo) => {
     test.setTimeout(45_000);
