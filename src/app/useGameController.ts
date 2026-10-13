@@ -71,6 +71,7 @@ export function useGameController() {
 
   function cancelDiceRoll() {
     clearToast();
+    saveSlots.invalidateSaveFeedback();
     foregroundTaskRef.current = null;
     submittedStateRef.current = null;
     diceRollInFlightRef.current = false;

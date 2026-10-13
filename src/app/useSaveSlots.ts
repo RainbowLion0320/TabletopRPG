@@ -4,7 +4,12 @@ import type { GameState } from '../types/game';
 
 export function useSaveSlots(notify: (text: string) => void) {
   const [library, setLibrary] = useState(() => readSaveLibrary());
-  const savingRef = useRef(false);
+  const pendingSnapshots = useRef(new Set<GameState>());
+  const feedbackRevision = useRef(0);
+
+  function invalidateSaveFeedback() {
+    feedbackRevision.current++;
+  }
 
   function refreshSaves() {
     const latestLibrary = readSaveLibrary();
@@ -23,16 +28,18 @@ export function useSaveSlots(notify: (text: string) => void) {
   }
 
   async function saveCurrentGame(gameState: GameState) {
-    if (savingRef.current) return;
-    savingRef.current = true;
+    if (pendingSnapshots.current.has(gameState)) return;
+    pendingSnapshots.current.add(gameState);
+    const revision = ++feedbackRevision.current;
     try {
       await saveGameStateAndPersist(gameState);
       refreshSaves();
-      notify('已保存');
+      if (revision === feedbackRevision.current) notify('已保存');
     } catch {
-      notify('未能保存，请检查设备存储空间后重试。');
+      refreshSaves();
+      if (revision === feedbackRevision.current) notify('未能保存，请检查设备存储空间后重试。');
     } finally {
-      savingRef.current = false;
+      pendingSnapshots.current.delete(gameState);
     }
   }
 
@@ -51,6 +58,7 @@ export function useSaveSlots(notify: (text: string) => void) {
     deleteSaveSlot,
     getLatestSave,
     incompatibleSaves: library.incompatible,
+    invalidateSaveFeedback,
     refreshSaves,
     saveCurrentGame,
     saves: library.saves

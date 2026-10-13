@@ -1,8 +1,13 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ActionDock } from '../../src/components/game/ActionDock';
+import { GameMenu } from '../../src/components/game/GameMenu';
+import { useGameController } from '../../src/app/useGameController';
+import { runDmTurn } from '../../src/dm/pipeline';
 import { makeInvestigator, makeState } from '../dm/fixtures';
 import { createScenarioProgress, getScenarioDefinition } from '../../src/scenario/engine';
+
+vi.mock('../../src/dm/pipeline', () => ({ runDmTurn: vi.fn() }));
 
 describe('ActionDock player-specific suggestions', () => {
   it.each(['END_A', 'END_B', 'END_C'])('keeps the authored %s outcome and party inspectable without reopening actions', (endingId) => {
@@ -230,5 +235,164 @@ describe('ActionDock player-specific suggestions', () => {
 
     expect(screen.queryByRole('button', { name: '追问上一场景人物' })).toBeNull();
     expect(screen.getByPlaceholderText('亨利 想要做什么...')).toBeDisabled();
+  });
+});
+
+describe('ActionDock retry focus across real controller outcomes', () => {
+  const dm = vi.mocked(runDmTurn);
+  const response = { raw: '{"narrative":"调查继续。"}', legacyResponse: { narrative: '调查继续。' } };
+  const players = [
+    makeInvestigator({ id: 'henry', name: '亨利' }),
+    makeInvestigator({ id: 'ada', name: '艾达' }),
+    makeInvestigator({ id: 'thomas', name: '托马斯' }),
+    makeInvestigator({ id: 'robert', name: '罗伯特' })
+  ];
+
+  beforeEach(() => {
+    localStorage.clear();
+    vi.stubEnv('VITE_AI_API_KEY', '');
+    localStorage.setItem('trpg-api', JSON.stringify({ apiKey: 'test-key', provider: 'openai', protocol: 'responses' }));
+    dm.mockReset();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    localStorage.clear();
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  function deferredTurn() {
+    let resolve!: (value: Awaited<ReturnType<typeof runDmTurn>>) => void;
+    let reject!: (error: Error) => void;
+    const promise = new Promise<Awaited<ReturnType<typeof runDmTurn>>>((done, fail) => { resolve = done; reject = fail; });
+    return { promise, resolve, reject };
+  }
+
+  async function failedRound(partySize: number, portrait = false) {
+    let controller!: ReturnType<typeof useGameController>;
+    function Harness() {
+      controller = useGameController();
+      return <>
+        <button onClick={() => controller.setMenuOpen(true)}>打开菜单</button>
+        <input aria-label="另一个字段" />
+        <ActionDock portrait={portrait} autoFocusInput={!portrait} isDiceRolling={Boolean(controller.diceRoll)} state={controller.state}
+          onInspectPlayer={vi.fn()} onDeclarationChange={controller.setDeclaration} onSubmit={controller.submitAction}
+          onRoll={controller.handleRoll} onSuggestion={controller.applySuggestion} onRetry={controller.retryPendingTurn} />
+        <GameMenu open={controller.menuOpen} onClose={() => controller.setMenuOpen(false)} onHome={controller.returnHome}
+          onLoad={controller.openSaveManager} onOpenApi={controller.openApiSettings} onRestart={controller.restartSetup} onSave={controller.saveCurrentGame} />
+      </>;
+    }
+    render(<Harness />);
+    act(() => controller.startGame(players.slice(0, partySize)));
+    for (let index = 0; index < partySize; index++) {
+      fireEvent.change(screen.getByRole('textbox', { name: `${players[index].name}的行动` }), { target: { value: `查看门廊\n记录${players[index].name}的发现` } });
+      fireEvent.click(screen.getByRole('button', { name: index === partySize - 1 ? '提交' : '下一位', exact: true }));
+    }
+    await screen.findByRole('button', { name: '重试本轮', exact: true });
+    expect(dm).toHaveBeenCalledOnce();
+    expect(controller.state.pendingDmActions).toHaveLength(partySize);
+    return { getController: () => controller, actionInput: () => screen.getByRole('textbox', { name: /的行动$/ }) };
+  }
+
+  it.each([{ partySize: 2, portrait: false }, { partySize: 1, portrait: true }])('restores only the owned retry button after another failure and resumes the existing input policy (%j)', async ({ partySize, portrait }) => {
+    const failedRetry = deferredTurn(), successfulRetry = deferredTurn();
+    dm.mockRejectedValueOnce(new Error('offline')).mockImplementationOnce(() => failedRetry.promise).mockImplementationOnce(() => successfulRetry.promise);
+    const game = await failedRound(partySize, portrait);
+    const actionInput = game.actionInput();
+    const focusInput = vi.spyOn(actionInput, 'focus');
+    const firstRetry = screen.getByRole('button', { name: '重试本轮', exact: true });
+    firstRetry.focus(); fireEvent.click(firstRetry);
+    expect(firstRetry).not.toBeInTheDocument();
+    expect(document.body).toHaveFocus();
+    expect(actionInput).toBeDisabled();
+    expect(game.getController().state.isThinking).toBe(true);
+    expect(dm.mock.calls[1][1].actions).toEqual(dm.mock.calls[0][1].actions);
+
+    await act(async () => failedRetry.reject(new Error('still offline')));
+    const secondRetry = screen.getByRole('button', { name: '重试本轮', exact: true });
+    expect(secondRetry).not.toBe(firstRetry);
+    expect(secondRetry).toHaveFocus();
+    expect(focusInput).not.toHaveBeenCalled();
+    expect(game.getController().state.pendingDmActions).toHaveLength(partySize);
+    fireEvent.click(secondRetry);
+    expect(secondRetry).not.toBeInTheDocument();
+    await act(async () => successfulRetry.resolve(response));
+    await waitFor(() => expect(game.getController().state.pendingDmActions).toBeUndefined());
+    expect(screen.queryByRole('button', { name: '重试本轮', exact: true })).toBeNull();
+    expect(actionInput).toBeEnabled();
+    if (portrait) { expect(focusInput).not.toHaveBeenCalled(); expect(document.body).toHaveFocus(); }
+    else expect(actionInput).toHaveFocus();
+    expect(dm).toHaveBeenCalledTimes(3);
+    expect(dm.mock.calls[2][1].actions).toEqual(dm.mock.calls[0][1].actions);
+    expect(game.getController().state.messages.filter(message => message.type === 'player')).toHaveLength(partySize);
+    expect(game.getController().state.conversationHistory.map(turn => turn.role)).toEqual(['user', 'assistant']);
+
+    // A subsequent round must not inherit the successful retry's focus intent.
+    const laterRound = deferredTurn();
+    dm.mockImplementationOnce(() => laterRound.promise);
+    actionInput.blur();
+    for (let index = 0; index < partySize; index++) {
+      fireEvent.change(game.actionInput(), { target: { value: `继续查看${players[index].name}的调查目标` } });
+      fireEvent.click(screen.getByRole('button', { name: index === partySize - 1 ? '提交' : '下一位', exact: true }));
+    }
+    const otherField = screen.getByRole('textbox', { name: '另一个字段' });
+    otherField.focus(); otherField.blur();
+    expect(document.body).toHaveFocus();
+    await act(async () => laterRound.reject(new Error('a later round is offline')));
+    expect(screen.getByRole('button', { name: '重试本轮', exact: true })).not.toHaveFocus();
+    expect(document.body).toHaveFocus();
+    expect(dm).toHaveBeenCalledTimes(4);
+  });
+
+  it('consumes retry focus when the response requires a check before loading another retained round', async () => {
+    const retry = deferredTurn();
+    dm.mockRejectedValueOnce(new Error('offline')).mockImplementationOnce(() => retry.promise);
+    const game = await failedRound(1);
+    const failedTurn = game.getController().state;
+    const retryButton = screen.getByRole('button', { name: '重试本轮', exact: true });
+    retryButton.focus(); fireEvent.click(retryButton);
+    await act(async () => retry.resolve({
+      raw: '{"narrative":"查看门廊。","check":{"player":"亨利","skill":"侦查","difficulty":"普通"}}',
+      legacyResponse: { narrative: '查看门廊。', check: { player: '亨利', skill: '侦查', difficulty: '普通' } }
+    }));
+    expect(game.getController().state.pendingCheck?.skill).toBe('侦查');
+    expect(screen.getByRole('button', { name: '掷骰', exact: true })).toBeInTheDocument();
+    expect(document.body).toHaveFocus();
+    act(() => game.getController().loadSaveSlot(failedTurn));
+    expect(screen.getByRole('button', { name: '重试本轮', exact: true })).not.toHaveFocus();
+    expect(document.body).toHaveFocus();
+    expect(game.getController().state.pendingDmActions).toHaveLength(1);
+    expect(dm).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(['menu', 'menu with empty focus', 'another field', 'unfocused activation'] as const)('does not steal focus after deferred failure when %s owns the interaction', async (owner) => {
+    const retry = deferredTurn();
+    dm.mockRejectedValueOnce(new Error('offline')).mockImplementationOnce(() => retry.promise);
+    const game = await failedRound(4);
+    const firstRetry = screen.getByRole('button', { name: '重试本轮', exact: true });
+    if (owner !== 'unfocused activation') firstRetry.focus();
+    fireEvent.click(firstRetry);
+    expect(firstRetry).not.toBeInTheDocument();
+    if (owner.startsWith('menu')) {
+      const menu = screen.getByRole('button', { name: '打开菜单', exact: true });
+      menu.focus(); fireEvent.click(menu);
+      expect(screen.getByRole('dialog', { name: '调查菜单' })).toBeInTheDocument();
+      const close = screen.getByRole('button', { name: '关闭调查菜单', exact: true });
+      expect(close).toHaveFocus();
+      if (owner === 'menu with empty focus') close.blur();
+    } else if (owner === 'another field') screen.getByRole('textbox', { name: '另一个字段' }).focus();
+    const focusOwner = document.activeElement;
+    await act(async () => retry.reject(new Error('still offline')));
+    expect(screen.getByRole('button', { name: '重试本轮', exact: true })).not.toHaveFocus();
+    expect(document.activeElement).toBe(focusOwner);
+    expect(game.getController().state.pendingDmActions).toHaveLength(4);
+    expect(game.actionInput()).toBeDisabled();
+    expect(dm).toHaveBeenCalledTimes(2);
+    if (owner.startsWith('menu')) {
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByRole('dialog', { name: '调查菜单' })).toBeNull();
+      expect(screen.getByRole('button', { name: '打开菜单', exact: true })).toHaveFocus();
+      expect(screen.getByRole('button', { name: '重试本轮', exact: true })).not.toHaveFocus();
+    }
   });
 });

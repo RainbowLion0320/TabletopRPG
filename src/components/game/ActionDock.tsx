@@ -43,6 +43,8 @@ export function ActionDock({
 }: ActionDockProps) {
   const currentActor = state.players[state.currentActorIndex] ?? state.players[0];
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const retryRef = useRef<HTMLButtonElement>(null);
+  const retryOwnedFocus = useRef(false);
   const declaration = state.declarations[currentActor?.id ?? ''] ?? '';
   const isLastActor = state.currentActorIndex >= state.players.length - 1;
   const currentSuggestions = currentActor
@@ -70,6 +72,17 @@ export function ActionDock({
         .some(element => !element.closest('[inert], [aria-hidden="true"]'))) return;
     inputRef.current?.focus({ preventScroll: true });
   }, [autoFocusInput, canDeclare]);
+
+  useLayoutEffect(() => {
+    if (state.isThinking || !retryOwnedFocus.current) return;
+    // Consume this attempt's focus intent for every outcome, including a check or
+    // settings repair. A later unrelated failure must not inherit it.
+    retryOwnedFocus.current = false;
+    if (!hasPendingTurn || state.pendingCheck || ending || document.activeElement !== document.body
+      || Array.from(document.querySelectorAll('[role="dialog"][aria-modal="true"]'))
+        .some(element => !element.closest('[inert], [aria-hidden="true"]'))) return;
+    retryRef.current?.focus({ preventScroll: true });
+  });
 
   useLayoutEffect(() => {
     if (inputRef.current) fitActionInput(inputRef.current);
@@ -118,7 +131,10 @@ export function ActionDock({
       {hasPendingTurn && !state.isThinking && !state.pendingCheck ? (
         <div className="check-card" role="status">
           <div><strong>本轮行动已保留</strong><span>{pendingDmFailureText(state.messages) ?? '继续本轮，已确认的骰点无需重掷。'}</span></div>
-          <button className="secondary-action" onClick={onRetry}>重试本轮</button>
+          <button ref={retryRef} className="secondary-action" onClick={(event) => {
+            retryOwnedFocus.current = document.activeElement === event.currentTarget;
+            onRetry?.();
+          }}>重试本轮</button>
         </div>
       ) : null}
       {/* 条件区域：检定 / 建议 */}

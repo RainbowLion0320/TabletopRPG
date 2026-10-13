@@ -215,12 +215,28 @@ export function writeApiConfig(config: ApiConfig) {
  *      — cross-browser, cross-machine-restart, since Vite reloads env vars on
  *      next boot. Silently no-ops in production builds.
  *
- * Returns true only when the env-write succeeded; false means the config is
- * stored in this browser only (including production and static preview).
+ * Returns true only when the env-write succeeded; false still means the active
+ * platform storage saved it. A rejected local/native write restores the prior override.
  */
 export async function persistApiConfig(config: ApiConfig): Promise<boolean> {
-  writeApiConfig(config);
-  await flushGameStorage();
+  const previous = gameStorage.getItem(API_KEY);
+  const next = JSON.stringify(normalizeApiConfig(config));
+  try {
+    gameStorage.setItem(API_KEY, next);
+    await flushGameStorage();
+  } catch (error) {
+    try {
+      // Restore both the native read cache and its dirty target, so a later
+      // lifecycle flush cannot apply a connection whose save was rejected.
+      if (next !== previous && gameStorage.getItem(API_KEY) === next) {
+        if (previous === null) gameStorage.removeItem(API_KEY);
+        else gameStorage.setItem(API_KEY, previous);
+      }
+    } catch {
+      // Keep the original persistence error for the existing save-failure UI.
+    }
+    throw error;
+  }
   if (!import.meta.env.DEV) return false;
   try {
     const response = await fetch('/__api_config', {

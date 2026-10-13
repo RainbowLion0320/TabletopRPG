@@ -1968,6 +1968,162 @@ public class GameAndroidTest {
         } finally { if (activity != null) activity.close(); }
     }
 
+    private void readRetryCheckpoint(String name, int playerMessages, int pendingActions) throws Exception {
+        js("(()=>{window.qaRetryCheckpointDone=false;const deadline=performance.now()+10000;const read=async()=>{try{const {values}=await Capacitor.Plugins.GameStorage.readAll(),s=JSON.parse(values['trpg-android-session-v1']).state;"
+            + "if(s.isThinking||s.messages.filter(m=>m.type==='player').length!==" + playerMessages + "||(s.pendingDmActions?.length??0)!==" + pendingActions + "){if(performance.now()<deadline){setTimeout(read,50);return}throw new Error('Native checkpoint did not settle')}"
+            + "window.qaRetry.states[" + JSONObject.quote(name) + "]={players:s.players.map(p=>({id:p.id,name:p.name})),actor:s.currentActorIndex,declarations:s.declarations,pending:s.pendingDmActions??[],playerMessages:s.messages.filter(m=>m.type==='player').map(m=>({id:m.id,player:m.playerName,text:m.text}))};"
+            + "}catch(error){window.qaRetry.checkpointError=String(error)}window.qaRetryCheckpointDone=true};read()})()");
+        until("window.qaRetryCheckpointDone");
+        assertEquals("The real encrypted checkpoint settles without modifying game state", "null", js("window.qaRetry.checkpointError"));
+    }
+
+    private void nativeTabToRetry() throws Exception {
+        for (int step = 0; step < 32; step++) {
+            if ("true".equals(js("document.activeElement===document.querySelector('.check-card > button')"))) return;
+            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_TAB);
+        }
+        fail("Real Android Tab did not reach the enabled retry button: " + js("window.qaRetryTake('tab-timeout')"));
+    }
+
+    private void assertRetryImeClosed(String stage) throws Exception {
+        awaitSettledIme(false);
+        boolean visible = imeVisible();
+        js("window.qaRetry.ime.push({stage:" + JSONObject.quote(stage) + ",visible:" + visible + "})");
+        assertFalse("Retry feedback does not open the real Android input method: " + stage, visible);
+        assertEquals("Retry feedback leaves the phone action input unfocused", "false", js("document.activeElement===document.querySelector('.dock-input')"));
+    }
+
+    @Test public void retryFailureRestoresOwnedNativeFocusAndRespectsAnActiveMenu() throws Exception {
+        for (int party : new int[] {1, 2, 4}) {
+            AtomicInteger narratorCalls = new AtomicInteger(), successAttempt = new AtomicInteger(-1);
+            java.util.List<String> requests = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+            AtomicReference<String> dispatchError = new AtomicReference<>();
+            CountDownLatch[] gates = new CountDownLatch[8], requested = new CountDownLatch[8];
+            for (int i = 0; i < gates.length; i++) { gates[i] = new CountDownLatch(1); requested[i] = new CountDownLatch(1); }
+            gates[0].countDown();
+            String narrative = "Android 重试后调查继续，伊莎贝拉等待调查员继续询问失踪前的经过。";
+            MockWebServer server = new MockWebServer();
+            server.setDispatcher(new Dispatcher() {
+                @Override public MockResponse dispatch(RecordedRequest request) {
+                    String body = request.getBody().readUtf8();
+                    boolean narrator = body.contains("COC 第七版 AI DM Agent");
+                    if (narrator) {
+                        int attempt = narratorCalls.incrementAndGet();
+                        try {
+                            org.json.JSONArray input = new JSONObject(body).getJSONArray("input");
+                            String userInput = "";
+                            for (int i = 0; i < input.length(); i++) if ("user".equals(input.getJSONObject(i).optString("role"))) userInput = input.getJSONObject(i).getString("content");
+                            requests.add(userInput);
+                            if (attempt <= requested.length) requested[attempt - 1].countDown();
+                            if (attempt > gates.length || !gates[attempt - 1].await(30, TimeUnit.SECONDS)) dispatchError.compareAndSet(null, "Narrator gate timed out at attempt " + attempt);
+                        } catch (Exception error) { dispatchError.compareAndSet(null, error.getClass().getSimpleName()); }
+                        if (attempt != successAttempt.get()) return new MockResponse().setResponseCode(503).setHeader("Content-Type", "application/json").setBody("{\"error\":{\"message\":\"qa connection unavailable\"}}");
+                    }
+                    String content = narrator ? "{\"narrative\":" + JSONObject.quote(narrative) + ",\"activeNpc\":\"伊莎贝拉·摩勒\",\"nextPrompt\":\"\",\"playerChoices\":{},\"keywords\":[]}" : "{\"facts\":[],\"nodes\":[],\"edges\":[]}";
+                    return new MockResponse().setHeader("Content-Type", "application/json").setBody("{\"output_text\":" + JSONObject.quote(content) + "}");
+                }
+            });
+            server.start();
+            try {
+                fresh(); viewport(390, 844); configure(server.url("/v1").toString(), "responses"); click("开始游戏");
+                for (int i = 1; i < party; i++) js("document.querySelectorAll('.preset-selection-input')[" + i + "].click()");
+                until("document.querySelectorAll('.preset-selection-input:checked').length===" + party); click("进入游戏");
+                for (int i = 0; i < party; i++) {
+                    fill(".dock-input", "接受委托\n询问失踪经过");
+                    // Earlier investigators intentionally keep typing focus; dismiss only that preparation IME.
+                    if (imeVisible()) { InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK); awaitSettledIme(false); }
+                    nativeTap(".dock-submit");
+                    if (i < party - 1) until("document.querySelectorAll('.party-compact')[" + i + "].textContent.includes('已提交')");
+                }
+                until("document.querySelector('.check-card > button')?.textContent==='重试本轮'&&!document.querySelector('.thinking-line')");
+                assertEquals("The first real submitted turn fails exactly once", 1, narratorCalls.get());
+                js("(()=>{const q=window.qaRetry={snapshots:[],clicks:[],ime:[],states:{},checkpointError:null,inputFocuses:0};let id=0;const ids=new WeakMap();"
+                    + "window.qaRetryTake=label=>{const b=document.querySelector('.check-card > button'),input=document.querySelector('.dock-input'),focus=document.activeElement;if(b&&!ids.has(b))ids.set(b,++id);"
+                    + "const s={label,at:performance.now(),retryId:b?ids.get(b):null,retryFocused:focus===b,bodyFocused:focus===document.body,inputFocused:focus===input,inputDisabled:input.disabled,draft:input.value,actor:input.getAttribute('aria-label'),party:Array.from(document.querySelectorAll('.party-compact strong'),e=>e.textContent),playerMessages:document.querySelectorAll('.story-message.player').length,inputFocuses:q.inputFocuses,focusLabel:focus?.getAttribute('aria-label')??focus?.textContent?.trim(),menuOpen:!!document.querySelector('.game-menu[role=dialog]')};q.snapshots.push(s);return s};"
+                    + "const clicked=e=>{const b=e.target.closest?.('.check-card > button');if(b?.textContent==='重试本轮')q.clicks.push({at:performance.now(),trusted:e.isTrusted,detail:e.detail,ownedFocus:document.activeElement===b})};"
+                    + "const focused=e=>{if(e.target.matches?.('.dock-input'))q.inputFocuses++};document.addEventListener('click',clicked,true);document.addEventListener('focusin',focused,true);"
+                    + "window.qaRetryCleanup=()=>{document.removeEventListener('click',clicked,true);document.removeEventListener('focusin',focused,true)};window.qaRetryFirstButton=document.querySelector('.check-card > button');window.qaRetryTake('initial-failure')})()");
+                assertRetryImeClosed("initial-failure"); readRetryCheckpoint("initial", party, party);
+                assertEquals("Ordinary submission resets the actor/drafts but retains every actual pending action", "true", js("window.qaRetry.states.initial.actor===0&&Object.values(window.qaRetry.states.initial.declarations).every(v=>v==='')&&window.qaRetry.states.initial.pending.every(a=>a.action==='接受委托'+String.fromCharCode(10)+'询问失踪经过')"));
+                nativeTap(".check-card > button"); until("document.querySelector('.thinking-line')&&window.qaRetry.clicks.length===1");
+                assertTrue("The real touch reaches the local narrator gate", requested[1].await(10, TimeUnit.SECONDS));
+                assertEquals("The retry uses one trusted Android touch and retires its original button", "true", js("window.qaRetry.clicks[0].trusted&&window.qaRetry.clicks[0].detail>0&&!window.qaRetryFirstButton.isConnected&&document.activeElement===document.body&&document.querySelector('.dock-input').disabled"));
+                assertEquals("Native touch starts only one retry request", 2, narratorCalls.get());
+                boolean touchOwnedFocus = "true".equals(js("window.qaRetry.clicks[0].ownedFocus"));
+                js("window.qaRetry.touchOwnedFocus=" + touchOwnedFocus + ";window.qaRetryTake('touch-waiting')"); assertRetryImeClosed("touch-waiting");
+                gates[1].countDown(); until("document.querySelector('.check-card > button')?.textContent==='重试本轮'&&!document.querySelector('.thinking-line')");
+                if (touchOwnedFocus) until("document.activeElement===document.querySelector('.check-card > button')");
+                js("window.qaRetryTake('touch-failed')"); assertRetryImeClosed("touch-failed");
+                readRetryCheckpoint("touchFailed", party, party);
+                assertEquals("A touch retry failure preserves the actual pending round without duplicate player messages", "true", js("JSON.stringify(window.qaRetry.states.initial)===JSON.stringify(window.qaRetry.states.touchFailed)&&window.qaRetry.inputFocuses===0&&window.qaRetry.snapshots[0].retryId!==window.qaRetry.snapshots.at(-1).retryId"));
+                if (!touchOwnedFocus) {
+                    // A WebView may leave a touched button unfocused. Record that boundary, then exercise real keyboard ownership.
+                    nativeTabToRetry(); js("window.qaRetryTake('real-tab-owned')");
+                    InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_ENTER);
+                    until("document.querySelector('.thinking-line')&&window.qaRetry.clicks.length===2");
+                    assertTrue("The real keyboard retry reaches the local narrator gate", requested[2].await(10, TimeUnit.SECONDS));
+                    assertEquals("A real Enter captures focus on the actual enabled retry", "true", js("window.qaRetry.clicks.at(-1).trusted&&window.qaRetry.clicks.at(-1).ownedFocus&&document.activeElement===document.body"));
+                    assertEquals(3, narratorCalls.get()); gates[2].countDown();
+                    until("document.activeElement===document.querySelector('.check-card > button')&&!document.querySelector('.thinking-line')");
+                    js("window.qaRetryTake('keyboard-failed')"); assertRetryImeClosed("keyboard-failed");
+                    readRetryCheckpoint("keyboardFailed", party, party);
+                    assertEquals("Keyboard failure restores the replacement without changing the round", "true", js("JSON.stringify(window.qaRetry.states.initial)===JSON.stringify(window.qaRetry.states.keyboardFailed)&&window.qaRetry.inputFocuses===0"));
+                }
+                int success = narratorCalls.get() + 1; successAttempt.set(success);
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_ENTER);
+                until("document.querySelector('.thinking-line')&&document.querySelector('.dock-input').disabled");
+                assertTrue("Restored Enter reaches the local success gate", requested[success - 1].await(10, TimeUnit.SECONDS));
+                assertEquals("Restored retry focus alone starts the next real Enter request", success, narratorCalls.get());
+                assertEquals("The retry Enter is trusted and retains focus ownership", "true", js("window.qaRetry.clicks.at(-1).trusted&&window.qaRetry.clicks.at(-1).ownedFocus"));
+                gates[success - 1].countDown();
+                until("Array.from(document.querySelectorAll('.story-message.dm')).some(e=>e.textContent.includes(" + JSONObject.quote(narrative) + "))&&!document.querySelector('.dock-input').disabled&&!document.querySelector('.check-card')");
+                js("window.qaRetryTake('success')"); assertRetryImeClosed("success"); readRetryCheckpoint("success", party, 0);
+                assertEquals("Successful retry clears only completed declarations and returns to the first actual investigator", "true", js("(()=>{const a=window.qaRetry.states.initial,b=window.qaRetry.states.success;return JSON.stringify(a.players)===JSON.stringify(b.players)&&JSON.stringify(a.playerMessages)===JSON.stringify(b.playerMessages)&&b.actor===0&&Object.values(b.declarations).every(v=>v==='')&&document.querySelector('.dock-input').value===''&&window.qaRetry.inputFocuses===0})()"));
+                int menuInitial = narratorCalls.get() + 1; gates[menuInitial - 1].countDown();
+                for (int i = 0; i < party; i++) {
+                    fill(".dock-input", "保持安静\n记录委托人的回答");
+                    if (imeVisible()) { InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK); awaitSettledIme(false); }
+                    nativeTap(".dock-submit");
+                    if (i < party - 1) until("document.querySelectorAll('.party-compact')[" + i + "].textContent.includes('已提交')");
+                }
+                until("document.querySelector('.check-card > button')?.textContent==='重试本轮'&&!document.querySelector('.thinking-line')");
+                assertEquals(menuInitial, narratorCalls.get()); readRetryCheckpoint("menuBefore", party * 2, party);
+                js("window.qaRetry.inputFocuses=0;window.qaRetryTake('menu-round-failed')"); assertRetryImeClosed("menu-round-failed");
+                nativeTabToRetry(); int menuAttempt = narratorCalls.get() + 1;
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_ENTER);
+                until("document.querySelector('.thinking-line')");
+                assertTrue("The owned Enter reaches the menu attempt gate", requested[menuAttempt - 1].await(10, TimeUnit.SECONDS));
+                assertEquals(menuAttempt, narratorCalls.get());
+                assertEquals("The gated menu attempt really owns retry focus before opening the menu", "true", js("window.qaRetry.clicks.at(-1).trusted&&window.qaRetry.clicks.at(-1).ownedFocus"));
+                nativeTap(".menu-button"); until("document.querySelector('.game-menu[role=dialog]')&&document.activeElement===document.querySelector('.game-menu-close')");
+                js("window.qaRetryMenuFocus=document.activeElement;window.qaRetryTake('menu-waiting')");
+                gates[menuAttempt - 1].countDown();
+                until("document.querySelector('.check-card > button')?.textContent==='重试本轮'&&!document.querySelector('.thinking-line')");
+                assertEquals("A retry failure cannot steal focus from the real active menu", "true", js("document.querySelector('.game-menu[role=dialog][aria-modal=true]')&&document.activeElement===window.qaRetryMenuFocus&&document.activeElement===document.querySelector('.game-menu-close')&&document.activeElement!==document.querySelector('.check-card > button')&&document.querySelector('.dock-input').disabled&&window.qaRetry.inputFocuses===0"));
+                js("window.qaRetryTake('menu-failed')"); assertRetryImeClosed("menu-failed"); readRetryCheckpoint("menuFailed", party * 2, party);
+                assertEquals("The menu failure preserves party, actor, draft and exact pending actions", "true", js("JSON.stringify(window.qaRetry.states.menuBefore)===JSON.stringify(window.qaRetry.states.menuFailed)"));
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                until("!document.querySelector('.game-menu[role=dialog]')&&document.activeElement===document.querySelector('.menu-button')");
+                js("window.qaRetryTake('native-back')"); assertRetryImeClosed("native-back");
+                assertEquals("Back keeps the menu opener rather than an unrelated retry/input", "true", js("document.activeElement!==document.querySelector('.check-card > button')&&window.qaRetry.inputFocuses===0&&document.querySelectorAll('.story-message.player').length===" + (party * 2)));
+                assertEquals("No retry emits a duplicate narrator request", menuAttempt, narratorCalls.get());
+                assertNull("Local native retry requests have no fixture/gate errors", dispatchError.get());
+                org.json.JSONArray requestEvidence = new org.json.JSONArray();
+                synchronized (requests) { for (String input : requests) requestEvidence.put(input); }
+                js("window.qaRetry.requests=" + requestEvidence.toString());
+                assertEquals("Every real retry sends the retained player's actual multiline action", "true", js("window.qaRetry.requests.length===" + menuAttempt + "&&window.qaRetry.requests.slice(0," + success + ").every(s=>window.qaRetry.states.initial.pending.every(a=>s.includes(a.action)))&&window.qaRetry.requests.slice(" + success + ").every(s=>window.qaRetry.states.menuBefore.pending.every(a=>s.includes(a.action)))"));
+                assertNoResizeErrors(); if (party == 2) screenshot("retry-focus-native-party-2");
+                System.out.println("RETRY_FOCUS_NATIVE: " + js("JSON.stringify({party:" + party + ",touchOwnedFocus:window.qaRetry.touchOwnedFocus,trustedClicks:window.qaRetry.clicks.length,requests:" + narratorCalls.get() + ",inputFocuses:window.qaRetry.inputFocuses,ime:window.qaRetry.ime,menuPreserved:window.qaRetry.snapshots.find(s=>s.label==='menu-failed').menuOpen})"));
+            } finally {
+                for (CountDownLatch gate : gates) gate.countDown();
+                try { if (activity != null) {
+                    js("window.qaRetryCleanup?.()");
+                    savePanelMotionTrace("retry-focus-native-party-" + party, "({party:" + party + ",nativeContext:{native:Capacitor.isNativePlatform(),platform:Capacitor.getPlatform()},viewport:{width:innerWidth,height:innerHeight,scope:'fixed WebView CSS pixels'},evidenceSource:'Real Android touch and KeyEvent; capture listeners only observe focus/clicks; input preparation uses the existing setter helper; encrypted checkpoints are read only',trace:window.qaRetry??null,narratorCalls:" + narratorCalls.get() + ",dispatchError:" + (dispatchError.get() == null ? "null" : JSONObject.quote(dispatchError.get())) + "})");
+                } } finally { try { if (activity != null) activity.close(); } finally { server.shutdown(); } }
+            }
+        }
+    }
+
     @Test public void nativeCancellationStopsTheNetworkCall() throws Exception {
         try (MockWebServer server = new MockWebServer()) {
             server.enqueue(new MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE)); server.start(); fresh();

@@ -1142,6 +1142,147 @@ for (const party of [1, 2, 4]) {
   });
 }
 
+async function openRetainedRetryFocusRound(page: Page, party: number) {
+  const state = createDynamicCaseBoardSave();
+  state.players = ['亨利·格雷', '艾达·华莱士', '托马斯·贝尔', '罗伯特·肖'].slice(0, party)
+    .map((name, index) => makeInvestigator({ id: `retry-focus-${index}`, name }));
+  state.currentActorIndex = party - 1;
+  state.scenarioProgress = createSmokeScenarioProgress();
+  state.declarations = Object.fromEntries(state.players.map(player => [player.id, `听${player.name}核对失踪前的经过。\n记录委托人的回答。`]));
+  state.pendingDmActions = state.players.map(player => ({ player: player.name, action: state.declarations[player.id] }));
+  state.messages.push(...state.players.map(player => ({ id: `retry-action-${player.id}`, type: 'player' as const,
+    playerName: player.name, text: state.declarations[player.id] })));
+  const attempts: Array<{ input: string; release: (success: boolean) => void }> = [];
+  const narrative = '伊莎贝拉点头，等待调查员继续询问失踪前的经过。';
+  await page.addInitScript(() => {
+    const qa = window as Window & { retryInputFocuses: number };
+    qa.retryInputFocuses = 0;
+    document.addEventListener('focusin', event => {
+      if (event.target instanceof HTMLElement && event.target.matches('.dock-input')) qa.retryInputFocuses++;
+    });
+  });
+  await page.route('https://retry-focus.test/v1/responses', async route => {
+    const body = route.request().postDataJSON() as {
+      text?: { format?: { name?: string } }; input?: Array<{ role?: string; content?: unknown }>;
+    };
+    const narrator = body.text?.format?.name === 'narrator_response';
+    if (narrator) {
+      let release!: (success: boolean) => void;
+      const gate = new Promise<boolean>(resolve => { release = resolve; });
+      attempts.push({ input: String(body.input?.filter(item => item.role === 'user').at(-1)?.content ?? ''), release });
+      if (!await gate) {
+        await route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":{"message":"qa connection unavailable"}}' });
+        return;
+      }
+    }
+    const content = narrator ? { narrative, activeNpc: '伊莎贝拉·摩勒', nextPrompt: '', playerChoices: {}, keywords: [] }
+      : { facts: [], nodes: [], edges: [] };
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ output_text: JSON.stringify(content) }) });
+  });
+  await gotoWithSave(page, state, { provider: 'custom', protocol: 'responses', endpoint: 'https://retry-focus.test/v1', apiKey: 'qa-only', model: 'qa-only' });
+  await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+  await expect(page.getByRole('button', { name: '重试本轮', exact: true })).toBeVisible();
+  await expect(page.locator('.dock-input')).toBeDisabled();
+  await expect(page.locator('.story-message.player')).toHaveCount(party);
+  return { state, attempts, narrative, releaseAll: () => attempts.forEach(attempt => attempt.release(false)) };
+}
+
+async function retryFocusSnapshot(page: Page) {
+  return page.evaluate(() => {
+    const input = document.querySelector<HTMLTextAreaElement>('.dock-input')!;
+    const focus = document.activeElement;
+    return { body: focus === document.body, label: focus?.getAttribute('aria-label') ?? focus?.textContent?.trim(),
+      inputFocused: focus === input, inputDisabled: input.disabled, draft: input.value,
+      inputFocuses: (window as Window & { retryInputFocuses: number }).retryInputFocuses,
+      retryCount: Array.from(document.querySelectorAll('.check-card button')).filter(button => button.textContent === '重试本轮').length };
+  });
+}
+
+for (const mode of [{ party: 2, width: 1440, height: 900, phone: false }, { party: 1, width: 390, height: 844, phone: true }]) {
+  test(`keyboard retry restores the new retry after failure and respects ${mode.phone ? 'phone input policy' : 'desktop input focus'}`, async ({ page }, testInfo) => {
+    await page.setViewportSize(mode);
+    const game = await openRetainedRetryFocusRound(page, mode.party);
+    const retry = page.getByRole('button', { name: '重试本轮', exact: true }), input = page.locator('.dock-input');
+    const evidence: Record<string, unknown> = {};
+    try {
+      const firstButton = (await retry.elementHandle())!;
+      await retry.focus(); await expect(retry).toBeFocused();
+      await page.keyboard.press('Enter');
+      await expect.poll(() => game.attempts.length).toBe(1);
+      await expect(retry).toHaveCount(0); await expect(input).toBeDisabled();
+      expect(await firstButton.evaluate(button => button.isConnected)).toBe(false);
+      await expect.poll(() => page.evaluate(() => document.activeElement === document.body)).toBe(true);
+      evidence.waitingFailure = await retryFocusSnapshot(page);
+      game.attempts[0].release(false);
+      await expect(retry).toBeFocused(); await expect(input).toBeDisabled();
+      await expect(input).toHaveValue(game.state.declarations[game.state.players.at(-1)!.id]);
+      expect((await retryFocusSnapshot(page)).inputFocuses).toBe(0);
+      evidence.failed = await retryFocusSnapshot(page);
+      await page.screenshot({ path: testInfo.outputPath('retry-refocused.png') });
+      // Use the restored focus directly; do not focus the replacement button in the test.
+      await page.keyboard.press('Enter');
+      await expect.poll(() => game.attempts.length).toBe(2);
+      await expect(retry).toHaveCount(0); await expect(input).toBeDisabled();
+      evidence.waitingSuccess = await retryFocusSnapshot(page);
+      game.attempts[1].release(true);
+      await expect(page.locator('.story-message.dm').last()).toContainText(game.narrative);
+      await expect(input).toBeEnabled(); await expect(input).toHaveValue(game.state.declarations[game.state.players[0].id]);
+      await expect(input).toHaveAttribute('aria-label', `${game.state.players[0].name}的行动`);
+      await expect(retry).toHaveCount(0); await expect(page.locator('.story-message.player')).toHaveCount(mode.party);
+      if (mode.phone) {
+        await expect.poll(() => page.evaluate(() => document.activeElement === document.body)).toBe(true);
+        expect((await retryFocusSnapshot(page)).inputFocuses).toBe(0);
+      } else await expect(input).toBeFocused();
+      expect(game.attempts).toHaveLength(2);
+      for (const attempt of game.attempts) for (const action of Object.values(game.state.declarations)) expect(attempt.input).toContain(action);
+      evidence.success = await retryFocusSnapshot(page);
+      await page.screenshot({ path: testInfo.outputPath('retry-success-focus.png') });
+    } finally {
+      game.releaseAll();
+      writeFileSync(testInfo.outputPath('retry-focus.json'), JSON.stringify({ mode, ...evidence, requests: game.attempts.map(attempt => attempt.input) }, null, 2));
+    }
+  });
+}
+
+for (const emptyFocus of [false, true]) {
+  test(`failed retry keeps an active menu ${emptyFocus ? 'with empty BODY focus' : 'and its focused close button'}`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const game = await openRetainedRetryFocusRound(page, 4);
+    const retry = page.getByRole('button', { name: '重试本轮', exact: true }), input = page.locator('.dock-input');
+    const menuEntry = page.getByRole('button', { name: '菜单', exact: true });
+    const close = page.getByRole('button', { name: '关闭调查菜单', exact: true });
+    const menu = page.getByRole('dialog', { name: '调查菜单', exact: true });
+    const evidence: Record<string, unknown> = {};
+    try {
+      await retry.focus(); await page.keyboard.press('Enter');
+      await expect.poll(() => game.attempts.length).toBe(1); await expect(retry).toHaveCount(0);
+      await menuEntry.click(); await expect(menu).toHaveAttribute('aria-modal', 'true'); await expect(close).toBeFocused();
+      // This deliberately changes real browser focus while the menu remains active;
+      // it is not a focus event stub or a fabricated dialog.
+      if (emptyFocus) await close.evaluate(button => button.blur());
+      if (emptyFocus) await expect.poll(() => page.evaluate(() => document.activeElement === document.body)).toBe(true);
+      evidence.waiting = await retryFocusSnapshot(page);
+      game.attempts[0].release(false);
+      await expect(retry).toHaveCount(1); await expect(input).toBeDisabled(); await expect(retry).not.toBeFocused();
+      if (emptyFocus) await expect.poll(() => page.evaluate(() => document.activeElement === document.body)).toBe(true);
+      else await expect(close).toBeFocused();
+      await expect(menu).toHaveAttribute('aria-modal', 'true');
+      expect((await retryFocusSnapshot(page)).inputFocuses).toBe(0);
+      evidence.failed = await retryFocusSnapshot(page);
+      await page.screenshot({ path: testInfo.outputPath('retry-menu-focus.png') });
+      await page.keyboard.press('Escape');
+      await expect(menu).toHaveCount(0); await expect(menuEntry).toBeFocused(); await expect(retry).not.toBeFocused();
+      await expect(input).toHaveValue(game.state.declarations[game.state.players.at(-1)!.id]);
+      await expect(page.locator('.story-message.player')).toHaveCount(4);
+      expect(game.attempts).toHaveLength(1);
+      evidence.closedMenu = await retryFocusSnapshot(page);
+    } finally {
+      game.releaseAll();
+      writeFileSync(testInfo.outputPath('retry-menu-focus.json'), JSON.stringify({ emptyFocus, ...evidence }, null, 2));
+    }
+  });
+}
+
 for (const phone of [false, true]) {
   test(`DM completion respects ${phone ? 'phone reading without reopening input' : 'an open archive and its keyboard focus'}`, async ({ page }, testInfo) => {
     await page.setViewportSize(phone ? { width: 390, height: 844 } : { width: 1440, height: 900 });
