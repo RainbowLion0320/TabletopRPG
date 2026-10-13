@@ -4,30 +4,43 @@
   animation: fog-screen-enter 220ms var(--ui-ease);
 }
 :root.fog-ui :is(.modal-backdrop, .game-menu-backdrop, .save-manager-backdrop, .entity-detail-overlay, .investigator-overlay, .android-exit-backdrop, .dice-roll-overlay) {
-  animation: fog-veil-enter 240ms ease-out both;
+  animation: none; opacity: 1; transition: opacity 240ms ease-out;
 }
-:root.fog-ui :is(.modal-card, .save-manager-card, .entity-detail-card, .investigator-sheet, .android-exit-card, .dice-roll-card) {
-  animation: fog-panel-enter 240ms var(--ui-ease) backwards;
+:root.fog-ui [data-ui-phase] > :is(.modal-card, .save-manager-card, .entity-detail-card, .investigator-sheet, .android-exit-card, .dice-roll-card) {
+  animation: none; opacity: 1; transform: none;
+  transition: opacity 240ms var(--ui-ease), transform 240ms var(--ui-ease);
 }
-:root.fog-ui .info-drawer-react.fullscreen.open {
-  transition: none; animation: fog-drawer-enter 240ms var(--ui-ease) backwards;
+/* Override the old horizontal drawer transition, including its permanently mounted closed state. */
+:root.fog-ui .info-drawer-react.fullscreen { animation: none; opacity: 0; transform: none; transition: none; }
+:root.fog-ui .info-drawer-react.fullscreen.open,
+:root.fog-ui .case-board-inspector {
+  animation: none; opacity: 1; transform: none;
+  transition: opacity 240ms var(--ui-ease), transform 240ms var(--ui-ease);
 }
-:root.fog-ui .case-board-inspector { animation: fog-panel-enter 240ms var(--ui-ease) backwards; }
 :root.fog-ui .game-menu { transform-origin: top right; }
 :root.fog-ui.portrait-ui .game-menu { --ui-panel-distance: 18px; transform-origin: bottom center; }
 /* The same elements stay painted for 170ms while already absent from focus/AX. */
 :root.fog-ui [data-ui-phase='closing'] { pointer-events: none !important; }
 :root.fog-ui :is(.modal-backdrop, .game-menu-backdrop, .save-manager-backdrop, .entity-detail-overlay, .investigator-overlay, .android-exit-backdrop, .dice-roll-overlay)[data-ui-phase='closing'] {
-  animation: fog-veil-exit 170ms ease-in both;
+  opacity: 0; transition: opacity 170ms ease-in;
 }
-:root.fog-ui [data-ui-phase='closing'] > :is(.modal-card, .save-manager-card, .entity-detail-card, .investigator-sheet, .android-exit-card, .dice-roll-card) {
-  animation: fog-panel-exit 170ms ease-in both;
-}
+:root.fog-ui [data-ui-phase='closing'] > :is(.modal-card, .save-manager-card, .entity-detail-card, .investigator-sheet, .android-exit-card, .dice-roll-card),
 :root.fog-ui :is(.info-drawer-react.fullscreen.open, .case-board-inspector)[data-ui-phase='closing'] {
-  animation: fog-panel-exit 170ms ease-in both;
+  opacity: 0; transform: translateY(8px) scale(.985);
+  transition: opacity 170ms ease-in, transform 170ms ease-in;
 }
-:root.fog-ui :is(.save-delete-confirmation,
-  .check-card, .ending-dock, .toast, .narrative-new-content) {
+/* This marker exists only during the layout effect's first style read, never during a reversal. */
+:root.fog-ui :is(.modal-backdrop, .game-menu-backdrop, .save-manager-backdrop, .entity-detail-overlay, .investigator-overlay, .android-exit-backdrop, .dice-roll-overlay)[data-ui-enter] {
+  opacity: 0; transition: none;
+}
+:root.fog-ui [data-ui-enter] > :is(.modal-card, .save-manager-card, .entity-detail-card, .investigator-sheet, .android-exit-card, .dice-roll-card),
+:root.fog-ui .case-board-inspector[data-ui-enter] {
+  opacity: .25; transform: translateY(var(--ui-panel-distance)) scale(.975); transition: none;
+}
+:root.fog-ui .info-drawer-react.fullscreen.open[data-ui-enter] {
+  opacity: .2; transform: translateY(10px); transition: none;
+}
+:root.fog-ui :is(.check-card, .ending-dock, .narrative-new-content) {
   animation: fog-content-enter 190ms var(--ui-ease);
 }
 :root.fog-ui .story-message.arriving { animation: fog-message-enter 180ms var(--ui-ease); }
@@ -81,23 +94,30 @@
 /* Decorative animations stop in the background; no animation-frame JS loop. */
 :root.fog-ui.ui-motion-paused :is(.thinking-line-nib, .thinking-line-dots i) { animation-play-state: paused; }
 :root.fog-ui.ui-motion-paused .thinking-line::after { animation-play-state: paused; }
+/* Settle external transitions immediately when the app is backgrounded. */
+:root.fog-ui.ui-motion-paused .disclosure-motion { transition: none !important; }
+:root.fog-ui.ui-motion-paused :is(.modal-backdrop, .game-menu-backdrop, .save-manager-backdrop,
+  .entity-detail-overlay, .investigator-overlay, .android-exit-backdrop, .dice-roll-overlay,
+  .info-drawer-react.fullscreen, .case-board-inspector),
+:root.fog-ui.ui-motion-paused [data-ui-phase] > :is(.modal-card, .save-manager-card,
+  .entity-detail-card, .investigator-sheet, .android-exit-card, .dice-roll-card) { transition: none !important; }
 @keyframes fog-screen-enter { from { opacity: .35; } to { opacity: 1; } }
-@keyframes fog-veil-enter { from { opacity: 0; } to { opacity: 1; } }
-@keyframes fog-veil-exit { from { opacity: 1; } to { opacity: 0; } }
-@keyframes fog-panel-enter { from { opacity: .25; transform: translateY(var(--ui-panel-distance)) scale(.975); } to { opacity: 1; transform: none; } }
-@keyframes fog-panel-exit { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(8px) scale(.985); } }
-@keyframes fog-drawer-enter { from { opacity: .2; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes fog-content-enter { from { opacity: .4; } to { opacity: 1; } }
 @keyframes fog-message-enter { from { opacity: .6; translate: 0 4px; } to { opacity: 1; translate: 0 0; } }
 @keyframes fog-portrait-enter { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fog-scene-enter { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
+  :root.fog-ui :is(.modal-backdrop, .game-menu-backdrop, .save-manager-backdrop,
+    .entity-detail-overlay, .investigator-overlay, .android-exit-backdrop, .dice-roll-overlay,
+    .info-drawer-react.fullscreen, .case-board-inspector),
+  :root.fog-ui [data-ui-phase] > :is(.modal-card, .save-manager-card,
+    .entity-detail-card, .investigator-sheet, .android-exit-card, .dice-roll-card) { transition: none !important; }
   :root.fog-ui .game-screen, :root.fog-ui .scene-stage { transition: none !important; }
   :root.fog-ui .disclosure-motion { transition: none !important; }
   :root.fog-ui :is(.title-content, .setup-screen, .game-screen, .modal-backdrop, .game-menu-backdrop,
     .save-manager-backdrop, .entity-detail-overlay, .investigator-overlay, .modal-card, .save-manager-card,
     .entity-detail-card, .investigator-sheet, .android-exit-backdrop, .android-exit-card, .dice-roll-overlay, .dice-roll-card, .info-drawer-react.fullscreen.open, .preset-other-panel,
-    .save-delete-confirmation, .check-card, .ending-dock, .toast, .narrative-new-content,
+    .check-card, .ending-dock, .narrative-new-content,
     .case-board-inspector,
     .story-message.arriving, .scene-npc, .scene-backdrop-img, .dock-actor-avatar img) { animation: none !important; }
   :root.fog-ui :is(button, .preset-card-modern, .preset-select-mark, .preset-select-mark svg,

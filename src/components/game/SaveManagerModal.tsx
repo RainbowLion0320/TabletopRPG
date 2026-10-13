@@ -1,9 +1,11 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type TransitionEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { Trash2, X } from 'lucide-react';
 import type { IncompatibleSaveSlot, SaveSlot } from '../../types/game';
 import { useDialogFocus } from '../shared/useDialogFocus';
 import { useOverlayPresence } from '../shared/useOverlayPresence';
+import { useOverlayEntry } from '../shared/useOverlayEntry';
+import { DisclosureMotion } from '../shared/DisclosureMotion';
 import { ArchiveEmptyArt } from '../shared/ArchiveEmptyArt';
 import { JournalArt } from '../shared/JournalArt';
 import './save-manager.css';
@@ -20,6 +22,7 @@ interface SaveManagerModalProps {
 export function SaveManagerModal({ incompatibleSaves = [], onClose, onDelete, onLoad, open, saves }: SaveManagerModalProps) {
   const motion = useOverlayPresence(open);
   const dialogRef = useRef<HTMLDivElement>(null);
+  useOverlayEntry(motion.present, dialogRef);
   const closeRef = useRef<HTMLButtonElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const deletingRef = useRef(false);
@@ -45,6 +48,15 @@ export function SaveManagerModal({ incompatibleSaves = [], onClose, onDelete, on
     const control = target.getBoundingClientRect(), body = list.getBoundingClientRect();
     if (control.bottom > body.bottom) list.scrollTop += control.bottom - body.bottom + 8;
     else if (control.top < body.top) list.scrollTop += control.top - body.top - 8;
+  }
+  function settleControls(event: TransitionEvent<HTMLDivElement>) {
+    if (!open || deletingRef.current || event.propertyName !== 'grid-template-rows'
+      || event.target !== event.currentTarget.firstElementChild) return;
+    const focused = document.activeElement;
+    if (!(focused instanceof HTMLButtonElement) || focused.disabled
+      || !event.currentTarget.contains(focused) || focused.closest('[inert], [aria-hidden="true"]')) return;
+    // The final prompt height can move a focused last-row control beyond a short list.
+    focusInList(focused);
   }
   useDialogFocus(open, dialogRef, back, undefined, {
     getFallbackFocus: () => document.querySelector<HTMLButtonElement>('.dock-actor-avatar, .ending-actions button')
@@ -134,16 +146,22 @@ export function SaveManagerModal({ incompatibleSaves = [], onClose, onDelete, on
                 <span>{slot.players}</span>
               </div>
               {!save && <p className="save-slot-note">当前剧情版本暂时无法载入，记录仍保留在本机。</p>}
-              {confirming ? <div className="save-delete-confirmation">
-                <p id={messageId} role={error ? 'alert' : 'status'}>{error ?? (busy ? '正在删除…' : '删除这份存档？删除后无法恢复。')}</p>
-                <div className="save-slot-actions">
-                  <button type="button" ref={cancelRef} className="ghost-btn" disabled={busy} onClick={() => cancelDeletion(slot.id, index)}>保留存档</button>
-                  <button type="button" className="ghost-btn danger" aria-describedby={messageId} disabled={busy} onClick={() => { void confirmDeletion(slot.id, index); }}>确认删除</button>
+              <div className="save-slot-controls" onTransitionEnd={settleControls}>
+                <DisclosureMotion open={confirming}>
+                  <div className="save-delete-confirmation">
+                    <p id={messageId} role={confirming ? (error ? 'alert' : 'status') : undefined}>{error ?? (busy ? '正在删除…' : '删除这份存档？删除后无法恢复。')}</p>
+                  </div>
+                </DisclosureMotion>
+                <div className={`save-slot-actions${confirming ? ' confirming' : ''}`}>
+                  {confirming ? <>
+                    <button type="button" ref={cancelRef} className="ghost-btn" disabled={busy} onClick={() => cancelDeletion(slot.id, index)}>保留存档</button>
+                    <button type="button" className="ghost-btn danger" aria-describedby={messageId} disabled={busy} onClick={() => { void confirmDeletion(slot.id, index); }}>确认删除</button>
+                  </> : <>
+                    <button type="button" className="ghost-btn danger save-slot-delete" data-action="delete" aria-label={`删除存档：${slot.scene}，${slot.savedAt}`} disabled={busy} onClick={() => askToDelete(slot.id)}><Trash2 size={16} aria-hidden="true" />删除</button>
+                    {save && <button type="button" className="primary-btn save-slot-load" data-action="load" disabled={busy} onClick={() => { if (!deletingRef.current) onLoad(save); }}>载入存档</button>}
+                  </>}
                 </div>
-              </div> : <div className="save-slot-actions">
-                <button type="button" className="ghost-btn danger save-slot-delete" data-action="delete" aria-label={`删除存档：${slot.scene}，${slot.savedAt}`} disabled={busy} onClick={() => askToDelete(slot.id)}><Trash2 size={16} aria-hidden="true" />删除</button>
-                {save && <button type="button" className="primary-btn save-slot-load" data-action="load" disabled={busy} onClick={() => { if (!deletingRef.current) onLoad(save); }}>载入存档</button>}
-              </div>}
+              </div>
             </article>;
           })}
         </div> : <div className="save-manager-empty"><ArchiveEmptyArt /><p>暂无存档</p></div>}

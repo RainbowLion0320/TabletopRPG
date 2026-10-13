@@ -2,6 +2,7 @@ import type { GameState, PersistedDMEvent, PersistedPendingConsequence } from '.
 import { useRef } from 'react';
 import { useDialogFocus } from '../shared/useDialogFocus';
 import { useOverlayPresence } from '../shared/useOverlayPresence';
+import { useOverlayEntry } from '../shared/useOverlayEntry';
 
 interface DmJournalModalProps {
   open: boolean;
@@ -27,6 +28,7 @@ function eventLabel(kind: string): string {
 export function DmJournalModal({ onClose, open, state }: DmJournalModalProps) {
   const motion = useOverlayPresence(open);
   const dialogRef = useRef<HTMLDivElement>(null);
+  useOverlayEntry(motion.present, dialogRef);
   useDialogFocus(open, dialogRef, onClose);
   if (!motion.present) return null;
 

@@ -7,6 +7,7 @@ import { getSkillTotal } from '../../services/dice';
 import { useDialogFocus } from '../shared/useDialogFocus';
 import { useReadingMotion } from '../shared/useReadingMotion';
 import { useOverlayPresence } from '../shared/useOverlayPresence';
+import { useOverlayEntry } from '../shared/useOverlayEntry';
 import { ArchiveEmptyState } from '../shared/ArchiveEmptyState';
 import './investigatorSheet.css';
 
@@ -27,22 +28,24 @@ export function InvestigatorSheet({ players, selectedId: currentId, onSelect, on
   const open = Boolean(currentId);
   const player = players.find((item) => item.id === selectedId);
   const dialogRef = useRef<HTMLDivElement>(null);
+  useOverlayEntry(motion.present, dialogRef);
   const bodyRef = useRef<HTMLDivElement>(null);
   const readingPositions = useRef(new Map<string, Partial<Record<SheetTab, number>>>());
   const id = useId();
   const [tab, setTab] = useState<SheetTab>('overview');
   const [failedPortrait, setFailedPortrait] = useState<string | null>(null);
-  useReadingMotion(bodyRef, `${selectedId}:${tab}`, open && Boolean(player));
+  useReadingMotion(bodyRef, `${selectedId}:${tab}`, motion.present && Boolean(player));
   useDialogFocus(open && Boolean(player), dialogRef, onClose, undefined, {
     getFallbackFocus: () => document.querySelector<HTMLButtonElement>('.dock-actor-avatar, .ending-actions button')
   });
   useLayoutEffect(() => {
-    if (!open) return;
+    // A rapid reopen continues the retained visual's reading session.
+    if (motion.present) return;
     setTab('overview');
     readingPositions.current.clear();
     setFailedPortrait(null);
     if (bodyRef.current) bodyRef.current.scrollTop = 0;
-  }, [open]);
+  }, [motion.present]);
   useLayoutEffect(() => {
     if (open && bodyRef.current) bodyRef.current.scrollTop = readingPositions.current.get(selectedId)?.[tab] ?? 0;
   }, [open, selectedId, tab]);

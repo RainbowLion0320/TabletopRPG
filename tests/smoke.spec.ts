@@ -2568,7 +2568,7 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
       if (size.width === 1440 && !expanded) await page.screenshot({ path: 'output/ui-2026-10-08/63-action-desktop-after.png' });
       await page.getByRole('button', { name: '资料', exact: true }).click();
       const reader = page.locator('.info-drawer-react.open');
-      await expect(reader).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
+      await expect(reader).toHaveCSS('transform', 'none');
       expect(await reader.evaluate(element => Number(getComputedStyle(document.querySelector('.game-notice')!).zIndex) < Number(getComputedStyle(element).zIndex))).toBe(true);
       await page.screenshot({ path: testInfo.outputPath('reader-above-save-feedback.png') });
       await page.getByRole('button', { name: '关闭资料', exact: true }).click();
@@ -2730,15 +2730,21 @@ for (const mode of [
     // Observe the actual phase transition before Playwright's visibility checks can
     // consume the brief fade. Keep the last rolling geometry after entry settles.
     await page.evaluate(() => {
-      const probe = { rolling: [] as number[], frames: [] as Array<{ ms: number; boxes: number[]; parts: Array<{ text: string; opacity: number; durations: number[] }>; enabled: boolean; focused: boolean }> };
+      const probe = { rolling: [] as number[], entry: [] as Array<{ opacity: number; veilOpacity: number; running: boolean }>, frames: [] as Array<{ ms: number; boxes: number[]; parts: Array<{ text: string; opacity: number; durations: number[] }>; enabled: boolean; focused: boolean;
+        outer: { same: boolean; opacity: string; transform: string; running: boolean } }> };
       (window as typeof window & { diceRevealProbe: typeof probe }).diceRevealProbe = probe;
       const boxes = (overlay: Element) => Array.from(overlay.querySelectorAll('.dice-roll-card, .dice-roll-panel, .dice-roll-card > footer'))
         .flatMap(el => { const r = el.getBoundingClientRect(); return [r.x, r.y, r.width, r.height]; });
-      let rollingStarted = 0;
+      let rollingStarted = 0, rollingRoot: Element | null = null;
       const trackRolling = () => {
         const overlay = document.querySelector('.dice-roll-overlay');
         if (!overlay || overlay.classList.contains('revealed')) return;
-        if (!rollingStarted) rollingStarted = performance.now();
+        if (!rollingStarted) { rollingStarted = performance.now(); rollingRoot = overlay; requestAnimationFrame(trackRolling); return; }
+        if (probe.entry.length < 24) {
+          const card = overlay.querySelector('.dice-roll-card')!;
+          probe.entry.push({ opacity: Number(getComputedStyle(card).opacity), veilOpacity: Number(getComputedStyle(overlay).opacity),
+            running: card.getAnimations().some(animation => animation.playState === 'running') });
+        }
         if (performance.now() - rollingStarted > 400) probe.rolling = boxes(overlay);
         requestAnimationFrame(trackRolling);
       };
@@ -2752,29 +2758,37 @@ for (const mode of [
         observer.disconnect();
         const began = performance.now();
         const take = () => {
-          const confirm = overlay.querySelector<HTMLButtonElement>('.dice-roll-confirm')!;
+          const confirm = overlay.querySelector<HTMLButtonElement>('.dice-roll-confirm')!, card = overlay.querySelector('.dice-roll-card')!;
           probe.frames.push({ ms: performance.now() - began, boxes: boxes(overlay),
             parts: Array.from(overlay.querySelectorAll('.dice-roll-total, .dice-face, .dice-roll-outcome h3, .dice-roll-confirm')).map(el => ({
               text: el.textContent!.trim(), opacity: Number(getComputedStyle(el).opacity),
               durations: el.getAnimations().map(a => Number(a.effect!.getTiming().duration))
-            })), enabled: !confirm.disabled, focused: document.activeElement === confirm });
+            })), enabled: !confirm.disabled, focused: document.activeElement === confirm,
+            outer: { same: overlay === rollingRoot, opacity: getComputedStyle(card).opacity, transform: getComputedStyle(card).transform,
+              running: card.getAnimations().some(animation => animation.playState === 'running') } });
           if (probe.frames.length < 24) requestAnimationFrame(take);
         };
-        take();
+        requestAnimationFrame(take);
       });
       observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
     });
     await page.getByRole('button', { name: '掷骰', exact: true }).click();
     await expect.poll(() => page.evaluate(() => (window as typeof window & { diceRevealProbe: { frames: unknown[] } }).diceRevealProbe.frames.length), { timeout: 6_000 }).toBe(24);
     const probe = await page.evaluate(() => (window as typeof window & { diceRevealProbe: {
-      rolling: number[]; frames: Array<{ ms: number; boxes: number[]; parts: Array<{ text: string; opacity: number; durations: number[] }>; enabled: boolean; focused: boolean }>;
+      rolling: number[]; entry: Array<{ opacity: number; veilOpacity: number; running: boolean }>; frames: Array<{ ms: number; boxes: number[]; parts: Array<{ text: string; opacity: number; durations: number[] }>; enabled: boolean; focused: boolean;
+        outer: { same: boolean; opacity: string; transform: string; running: boolean } }>;
     } }).diceRevealProbe);
     writeFileSync(testInfo.outputPath('reveal-frames.json'), JSON.stringify(probe, null, 2));
+    expect(probe.entry).toHaveLength(24);
+    expect(probe.entry.some(frame => frame.running && frame.opacity > .01 && frame.opacity < .99)).toBe(!mode.reduced);
+    expect(probe.entry.some(frame => frame.veilOpacity > .01 && frame.veilOpacity < .99)).toBe(!mode.reduced);
+    expect(probe.entry.at(-1)).toEqual({ opacity: 1, veilOpacity: 1, running: false });
     expect(probe.rolling).toHaveLength(12);
     for (const frame of probe.frames) {
       frame.boxes.forEach((value, index) => expect(Math.abs(value - probe.rolling[index])).toBeLessThanOrEqual(.5));
       expect(frame.parts.map(part => part.text)).toEqual(['55', '50', '5', '普通成功', '确认结果']);
       expect(frame.enabled).toBe(true);
+      expect(frame.outer).toEqual({ same: true, opacity: '1', transform: 'none', running: false });
     }
     expect(probe.frames.slice(0, 3).some(frame => frame.focused)).toBe(true);
     expect(probe.frames.slice(3).every(frame => frame.focused)).toBe(true);
@@ -4069,14 +4083,15 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
     await confirm.hover();
     expect(await confirm.evaluate(element => getComputedStyle(element).color)).toBe(dangerInk);
     async function verifyLayout() {
+      await settleUiMotion(page);
       const layout = await dialog.evaluate((element) => {
         const card = element.getBoundingClientRect(), header = element.querySelector('header')!.getBoundingClientRect();
         const list = element.querySelector('.save-list')!.getBoundingClientRect(), footer = element.querySelector('footer')!.getBoundingClientRect();
-        const button = element.querySelector('.save-delete-confirmation .danger')!.getBoundingClientRect();
+        const button = element.querySelector('.save-slot-actions.confirming .danger')!.getBoundingClientRect();
         const center = document.elementFromPoint(button.x + button.width / 2, button.y + button.height / 2);
         return { inside: card.left >= 0 && card.right <= innerWidth && card.top >= 0 && card.bottom <= innerHeight,
           ordered: header.bottom <= list.top + 1 && list.bottom <= footer.top + 1,
-          reachable: button.top >= list.top && button.bottom <= list.bottom + 1 && !!center?.closest('.save-delete-confirmation'),
+          reachable: button.top >= list.top && button.bottom <= list.bottom + 1 && !!center?.closest('.save-slot-actions.confirming'),
           touch: button.height >= 44,
           readable: Array.from(element.querySelectorAll('.save-slot-time, .save-slot-party > span')).every(e => parseFloat(getComputedStyle(e).fontSize) >= 14 && e.scrollWidth <= e.clientWidth + 1),
           horizontalOverflow: element.scrollWidth > element.clientWidth };
@@ -4126,6 +4141,483 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
   });
 }
 
+async function openSaveMotionFixture(page: Page, party: number) {
+  const state = createDynamicCaseBoardSave();
+  state.players = ['亨利·格雷', '艾达·华莱士', '托马斯·贝尔', '罗伯特·肖'].slice(0, party)
+    .map((name, index) => makeInvestigator({ id: `save-motion-${index}`, name }));
+  state.scenarioProgress = createSmokeScenarioProgress();
+  state.declarations = { [state.players[0].id]: '保存时的行动。\n核对门廊的日期。' };
+  await gotoWithSave(page, state);
+  await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+  await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem('trpg-saves-v2')!)[0];
+    const slots = Array.from({ length: 12 }, (_, index) => ({ ...saved, id: saved.id - index,
+      savedAt: `2026/10/13 12:00:${String(59 - index).padStart(2, '0')}` }));
+    slots[11] = { ...slots[11], gameState: { ...saved.gameState,
+      scenarioProgress: { ...saved.gameState.scenarioProgress, moduleVersion: '99.99.99', contentHash: 'QA_INCOMPATIBLE' } } };
+    localStorage.setItem('trpg-saves-v2', JSON.stringify(slots));
+  });
+  const draft = '当前未保存的行动。\n继续与同伴核对时间。';
+  await page.locator('.dock-input').fill(draft);
+  await page.getByRole('button', { name: '菜单', exact: true }).click();
+  await page.getByRole('button', { name: '读取存档', exact: true }).click();
+  await expect(page.locator('.save-slot-card')).toHaveCount(12);
+  await settleUiMotion(page);
+  return draft;
+}
+
+async function sampleSaveConfirmation(page: Page, index: number, actions: Array<{ kind: 'delete' | 'keep' | 'back'; delay: number }>) {
+  return page.evaluate(async ({ index, actions }) => {
+    const row = document.querySelectorAll<HTMLElement>('.save-slot-card')[index];
+    const list = row.closest<HTMLElement>('.save-list')!, prompt = row.querySelector<HTMLElement>('.disclosure-motion')!;
+    const next = row.nextElementSibling as HTMLElement | null;
+    const read = () => {
+      const rect = row.getBoundingClientRect(), body = list.getBoundingClientRect();
+      const actionRow = row.querySelector<HTMLElement>('.save-slot-actions')!;
+      return { at: performance.now(), height: prompt.getBoundingClientRect().height, opacity: Number(getComputedStyle(prompt).opacity), cardHeight: rect.height,
+        contentTop: rect.top - body.top + list.scrollTop, nextContentTop: next ? next.getBoundingClientRect().top - body.top + list.scrollTop : null,
+        actionsHeight: actionRow.getBoundingClientRect().height, phase: prompt.dataset.uiPhase,
+        inert: prompt.inert, hidden: prompt.getAttribute('aria-hidden'), retained: prompt.dataset.uiRetained === 'true',
+        confirming: actionRow.classList.contains('confirming'), same: document.querySelectorAll('.save-slot-card')[index] === row,
+        active: prompt.getAnimations().some(animation => animation.playState === 'running'),
+        properties: getComputedStyle(prompt).transitionProperty,
+        focus: document.activeElement?.textContent?.trim(),
+        accessiblePrompt: !!prompt.querySelector('[role="status"], [role="alert"]'),
+        buttons: Array.from(actionRow.querySelectorAll('button')).map(button => button.textContent?.trim()) };
+    };
+    const activate = async (kind: typeof actions[number]['kind']) => {
+      if (kind === 'back') row.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+      else {
+        const button = row.querySelector<HTMLButtonElement>(kind === 'delete' ? '[data-action="delete"]' : '.save-slot-actions.confirming button')!;
+        button.focus({ preventScroll: true }); button.click();
+      }
+      await Promise.resolve();
+    };
+    const before = read(); await activate(actions[0].kind); const first = read();
+    const frames: ReturnType<typeof read>[] = [];
+    let stopAt: number | null = actions.length === 1 ? 24 : null;
+    const sampled = new Promise<void>(resolve => {
+      const take = () => { frames.push(read()); if (stopAt === null || frames.length < stopAt) requestAnimationFrame(take); else resolve(); };
+      requestAnimationFrame(take);
+    });
+    const published = actions.length > 1 ? await new Promise<ReturnType<typeof read>>((resolve, reject) => {
+      const take = () => {
+        const frame = read();
+        if (frame.active && frame.height > 1) resolve(frame);
+        else if (performance.now() - first.at > 1500) reject(new Error('save prompt did not present a moving frame before reversal'));
+        else requestAnimationFrame(take);
+      };
+      requestAnimationFrame(take);
+    }) : null;
+    const turns = [];
+    for (const action of actions.slice(1)) {
+      await new Promise(resolve => setTimeout(resolve, action.delay));
+      const beforeTurn = read(); await activate(action.kind); turns.push({ before: beforeTurn, after: read() });
+    }
+    // Keep sampling throughout all real reversals, including 24 frames after the
+    // final action; on high refresh displays the first 24 can end before it occurs.
+    if (actions.length > 1) stopAt = frames.length + 24;
+    await sampled;
+    // Actual transition completion works on high refresh displays as well as 60 Hz.
+    await Promise.all(prompt.getAnimations().filter(animation => Number.isFinite(animation.effect?.getTiming().iterations ?? 1))
+      .map(animation => animation.finished.catch(() => {})));
+    return { before, first, published, frames, turns, final: read() };
+  }, { index, actions });
+}
+
+function expectSaveHeightFlow(result: Awaited<ReturnType<typeof sampleSaveConfirmation>>, reduced = false) {
+  const all = [result.before, result.first, ...result.frames, ...result.turns.flatMap(turn => [turn.before, turn.after]), result.final];
+  for (const frame of all) {
+    expect(frame.same).toBe(true); expect(frame.actionsHeight).toBeGreaterThanOrEqual(44);
+    expect(Math.abs((frame.cardHeight - result.before.cardHeight) - (frame.height - result.before.height))).toBeLessThan(1);
+    if (frame.nextContentTop !== null && result.before.nextContentTop !== null) {
+      expect(Math.abs((frame.nextContentTop - result.before.nextContentTop) - (frame.cardHeight - result.before.cardHeight))).toBeLessThan(1);
+    }
+  }
+  if (reduced) expect(result.first.properties).toBe('none');
+  else expect(result.first.properties).toContain('grid-template-rows');
+  if (!result.turns.length && !reduced) {
+    const low = Math.min(result.before.height, result.final.height), high = Math.max(result.before.height, result.final.height);
+    expect(high - low).toBeGreaterThan(20);
+    expect(result.frames.some(frame => frame.active && frame.height > low + 1 && frame.height < high - 1)).toBe(true);
+  }
+  for (const turn of result.turns) {
+    expect(Math.abs(turn.after.height - turn.before.height)).toBeLessThan(1);
+    expect(Math.abs(turn.after.cardHeight - turn.before.cardHeight)).toBeLessThan(1);
+    expect(turn.after.phase === 'closing' ? turn.after.inert && turn.after.hidden === 'true' : !turn.after.inert).toBe(true);
+  }
+  expect(result.final.active).toBe(false);
+  if (result.final.phase === 'closing') expect(result.final.height).toBe(0);
+}
+
+for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height: 844, party: 2 }, { width: 1440, height: 900, party: 4 }]) {
+  test(`save confirmation height flows without jumps and keeps deletion safe for ${size.party} players at ${size.width}px`, async ({ page }, testInfo) => {
+    test.setTimeout(45_000);
+    await page.setViewportSize(size); await page.emulateMedia({ reducedMotion: 'no-preference' });
+    const draft = await openSaveMotionFixture(page, size.party);
+    const dialog = page.getByRole('dialog', { name: '读取存档', exact: true }), rows = dialog.locator('.save-slot-card');
+    const middle = rows.nth(4);
+    await middle.getByRole('button', { name: /^删除存档/ }).scrollIntoViewIfNeeded();
+    const opening = await sampleSaveConfirmation(page, 4, [{ kind: 'delete', delay: 0 }]);
+    writeFileSync(testInfo.outputPath('save-opening-frames.json'), JSON.stringify(opening, null, 2));
+    expectSaveHeightFlow(opening); expect(opening.first).toMatchObject({ phase: 'open', inert: false, confirming: true, focus: '保留存档' });
+    await expect(middle.getByRole('status')).toHaveText('删除这份存档？删除后无法恢复。');
+    const closing = await sampleSaveConfirmation(page, 4, [{ kind: 'keep', delay: 0 }]);
+    writeFileSync(testInfo.outputPath('save-closing-frames.json'), JSON.stringify(closing, null, 2));
+    expectSaveHeightFlow(closing); expect(closing.first).toMatchObject({ phase: 'closing', inert: true, hidden: 'true', retained: true,
+      confirming: false, accessiblePrompt: false, focus: '删除', buttons: ['删除', '载入存档'] });
+    await expect(dialog.getByRole('button', { name: '确认删除', exact: true })).toHaveCount(0);
+    expect(await middle.locator('.save-delete-confirmation').count()).toBe(1);
+    const reversal = await sampleSaveConfirmation(page, 4, [
+      { kind: 'delete', delay: 0 }, { kind: 'keep', delay: 35 }, { kind: 'delete', delay: 65 }, { kind: 'back', delay: 85 }
+    ]);
+    writeFileSync(testInfo.outputPath('save-reversal-frames.json'), JSON.stringify(reversal, null, 2));
+    expectSaveHeightFlow(reversal);
+    expect(reversal.frames.some(frame => frame.active && frame.height > 1)).toBe(true);
+    expect(reversal.final).toMatchObject({ confirming: false, inert: true, hidden: 'true', focus: '删除' });
+    await expect(rows).toHaveCount(12); await expect(page.locator('.dock-input')).toHaveValue(draft);
+
+    // The actual last row stays reachable after its prompt grows, including a keyboard-sized window.
+    await page.setViewportSize({ width: size.width, height: 300 });
+    const last = rows.last(); await expect(last.getByText('版本不兼容', { exact: true })).toBeVisible();
+    await expect(last.getByRole('button', { name: '载入存档', exact: true })).toHaveCount(0);
+    await last.getByRole('button', { name: /^删除存档/ }).click(); await settleUiMotion(page);
+    await expect(last.getByRole('button', { name: '保留存档', exact: true })).toBeFocused();
+    const lastLayout = await last.evaluate(row => {
+      const list = row.closest('.save-list')!.getBoundingClientRect();
+      return Array.from(row.querySelectorAll('.save-slot-actions button')).map(button => {
+        const rect = button.getBoundingClientRect();
+        return { text: button.textContent?.trim(), width: rect.width, height: rect.height, top: rect.top, bottom: rect.bottom,
+          listTop: list.top, listBottom: list.bottom, hit: document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)?.closest('button') === button };
+      });
+    });
+    for (const button of lastLayout) {
+      expect(button.height).toBeGreaterThanOrEqual(44); expect(button.width).toBeGreaterThanOrEqual(44);
+      expect(button.top).toBeGreaterThanOrEqual(button.listTop - 1); expect(button.bottom).toBeLessThanOrEqual(button.listBottom + 1); expect(button.hit).toBe(true);
+    }
+    await page.screenshot({ path: testInfo.outputPath('last-save-confirmation-short.png') });
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeVisible(); await expect(last.getByRole('button', { name: /^删除存档/ })).toBeFocused();
+    await expect(dialog.getByRole('button', { name: '确认删除', exact: true })).toHaveCount(0);
+    await expect(last.locator('.disclosure-motion')).toHaveAttribute('aria-hidden', 'true');
+    await settleUiMotion(page);
+
+    // A real persistence rejection keeps the record. Two same-turn confirms issue one write.
+    await page.evaluate(() => {
+      const original = Storage.prototype.setItem;
+      const control = { fail: true, attempts: 0 };
+      (window as typeof window & { saveMotionWrite: typeof control }).saveMotionWrite = control;
+      Storage.prototype.setItem = function (key, value) {
+        if (key === 'trpg-saves-v2') { control.attempts++; if (control.fail) throw new DOMException('QA quota', 'QuotaExceededError'); }
+        return original.call(this, key, value);
+      };
+    });
+    await last.getByRole('button', { name: /^删除存档/ }).click();
+    await last.getByRole('button', { name: '确认删除', exact: true }).click();
+    await expect(last.getByRole('alert')).toHaveText('未能删除，存档已保留。请稍后重试。'); await expect(rows).toHaveCount(12);
+    await page.evaluate(async () => {
+      (window as typeof window & { saveMotionWrite: { fail: boolean; attempts: number } }).saveMotionWrite.fail = false;
+      const confirm = document.querySelector<HTMLButtonElement>('.save-slot-actions.confirming .danger')!;
+      confirm.click(); confirm.click(); await Promise.resolve();
+    });
+    await expect(rows).toHaveCount(11);
+    expect(await page.evaluate(() => (window as typeof window & { saveMotionWrite: { attempts: number } }).saveMotionWrite.attempts)).toBe(2);
+    await expect(rows.last().getByRole('button', { name: '载入存档', exact: true })).toBeFocused();
+    await page.setViewportSize(size); await rows.first().getByRole('button', { name: '载入存档', exact: true }).click();
+    await expect(page.locator('.dock-input')).toHaveValue('保存时的行动。\n核对门廊的日期。');
+    await expect(page.locator('.party-compact')).toHaveCount(size.party);
+    writeFileSync(testInfo.outputPath('save-confirmation-frames.json'), JSON.stringify({ opening, closing, reversal, lastLayout }, null, 2));
+  });
+}
+
+test('save confirmation respects reduced motion and controlled background without stale controls or focus', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 }); await page.emulateMedia({ reducedMotion: 'reduce' });
+  const draft = await openSaveMotionFixture(page, 2);
+  const row = page.locator('.save-slot-card').nth(4), prompt = row.locator('.disclosure-motion');
+  const reducedOpen = await sampleSaveConfirmation(page, 4, [{ kind: 'delete', delay: 0 }]);
+  expectSaveHeightFlow(reducedOpen, true); expect(reducedOpen.first.height).toBe(reducedOpen.final.height); expect(reducedOpen.first.active).toBe(false);
+  const reducedClose = await sampleSaveConfirmation(page, 4, [{ kind: 'keep', delay: 0 }]);
+  expectSaveHeightFlow(reducedClose, true); expect(reducedClose.first).toMatchObject({ height: 0, retained: false, inert: true, focus: '删除' });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  const start = async () => page.evaluate(async () => {
+    document.querySelectorAll<HTMLElement>('.save-slot-card')[4].querySelector<HTMLButtonElement>('[data-action="delete"]')!.click();
+    await Promise.resolve(); await new Promise(resolve => setTimeout(resolve, 35));
+    const prompt = document.querySelectorAll('.save-slot-card')[4].querySelector('.disclosure-motion')!;
+    return { height: prompt.getBoundingClientRect().height, active: prompt.getAnimations().some(animation => animation.playState === 'running') };
+  });
+  const beforeReduce = await start(); expect(beforeReduce.active).toBe(true);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  expect(await prompt.evaluate(element => element.getAnimations().some(animation => animation.playState === 'running'))).toBe(false);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  const closingBeforeReduce = await page.evaluate(async () => {
+    document.querySelectorAll('.save-slot-card')[4].dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    await Promise.resolve(); await new Promise(resolve => setTimeout(resolve, 35));
+    const prompt = document.querySelectorAll<HTMLElement>('.save-slot-card')[4].querySelector<HTMLElement>('.disclosure-motion')!;
+    return { active: prompt.getAnimations().some(animation => animation.playState === 'running'), inert: prompt.inert,
+      hidden: prompt.getAttribute('aria-hidden'), retained: prompt.dataset.uiRetained === 'true' };
+  });
+  expect(closingBeforeReduce).toEqual({ active: true, inert: true, hidden: 'true', retained: true });
+  await page.emulateMedia({ reducedMotion: 'reduce' }); await expect(prompt).not.toHaveAttribute('data-ui-retained', 'true');
+  expect(await prompt.evaluate(element => element.getBoundingClientRect().height)).toBe(0);
+  await expect(row.getByRole('button', { name: /^删除存档/ })).toBeFocused();
+  await page.emulateMedia({ reducedMotion: 'no-preference' }); const beforeHide = await start(); expect(beforeHide.active).toBe(true);
+  // Headless tabs do not reliably background each other; dispatch the app's real visibility listener.
+  await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange')); });
+  try {
+    await expect(page.locator('html')).toHaveClass(/ui-motion-paused/);
+    expect(await prompt.evaluate(element => element.getAnimations().some(animation => animation.playState === 'running'))).toBe(false);
+    await page.keyboard.press('Escape'); await expect(prompt).not.toHaveAttribute('data-ui-retained', 'true');
+    expect(await prompt.evaluate(element => element.getBoundingClientRect().height)).toBe(0);
+    await expect(row.getByRole('button', { name: /^删除存档/ })).toBeFocused();
+    await expect(page.getByRole('button', { name: '确认删除', exact: true })).toHaveCount(0);
+  } finally { await page.evaluate(() => { Reflect.deleteProperty(document, 'hidden'); document.dispatchEvent(new Event('visibilitychange')); }); }
+  await expect(page.locator('.dock-input')).toHaveValue(draft); await expect(page.locator('.save-slot-card')).toHaveCount(12);
+  await expect(page.locator('html')).not.toHaveClass(/ui-motion-paused/);
+  writeFileSync(testInfo.outputPath('save-confirmation-preference-visibility.json'), JSON.stringify({ reducedOpen, reducedClose, beforeReduce, closingBeforeReduce, beforeHide }, null, 2));
+});
+
+interface NoticeFrame {
+  at: number; present: boolean; same: boolean; opacity: number; y: number; phase: string | null; inert: boolean;
+  hidden: string | null; text: string; count: number; active: boolean; durations: number[]; rootStable: boolean;
+  containsFocus: boolean; inside: boolean; clearControls: boolean; captionClear: boolean; aboveDock: boolean;
+  font: number; painted: boolean; passive: boolean; scrollTop: number | null; dockTop: number | null;
+  bounds: { left: number; top: number; right: number; bottom: number } | null;
+  captionBounds: { left: number; top: number; right: number; bottom: number } | null;
+}
+interface NoticeProbe { before: NoticeFrame | null; first: NoticeFrame | null; frames: NoticeFrame[]; final: NoticeFrame | null; done: boolean; }
+
+async function captureNotice(page: Page, phase: 'open' | 'closing', text: string, activate: () => Promise<void> = async () => {}) {
+  await expect(page.locator('.game-notice')).toHaveCount(1);
+  await page.evaluate(({ phase, text }) => {
+    const root = document.querySelector<HTMLElement>('.game-notice')!;
+    let original: HTMLElement | null = root.querySelector('.toast');
+    const read = (): NoticeFrame => {
+      const element = root.querySelector<HTMLElement>('.toast'), present = Boolean(element);
+      const rect = element?.getBoundingClientRect(), style = element ? getComputedStyle(element) : null;
+      const matrix = new DOMMatrixReadOnly(style?.transform === 'none' ? undefined : style?.transform);
+      const clear = (other: Element) => { const box = other.getBoundingClientRect(); return !rect || !box.width || !box.height
+        || rect.right <= box.left || rect.left >= box.right || rect.bottom <= box.top || rect.top >= box.bottom; };
+      const caption = document.querySelector('.npc-nameplate'), dock = document.querySelector('.action-dock');
+      const captionRect = caption?.getBoundingClientRect();
+      const safe = getComputedStyle(document.documentElement);
+      return { at: performance.now(), present, same: element === original, opacity: Number(style?.opacity ?? 0), y: matrix.f,
+        phase: element?.dataset.uiPhase ?? null, inert: element?.inert ?? false, hidden: element?.getAttribute('aria-hidden') ?? null,
+        text: element?.textContent ?? '', count: root.querySelectorAll('.toast').length,
+        active: element?.getAnimations().some(animation => animation.playState === 'running') ?? false,
+        durations: element?.getAnimations().map(animation => Number(animation.effect?.getTiming().duration)) ?? [],
+        rootStable: document.querySelector('.game-notice') === root, containsFocus: root.contains(document.activeElement),
+        inside: !rect || rect.left >= (parseFloat(safe.getPropertyValue('--safe-area-inset-left')) || 0) - 1
+          && rect.right <= innerWidth - (parseFloat(safe.getPropertyValue('--safe-area-inset-right')) || 0) + 1
+          && rect.top >= (parseFloat(safe.getPropertyValue('--safe-area-inset-top')) || 0) - 1 && rect.bottom <= innerHeight,
+        clearControls: Array.from(document.querySelectorAll('.menu-button, .drawer-tab, .title-utilities button')).every(clear),
+        captionClear: !caption || clear(caption), aboveDock: !rect || !dock || rect.bottom <= dock.getBoundingClientRect().top,
+        font: parseFloat(style?.fontSize ?? '15'), painted: !style || style.borderImageSource.includes('panel-frame'),
+        passive: getComputedStyle(root).pointerEvents === 'none',
+        scrollTop: document.querySelector('.narrative-scroll')?.scrollTop ?? null, dockTop: dock?.getBoundingClientRect().top ?? null,
+        bounds: rect ? { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom } : null,
+        captionBounds: captionRect ? { left: captionRect.left, top: captionRect.top, right: captionRect.right, bottom: captionRect.bottom } : null };
+    };
+    const probe: NoticeProbe = { before: original ? read() : null, first: null, frames: [], final: null, done: false };
+    (window as typeof window & { noticeMotion: NoticeProbe }).noticeMotion = probe;
+    const observer = new MutationObserver(start);
+    observer.observe(root, { childList: true, subtree: true, attributes: true, characterData: true });
+    function start() {
+      const visual = root.querySelector<HTMLElement>('.toast');
+      if (!visual || visual.dataset.uiPhase !== phase || visual.textContent !== text) return;
+      observer.disconnect(); original ??= visual; probe.first = read();
+      const take = async () => {
+        probe.frames.push(read());
+        if (probe.frames.length < 24) requestAnimationFrame(take);
+        else {
+          await Promise.all(visual.getAnimations().filter(animation => Number.isFinite(animation.effect?.getTiming().iterations ?? 1))
+            .map(animation => animation.finished.catch(() => {})));
+          probe.final = read(); probe.done = true;
+        }
+      };
+      requestAnimationFrame(take);
+    }
+    start();
+  }, { phase, text });
+  await activate();
+  await page.waitForFunction(() => (window as typeof window & { noticeMotion: NoticeProbe }).noticeMotion.first !== null);
+  const accessibility = await page.locator('.game-notice').ariaSnapshot();
+  await page.waitForFunction(() => (window as typeof window & { noticeMotion: NoticeProbe }).noticeMotion.done);
+  return { ...await page.evaluate(() => (window as typeof window & { noticeMotion: NoticeProbe }).noticeMotion), accessibility };
+}
+
+function expectNoticeFrames(probe: Awaited<ReturnType<typeof captureNotice>>, phase: 'open' | 'closing', entrance = true) {
+  expect(probe.frames).toHaveLength(24); expect(probe.first!.phase).toBe(phase);
+  for (const frame of [probe.first!, ...probe.frames, probe.final!]) {
+    expect(frame.rootStable).toBe(true); expect(frame.count).toBeLessThanOrEqual(1); expect(frame.containsFocus).toBe(false);
+    expect(frame.inside && frame.clearControls && frame.captionClear && frame.aboveDock && frame.painted && frame.passive).toBe(true);
+    expect(frame.font).toBe(15);
+    expect(frame.scrollTop).toBe(probe.first!.scrollTop); expect(frame.dockTop).toBe(probe.first!.dockTop);
+  }
+  if (entrance) {
+    expect(probe.first!.active).toBe(true);
+    expect(probe.frames.some(frame => frame.active && frame.opacity > .02 && frame.opacity < .98)).toBe(true);
+  }
+  if (phase === 'closing') {
+    expect(probe.first!).toMatchObject({ inert: true, hidden: 'true' }); expect(probe.accessibility).not.toContain(probe.first!.text);
+  } else expect(probe.first!).toMatchObject({ inert: false, hidden: null });
+}
+
+async function saveNoticeApi(page: Page) {
+  await page.getByRole('button', { name: 'AI 设置', exact: true }).click();
+  const config = page.getByRole('dialog', { name: 'AI DM 配置', exact: true });
+  await config.getByLabel('模型', { exact: true }).fill('qa-notice-model');
+  await config.getByRole('button', { name: '保存', exact: true }).click();
+}
+
+async function reopenNoticeDuringExit(page: Page) {
+  return page.evaluate(async () => {
+    const root = document.querySelector<HTMLElement>('.game-notice')!, original = root.querySelector<HTMLElement>('.toast')!;
+    const frames: Array<{ at: number; opacity: number; y: number; phase: string | undefined; same: boolean; inert: boolean; active: boolean }> = [];
+    const read = () => { const style = getComputedStyle(original), matrix = new DOMMatrixReadOnly(style.transform === 'none' ? undefined : style.transform);
+      return { at: performance.now(), opacity: Number(style.opacity), y: matrix.f, phase: original.dataset.uiPhase,
+        same: root.querySelector('.toast') === original, inert: original.inert, active: original.getAnimations().some(animation => animation.playState === 'running') }; };
+    await new Promise<void>(resolve => {
+      const observer = new MutationObserver(() => { if (original.dataset.uiPhase === 'closing') { observer.disconnect(); resolve(); } });
+      observer.observe(original, { attributes: true });
+      if (original.dataset.uiPhase === 'closing') { observer.disconnect(); resolve(); }
+    });
+    const closing = read();
+    await new Promise<void>(resolve => {
+      const take = () => { const frame = read(); frames.push(frame);
+        if (!original.isConnected || frame.active && frame.opacity > .02 && frame.opacity < .98) resolve(); else requestAnimationFrame(take); };
+      requestAnimationFrame(take);
+    });
+    const before = read();
+    const reopened = new Promise<void>(resolve => {
+      const observer = new MutationObserver(() => { if (root.querySelector<HTMLElement>('.toast')?.dataset.uiPhase === 'open') { observer.disconnect(); resolve(); } });
+      observer.observe(root, { attributes: true, childList: true, subtree: true, characterData: true });
+    });
+    const save = Array.from(document.querySelectorAll<HTMLButtonElement>('.menu-list button')).find(button => button.textContent?.trim() === '保存游戏')!;
+    save.focus({ preventScroll: true }); save.click(); await reopened;
+    const after = read();
+    let reopenedFrames = 0;
+    await new Promise<void>(resolve => { const take = () => { frames.push(read()); reopenedFrames++;
+      if (reopenedFrames < 24) requestAnimationFrame(take); else resolve(); }; requestAnimationFrame(take); });
+    await Promise.all(original.getAnimations().map(animation => animation.finished.catch(() => {})));
+    return { closing, before, after, frames, reopenedFrames, final: read(), containsFocus: root.contains(document.activeElement), text: original.textContent };
+  });
+}
+
+for (const size of [{ width: 320, height: 568, party: 1, android: true }, { width: 390, height: 844, party: 2, android: false }, { width: 1440, height: 900, party: 4, android: false }]) {
+  test(`painted notifications keep their lifetimes and current picture for ${size.party} players at ${size.width}px${size.android ? ' through the Android entry' : ''}`, async ({ page }, testInfo) => {
+    test.setTimeout(60_000); await page.setViewportSize(size); await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.route('**/__api_config', route => route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }));
+    const state = createDynamicCaseBoardSave();
+    state.players = ['亨利·格雷', '艾达·华莱士', '托马斯·贝尔', '罗伯特·肖'].slice(0, size.party).map((name, index) => makeInvestigator({ id: `notice-${index}`, name }));
+    state.currentActorIndex = size.party - 1;
+    state.declarations = Object.fromEntries(state.players.map(player => [player.id, '先核对门廊的日期。\n与同伴确认时间。']));
+    state.messages = Array.from({ length: 8 }, (_, index) => ({ id: `notice-page-${index}`, type: 'dm' as const, text: `第${index + 1}页调查记录。浓雾压在窗外，委托人仔细回忆访客来过的时间。`.repeat(12) }));
+    await gotoWithSave(page, state, { provider: 'custom', protocol: 'responses', endpoint: 'https://notice.test/v1', apiKey: 'qa-only', model: 'qa-only' });
+    if (size.android) {
+      await page.goto('/mobile/index.html'); await expect(page.locator('html')).toHaveClass(/android-app/);
+      await expect(page.getByRole('heading', { name: '雾中消逝', exact: true })).toBeVisible();
+      await page.addStyleTag({ content: ':root{--safe-area-inset-top:20px;--safe-area-inset-left:20px;--safe-area-inset-right:20px;--safe-area-inset-bottom:20px}' });
+    }
+    await page.evaluate(() => document.fonts.ready); await settleUiMotion(page);
+    const home = await captureNotice(page, 'open', 'AI 设置已保存', () => saveNoticeApi(page));
+    writeFileSync(testInfo.outputPath('home-notice-frames.json'), JSON.stringify(home, null, 2)); expectNoticeFrames(home, 'open');
+    await expect(page.locator('.game-notice')).toHaveAttribute('aria-live', 'polite'); await expect(page.locator('.game-notice')).toHaveAttribute('aria-atomic', 'true');
+    await expect(page.locator('.title-settings')).toBeFocused(); await page.screenshot({ path: testInfo.outputPath('home-painted-notice.png') });
+    const homeExit = await captureNotice(page, 'closing', 'AI 设置已保存');
+    writeFileSync(testInfo.outputPath('home-notice-exit.json'), JSON.stringify(homeExit, null, 2)); expectNoticeFrames(homeExit, 'closing');
+    expect(homeExit.first!.at - home.first!.at).toBeGreaterThan(1600); expect(homeExit.first!.at - home.first!.at).toBeLessThan(2050);
+    await expect(page.locator('.toast')).toHaveCount(0); await expect(page.locator('.game-notice')).toHaveCount(1);
+    await page.getByRole('button', { name: '继续游戏', exact: true }).click(); await settleUiMotion(page);
+    const actor = state.players.at(-1)!.name, draft = '记录信上的日期。\n继续核对门廊的痕迹。';
+    const input = page.getByRole('textbox', { name: `${actor}的行动`, exact: true }); await input.fill(draft); await input.press('Tab');
+    await page.locator('.narrative-scroll').evaluate(element => { element.scrollTop = 240; });
+    await page.getByRole('button', { name: '菜单', exact: true }).click();
+    const gameA = await captureNotice(page, 'open', 'AI 设置已保存', () => saveNoticeApi(page)); expectNoticeFrames(gameA, 'open');
+    await page.getByRole('button', { name: '展开剧情', exact: true }).click(); await settleUiMotion(page);
+    await page.setViewportSize({ width: size.width, height: 300 }); await settleUiMotion(page);
+    await page.getByRole('button', { name: '菜单', exact: true }).click();
+    const gameB = await captureNotice(page, 'open', '已保存', () => page.getByRole('button', { name: '保存游戏', exact: true }).click());
+    writeFileSync(testInfo.outputPath('game-replaced-notice.json'), JSON.stringify({ gameA, gameB }, null, 2)); expectNoticeFrames(gameB, 'open', false);
+    expect(gameB.first!).toMatchObject({ same: true, opacity: 1, y: 0, active: false });
+    await expect(input).toHaveValue(draft); await expect(page.locator('.party-compact.active')).toContainText(actor);
+    await page.screenshot({ path: testInfo.outputPath('short-game-painted-notice.png') });
+    await page.getByRole('button', { name: '菜单', exact: true }).click(); await settleUiMotion(page);
+    await page.evaluate(async target => { const remaining = target - performance.now(); if (remaining > 0) await new Promise(resolve => setTimeout(resolve, remaining)); }, gameA.first!.at + 1850);
+    await expect(page.locator('.toast')).toHaveAttribute('data-ui-phase', 'open'); await expect(page.locator('.toast')).toHaveText('已保存');
+    const tail = await reopenNoticeDuringExit(page); writeFileSync(testInfo.outputPath('notice-tail-reversal.json'), JSON.stringify(tail, null, 2));
+    expect(tail.reopenedFrames).toBe(24);
+    expect(tail.before.same && tail.before.active).toBe(true); expect(tail.before.opacity).toBeGreaterThan(.02); expect(tail.before.opacity).toBeLessThan(.98);
+    expect(tail.after.same).toBe(true); expect(tail.after.phase).toBe('open'); expect(tail.after.inert).toBe(false);
+    expect(Math.abs(tail.after.opacity - tail.before.opacity)).toBeLessThan(.05); expect(Math.abs(tail.after.y - tail.before.y)).toBeLessThan(.2);
+    expect(tail.containsFocus).toBe(false); expect(tail.text).toBe('已保存'); expect(tail.final).toMatchObject({ same: true, opacity: 1, y: 0, active: false });
+    await page.evaluate(async target => { const remaining = target - performance.now(); if (remaining > 0) await new Promise(resolve => setTimeout(resolve, remaining)); }, tail.after.at + 1650);
+    await expect(page.locator('.toast')).toHaveAttribute('data-ui-phase', 'open');
+    const freshExit = await captureNotice(page, 'closing', '已保存'); expectNoticeFrames(freshExit, 'closing');
+    expect(freshExit.first!.at - tail.after.at).toBeGreaterThan(1600); expect(freshExit.first!.at - tail.after.at).toBeLessThan(2050);
+    await expect(page.locator('.toast')).toHaveCount(0); await expect(input).toHaveValue(draft); await expect(page.locator('.party-compact')).toHaveCount(size.party);
+    await page.setViewportSize(size); await settleUiMotion(page);
+    if (size.android) {
+      await page.evaluate(() => { const original = Storage.prototype.setItem; Storage.prototype.setItem = function (key, value) {
+        if (key === 'trpg-saves-v2') throw new DOMException('QA quota', 'QuotaExceededError'); return original.call(this, key, value); }; });
+      await page.getByRole('button', { name: '菜单', exact: true }).click();
+      const failureText = '未能保存，请检查设备存储空间后重试。';
+      const failure = await captureNotice(page, 'open', failureText, () => page.getByRole('button', { name: '保存游戏', exact: true }).click());
+      writeFileSync(testInfo.outputPath('long-notice-opening.json'), JSON.stringify(failure, null, 2));
+      await page.screenshot({ path: testInfo.outputPath('long-notice.png') }); expectNoticeFrames(failure, 'open');
+      await page.evaluate(async target => { const remaining = target - performance.now(); if (remaining > 0) await new Promise(resolve => setTimeout(resolve, remaining)); }, failure.first!.at + 3850);
+      await expect(page.locator('.toast')).toHaveAttribute('data-ui-phase', 'open');
+      const failureExit = await captureNotice(page, 'closing', failureText); expectNoticeFrames(failureExit, 'closing');
+      expect(failureExit.first!.at - failure.first!.at).toBeGreaterThan(3750); expect(failureExit.first!.at - failure.first!.at).toBeLessThan(4250);
+      writeFileSync(testInfo.outputPath('long-notice-lifetime.json'), JSON.stringify({ failure, failureExit }, null, 2));
+    }
+    await page.getByRole('button', { name: '菜单', exact: true }).click(); await page.getByRole('button', { name: '返回首页', exact: true }).click();
+    await saveNoticeApi(page); await expect(page.locator('.toast')).toHaveText('AI 设置已保存');
+    const navigationStarted = await page.evaluate(() => performance.now());
+    await page.getByRole('button', { name: '开始游戏', exact: true }).click(); await expect(page.locator('.toast')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: '选择调查员', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: '返回', exact: true }).click();
+    await expect(page.getByRole('button', { name: '继续游戏', exact: true })).toBeVisible();
+    const navigation = await page.evaluate(started => ({ elapsed: performance.now() - started,
+      count: document.querySelectorAll('.toast').length, text: document.querySelector('.toast')?.textContent ?? '',
+      phase: document.querySelector<HTMLElement>('.toast')?.dataset.uiPhase ?? null }), navigationStarted);
+    writeFileSync(testInfo.outputPath('notice-navigation.json'), JSON.stringify(navigation, null, 2));
+    await page.screenshot({ path: testInfo.outputPath('notice-navigation-return.png') });
+    expect(navigation.elapsed).toBeLessThan(1600); expect(navigation.count).toBe(0);
+    await page.getByRole('button', { name: '继续游戏', exact: true }).click(); await expect(input).toHaveValue(draft);
+    await expect(page.locator('.party-compact.active')).toContainText(actor); await expect(page.locator('.party-compact')).toHaveCount(size.party);
+    writeFileSync(testInfo.outputPath('notification-lifetimes.json'), JSON.stringify({ homeExitMs: homeExit.first!.at - home.first!.at,
+      freshExitMs: freshExit.first!.at - tail.after.at, tail, freshExit }, null, 2));
+  });
+}
+
+test('notification pictures settle on reduced motion and background while live status and input remain usable', async ({ page }, testInfo) => {
+  test.setTimeout(30_000); await page.setViewportSize({ width: 390, height: 844 }); await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.route('**/__api_config', route => route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }));
+  await gotoWithSave(page, createDynamicCaseBoardSave(), { provider: 'custom', protocol: 'responses', endpoint: 'https://notice.test/v1', apiKey: 'qa-only', model: 'qa-only' });
+  const reduced = await captureNotice(page, 'open', 'AI 设置已保存', () => saveNoticeApi(page)); expectNoticeFrames(reduced, 'open', false);
+  expect(reduced.first!).toMatchObject({ opacity: 1, y: 0, active: false });
+  await expect(page.locator('.toast')).toHaveCount(0, { timeout: 2500 }); await expect(page.locator('.game-notice')).toHaveCount(1);
+  expect(await page.locator('.game-notice').ariaSnapshot()).not.toContain('AI 设置已保存');
+  await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+  const draft = '保留这段行动。\n继续核对时间。'; await page.locator('.dock-input').fill(draft); await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.getByRole('button', { name: '菜单', exact: true }).click();
+  await page.getByRole('button', { name: '保存游戏', exact: true }).click(); await expect(page.locator('.toast')).toHaveText('已保存');
+  const beforeHidden = await page.locator('.toast').evaluate(element => ({ opacity: Number(getComputedStyle(element).opacity), active: element.getAnimations().some(animation => animation.playState === 'running') }));
+  expect(beforeHidden.active).toBe(true);
+  await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange')); });
+  try {
+    await expect(page.locator('html')).toHaveClass(/ui-motion-paused/);
+    expect(await page.locator('.toast').evaluate(element => ({ opacity: getComputedStyle(element).opacity, transform: getComputedStyle(element).transform,
+      active: element.getAnimations().some(animation => animation.playState === 'running') }))).toEqual({ opacity: '1', transform: 'none', active: false });
+    await expect(page.locator('.toast')).toHaveCount(0, { timeout: 2500 }); await expect(page.locator('.game-notice')).toHaveCount(1);
+    await expect(page.locator('.menu-button')).toBeFocused(); await expect(page.locator('.dock-input')).toHaveValue(draft);
+  } finally { await page.evaluate(() => { Reflect.deleteProperty(document, 'hidden'); document.dispatchEvent(new Event('visibilitychange')); }); }
+  await page.getByRole('button', { name: '菜单', exact: true }).click();
+  const resumed = await captureNotice(page, 'open', '已保存', () => page.getByRole('button', { name: '保存游戏', exact: true }).click()); expectNoticeFrames(resumed, 'open');
+  await expect(page.locator('.dock-input')).toHaveValue(draft); await expect(page.locator('.party-compact')).toHaveCount(2);
+  writeFileSync(testInfo.outputPath('notice-preference-visibility.json'), JSON.stringify({ reduced, beforeHidden, resumed }, null, 2));
+});
+
 test('invalid save payloads are ignored on the title screen', async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.clear();
@@ -4172,37 +4664,236 @@ test('portrait home keeps compact main actions and returns from utility settings
   }
 });
 
-for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1440, height: 900 }]) {
-  test(`paired panel motion releases input and cancels rapid dismissal at ${size.width}px`, async ({ page }) => {
+async function reverseOuterPanel(page: Page, selectors: { panel: string; open: string[]; close: string; permanent?: boolean }) {
+  return page.evaluate(async selectors => {
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+    const commit = async () => { await Promise.resolve(); };
+    const click = async (selector: string) => {
+      const button = document.querySelector<HTMLButtonElement>(selector)!;
+      button.focus({ preventScroll: true }); button.click(); await commit();
+    };
+    const open = async () => { for (const selector of selectors.open) await click(selector); };
+    const read = (element: Element) => {
+      const style = getComputedStyle(element), matrix = new DOMMatrixReadOnly(style.transform === 'none' ? undefined : style.transform);
+      return { opacity: Number(style.opacity), x: matrix.e, y: matrix.f, scale: matrix.a,
+        veilOpacity: Number(getComputedStyle(element.closest('[data-ui-phase]')!).opacity),
+        duration: style.transitionDuration, properties: style.transitionProperty,
+        running: element.getAnimations().some(animation => animation.playState === 'running') };
+    };
+    await open(); await new Promise(requestAnimationFrame);
+    const original = document.querySelector<HTMLElement>(selectors.panel)!;
+    const first = read(original), frames: ReturnType<typeof read>[] = [];
+    const sampled = new Promise<void>(resolve => {
+      const take = () => { frames.push(read(original)); if (frames.length < 24) requestAnimationFrame(take); else resolve(); };
+      requestAnimationFrame(take);
+    });
+    const reversals = [];
+    for (const [beforeClose, beforeReopen] of [[20, 30], [60, 50], [40, 80]]) {
+      await delay(beforeClose);
+      const before = read(original); await click(selectors.close);
+      const root = original.closest<HTMLElement>('[data-ui-phase]')!;
+      const closing = { before, after: read(original), same: document.querySelector(selectors.panel) === original,
+        inert: root.inert, hidden: root.getAttribute('aria-hidden'), phase: root.dataset.uiPhase,
+        active: root.matches('[role="dialog"]') || !!root.querySelector('[role="dialog"]'),
+        pointers: getComputedStyle(root).pointerEvents, focusReleased: !root.contains(document.activeElement) };
+      await delay(beforeReopen);
+      const reopeningBefore = read(original); await open();
+      reversals.push({ closing, reopening: { before: reopeningBefore, after: read(original),
+        same: document.querySelector(selectors.panel) === original, inert: root.inert, hidden: root.getAttribute('aria-hidden') } });
+    }
+    await sampled;
+    await delay(260); await click(selectors.close);
+    const retained = document.querySelector(selectors.panel) === original;
+    await delay(190);
+    const retired = selectors.permanent ? !original.hasAttribute('data-ui-phase') && original.inert : !document.querySelector(selectors.panel);
+    await open(); await new Promise(requestAnimationFrame);
+    const fresh = document.querySelector(selectors.panel)!;
+    return { first, frames, reversals, lifetime: { retained, retired, sameAfterRetirement: fresh === original, fresh: read(fresh) } };
+  }, selectors);
+}
+
+function expectContinuousOuterPanel(result: Awaited<ReturnType<typeof reverseOuterPanel>>) {
+  expect(result.first.properties).toContain('opacity'); expect(result.first.properties).toContain('transform');
+  expect(result.first.running).toBe(true); expect(result.first.opacity).toBeLessThan(1);
+  expect(result.frames.some(frame => frame.opacity > .01 && frame.opacity < .99)).toBe(true);
+  expect(result.first.veilOpacity).toBeLessThan(1);
+  expect(result.frames.some(frame => frame.veilOpacity > .01 && frame.veilOpacity < .99)).toBe(true);
+  expect(result.lifetime.retained && result.lifetime.retired).toBe(true);
+  expect(result.lifetime.fresh.opacity).toBeLessThan(1);
+  for (const { closing, reopening } of result.reversals) {
+    expect(closing).toMatchObject({ same: true, inert: true, hidden: 'true', phase: 'closing', active: false, pointers: 'none', focusReleased: true });
+    expect(reopening).toMatchObject({ same: true, inert: false }); expect(reopening.hidden).not.toBe('true');
+    for (const turn of [closing, reopening]) {
+      expect(Math.abs(turn.after.opacity - turn.before.opacity)).toBeLessThan(.055);
+      expect(Math.abs(turn.after.veilOpacity - turn.before.veilOpacity)).toBeLessThan(.055);
+      expect(Math.abs(turn.after.x - turn.before.x)).toBeLessThan(1.5);
+      expect(Math.abs(turn.after.y - turn.before.y)).toBeLessThan(1.5);
+      expect(Math.abs(turn.after.scale - turn.before.scale)).toBeLessThan(.005);
+    }
+  }
+}
+
+test('utility dialogs resume their current picture and leave the action draft intact', async ({ page }, testInfo) => {
+  test.setTimeout(45_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await gotoWithSave(page, createDynamicCaseBoardSave());
+  await page.getByRole('button', { name: '继续游戏', exact: true }).click(); await settleUiMotion(page);
+  const draft = '先询问委托人。\n再核对信件上的日期。';
+  await page.locator('.dock-input').fill(draft);
+  const evidence: Record<string, Awaited<ReturnType<typeof reverseOuterPanel>>> = {};
+  for (const dialog of [
+    { panel: '.save-manager-card', open: ['.menu-button', '.menu-list button:nth-child(2)'], close: '[aria-label="关闭存档列表"]' },
+    { panel: '.api-config-card', open: ['.menu-button', '.menu-list button:nth-child(3)'], close: '.api-config-close' },
+    { panel: '.audio-settings', open: ['.menu-list [aria-label="声音设置"]'], close: '.audio-close' },
+    { panel: '.entity-detail-card', open: ['.story-message [aria-label="查看摩勒住宅详情"]'], close: '.entity-detail-close' }
+  ]) {
+    if (dialog.panel === '.audio-settings') await page.getByRole('button', { name: '菜单', exact: true }).click();
+    evidence[dialog.panel] = await reverseOuterPanel(page, dialog);
+    expectContinuousOuterPanel(evidence[dialog.panel]); expect(evidence[dialog.panel].lifetime.sameAfterRetirement).toBe(false);
+    await expect(page.locator('.dock-input')).toHaveValue(draft);
+    await page.locator(dialog.close).click();
+    await expect.poll(() => page.locator(dialog.panel).count()).toBe(0);
+    if (dialog.panel === '.audio-settings') { await page.keyboard.press('Escape'); await expect(page.getByRole('dialog', { name: '调查菜单', exact: true })).toHaveCount(0); }
+  }
+  await expect(page.locator('.dock-input')).toHaveValue(draft);
+  writeFileSync(testInfo.outputPath('utility-outer-reversals.json'), JSON.stringify(evidence, null, 2));
+});
+
+test('constant archive roots and changed dossiers retain reading without replaying their entrance', async ({ page }, testInfo) => {
+  test.setTimeout(45_000);
+  await page.setViewportSize({ width: 390, height: 844 }); await page.emulateMedia({ reducedMotion: 'no-preference' });
+  const state = createDynamicCaseBoardSave();
+  state.players = ['亨利·格雷', '艾达·华莱士', '托马斯·贝尔', '罗伯特·肖'].map((name, index) => makeInvestigator({ name, id: `outer-dossier-${index}` }));
+  state.actionLog = Array.from({ length: 60 }, (_, index) => ({ time: '17:30', text: `调查记录${index + 1}：窗框上的痕迹仍需继续核对。` }));
+  await gotoWithSave(page, state); await page.getByRole('button', { name: '继续游戏', exact: true }).click(); await settleUiMotion(page);
+  const draft = '记下窗框的细节。\n等同伴核对完时间，再继续调查。'; await page.locator('.dock-input').fill(draft);
+  const archive = await reverseOuterPanel(page, { panel: '.info-drawer-react', open: ['.drawer-tab'], close: '[aria-label="关闭资料"]', permanent: true });
+  expectContinuousOuterPanel(archive); expect(archive.lifetime.sameAfterRetirement).toBe(true); await settleUiMotion(page);
+  const drawer = page.getByRole('dialog', { name: '资料', exact: true });
+  await drawer.getByRole('tab', { name: '日志', exact: true }).click(); await settleUiMotion(page);
+  const logs = drawer.locator('.action-log-list');
+  const position = await logs.evaluate(element => { element.scrollTop = 280; return element.scrollTop; }); expect(position).toBeGreaterThan(0);
+  const returnDuringClose = await page.evaluate(async () => {
+    const root = document.querySelector<HTMLElement>('.info-drawer-react')!, log = root.querySelector('.action-log-list')!;
+    root.querySelector<HTMLButtonElement>('[aria-label="关闭资料"]')!.click(); await Promise.resolve();
+    await new Promise(resolve => setTimeout(resolve, 45)); document.querySelector<HTMLButtonElement>('.drawer-tab')!.click(); await Promise.resolve();
+    return { same: document.querySelector('.info-drawer-react') === root, logSame: root.querySelector('.action-log-list') === log, top: log.scrollTop };
+  });
+  expect(returnDuringClose).toEqual({ same: true, logSame: true, top: position }); await settleUiMotion(page);
+  await drawer.getByRole('tab', { name: '进度', exact: true }).click(); await drawer.getByRole('tab', { name: '日志', exact: true }).click();
+  await expect(logs).toHaveJSProperty('scrollTop', position);
+  expect(await drawer.evaluate(element => ({ opacity: getComputedStyle(element).opacity, transform: getComputedStyle(element).transform,
+    running: element.getAnimations().some(animation => animation.playState === 'running') }))).toEqual({ opacity: '1', transform: 'none', running: false });
+  await drawer.getByRole('tab', { name: '案件板', exact: true }).click(); await settleUiMotion(page);
+  const inspector = await reverseOuterPanel(page, { panel: '.case-board-inspector', open: ['.case-board-mobile-card.event'], close: '[aria-label="关闭资料详情"]' });
+  writeFileSync(testInfo.outputPath('archive-inspector-motion.json'), JSON.stringify({ archive, inspector, returnDuringClose }, null, 2));
+  expectContinuousOuterPanel(inspector); expect(inspector.lifetime.sameAfterRetirement).toBe(false); await settleUiMotion(page);
+  const detail = page.locator('.case-board-inspector');
+  const changedRecords = await detail.evaluate(async element => {
+    const records = [];
+    for (const name of ['可能有内应协助', '摩勒住宅', '伊莎贝拉·摩勒']) {
+      element.querySelector<HTMLButtonElement>(`[aria-label="查看${name}资料"]`)!.click(); await Promise.resolve();
+      const frames: Array<{ same: boolean; opacity: string; transform: string; running: boolean }> = [];
+      await new Promise<void>(resolve => {
+        const take = () => {
+          frames.push({ same: document.querySelector('.case-board-inspector') === element,
+            opacity: getComputedStyle(element).opacity, transform: getComputedStyle(element).transform,
+            running: element.getAnimations().some(animation => animation.playState === 'running') });
+          if (frames.length < 24) requestAnimationFrame(take); else resolve();
+        };
+        requestAnimationFrame(take);
+      });
+      records.push({ name, heading: element.querySelector('h4')!.textContent, frames });
+    }
+    return records;
+  });
+  for (const record of changedRecords) {
+    expect(record.heading).toBe(record.name);
+    for (const frame of record.frames) expect(frame).toEqual({ same: true, opacity: '1', transform: 'none', running: false });
+  }
+  await page.screenshot({ path: testInfo.outputPath('case-record-transition.png') });
+  await detail.getByRole('button', { name: '关闭资料详情', exact: true }).click(); await page.keyboard.press('Escape');
+  const dossier = await reverseOuterPanel(page, { panel: '.investigator-sheet', open: ['.dock-actor-avatar'], close: '.investigator-close' });
+  expectContinuousOuterPanel(dossier); expect(dossier.lifetime.sameAfterRetirement).toBe(false); await settleUiMotion(page);
+  const sheet = page.locator('.investigator-sheet'); await sheet.getByRole('tab', { name: '技能', exact: true }).click();
+  const body = sheet.locator('.investigator-body'), read = await body.evaluate(element => { element.scrollTop = 90; return element.scrollTop; });
+  await sheet.getByRole('button', { name: '艾达·华莱士', exact: true }).click(); await sheet.getByRole('button', { name: '亨利·格雷', exact: true }).click();
+  await expect(body).toHaveJSProperty('scrollTop', read);
+  expect(await sheet.evaluate(element => ({ opacity: getComputedStyle(element).opacity, transform: getComputedStyle(element).transform,
+    running: element.getAnimations().some(animation => animation.playState === 'running') }))).toEqual({ opacity: '1', transform: 'none', running: false });
+  await page.keyboard.press('Escape'); await expect(page.locator('.dock-input')).toHaveValue(draft);
+  await expect(page.locator('.party-compact')).toHaveCount(4); await expect(page.locator('.dock-actor-avatar')).toBeFocused();
+  writeFileSync(testInfo.outputPath('dossier-outer-reversals.json'), JSON.stringify({ archive, inspector, dossier, returnDuringClose, changedRecords }, null, 2));
+});
+
+test('motion preference and visibility notifications settle in-flight layers without taking the next focus', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 }); await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await startNewGame(page, 2); const draft = '先查看日期。\n再检查门廊。'; await page.locator('.dock-input').fill(draft);
+  const opening = async () => page.evaluate(async () => {
+    const button = document.querySelector<HTMLButtonElement>('.menu-button')!; button.focus(); button.click(); await new Promise(requestAnimationFrame);
+    const panel = document.querySelector('.game-menu')!; return { opacity: Number(getComputedStyle(panel).opacity), running: panel.getAnimations().some(animation => animation.playState === 'running') };
+  });
+  const closing = async () => page.evaluate(async () => {
+    document.querySelector<HTMLButtonElement>('.game-menu-close')!.click(); await Promise.resolve();
+    const root = document.querySelector<HTMLElement>('.game-menu-backdrop')!;
+    return { inert: root.inert, hidden: root.getAttribute('aria-hidden'), focus: document.activeElement === document.querySelector('.menu-button') };
+  });
+  const finalOpen = () => page.locator('.game-menu').evaluate(element => ({ opacity: getComputedStyle(element).opacity, transform: getComputedStyle(element).transform,
+    running: element.getAnimations().some(animation => animation.playState === 'running') }));
+  const first = await opening(); expect(first.running).toBe(true); expect(first.opacity).toBeLessThan(1);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  expect(await finalOpen()).toEqual({ opacity: '1', transform: 'none', running: false });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  expect(await closing()).toEqual({ inert: true, hidden: 'true', focus: true });
+  await page.emulateMedia({ reducedMotion: 'reduce' }); await expect(page.locator('.game-menu')).toHaveCount(0);
+  await page.locator('.dock-input').focus(); await page.keyboard.press('End');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  const foreground = await opening(); expect(foreground.running).toBe(true);
+  // Headless pages do not consistently background each other. Exercise the browser's
+  // existing visibility listener with the same hidden getter fixture as its component regression.
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange'));
+  });
+  expect(await finalOpen()).toEqual({ opacity: '1', transform: 'none', running: false });
+  await expect(page.locator('html')).toHaveClass(/ui-motion-paused/);
+  await page.evaluate(() => { Reflect.deleteProperty(document, 'hidden'); document.dispatchEvent(new Event('visibilitychange')); });
+  expect(await closing()).toEqual({ inert: true, hidden: 'true', focus: true });
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect(page.locator('.game-menu')).toHaveCount(0);
+  await page.locator('.dock-input').focus(); await page.keyboard.press('End');
+  await page.evaluate(() => { Reflect.deleteProperty(document, 'hidden'); document.dispatchEvent(new Event('visibilitychange')); });
+  await expect(page.locator('.dock-input')).toBeFocused(); await expect(page.locator('.dock-input')).toHaveValue(draft);
+  await expect(page.locator('[data-ui-phase="closing"]')).toHaveCount(0);
+  writeFileSync(testInfo.outputPath('preference-visibility-motion.json'), JSON.stringify({ first, foreground }, null, 2));
+});
+
+test('the developer journal shares the reversible shell without replaying its retained contents', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await gotoWithSave(page, createDynamicCaseBoardSave()); await page.getByRole('button', { name: '继续游戏', exact: true }).click(); await settleUiMotion(page);
+  await page.getByTitle('Open DM Debug Drawer (DEV only)', { exact: true }).click();
+  const result = await reverseOuterPanel(page, { panel: '.dm-journal-card', open: ['.dm-debug-header button:first-of-type'], close: '.dm-journal-card footer button' });
+  expectContinuousOuterPanel(result); expect(result.lifetime.sameAfterRetirement).toBe(false);
+  await expect(page.getByRole('dialog', { name: 'KP 笔记', exact: true })).toContainText('玩家发现药店后门有被撬痕迹');
+  await page.keyboard.press('Escape'); await expect(page.getByRole('button', { name: 'KP 笔记', exact: true })).toBeFocused();
+  writeFileSync(testInfo.outputPath('journal-outer-reversals.json'), JSON.stringify(result, null, 2));
+});
+
+for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height: 844, party: 2 }, { width: 1440, height: 900, party: 4 }]) {
+  test(`paired panel motion releases input and cancels rapid dismissal at ${size.width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize(size);
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await startNewGame(page, 2);
+    await startNewGame(page, size.party);
     const draft = '先记录日期。\n再查看门廊。';
     await page.locator('.dock-input').fill(draft);
-    const enter = await page.evaluate(async () => {
-      document.querySelector<HTMLButtonElement>('.menu-button')!.click();
-      await new Promise(requestAnimationFrame);
-      const panel = document.querySelector('.game-menu')!;
-      return { opacity: +getComputedStyle(panel).opacity, transform: getComputedStyle(panel).transform,
-        running: panel.getAnimations().some(animation => animation.playState === 'running') };
-    });
-    expect(enter.running).toBe(true); expect(enter.opacity).toBeLessThan(1); expect(enter.transform).not.toBe('none');
+    const reversal = await reverseOuterPanel(page, { panel: '.game-menu', open: ['.menu-button'], close: '.game-menu-close' });
+    expectContinuousOuterPanel(reversal);
+    expect(reversal.lifetime.sameAfterRetirement).toBe(false);
+    writeFileSync(testInfo.outputPath('outer-menu-reversals.json'), JSON.stringify(reversal, null, 2));
     const menu = page.getByRole('dialog', { name: '调查菜单', exact: true });
-    await expect.poll(() => menu.evaluate(element => getComputedStyle(element).transform)).toBe('none');
-    const race = await page.evaluate(async () => {
-      document.querySelector<HTMLButtonElement>('.game-menu-close')!.click();
-      await new Promise(requestAnimationFrame);
-      const layer = document.querySelector<HTMLElement>('.game-menu-backdrop')!;
-      const closing = { phase: layer.dataset.uiPhase, inert: layer.inert, hidden: layer.getAttribute('aria-hidden'),
-        pointers: getComputedStyle(layer).pointerEvents, activeDialogs: document.querySelectorAll('[role="dialog"][aria-modal="true"]').length,
-        focus: document.activeElement === document.querySelector('.menu-button'),
-        animation: getComputedStyle(layer.querySelector('.game-menu')!).animationName };
-      document.querySelector<HTMLButtonElement>('.menu-button')!.click();
-      await new Promise(requestAnimationFrame);
-      return { closing, reopened: layer.dataset.uiPhase === 'open' && !layer.inert };
-    });
-    expect(race.closing).toEqual({ phase: 'closing', inert: true, hidden: 'true', pointers: 'none', activeDialogs: 0, focus: true, animation: 'fog-panel-exit' });
-    expect(race.reopened).toBe(true);
     await expect.poll(() => menu.evaluate(element => getComputedStyle(element).transform)).toBe('none');
     await expect(menu).toHaveCount(1);
     await menu.getByRole('button', { name: '声音设置', exact: true }).click();
@@ -4218,8 +4909,201 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     await expect(page.locator('.dock-input')).toBeFocused(); await expect(page.locator('.dock-input')).toHaveValue(draft);
     await expect.poll(() => page.locator('[data-ui-phase="closing"]').count()).toBe(0);
     await expect(page.locator('.dock-input')).toBeFocused();
+    await expect(page.locator('.party-compact')).toHaveCount(size.party);
+    await page.screenshot({ path: testInfo.outputPath('outer-panels-return.png') });
   });
 }
+
+async function sampleReadingChanges(page: Page, rootSelector: string, bodySelector: string,
+  changes: Array<{ selector: string; label?: string; delay: number }>) {
+  return page.evaluate(async ({ rootSelector, bodySelector, changes }) => {
+    const root = document.querySelector<HTMLElement>(rootSelector)!, body = root.querySelector<HTMLElement>(bodySelector)!;
+    const read = () => {
+      const style = getComputedStyle(body), matrix = new DOMMatrixReadOnly(style.transform === 'none' ? undefined : style.transform);
+      return { opacity: Number(style.opacity), x: matrix.e, y: matrix.f, scale: matrix.a,
+        active: body.getAnimations().some(animation => animation.playState === 'running'),
+        durations: body.getAnimations().map(animation => Number(animation.effect!.getTiming().duration)),
+        same: document.querySelector(rootSelector) === root && root.querySelector(bodySelector) === body,
+        outerOpacity: getComputedStyle(root).opacity, outerTransform: getComputedStyle(root).transform,
+        outerActive: root.getAnimations().some(animation => animation.playState === 'running') };
+    };
+    const click = async (change: typeof changes[number]) => {
+      const buttons = Array.from(root.querySelectorAll<HTMLButtonElement>(change.selector));
+      const button = change.label ? buttons.find(button => button.textContent?.trim() === change.label)! : buttons[0];
+      button.click(); await Promise.resolve();
+    };
+    await click(changes[0]);
+    const first = read(), frames: ReturnType<typeof read>[] = [];
+    const sampled = new Promise<void>(resolve => {
+      const take = () => { frames.push(read()); if (frames.length < 24) requestAnimationFrame(take); else resolve(); };
+      requestAnimationFrame(take);
+    });
+    const turns = [];
+    for (const change of changes.slice(1)) {
+      await new Promise(resolve => setTimeout(resolve, change.delay));
+      const before = read(); await click(change); turns.push({ before, after: read() });
+    }
+    await sampled;
+    // Frame counts depend on the compositor's refresh rate. Wait for the real
+    // finite animation rather than assuming 24 frames always span its duration.
+    await Promise.all(body.getAnimations().map(animation => animation.finished.catch(() => {})));
+    return { first, frames, turns, final: read() };
+  }, { rootSelector, bodySelector, changes });
+}
+
+function expectReadingContinuity(sample: Awaited<ReturnType<typeof sampleReadingChanges>>) {
+  expect(sample.first.active).toBe(true); expect(sample.first.durations).toEqual([190]);
+  for (const { before, after } of sample.turns) {
+    expect(before.active).toBe(true); expect(after.active).toBe(true); expect(after.durations).toEqual([190]);
+    expect(Math.abs(after.opacity - before.opacity)).toBeLessThan(.04);
+    expect(Math.abs(after.x - before.x)).toBeLessThan(.25); expect(Math.abs(after.y - before.y)).toBeLessThan(.25);
+    expect(Math.abs(after.scale - before.scale)).toBeLessThan(.005);
+  }
+  for (const frame of sample.frames) expect(frame).toMatchObject({ same: true, outerOpacity: '1', outerTransform: 'none', outerActive: false });
+  expect(sample.frames.some(frame => frame.active && frame.opacity > .45 && frame.opacity < .99 && frame.y > 0 && frame.y < 3)).toBe(true);
+  expect(sample.final).toMatchObject({ opacity: 1, x: 0, y: 0, scale: 1, active: false });
+}
+
+for (const size of [{ width: 320, height: 568, party: 1 }, { width: 390, height: 844, party: 2 }, { width: 1440, height: 900, party: 4 }]) {
+  test(`investigator reading remains continuous across quick returns and starts fresh after dismissal for ${size.party} players`, async ({ page }, testInfo) => {
+    test.setTimeout(45_000);
+    await page.setViewportSize(size); await page.emulateMedia({ reducedMotion: 'no-preference' });
+    const state = createDynamicCaseBoardSave(), names = ['亨利·格雷', '艾达·华莱士', '托马斯·贝尔', '罗伯特·肖'].slice(0, size.party);
+    state.players = names.map((name, index) => makeInvestigator({ id: `reading-return-${index}`, name,
+      background: { story: '多年调查留下的公开经历，记录了走访街区和核对证词的方法。'.repeat(30) } }, { 侦查: 75 - index * 5 }));
+    state.currentActorIndex = size.party > 1 ? 1 : 0;
+    const actor = names[state.currentActorIndex], draft = '先记录窗边痕迹。\n查完档案再询问失踪时间。';
+    await gotoWithSave(page, state); await page.getByRole('button', { name: '继续游戏', exact: true }).click(); await settleUiMotion(page);
+    await page.getByRole('textbox', { name: `${actor}的行动`, exact: true }).fill(draft);
+    await page.evaluate(() => {
+      const frames: Array<{ opacity: number; y: number; active: boolean; durations: number[] }> = [];
+      (window as typeof window & { firstReadingFrames: typeof frames }).firstReadingFrames = frames;
+      document.addEventListener('click', () => {
+        const take = () => {
+          const body = document.querySelector('.investigator-body')!, style = getComputedStyle(body);
+          frames.push({ opacity: Number(style.opacity), y: new DOMMatrixReadOnly(style.transform === 'none' ? undefined : style.transform).f,
+            active: body.getAnimations().some(animation => animation.playState === 'running'),
+            durations: body.getAnimations().map(animation => Number(animation.effect!.getTiming().duration)) });
+          if (frames.length < 24) requestAnimationFrame(take);
+        };
+        requestAnimationFrame(take);
+      }, { once: true, capture: true });
+    });
+    const opener = page.locator('.party-compact').first(); await opener.click();
+    await expect.poll(() => page.evaluate(() => (window as typeof window & { firstReadingFrames: unknown[] }).firstReadingFrames.length)).toBe(24);
+    const first = await page.evaluate(() => (window as typeof window & { firstReadingFrames: Array<{ opacity: number; y: number; active: boolean; durations: number[] }> }).firstReadingFrames);
+    expect(first.some(frame => frame.active && frame.durations.includes(190) && frame.opacity > .45 && frame.opacity < .99 && frame.y > 0 && frame.y < 3)).toBe(true);
+    expect(first.at(-1)).toMatchObject({ opacity: 1, y: 0, active: false });
+    const sheet = page.locator('.investigator-sheet'), body = sheet.locator('.investigator-body');
+    await expect(sheet).toHaveAccessibleName(names[0]); await sheet.getByRole('tab', { name: '技能', exact: true }).click(); await settleUiMotion(page);
+    const bookmarks: Record<string, number> = {};
+    for (let index = 0; index < names.length; index++) {
+      if (size.party > 1) await sheet.getByRole('button', { name: names[index], exact: true }).click();
+      bookmarks[names[index]] = await body.evaluate((element, top) => { element.scrollTop = top; return element.scrollTop; }, 210 + index * 40);
+      expect(bookmarks[names[index]]).toBeGreaterThan(0);
+    }
+    if (size.party > 1) await sheet.getByRole('button', { name: names[0], exact: true }).click();
+    await sheet.getByRole('tab', { name: '随身与背景', exact: true }).click();
+    const backgroundTop = await body.evaluate(element => { element.scrollTop = 95; return element.scrollTop; }); expect(backgroundTop).toBeGreaterThan(0);
+    await sheet.getByRole('tab', { name: '技能', exact: true }).click(); await settleUiMotion(page);
+    const switches = await sampleReadingChanges(page, '.investigator-sheet', '.investigator-body', [
+      { selector: '.investigator-tabs button', label: '随身与背景', delay: 0 },
+      { selector: '.investigator-tabs button', label: '技能', delay: 25 },
+      size.party > 1 ? { selector: '.investigator-party button', label: names.at(-1)!, delay: 55 }
+        : { selector: '.investigator-tabs button', label: '属性', delay: 55 },
+      size.party > 1 ? { selector: '.investigator-party button', label: names[0], delay: 85 }
+        : { selector: '.investigator-tabs button', label: '技能', delay: 85 }
+    ]);
+    expectReadingContinuity(switches); await expect(body).toHaveJSProperty('scrollTop', bookmarks[names[0]]);
+    await sheet.getByRole('tab', { name: '随身与背景', exact: true }).click();
+    const quickReturn = await page.evaluate(async () => {
+      const root = document.querySelector<HTMLElement>('.investigator-sheet')!, body = root.querySelector<HTMLElement>('.investigator-body')!;
+      const overlay = root.closest<HTMLElement>('[data-ui-phase]')!, opener = document.querySelector<HTMLButtonElement>('.party-compact')!;
+      const animation = body.getAnimations()[0];
+      const read = () => { const style = getComputedStyle(body); return { opacity: Number(style.opacity), y: new DOMMatrixReadOnly(style.transform === 'none' ? undefined : style.transform).f }; };
+      await new Promise(resolve => setTimeout(resolve, 25)); const beforeClose = read();
+      root.querySelector<HTMLButtonElement>('.investigator-close')!.click(); await Promise.resolve();
+      const closing = { before: beforeClose, after: read(), inert: overlay.inert, hidden: overlay.getAttribute('aria-hidden'),
+        dialog: root.hasAttribute('role'), focusReleased: !root.contains(document.activeElement), retained: document.querySelector('.investigator-sheet') === root,
+        sameReading: body.getAnimations()[0] === animation };
+      await new Promise(resolve => setTimeout(resolve, 45)); const beforeReopen = read();
+      opener.focus({ preventScroll: true }); opener.click(); await Promise.resolve();
+      return { closing, reopening: { before: beforeReopen, after: read(), same: document.querySelector('.investigator-sheet') === root,
+        sameBody: root.querySelector('.investigator-body') === body, sameReading: body.getAnimations()[0] === animation,
+        top: body.scrollTop, tab: root.querySelector('[role="tab"][aria-selected="true"]')!.textContent, inert: overlay.inert } };
+    });
+    expect(quickReturn.closing).toMatchObject({ inert: true, hidden: 'true', dialog: false, focusReleased: true, retained: true, sameReading: true });
+    expect(quickReturn.reopening).toMatchObject({ same: true, sameBody: true, sameReading: true, top: backgroundTop, tab: '随身与背景', inert: false });
+    for (const turn of [quickReturn.closing, quickReturn.reopening]) {
+      expect(Math.abs(turn.after.opacity - turn.before.opacity)).toBeLessThan(.04); expect(Math.abs(turn.after.y - turn.before.y)).toBeLessThan(.25);
+    }
+    await settleUiMotion(page); await expect(sheet.getByRole('tab', { name: '随身与背景', exact: true })).toHaveAttribute('aria-selected', 'true');
+    await sheet.getByRole('tab', { name: '技能', exact: true }).click();
+    for (const name of names) {
+      if (size.party > 1) await sheet.getByRole('button', { name, exact: true }).click();
+      await expect(body).toHaveJSProperty('scrollTop', bookmarks[name]);
+    }
+    const freshSession = await page.evaluate(async () => {
+      const old = document.querySelector('.investigator-sheet')!;
+      old.querySelector<HTMLButtonElement>('.investigator-close')!.click(); await Promise.resolve();
+      await new Promise(resolve => setTimeout(resolve, 210)); const retired = !document.querySelector('.investigator-sheet');
+      document.querySelector<HTMLButtonElement>('.party-compact')!.click(); await Promise.resolve(); await new Promise(requestAnimationFrame);
+      const root = document.querySelector('.investigator-sheet')!, body = root.querySelector('.investigator-body')!;
+      return { retired, same: root === old, tab: root.querySelector('[aria-selected="true"]')!.textContent, top: body.scrollTop,
+        opacity: Number(getComputedStyle(body).opacity), durations: body.getAnimations().map(animation => Number(animation.effect!.getTiming().duration)) };
+    });
+    expect(freshSession).toMatchObject({ retired: true, same: false, tab: '属性', top: 0, durations: [190] }); expect(freshSession.opacity).toBeLessThan(1);
+    await sheet.getByRole('tab', { name: '技能', exact: true }).click();
+    for (const name of names) {
+      if (size.party > 1) await sheet.getByRole('button', { name, exact: true }).click();
+      await expect(body).toHaveJSProperty('scrollTop', 0);
+    }
+    if (size.party > 1) await sheet.getByRole('button', { name: names[0], exact: true }).click();
+    await sheet.getByRole('tab', { name: '随身与背景', exact: true }).click(); await expect(body).toHaveJSProperty('scrollTop', 0);
+    await page.keyboard.press('Escape'); await expect(sheet).toHaveCount(0);
+    await expect(opener).toBeFocused(); await expect(page.getByRole('textbox', { name: `${actor}的行动`, exact: true })).toHaveValue(draft);
+    await expect(page.locator('.party-compact.active')).toContainText(actor); await expect(page.locator('.party-compact')).toHaveCount(size.party);
+    writeFileSync(testInfo.outputPath('investigator-reading-continuity.json'), JSON.stringify({ first, switches, quickReturn, freshSession, bookmarks, backgroundTop, actor }, null, 2));
+    await page.screenshot({ path: testInfo.outputPath('reading-return-action.png') });
+  });
+}
+
+test('reading motion settles on preference and visibility changes and resumes with a fresh page', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 }); await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await startNewGame(page, 2); const draft = '查看档案后继续询问。\n先保留这段行动。'; await page.locator('.dock-input').fill(draft);
+  await page.locator('.dock-actor-avatar').click(); await settleUiMotion(page);
+  const sheet = page.locator('.investigator-sheet'), body = sheet.locator('.investigator-body');
+  const read = () => body.evaluate(element => ({ opacity: Number(getComputedStyle(element).opacity), transform: getComputedStyle(element).transform,
+    active: element.getAnimations().some(animation => animation.playState === 'running'), durations: element.getAnimations().map(animation => Number(animation.effect!.getTiming().duration)) }));
+  await sheet.getByRole('tab', { name: '技能', exact: true }).click(); await page.waitForTimeout(25);
+  const beforeReduce = await read(); expect(beforeReduce.active).toBe(true); expect(beforeReduce.opacity).toBeLessThan(1);
+  // emulateMedia changes the preference before its queued change listener is
+  // necessarily delivered. Observe the real hook's settled result, not that race.
+  await page.emulateMedia({ reducedMotion: 'reduce' }); await expect.poll(read).toEqual({ opacity: 1, transform: 'none', active: false, durations: [] });
+  await sheet.getByRole('tab', { name: '属性', exact: true }).click(); await sheet.getByRole('tab', { name: '技能', exact: true }).click();
+  expect(await read()).toEqual({ opacity: 1, transform: 'none', active: false, durations: [] });
+  await page.emulateMedia({ reducedMotion: 'no-preference' }); await sheet.getByRole('tab', { name: '随身与背景', exact: true }).click(); await page.waitForTimeout(25);
+  const beforeHide = await read(); expect(beforeHide.active).toBe(true); expect(beforeHide.opacity).toBeLessThan(1);
+  // Use the application's real visibility listener; headless tabs do not consistently background each other.
+  await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange')); });
+  try {
+    expect(await read()).toEqual({ opacity: 1, transform: 'none', active: false, durations: [] });
+    await sheet.getByRole('tab', { name: '技能', exact: true }).click(); expect(await read()).toEqual({ opacity: 1, transform: 'none', active: false, durations: [] });
+    await expect(page.locator('html')).toHaveClass(/ui-motion-paused/);
+  } finally { await page.evaluate(() => { Reflect.deleteProperty(document, 'hidden'); document.dispatchEvent(new Event('visibilitychange')); }); }
+  expect(await read()).toEqual({ opacity: 1, transform: 'none', active: false, durations: [] });
+  const resumed = await sampleReadingChanges(page, '.investigator-sheet', '.investigator-body', [
+    { selector: '.investigator-tabs button', label: '属性', delay: 0 }, { selector: '.investigator-tabs button', label: '技能', delay: 35 },
+    { selector: '.investigator-party button', label: '艾达·华莱士', delay: 55 }, { selector: '.investigator-party button', label: '亨利·格雷', delay: 75 }
+  ]);
+  expectReadingContinuity(resumed); expect(resumed.first.opacity).toBeCloseTo(.45, 2); expect(resumed.first.y).toBeCloseTo(3, 2);
+  await page.keyboard.press('Escape'); await expect(sheet).toHaveCount(0); await expect(page.locator('.dock-actor-avatar')).toBeFocused();
+  await expect(page.locator('.dock-input')).toHaveValue(draft); await expect(page.locator('.party-compact.active')).toContainText('亨利·格雷');
+  expect(await page.evaluate(() => document.getAnimations().some(animation => (animation.effect as KeyframeEffect | null)?.target instanceof Element
+    && ((animation.effect as KeyframeEffect).target as Element).matches('.investigator-body')))).toBe(false);
+  await expect(page.locator('html')).not.toHaveClass(/ui-motion-paused/);
+  writeFileSync(testInfo.outputPath('reading-preference-visibility.json'), JSON.stringify({ beforeReduce, beforeHide, resumed }, null, 2));
+});
 
 test('reduced motion closes actual game layers immediately without leaving a visual or focus trap', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 }); await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -4243,12 +5127,15 @@ for (const motion of ['no-preference', 'reduce'] as const) {
     await startNewGame(page, 2);
     const draft = '先看信件。\n再问清失踪时间。';
     await page.locator('.dock-input').fill(draft);
-    expect(await page.locator('.game-screen').evaluate(element => getComputedStyle(element).animationName))
-      .toBe(motion === 'reduce' ? 'none' : 'fog-screen-enter');
+    expect(await page.locator('.game-screen').evaluate(element => getComputedStyle(element).animationDuration.split(',').some(value => parseFloat(value) > 0)))
+      .toBe(motion !== 'reduce');
     expect(await page.locator('.story-message').evaluateAll(elements => elements.every(element => getComputedStyle(element).animationName === 'none'))).toBe(true);
     await page.getByRole('button', { name: '查看亨利·格雷的属性', exact: true }).click();
     const sheet = page.locator('.investigator-sheet');
-    expect(await sheet.evaluate(element => getComputedStyle(element).animationName)).toBe(motion === 'reduce' ? 'none' : 'fog-panel-enter');
+    const transition = await sheet.evaluate(element => ({ properties: getComputedStyle(element).transitionProperty,
+      durations: getComputedStyle(element).transitionDuration.split(',').map(value => parseFloat(value)) }));
+    if (motion === 'reduce') expect(transition.durations.every(duration => duration === 0)).toBe(true);
+    else { expect(transition.properties).toContain('opacity'); expect(transition.properties).toContain('transform'); expect(transition.durations.some(duration => duration > 0)).toBe(true); }
     await expect.poll(() => sheet.evaluate(element => getComputedStyle(element).transform)).toBe('none');
     const headerTop = (await sheet.locator('.investigator-heading').boundingBox())!.y;
     await sheet.getByRole('tab', { name: '技能', exact: true }).click();

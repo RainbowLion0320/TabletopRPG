@@ -7,6 +7,7 @@ import { ExitGameDialog } from './ExitGameDialog';
 import { CharacterSetup } from '../components/setup/CharacterSetup';
 import { TitleScreen } from '../components/setup/TitleScreen';
 import { GameScreen } from '../app/GameScreen';
+import { GameNotice } from '../components/shared/GameNotice';
 import { useGameController } from '../app/useGameController';
 import { readApiConfig } from '../services/storage';
 import { flushGameStorage } from '../platform/storage';
@@ -131,14 +132,14 @@ export function AndroidApp({ partialRecovery = false }: { partialRecovery?: bool
     {screen === 'title' ? <>
       <TitleScreen hasSaves={Boolean(session) || game.saves.length > 0} latestSave={game.saves[0]}
         continuation={session ? continuationPreview(session.state) : undefined}
-        onLoadLatest={resume} onNewGame={() => setScreen('setup')} onOpenApi={game.openApiSettings} overlayOpen={game.apiOpen || exitOpen} />
+        onLoadLatest={resume} onNewGame={() => { game.restartSetup(); setScreen('setup'); }} onOpenApi={game.openApiSettings} overlayOpen={game.apiOpen || exitOpen} />
       <ApiConfigModal open={game.apiOpen} onClose={() => game.setApiOpen(false)} onSave={game.saveApi} />
     </> : screen === 'setup' ? <CharacterSetup portrait onBack={() => setScreen('title')} onStart={start} /> :
       <GameScreen controller={{ ...game, saveCurrentGame: () => { flushDraft(); game.saveCurrentGame(); } }} portrait autoFocusInput={false}
         onHome={(snapshot) => { rememberSession(snapshot, true); setScreen('title'); }}
         onRestart={(snapshot) => { rememberSession(snapshot, true); setScreen('setup'); }} />}
     {notice && <div className="android-notice" role="alert"><span>{notice}</span><button className="secondary-action" onClick={() => setNotice('')}>知道了</button></div>}
-    {screen !== 'game' && game.toast && <div className="toast" role="status">{game.toast}</div>}
+    {screen !== 'game' && <GameNotice key={screen} message={screen === 'title' ? game.toast : ''} />}
     <ExitGameDialog open={exitOpen} busy={exitBusy} error={exitError} onClose={closeExit} onExit={() => void exit()} />
   </>;
 }

@@ -25,7 +25,6 @@
   background: rgb(0 0 0 / 40%);
   backdrop-filter: blur(4px);
   outline: none;
-  animation: dice-overlay-enter 180ms ease-out both;
 }
 
 .dice-roll-card {
@@ -233,10 +232,6 @@
   border: 0;
 }
 
-@keyframes dice-overlay-enter {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
 @keyframes dice-art-roll {
   from { transform: translateY(0); }
   to { transform: translateY(-96.666667%); }

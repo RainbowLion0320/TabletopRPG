@@ -2,6 +2,7 @@ import { useId, useRef } from 'react';
 import { useDialogFocus } from '../shared/useDialogFocus';
 import { useReadingMotion } from '../shared/useReadingMotion';
 import { useOverlayPresence } from '../shared/useOverlayPresence';
+import { useOverlayEntry } from '../shared/useOverlayEntry';
 import { X } from 'lucide-react';
 import type { EntityDetail } from '../../dm/entityDetail';
 import { RecordDetailMedia } from './RecordDetailMedia';
@@ -17,6 +18,7 @@ export function EntityDetailModal({ detail: currentDetail, onClose }: EntityDeta
   const motion = useOverlayPresence(currentDetail);
   const detail = motion.value;
   const dialogRef = useRef<HTMLDivElement>(null);
+  useOverlayEntry(motion.present, dialogRef);
   const bodyRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
 

@@ -2,12 +2,14 @@ import { LogOut } from 'lucide-react';
 import { useId, useRef } from 'react';
 import { useDialogFocus } from '../components/shared/useDialogFocus';
 import { useOverlayPresence } from '../components/shared/useOverlayPresence';
+import { useOverlayEntry } from '../components/shared/useOverlayEntry';
 
 export function ExitGameDialog({ open, busy, error, onClose, onExit }: {
   open: boolean; busy: boolean; error: string; onClose: () => void; onExit: () => void;
 }) {
   const dialog = useRef<HTMLDivElement>(null);
   const motion = useOverlayPresence(open);
+  useOverlayEntry(motion.present, dialog);
   const id = useId();
   useDialogFocus(open, dialog, onClose);
   if (!motion.present) return null;

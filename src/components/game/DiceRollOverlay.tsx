@@ -4,6 +4,7 @@ import type { DiceResult } from '../../types/game';
 import { DICE_ROLL_DURATION_MS, type DiceRollPresentation } from '../../app/diceRollAnimation';
 import { useDialogFocus } from '../shared/useDialogFocus';
 import { useOverlayPresence } from '../shared/useOverlayPresence';
+import { useOverlayEntry } from '../shared/useOverlayEntry';
 import idleArt from '../../../assets/ui/dice/ui_dice_idle.webp';
 import rollArt from '../../../assets/ui/dice/ui_dice_roll.webp';
 
@@ -46,6 +47,7 @@ export function DiceRollOverlay({ onConfirm, roll: currentRoll }: DiceRollOverla
   const motion = useOverlayPresence(currentRoll);
   const roll = motion.value;
   const dialogRef = useRef<HTMLDivElement>(null);
+  useOverlayEntry(motion.present, dialogRef);
   const confirmRef = useRef<HTMLButtonElement>(null);
   const revealed = roll?.phase === 'revealed';
   useDialogFocus(Boolean(currentRoll), dialogRef, () => {

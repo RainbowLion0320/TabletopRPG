@@ -413,25 +413,65 @@ public class GameAndroidTest {
         } finally { activity.close(); }
     }
 
+    private void watchPanelTransition(String layerSelector, String panelSelector, String phase) throws Exception {
+        js("(()=>{window.qaPanelTraceCleanup?.();const layerSelector=" + JSONObject.quote(layerSelector)
+                + ",panelSelector=" + JSONObject.quote(panelSelector) + ",phase=" + JSONObject.quote(phase) + ";"
+                + "const trace=window.qaPanelTrace={frames:[],events:[],immediate:null,reduced:matchMedia('(prefers-reduced-motion:reduce)').matches};"
+                + "let layer=document.querySelector(layerSelector),panel=document.querySelector(panelSelector),frame;const run=e=>{if(e.target.matches(panelSelector))trace.events.push({property:e.propertyName,phase:e.target.closest('[data-ui-phase]')?.dataset.uiPhase})};"
+                + "document.addEventListener('transitionrun',run);"
+                + "const read=at=>{const s=getComputedStyle(panel);return{at,connected:panel.isConnected,phase:layer.dataset.uiPhase??null,inert:layer.inert,hidden:layer.getAttribute('aria-hidden'),role:panel.getAttribute('role'),opacity:Number(s.opacity),transform:s.transform,animation:s.animationName,visibility:s.visibility,properties:s.transitionProperty,durations:s.transitionDuration,focused:panel.contains(document.activeElement)}};"
+                + "const take=at=>{trace.frames.push(read(at));if(trace.frames.length<24)frame=requestAnimationFrame(take);else{const animations=panel.getAnimations().filter(a=>a.playState==='running'&&Number.isFinite(a.effect?.getTiming().iterations??1));Promise.all(animations.map(a=>a.finished.catch(()=>{}))).then(()=>{trace.settledAt=performance.now();trace.terminal=read(trace.settledAt)})}};"
+                + "const observer=new MutationObserver(()=>{layer=document.querySelector(layerSelector)??layer;panel=document.querySelector(panelSelector)??panel;if(!layer||!panel)return;"
+                + "if(layer.dataset.uiPhase!==phase&&!(trace.reduced&&phase==='closing'&&panel.getAttribute('role')!=='dialog'&&(layer.inert||!layer.isConnected)))return;observer.disconnect();"
+                + "trace.immediate={phase:layer.dataset.uiPhase??null,inert:layer.inert,hidden:layer.getAttribute('aria-hidden'),role:panel.getAttribute('role')};frame=requestAnimationFrame(take)});"
+                + "observer.observe(document.body,{childList:true,attributes:true,attributeFilter:['data-ui-phase'],subtree:true});"
+                + "window.qaPanelTraceCleanup=()=>{observer.disconnect();cancelAnimationFrame(frame);document.removeEventListener('transitionrun',run)};})()");
+    }
+
+    private void assertPanelTransition(String phase) throws Exception {
+        until("window.qaPanelTrace.frames.length===24&&window.qaPanelTrace.terminal");
+        boolean opening = "open".equals(phase);
+        assertEquals("Logical panel state changes without waiting for its picture", "true", js("(()=>{const q=window.qaPanelTrace,s=q.immediate;return(s.phase===" + JSONObject.quote(phase)
+                + "||(q.reduced&&" + !opening + "&&s.phase===null))&&s.inert===" + !opening + "&&" + (opening ? "s.hidden!=='true'" : "s.hidden==='true'") + "&&s.role===" + (opening ? "'dialog'" : "null") + "})()"));
+        assertEquals("Real native frames use opacity/transform transitions without fixed keyframes", "true", js("(()=>{const q=window.qaPanelTrace,f=q.frames.filter(f=>f.connected&&f.phase===" + JSONObject.quote(phase) + ");"
+                + "return q.reduced?q.frames.every(f=>!f.connected||f.animation==='none'&&f.durations.split(',').every(d=>parseFloat(d)===0)&&(" + opening + "||f.role===null&&f.inert&&f.hidden==='true'&&f.visibility==='hidden'))"
+                + ":f.length>0&&f.every(f=>f.animation==='none'&&['opacity','transform'].every(p=>f.properties.split(',').map(s=>s.trim()).includes(p))&&f.durations.split(',').every(d=>Math.abs(parseFloat(d)-" + (opening ? ".24" : ".17") + ")<.001))"
+                + "&&q.events.some(e=>e.property==='opacity')&&q.frames.some(f=>f.opacity>.001&&f.opacity<.999)})()"));
+        if (opening) {
+            assertEquals("Entering finishes visible and focused without moving the reading controls", "true", js("(()=>{const f=window.qaPanelTrace.terminal;return f.connected&&f.opacity>=.999&&f.transform==='none'&&f.focused})()"));
+        }
+        System.out.println("PANEL_TRANSITION_NATIVE: " + js("JSON.stringify({phase:" + JSONObject.quote(phase) + ",first:window.qaPanelTrace.frames[0],last:window.qaPanelTrace.frames.at(-1),terminal:window.qaPanelTrace.terminal,settledAt:window.qaPanelTrace.settledAt,intermediate:window.qaPanelTrace.frames.filter(f=>f.opacity>.001&&f.opacity<.999).length,events:window.qaPanelTrace.events})"));
+        js("(window.qaPanelRecords??=[]).push(window.qaPanelTrace)");
+    }
+
+    private void savePanelMotionTrace(String name, String expression) throws Exception {
+        String json = new JSONObject("{\"trace\":" + js("JSON.stringify(" + expression + ")") + "}").getString("trace");
+        File folder = new File(context.getExternalFilesDir(null), "qa"); folder.mkdirs();
+        try (FileOutputStream output = new FileOutputStream(new File(folder, name + ".json"))) {
+            output.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+    }
+
     @Test public void pairedPanelMotionKeepsNativeBackAndDraftResponsive() throws Exception {
         fresh();
         try {
             viewport(390, 844); click("开始游戏"); click("进入游戏");
             fill(".dock-input", "先记录日期\n再检查门廊");
-            js("window.qaPanelMotion=[];document.addEventListener('animationstart',e=>{"
-                + "if(!e.animationName.startsWith('fog-panel-')&&e.animationName!=='fog-drawer-enter')return;"
-                + "const layer=e.target.closest('[data-ui-phase]');if(!layer)return;"
-                + "window.qaPanelMotion.push({name:e.animationName,phase:layer.dataset.uiPhase,inert:layer.inert,hidden:layer.getAttribute('aria-hidden'),role:e.target.getAttribute('role')});})");
+            watchPanelTransition(".game-menu-backdrop", ".game-menu", "open");
             nativeTap(".menu-button"); until("document.querySelector('.game-menu[role=dialog]')");
-            until("window.qaPanelMotion.some(s=>s.name==='fog-panel-enter'&&s.phase==='open'&&!s.inert)");
+            assertPanelTransition("open");
             screenshot("paired-motion-menu");
+            watchPanelTransition(".audio-settings-backdrop", ".audio-settings", "open");
             nativeTap(".game-menu button[aria-label='声音设置']"); until("document.querySelector('.audio-settings[role=dialog]')");
+            assertPanelTransition("open");
+            watchPanelTransition(".audio-settings-backdrop", ".audio-settings", "closing");
             InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
             until("!document.querySelector('.audio-settings[role=dialog]')");
+            assertEquals("The first Back releases the child layer and restores its menu opener", "true", js("document.querySelector('.game-menu[role=dialog]')&&document.activeElement===document.querySelector('.game-menu button[aria-label=声音设置]')"));
             InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
             until("!document.querySelector('.game-menu[role=dialog]')");
             assertEquals("Closing visuals release system Back and return to the original menu control", "true", js("!document.querySelector('.android-exit-card')&&document.activeElement===document.querySelector('.menu-button')"));
-            until("window.qaPanelMotion.filter(s=>s.name==='fog-panel-exit'&&s.phase==='closing'&&s.inert&&s.hidden==='true'&&s.role===null).length>=2");
+            assertPanelTransition("closing");
             until("!document.querySelector('[data-ui-phase=closing]')");
             nativeTap(".dock-actor-avatar"); until("document.querySelector('.investigator-sheet[role=dialog]')");
             nativeTap(".investigator-close"); until("!document.querySelector('.investigator-sheet[role=dialog]')");
@@ -439,12 +479,361 @@ public class GameAndroidTest {
             until("!document.querySelector('[data-ui-phase=closing]')");
             assertEquals("Retiring a character sheet cannot take focus from the next action", "true", js("document.activeElement===document.querySelector('.dock-input')&&document.querySelector('.dock-input').value==='先记录日期'+String.fromCharCode(10)+'再检查门廊'"));
             InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK); awaitSettledIme(false);
+            watchPanelTransition(".info-drawer-react", ".info-drawer-react", "open");
             nativeTap(".drawer-tab"); until("document.querySelector('.info-drawer-react[role=dialog]')");
-            until("window.qaPanelMotion.some(s=>s.name==='fog-drawer-enter'&&s.phase==='open')");
+            assertPanelTransition("open");
+            watchPanelTransition(".info-drawer-react", ".info-drawer-react", "closing");
             nativeTap(".info-drawer-react button[aria-label='关闭资料']"); until("!document.querySelector('.info-drawer-react[role=dialog]')");
+            assertPanelTransition("closing");
             until("!document.querySelector('[data-ui-phase=closing]')");
             assertNoResizeErrors(); screenshot("paired-motion-return");
-        } finally { activity.close(); }
+        } finally {
+            if (activity != null) {
+                try {
+                    js("window.qaPanelTraceCleanup?.()");
+                    savePanelMotionTrace("panel-transition-native", "({completed:window.qaPanelRecords??[],current:window.qaPanelTrace??null})");
+                } finally { activity.close(); }
+            }
+        }
+    }
+
+    // Seed with real touch, then run the real button handlers before nativeTap's motion wait could settle them.
+    private void watchPanelReversals(String openerSelector, String layerSelector, String panelSelector, String closeSelector) throws Exception {
+        js("(()=>{window.qaPanelReverseCleanup?.();const openerSelector=" + JSONObject.quote(openerSelector)
+                + ",layerSelector=" + JSONObject.quote(layerSelector) + ",panelSelector=" + JSONObject.quote(panelSelector) + ",closeSelector=" + JSONObject.quote(closeSelector) + ";"
+                + "const q=window.qaPanelReverse={pairs:[],frames:[],done:false,error:null,reduced:matchMedia('(prefers-reduced-motion:reduce)').matches};let layer,panel,frame;"
+                + "const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms)),raf=()=>new Promise(resolve=>requestAnimationFrame(resolve));"
+                + "const phase=wanted=>new Promise((resolve,reject)=>{let observer,timer;const check=()=>{const e=document.querySelector(layerSelector),p=document.querySelector(panelSelector);"
+                + "if(e?.dataset.uiPhase!==wanted&&!(q.reduced&&wanted==='closing'&&(!p||p.getAttribute('role')!=='dialog')))return;observer?.disconnect();clearTimeout(timer);resolve()};"
+                + "observer=new MutationObserver(check);observer.observe(document.body,{childList:true,attributes:true,attributeFilter:['data-ui-phase'],subtree:true});timer=setTimeout(()=>{observer.disconnect();reject(new Error('Missing '+wanted+' phase'))},2000);check()});"
+                + "const take=()=>{const currentLayer=document.querySelector(layerSelector),currentPanel=document.querySelector(panelSelector),e=currentPanel??panel,r=currentLayer??layer,s=getComputedStyle(e),m=new DOMMatrixReadOnly(s.transform==='none'||!s.transform?undefined:s.transform),b=e.getBoundingClientRect();"
+                + "return{at:performance.now(),connected:e.isConnected,sameLayer:currentLayer===layer,samePanel:currentPanel===panel,phase:r.dataset.uiPhase??null,inert:r.inert,hidden:r.getAttribute('aria-hidden'),role:e.getAttribute('role'),opacity:Number(s.opacity),veil:Number(getComputedStyle(r).opacity),matrix:[m.a,m.b,m.c,m.d,m.e,m.f],bounds:[b.left,b.top,b.width,b.height],focused:e.contains(document.activeElement),animation:s.animationName,markers:document.querySelectorAll('[data-ui-enter]').length}};"
+                + "const sample=()=>{q.frames.push(take());if(!q.done&&q.frames.length<90)frame=requestAnimationFrame(sample)};"
+                + "const run=async()=>{await phase('open');layer=document.querySelector(layerSelector);panel=document.querySelector(panelSelector);frame=requestAnimationFrame(sample);await raf();await wait(35);"
+                + "for(let i=0;i<3;i++){const beforeClose=take();document.querySelector(closeSelector).click();await phase('closing');const closed={phase:'closing',before:beforeClose,after:take()};q.pairs.push(closed);"
+                + "await raf();await wait(0);closed.focusReleased=!panel.contains(document.activeElement)&&document.activeElement===document.querySelector(openerSelector);await wait(35);"
+                + "const beforeOpen=take();document.querySelector(openerSelector).click();await phase('open');q.pairs.push({phase:'open',before:beforeOpen,after:take()});await raf();await wait(35)}q.done=true;cancelAnimationFrame(frame)};"
+                + "const start=e=>{if(!(e.target instanceof Element)||!e.target.closest(openerSelector))return;document.removeEventListener('click',start,true);run().catch(error=>{q.error=String(error);q.done=true;cancelAnimationFrame(frame)})};"
+                + "document.addEventListener('click',start,true);window.qaPanelReverseCleanup=()=>{document.removeEventListener('click',start,true);cancelAnimationFrame(frame)};})()");
+    }
+
+    private void assertPanelReversals(String panelSelector, String openerSelector) throws Exception {
+        until("window.qaPanelReverse.done");
+        assertEquals("Quick reversals finish through the real UI handlers", "null", js("window.qaPanelReverse.error"));
+        assertEquals("Closing and reopening keep their immediate logical semantics and release focus before fading finishes", "true", js("(()=>{const q=window.qaPanelReverse;return q.pairs.length===6&&q.pairs.every(({phase,after:s,focusReleased})=>phase==='open'?s.phase==='open'&&!s.inert&&s.hidden!=='true'&&s.role==='dialog':(s.phase==='closing'||q.reduced)&&s.role===null&&(!s.connected||s.inert&&s.hidden==='true')&&focusReleased)})()"));
+        assertEquals("A retained panel reverses from its current opacity, transform and position", "true", js("(()=>{const q=window.qaPanelReverse;return q.reduced?q.frames.every(s=>!s.connected||s.animation==='none'):q.frames.some(s=>s.opacity>.001&&s.opacity<.999)&&q.pairs.every(({before:a,after:b})=>a.sameLayer&&a.samePanel&&b.sameLayer&&b.samePanel&&a.animation==='none'&&b.animation==='none'&&b.markers===0&&Math.abs(a.opacity-b.opacity)<=.02&&Math.abs(a.veil-b.veil)<=.02&&a.matrix.every((v,i)=>Math.abs(v-b.matrix[i])<=(i<4?.002:1))&&a.bounds.every((v,i)=>Math.abs(v-b.bounds[i])<=1))})()"));
+        awaitUiMotion();
+        assertEquals("The same reopened panel finishes visible, focused and usable", "true", js("(()=>{const p=document.querySelector(" + JSONObject.quote(panelSelector) + "),s=getComputedStyle(p);return p.getAttribute('role')==='dialog'&&!p.closest('[inert]')&&p.contains(document.activeElement)&&Number(s.opacity)>=.999&&s.transform==='none'&&document.querySelectorAll('[data-ui-enter]').length===0})()"));
+        System.out.println("PANEL_REVERSE_NATIVE: " + js("JSON.stringify({panel:" + JSONObject.quote(panelSelector) + ",reduced:window.qaPanelReverse.reduced,frames:window.qaPanelReverse.frames.length,pairs:window.qaPanelReverse.pairs.map(p=>({phase:p.phase,opacityDelta:Math.abs(p.before.opacity-p.after.opacity),veilDelta:Math.abs(p.before.veil-p.after.veil),positionDelta:Math.max(...p.before.bounds.map((v,i)=>Math.abs(v-p.after.bounds[i]))),samePanel:p.after.samePanel,focusReleased:p.focusReleased}))})"));
+        js("(window.qaPanelReverseRecords??=[]).push(window.qaPanelReverse)");
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+        until("!document.querySelector(" + JSONObject.quote(panelSelector + "[role=dialog]") + ")");
+        assertEquals("The final native Back immediately restores the original opener", "true", js("document.activeElement===document.querySelector(" + JSONObject.quote(openerSelector) + ")&&!document.querySelector('.android-exit-card')"));
+        until("!document.querySelector('[data-ui-phase=closing]')");
+    }
+
+    @Test public void panelReversalsKeepNativePartyDraftAndFocus() throws Exception {
+        for (int party : new int[]{1, 2, 4}) {
+            fresh();
+            try {
+                viewport(390, 844); click("开始游戏");
+                for (int i = 1; i < party; i++) js("document.querySelectorAll('.preset-selection-input')[" + i + "].click()");
+                until("document.querySelectorAll('.preset-selection-input:checked').length===" + party);
+                click("进入游戏"); fill(".dock-input", "先核对门廊痕迹\n再记录来访者。");
+                watchPanelReversals(".menu-button", ".game-menu-backdrop", ".game-menu", ".game-menu-close");
+                nativeTap(".menu-button"); assertPanelReversals(".game-menu", ".menu-button");
+                nativeTap(".menu-button"); until("document.querySelector('.game-menu[role=dialog]')");
+                watchPanelReversals(".game-menu button[aria-label='声音设置']", ".audio-settings-backdrop", ".audio-settings", ".audio-close");
+                nativeTap(".game-menu button[aria-label='声音设置']"); assertPanelReversals(".audio-settings", ".game-menu button[aria-label='声音设置']");
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                until("!document.querySelector('.game-menu[role=dialog]')");
+                watchPanelReversals(".dock-actor-avatar", ".investigator-overlay", ".investigator-sheet", ".investigator-close");
+                nativeTap(".dock-actor-avatar"); assertPanelReversals(".investigator-sheet", ".dock-actor-avatar");
+                watchPanelReversals(".drawer-tab", ".info-drawer-react", ".info-drawer-react", ".info-drawer-react button[aria-label='关闭资料']");
+                nativeTap(".drawer-tab"); assertPanelReversals(".info-drawer-react", ".drawer-tab");
+                assertEquals("Repeated panel reversals retain the complete action and selected party", "true", js("document.querySelector('.dock-input').value==='先核对门廊痕迹'+String.fromCharCode(10)+'再记录来访者。'&&document.querySelectorAll('.party-compact').length===" + party));
+                awaitSettledIme(false);
+                assertNoResizeErrors(); if (party == 2) screenshot("panel-reverse-native");
+            } finally {
+                if (activity != null) {
+                    try {
+                        js("window.qaPanelReverseCleanup?.()");
+                        savePanelMotionTrace("panel-reverse-native-party-" + party, "({completed:window.qaPanelReverseRecords??[],current:window.qaPanelReverse??null})");
+                    } finally { activity.close(); }
+                }
+            }
+        }
+    }
+
+    private void watchNativeDossierReopen() throws Exception {
+        js("(()=>{window.qaDossierReopenCleanup?.();const sheet=document.querySelector('.investigator-sheet'),body=document.querySelector('.investigator-body'),layer=sheet.closest('[data-ui-phase]');"
+                + "const q=window.qaDossierReopen={source:'native Back then button click',done:false,error:null};let timer,changed;"
+                + "const read=()=>{const s=getComputedStyle(body);return{tab:sheet.querySelector('[role=tab][aria-selected=true]').textContent,scroll:body.scrollTop,opacity:Number(s.opacity),transform:s.transform,running:body.getAnimations().filter(a=>a.playState==='running').length}};q.before=read();"
+                + "const observer=new MutationObserver(()=>{if(layer.dataset.uiPhase!=='closing'||sheet.getAttribute('role')==='dialog')return;observer.disconnect();q.closedAt=performance.now();"
+                + "q.closed={phase:layer.dataset.uiPhase,inert:layer.inert,hidden:layer.getAttribute('aria-hidden'),role:sheet.getAttribute('role')};"
+                + "timer=setTimeout(()=>{q.reopenAt=performance.now();q.retainedBeforeClick=sheet.isConnected&&body.isConnected;q.focusReturned=document.activeElement===document.querySelector('.dock-actor-avatar');"
+                + "changed=new MutationObserver(()=>{if(layer.dataset.uiPhase!=='open'||sheet.getAttribute('role')!=='dialog')return;changed.disconnect();clearTimeout(deadline);q.openAt=performance.now();q.sameSheet=sheet===document.querySelector('.investigator-sheet');q.sameBody=body===document.querySelector('.investigator-body');q.after=read();q.done=true});"
+                + "changed.observe(layer,{attributes:true,attributeFilter:['data-ui-phase'],subtree:true});document.querySelector('.dock-actor-avatar').click();},35);});"
+                + "observer.observe(layer,{attributes:true,attributeFilter:['data-ui-phase'],subtree:true});const deadline=setTimeout(()=>{q.error='Native closing/reopen phase missing';q.done=true;observer.disconnect();changed?.disconnect();clearTimeout(timer)},2000);"
+                + "window.qaDossierReopenCleanup=()=>{observer.disconnect();changed?.disconnect();clearTimeout(timer);clearTimeout(deadline)};})()");
+    }
+
+    private void runQuickDossierPageChanges(int party) throws Exception {
+        js("(()=>{const party=" + party + ",sheet=document.querySelector('.investigator-sheet'),body=document.querySelector('.investigator-body'),names=Array.from(document.querySelectorAll('.party-compact strong'),e=>e.textContent);"
+                + "const q=window.qaDossierPages={source:'real button clicks inside installed WebView',steps:[],frames:[],done:false,error:null,reduced:matchMedia('(prefers-reduced-motion:reduce)').matches};"
+                + "const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms)),raf=()=>new Promise(resolve=>requestAnimationFrame(resolve));"
+                + "const take=()=>{const s=getComputedStyle(body),m=new DOMMatrixReadOnly(s.transform==='none'||!s.transform?undefined:s.transform);return{at:performance.now(),sameSheet:sheet===document.querySelector('.investigator-sheet'),sameBody:body===document.querySelector('.investigator-body'),member:sheet.querySelector('.investigator-identity h2').textContent,tab:sheet.querySelector('[role=tab][aria-selected=true]').textContent,scroll:body.scrollTop,opacity:Number(s.opacity),matrix:[m.a,m.b,m.c,m.d,m.e,m.f],animations:body.getAnimations().filter(a=>a.playState==='running').map(a=>({duration:a.effect.getTiming().duration,progress:a.effect.getComputedTiming().progress})),role:sheet.getAttribute('role'),inert:sheet.closest('[data-ui-phase]').inert}};"
+                + "const change=async(selector,member,tab)=>{const before=take(),label=tab==='skills'?'技能':'随身与背景',expectedScroll=window.qaDossierPositions[member+':'+tab];"
+                + "const committed=new Promise((resolve,reject)=>{const observer=new MutationObserver(()=>{if(sheet.querySelector('.investigator-identity h2').textContent!==names[member]||sheet.querySelector('[role=tab][aria-selected=true]').textContent!==label)return;observer.disconnect();clearTimeout(timer);resolve()});"
+                + "observer.observe(sheet,{childList:true,attributes:true,subtree:true,attributeFilter:['aria-selected','aria-pressed']});const timer=setTimeout(()=>{observer.disconnect();reject(new Error('Missing dossier page '+member+':'+tab))},2000)});"
+                + "document.querySelector(selector).click();await committed;q.steps.push({expectedMember:names[member],expectedTab:label,expectedScroll,before,after:take()});await raf();await wait(35)};"
+                + "(async()=>{for(let member=0;member<party;member++){if(member>0)await change('.investigator-party button:nth-child('+(member+1)+')',member,'background');"
+                + "await change('.investigator-tabs button:nth-child(2)',member,'skills');await change('.investigator-tabs button:nth-child(3)',member,'background')}"
+                + "if(party>1)await change('.investigator-party button:first-child',0,'background');await change('.investigator-tabs button:nth-child(2)',0,'skills');"
+                + "for(let i=0;i<24;i++){await raf();q.frames.push(take())}await Promise.all(body.getAnimations().filter(a=>a.playState==='running'&&Number.isFinite(a.effect?.getTiming().iterations??1)).map(a=>a.finished.catch(()=>{})));q.terminal=take();q.done=true;})().catch(error=>{q.error=String(error);q.done=true});})()");
+    }
+
+    @Test public void investigatorReadingSurvivesQuickReopenAndPageChanges() throws Exception {
+        for (int party : new int[]{1, 2, 4}) {
+            fresh();
+            try {
+                viewport(390, 844); click("开始游戏");
+                for (int i = 1; i < party; i++) js("document.querySelectorAll('.preset-selection-input')[" + i + "].click()");
+                until("document.querySelectorAll('.preset-selection-input:checked').length===" + party);
+                click("进入游戏"); fill(".dock-input", "先核对技能与装备\n再向委托人询问经过。"); menu("返回首页");
+                js("window.qaDossierFixtureReady=false;window.qaDossierFixtureError=null;Capacitor.Plugins.GameStorage.readAll().then(async({values})=>{const record=JSON.parse(values['trpg-android-session-v1']);"
+                        + "record.state.players.forEach((p,i)=>{p.background={...p.background,story:('调查员'+(i+1)+'把来访时间、门廊痕迹与携带装备逐项记在调查本上。'+String.fromCharCode(10)).repeat(60)}});"
+                        + "await Capacitor.Plugins.GameStorage.write({key:'trpg-android-session-v1',value:JSON.stringify(record)});window.qaDossierFixtureReady=true;}).catch(error=>{window.qaDossierFixtureError=String(error);window.qaDossierFixtureReady=true})");
+                until("window.qaDossierFixtureReady"); assertEquals("Native reading fixture is saved through the encrypted checkpoint", "null", js("window.qaDossierFixtureError"));
+                activity.recreate(); until("document.querySelector('.title-resume-preview')"); watchResizeErrors(); viewport(390, 844); click("继续游戏");
+                assertEquals("The reading scenario starts with the complete restored multiline action", JSONObject.quote("先核对技能与装备\n再向委托人询问经过。"), js("document.querySelector('.dock-input').value"));
+                js("window.qaDossierGameBefore={draft:document.querySelector('.dock-input').value,actor:document.querySelector('.dock-input').getAttribute('aria-label'),party:Array.from(document.querySelectorAll('.party-compact strong'),e=>e.textContent),messages:document.querySelectorAll('.story-message.player').length};window.qaDossierPositions={}");
+                nativeTap(".dock-actor-avatar"); until("document.querySelector('.investigator-sheet[role=dialog]')");
+                nativeTap(".investigator-tabs button:nth-child(2)"); until("document.querySelector('.investigator-skills')"); awaitUiMotion();
+                js("(()=>{const b=document.querySelector('.investigator-body');b.scrollTop=Math.round((b.scrollHeight-b.clientHeight)*.35)})()");
+                String firstSkillPosition = awaitSettledScroll(".investigator-body");
+                assertTrue("A real skill list provides a nonzero reading bookmark", Double.parseDouble(firstSkillPosition) > 100);
+                if (!"true".equals(js("matchMedia('(prefers-reduced-motion:reduce)').matches"))) {
+                    watchNativeDossierReopen();
+                    InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                    until("window.qaDossierReopen.done");
+                    assertEquals("Native closing/reopen phase is observed without artificial key events", "null", js("window.qaDossierReopen.error"));
+                    assertEquals("Native Back reaches logical closing before a genuinely quick retained reopen", "true", js("(()=>{const q=window.qaDossierReopen;return q.closed.phase==='closing'&&q.closed.inert&&q.closed.hidden==='true'&&q.closed.role===null&&q.reopenAt-q.closedAt>=30&&q.openAt-q.closedAt<170&&q.retainedBeforeClick&&q.focusReturned&&q.sameSheet&&q.sameBody})()"));
+                    assertEquals("Quick reopening keeps the same skill page, exact bookmark and current body pose", "true", js("(()=>{const q=window.qaDossierReopen;return q.after.tab==='技能'&&q.after.tab===q.before.tab&&Math.abs(q.after.scroll-q.before.scroll)<=1&&Math.abs(q.after.opacity-q.before.opacity)<=.01&&q.after.transform===q.before.transform&&q.after.running===q.before.running})()"));
+                } else {
+                    InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK); until("!document.querySelector('.investigator-sheet')");
+                    nativeTap(".dock-actor-avatar"); until("document.querySelector('.investigator-sheet[role=dialog]')");
+                    assertEquals("The actual reduced-motion preference closes immediately into a new reading session", "true", js("document.querySelector('.investigator-tabs [aria-selected=true]').textContent==='属性'&&document.querySelector('.investigator-body').scrollTop===0&&document.querySelector('.investigator-body').getAnimations().length===0"));
+                    js("window.qaDossierReopen={source:'native Back and native reopen with actual reduced motion',sameBody:false}");
+                }
+                until("document.querySelector('.investigator-sheet').contains(document.activeElement)"); awaitUiMotion();
+                for (int member = 0; member < party; member++) {
+                    if (party > 1) {
+                        nativeTap(".investigator-party button:nth-child(" + (member + 1) + ")");
+                        until("document.querySelectorAll('.investigator-party button')[" + member + "].getAttribute('aria-pressed')==='true'");
+                    }
+                    for (int tab = 2; tab <= 3; tab++) {
+                        nativeTap(".investigator-tabs button:nth-child(" + tab + ")");
+                        until("document.querySelectorAll('.investigator-tabs button')[" + (tab - 1) + "].getAttribute('aria-selected')==='true'"); awaitUiMotion();
+                        double fraction = tab == 2 ? .25 + member * .12 : .7 - member * .1;
+                        js("(()=>{const b=document.querySelector('.investigator-body');b.scrollTop=Math.round((b.scrollHeight-b.clientHeight)*" + fraction + ")})()");
+                        String position = awaitSettledScroll(".investigator-body");
+                        assertTrue("Each member and page has a real nonzero bookmark", Double.parseDouble(position) > 100);
+                        js("window.qaDossierPositions['" + member + ":" + (tab == 2 ? "skills" : "background") + "']=" + position);
+                    }
+                }
+                if (party > 1) {
+                    nativeTap(".investigator-party button:first-child"); until("document.querySelector('.investigator-party button:first-child').getAttribute('aria-pressed')==='true'");
+                }
+                awaitUiMotion();
+                runQuickDossierPageChanges(party); until("window.qaDossierPages.done");
+                assertEquals("Rapid page changes complete through real buttons", "null", js("window.qaDossierPages.error"));
+                assertEquals("Every visited player and page keeps its own bookmark in the same usable surface", "true", js("window.qaDossierPages.steps.every(s=>s.after.sameSheet&&s.after.sameBody&&s.after.member===s.expectedMember&&s.after.tab===s.expectedTab&&Math.abs(s.after.scroll-s.expectedScroll)<=1&&s.after.role==='dialog'&&!s.after.inert)"));
+                assertEquals("An interrupted reading effect continues its current opacity and transform", "true", js("(()=>{const q=window.qaDossierPages,r=q.steps.filter(s=>s.before.animations.length);return q.reduced?q.steps.every(s=>s.after.animations.length===0):r.length>=2&&r.every(s=>Math.abs(s.before.opacity-s.after.opacity)<=.02&&s.before.matrix.every((v,i)=>Math.abs(v-s.after.matrix[i])<=(i<4?.002:1))&&s.after.animations.length===1&&s.after.animations[0].duration===190)})()"));
+                assertEquals("Twenty-four real frames are retained and natural completion leaves the reading surface fully visible", "true", js("(()=>{const q=window.qaDossierPages,f=q.terminal;return q.frames.length===24&&f.opacity>=.999&&f.animations.length===0&&f.matrix.every((v,i)=>Math.abs(v-([1,0,0,1,0,0][i]))<.001)&&Math.abs(f.scroll-window.qaDossierPositions['0:skills'])<=1})()"));
+                js("window.qaDossierOldSheet=document.querySelector('.investigator-sheet');window.qaDossierOldBody=document.querySelector('.investigator-body')");
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                until("!document.querySelector('.investigator-sheet')&&!window.qaDossierOldSheet.isConnected&&!window.qaDossierOldBody.isConnected");
+                assertEquals("Complete native close restores the avatar without opening the keyboard", "true", js("document.activeElement===document.querySelector('.dock-actor-avatar')")); awaitSettledIme(false);
+                nativeTap(".dock-actor-avatar"); until("document.querySelector('.investigator-sheet[role=dialog]')");
+                assertEquals("A fully ended session creates a fresh attribute page at the beginning", "true", js("window.qaDossierOldSheet!==document.querySelector('.investigator-sheet')&&window.qaDossierOldBody!==document.querySelector('.investigator-body')&&document.querySelector('.investigator-tabs [aria-selected=true]').textContent==='属性'&&document.querySelector('.investigator-body').scrollTop===0"));
+                nativeTap(".investigator-tabs button:nth-child(2)"); awaitUiMotion();
+                assertEquals("The previous session's skill bookmark is cleared", "0", js("document.querySelector('.investigator-body').scrollTop"));
+                nativeTap(".investigator-tabs button:nth-child(3)"); awaitUiMotion();
+                assertEquals("The previous session's background bookmark is cleared", "0", js("document.querySelector('.investigator-body').scrollTop"));
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK); until("!document.querySelector('.investigator-sheet')");
+                assertEquals("Reading never changes the multiline action, acting investigator or chosen party", "true", js("(()=>{const q=window.qaDossierGameBefore;return document.querySelector('.dock-input').value===q.draft&&document.querySelector('.dock-input').getAttribute('aria-label')===q.actor&&JSON.stringify(Array.from(document.querySelectorAll('.party-compact strong'),e=>e.textContent))===JSON.stringify(q.party)&&document.querySelectorAll('.story-message.player').length===q.messages})()"));
+                awaitSettledIme(false); assertNoResizeErrors();
+                System.out.println("DOSSIER_READING_NATIVE: " + js("JSON.stringify({party:" + party + ",nativeBack:true,reopenSource:window.qaDossierReopen.source,reopenMs:window.qaDossierReopen.openAt-window.qaDossierReopen.closedAt,sameBody:window.qaDossierReopen.sameBody,rapidSource:window.qaDossierPages.source,pageSteps:window.qaDossierPages.steps.length,interrupted:window.qaDossierPages.steps.filter(s=>s.before.animations.length).length,bookmarks:window.qaDossierPositions})"));
+                if (party == 2) screenshot("dossier-reading-native-return");
+            } finally {
+                if (activity != null) {
+                    try {
+                        js("window.qaDossierReopenCleanup?.()");
+                        savePanelMotionTrace("dossier-reading-native-party-" + party, "({reopen:window.qaDossierReopen??null,pages:window.qaDossierPages??null,bookmarks:window.qaDossierPositions??null})");
+                    } finally { activity.close(); }
+                }
+            }
+        }
+    }
+
+    private void watchPassiveNotice(String expected, boolean resumeDuringExit, String source) throws Exception {
+        js("(()=>{window.qaNoticeCleanup?.();if(window.qaNotice)(window.qaNoticeRecords??=[]).push(window.qaNotice);const root=document.querySelector('.game-notice');"
+                + "const q=window.qaNotice={source:" + JSONObject.quote(source) + ",expected:" + JSONObject.quote(expected) + ",rapid:" + resumeDuringExit + ",reduced:matchMedia('(prefers-reduced-motion:reduce)').matches,entryFrames:[],exitFrames:[],finalExitFrames:[],events:[],done:false,error:null};let node,phase,timer,firstExitDone=false,finalExitDone=false,entryDone=false;"
+                + "const pose=()=>{if(!node?.isConnected)return{at:performance.now(),connected:false};const s=getComputedStyle(node),r=node.getBoundingClientRect();return{at:performance.now(),connected:true,opacity:Number(s.opacity),transform:s.transform,phase:node.dataset.uiPhase,inert:node.inert,hidden:node.getAttribute('aria-hidden'),font:parseFloat(s.fontSize),frame:s.borderImageSource,animation:s.animationName,transition:s.transitionDuration,rect:{x:r.x,y:r.y,width:r.width,height:r.height},passive:getComputedStyle(root).pointerEvents==='none',focusInside:root.contains(document.activeElement)}};"
+                + "const logical=()=>({phase:node.dataset.uiPhase,inert:node.inert,hidden:node.getAttribute('aria-hidden'),rootRole:root.getAttribute('role'),live:root.getAttribute('aria-live'),atomic:root.getAttribute('aria-atomic'),rootHidden:root.getAttribute('aria-hidden'),text:node.textContent,focusInside:root.contains(document.activeElement),regions:document.querySelectorAll('.game-notice[role=status]').length});"
+                + "const raf=()=>new Promise(resolve=>requestAnimationFrame(resolve)),complete=()=>{if(q.removedAt&&entryDone&&(q.rapid?finalExitDone:firstExitDone)){q.terminal=pose();q.rootEmpty=root.childElementCount===0;q.done=true;clearTimeout(deadline)}};"
+                + "const sample=async(name)=>{const finishing=Promise.all(node.getAnimations().filter(a=>a.playState==='running'&&Number.isFinite(a.effect?.getTiming().iterations??1)).map(a=>a.finished.catch(()=>{})));for(let i=0;i<24;i++){await raf();q[name].push(pose())}await finishing;return pose()};"
+                + "const transition=e=>{if(e.target===node)q.events.push({type:e.type,property:e.propertyName,at:performance.now()})};"
+                + "const observer=new MutationObserver(()=>{const current=root.querySelector('.toast');if(!node&&current?.textContent===q.expected){node=current;phase='open';q.openAt=performance.now();q.opened=logical();q.first=pose();node.addEventListener('transitionrun',transition);node.addEventListener('transitionend',transition);"
+                + "void sample('entryFrames').then(last=>{q.entryTerminal=last;entryDone=true;complete()}).catch(error=>{q.error=String(error);q.done=true})}"
+                + "if(!node)return;const now=current?.dataset.uiPhase??(node.dataset.uiPhase==='closing'?'closing':undefined);if(now==='closing'&&phase!=='closing'){phase='closing';const again=!!q.reopenedAt;if(!again){q.closedAt=performance.now();q.closed=logical()}else{q.finalClosedAt=performance.now();q.finalClosed=logical()}"
+                + "void sample(again?'finalExitFrames':'exitFrames').then(()=>{if(again)finalExitDone=true;else firstExitDone=true;complete()}).catch(error=>{q.error=String(error);q.done=true});"
+                + "if(q.rapid&&!again){let attempts=0;const seek=()=>{const p=pose();if(q.reduced||(p.connected&&p.opacity>.001&&p.opacity<.999)){q.publishedClosingPose=p;q.triggerAt=performance.now();q.beforeReopen=pose();const save=document.querySelector('.game-menu[role=dialog] .menu-list button:first-child');if(!save){q.error='Prepared real Save action missing';q.done=true;return}save.click()}else if(++attempts<12&&p.connected)requestAnimationFrame(seek);else{q.error='No real intermediate exit frame';q.done=true}};requestAnimationFrame(seek)}}"
+                + "if(q.rapid&&q.closedAt&&now==='open'&&phase==='closing'){phase='open';q.reopenedAt=performance.now();q.sameNode=current===node;q.reopened=logical();q.afterReopen=pose();q.entryMarker=node.hasAttribute('data-ui-enter')}"
+                + "if(!current&&node&&!q.removedAt){q.removedAt=performance.now();complete()}});observer.observe(root,{childList:true,attributes:true,subtree:true,attributeFilter:['data-ui-phase','aria-hidden','inert']});"
+                + "const deadline=setTimeout(()=>{q.error='Natural notification lifecycle did not finish';q.done=true},14000);window.qaNoticeCleanup=()=>{observer.disconnect();node?.removeEventListener('transitionrun',transition);node?.removeEventListener('transitionend',transition);clearTimeout(timer);clearTimeout(deadline)};})()");
+    }
+
+    private void assertPassiveNotice() throws Exception {
+        until("window.qaNotice.done"); assertEquals("Native notification finishes through its real timer and transitions", "null", js("window.qaNotice.error"));
+        assertEquals("The same passive live region exposes only current feedback, then releases it from accessibility immediately", "true", js("(()=>{const q=window.qaNotice,o=q.opened,c=q.closed;return o.regions===1&&o.rootRole==='status'&&o.live==='polite'&&o.atomic==='true'&&!o.rootHidden&&!o.inert&&o.text===q.expected&&!o.focusInside&&c.inert&&c.hidden==='true'&&!c.rootHidden&&c.regions===1&&!c.focusInside&&q.rootEmpty&&!q.terminal.connected})()"));
+        assertEquals("Painted feedback is readable inside the real viewport and never owns focus or input", "true", js("(()=>{const q=window.qaNotice;return q.entryFrames.length===24&&q.exitFrames.length===24&&q.entryFrames.filter(f=>f.connected).every(f=>f.font>=15&&f.frame.includes('panel-frame')&&f.animation==='none'&&f.passive&&!f.focusInside&&f.rect.x>=0&&f.rect.y>=0&&f.rect.x+f.rect.width<=innerWidth+.5&&f.rect.y+f.rect.height<=innerHeight+.5)})()"));
+        assertEquals("Short feedback retains its logical timeout and produces real entry and exit frames", "true", js("(()=>{const q=window.qaNotice;return q.closedAt-q.openAt>=1700&&q.closedAt-q.openAt<3000&&(q.reduced?q.entryFrames.every(f=>!f.connected||f.opacity===1):q.entryFrames.some(f=>f.connected&&f.opacity>.001&&f.opacity<.999)&&q.exitFrames.some(f=>f.connected&&f.opacity>.001&&f.opacity<.999)&&q.events.some(e=>e.type==='transitionrun'&&e.property==='opacity'))})()"));
+        if ("true".equals(js("window.qaNotice.rapid"))) {
+            assertEquals("A real Save action resumes the retained toast and its old retirement never removes the new feedback", "true", js("(()=>{const q=window.qaNotice;return q.sameNode&&!q.entryMarker&&q.reopened.regions===1&&!q.reopened.inert&&!q.reopened.hidden&&!q.reopened.focusInside&&q.reopened.text===q.expected&&q.reopenedAt-q.closedAt<170&&q.finalExitFrames.length===24&&q.finalClosedAt-q.reopenedAt>=1700&&(q.reduced||q.beforeReopen.connected&&q.beforeReopen.opacity>.001&&q.beforeReopen.opacity<.999&&q.afterReopen.opacity>.001&&q.afterReopen.opacity<.999)})()"));
+        }
+    }
+
+    @Test public void passiveFeedbackKeepsNativeHomeAndGameResponsive() throws Exception {
+        AtomicInteger modelCalls = new AtomicInteger(); MockWebServer server = new MockWebServer();
+        server.setDispatcher(new Dispatcher() { @Override public MockResponse dispatch(RecordedRequest request) { modelCalls.incrementAndGet(); return new MockResponse().setResponseCode(503); } }); server.start();
+        try {
+            for (int party : new int[]{1, 2, 4}) {
+                fresh();
+                try {
+                    viewport(390, 844); nativeTap(".title-settings"); until("document.querySelector('#api-provider')");
+                    fill("#api-provider", "custom"); until("document.querySelector('.api-connection-toggle').getAttribute('aria-expanded')==='true'");
+                    fill("#api-protocol", "chat-completions"); fill("#api-endpoint", server.url("/v1").toString()); fill("#api-key", "android-notice-qa-only-token"); fill("#api-model", "android-notice-qa-model");
+                    watchPassiveNotice("AI 设置已保存", false, "real native home AI settings Save"); nativeTap(".api-config-card footer .primary-btn"); assertPassiveNotice();
+                    assertEquals("The home live region remains available after the visible text expires", "true", js("document.querySelector('.title-screen')&&document.querySelectorAll('.game-notice[role=status]').length===1&&!document.querySelector('.toast')"));
+                    // A second real save immediately leaves home; this is a new screen, not a retained notice session.
+                    nativeTap(".title-settings"); nativeTap(".api-config-card footer .primary-btn"); until("document.querySelector('.game-notice .toast[data-ui-phase=open]')"); nativeTap(".title-new");
+                    until("document.querySelector('.setup-screen')"); assertEquals("Entering selection removes the previous screen's feedback picture immediately", "false", js("!!document.querySelector('.toast')"));
+                    InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK); until("document.querySelector('.title-screen')");
+                    assertEquals("Cancelling selection never replays the old home save feedback", "false", js("!!document.querySelector('.toast')"));
+                    nativeTap(".title-new"); for (int i = 1; i < party; i++) js("document.querySelectorAll('.preset-selection-input')[" + i + "].click()");
+                    until("document.querySelectorAll('.preset-selection-input:checked').length===" + party); click("进入游戏"); fill(".dock-input", "先记录日期\n再检查门廊，不提交行动。");
+                    awaitUiMotion(); awaitSettledScroll(".narrative-scroll");
+                    js("window.qaNoticeGameBefore={draft:document.querySelector('.dock-input').value,actor:document.querySelector('.dock-input').getAttribute('aria-label'),party:Array.from(document.querySelectorAll('.party-compact strong'),e=>e.textContent),scroll:document.querySelector('.narrative-scroll').scrollTop,height:document.querySelector('.narrative-scroll').clientHeight,messages:document.querySelectorAll('.story-message.player').length};window.qaNoticeRecords??=[]");
+                    boolean resumeTail = !"true".equals(js("matchMedia('(prefers-reduced-motion:reduce)').matches"));
+                    nativeTap(".menu-button"); watchPassiveNotice("已保存", resumeTail, "first native Save; with actual motion preference the tail resumes through the prepared real Save button handler"); nativeTap(".game-menu[role=dialog] .menu-list button:first-child");
+                    until("document.querySelector('.toast[data-ui-phase=open]')");
+                    if (resumeTail) { nativeTap(".menu-button"); until("document.querySelector('.game-menu[role=dialog]')"); }
+                    assertPassiveNotice();
+                    assertEquals("Feedback and its rapid resumption preserve the acting investigator, party, draft and reading geometry", "true", js("(()=>{const q=window.qaNoticeGameBefore,s=document.querySelector('.narrative-scroll');return document.querySelector('.dock-input').value===q.draft&&document.querySelector('.dock-input').getAttribute('aria-label')===q.actor&&JSON.stringify(Array.from(document.querySelectorAll('.party-compact strong'),e=>e.textContent))===JSON.stringify(q.party)&&Math.abs(s.scrollTop-q.scroll)<=1&&s.clientHeight===q.height&&document.querySelectorAll('.story-message.player').length===q.messages})()"));
+                    activity.onActivity(a -> { WebView web=a.getBridge().getWebView(); ViewGroup.LayoutParams params=web.getLayoutParams(); params.height=ViewGroup.LayoutParams.MATCH_PARENT; web.setLayoutParams(params); });
+                    awaitUiMotion(); awaitSettledScroll(".narrative-scroll"); String availableHeight=js("innerHeight"); nativeTap(".dock-input"); awaitSettledIme(true); until("innerHeight<" + availableHeight);
+                    String imeHeight=js("innerHeight"); InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK); awaitSettledIme(false);
+                    viewport(320, 300); js("window.qaNoticeShortBefore={scroll:document.querySelector('.narrative-scroll').scrollTop,height:document.querySelector('.narrative-scroll').clientHeight};window.qaNoticeIme={mode:'actual available native height and real IME, followed by separately fixed 320x300 WebView',availableHeight:" + availableHeight + ",imeHeight:" + imeHeight + ",fixedWidth:innerWidth,fixedHeight:innerHeight}");
+                    nativeTap(".menu-button"); watchPassiveNotice("已保存", false, "real native Save in separately fixed 320x300 WebView after actual IME dismissal"); nativeTap(".game-menu[role=dialog] .menu-list button:first-child");
+                    until("document.querySelector('.toast[data-ui-phase=open]')"); readableGameNotice(); if (party == 2) screenshot("passive-feedback-native-short"); assertPassiveNotice();
+                    assertEquals("The short-window feedback leaves the full action and reader unchanged", "true", js("(()=>{const q=window.qaNoticeGameBefore,s=window.qaNoticeShortBefore,r=document.querySelector('.narrative-scroll');return document.querySelector('.dock-input').value===q.draft&&document.querySelector('.dock-input').getAttribute('aria-label')===q.actor&&document.querySelectorAll('.party-compact').length===q.party.length&&Math.abs(r.scrollTop-s.scroll)<=1&&r.clientHeight===s.height&&!document.querySelector('.thinking-line')})()"));
+                    menu("返回首页"); until("document.querySelector('.title-screen')"); assertEquals("Screen navigation cannot carry the previous picture into the home screen", "false", js("!!document.querySelector('.toast')"));
+                    awaitSettledIme(false); assertNoResizeErrors(); assertEquals("Notification QA never calls a player or test model", 0, modelCalls.get());
+                    System.out.println("PASSIVE_FEEDBACK_NATIVE: " + js("JSON.stringify({party:" + party + ",entryFrames:window.qaNotice.entryFrames.length,exitFrames:window.qaNotice.exitFrames.length,homeAndGame:true,ime:window.qaNoticeIme,modelCalls:0})"));
+                } finally {
+                    if (activity != null) { try { js("window.qaNoticeCleanup?.()"); savePanelMotionTrace("passive-feedback-native-party-" + party, "({completed:window.qaNoticeRecords??[],current:window.qaNotice??null,ime:window.qaNoticeIme??null})"); } finally { activity.close(); } }
+                }
+            }
+        } finally { server.shutdown(); }
+    }
+
+    private void watchSaveConfirmation(String selector, boolean opening, boolean rapidCancel, String source) throws Exception {
+        js("(()=>{window.qaSaveConfirmationCleanup?.();if(window.qaSaveConfirmation)(window.qaSaveConfirmationRecords??=[]).push(window.qaSaveConfirmation);"
+                + "const row=document.querySelector(" + JSONObject.quote(selector) + "),list=row.closest('.save-list'),motion=row.querySelector('.disclosure-motion'),actions=row.querySelector('.save-slot-actions'),next=row.nextElementSibling;"
+                + "const q=window.qaSaveConfirmation={source:" + JSONObject.quote(source) + ",opening:" + opening + ",rapid:" + rapidCancel + ",frames:[],events:[],done:false,error:null,reduced:matchMedia('(prefers-reduced-motion:reduce)').matches};"
+                + "const take=()=>{const r=row.getBoundingClientRect(),l=list.getBoundingClientRect(),a=actions.getBoundingClientRect(),s=getComputedStyle(motion);return{at:performance.now(),height:motion.getBoundingClientRect().height,rowHeight:r.height,actionHeight:a.height,nextTop:next?next.getBoundingClientRect().top-l.top+list.scrollTop:null,rowTop:r.top-l.top+list.scrollTop,scroll:list.scrollTop,opacity:Number(s.opacity),phase:motion.dataset.uiPhase,inert:motion.inert,hidden:motion.getAttribute('aria-hidden'),sameRow:row===document.querySelector(" + JSONObject.quote(selector) + "),sameActions:actions===row.querySelector('.save-slot-actions'),animation:getComputedStyle(row.querySelector('.save-delete-confirmation')).animationName,running:motion.getAnimations().filter(a=>a.playState==='running').map(a=>({property:a.transitionProperty,duration:a.effect.getTiming().duration}))}};"
+                + "const logical=()=>({phase:motion.dataset.uiPhase,inert:motion.inert,hidden:motion.getAttribute('aria-hidden'),role:document.querySelector('.save-manager-card').getAttribute('role'),safeFocus:document.activeElement===row.querySelector('.save-slot-actions button:first-child'),deleteFocus:document.activeElement===row.querySelector('[data-action=delete]'),confirmCount:document.querySelectorAll('.save-slot-actions.confirming .danger').length,enabled:Array.from(row.querySelectorAll('.save-slot-actions button')).every(b=>!b.disabled)});q.before=take();q.intrinsic=motion.firstElementChild.scrollHeight;"
+                + "const raf=()=>new Promise(resolve=>requestAnimationFrame(resolve));let started=false;"
+                + "const finish=async()=>{try{for(let i=0;i<24;i++){await raf();const current=take();q.frames.push(current);if(q.rapid&&!q.cancelAt&&(q.reduced||current.height>1&&current.height<q.intrinsic-1&&current.running.some(a=>a.property==='grid-template-rows'))){q.cancelAt=performance.now();q.reversalBefore=current;const keep=row.querySelector('.save-slot-actions.confirming button:first-child');if(!keep)throw new Error('Current safe choice missing');keep.click()}}if(q.rapid&&!q.cancelAt)throw new Error('No actual running prompt frame for reversal');await Promise.all(motion.getAnimations().filter(a=>a.playState==='running'&&Number.isFinite(a.effect?.getTiming().iterations??1)).map(a=>a.finished.catch(()=>{})));q.terminal=take();q.done=true;clearTimeout(deadline)}catch(error){q.error=String(error);q.done=true}};"
+                + "const changed=new MutationObserver(()=>{const expected=q.opening?'open':'closing';if(!started&&motion.dataset.uiPhase===expected){started=true;q.committedAt=performance.now();q.logical=logical();void finish();"
+                + "}"
+                + "if(q.rapid&&q.cancelAt&&motion.dataset.uiPhase==='closing'&&!q.reversalAfter){q.cancelledAt=performance.now();q.cancelled=logical();q.reversalAfter=take()}});"
+                + "changed.observe(row,{attributes:true,childList:true,subtree:true,attributeFilter:['data-ui-phase','class','aria-hidden','inert']});"
+                + "const click=e=>{if(q.opening&&!started&&e.target.closest('.save-slot-delete')?.closest('.save-slot-card')===row)q.before=take()};document.addEventListener('click',click,true);"
+                + "const transition=e=>{if(e.target===motion){const at=performance.now();q.events.push({type:e.type,property:e.propertyName,at});if(e.type==='transitionrun'&&e.propertyName==='grid-template-rows'&&q.firstGridRunAt===undefined)q.firstGridRunAt=at}};motion.addEventListener('transitionrun',transition);motion.addEventListener('transitionend',transition);"
+                + "const deadline=setTimeout(()=>{q.error='Natural save prompt sequence did not complete';q.done=true},5000);window.qaSaveConfirmationCleanup=()=>{changed.disconnect();document.removeEventListener('click',click,true);motion.removeEventListener('transitionrun',transition);motion.removeEventListener('transitionend',transition);clearTimeout(deadline)};})()");
+    }
+
+    private void assertSaveConfirmationMotion() throws Exception {
+        until("window.qaSaveConfirmation.done");
+        assertEquals("Save prompt sequence completes without artificial transition events", "null", js("window.qaSaveConfirmation.error"));
+        assertEquals("The operation row remains the same full touch height through twenty-four real frames", "true", js("(()=>{const q=window.qaSaveConfirmation;return q.frames.length===24&&q.frames.concat(q.terminal).every(f=>f.sameRow&&f.sameActions&&f.actionHeight>=44&&Math.abs(f.actionHeight-q.before.actionHeight)<=1&&Math.abs((f.rowHeight-q.before.rowHeight)-(f.height-q.before.height))<=1&&f.animation==='none'&&(f.nextTop===null||Math.abs((f.nextTop-q.before.nextTop)-(f.rowHeight-q.before.rowHeight))<=1))})()"));
+        assertEquals("Logical confirmation and safe focus change immediately without disabling the available buttons", "true", js("(()=>{const q=window.qaSaveConfirmation,l=q.logical;return l.role==='dialog'&&l.enabled&&(q.opening?l.phase==='open'&&!l.inert&&l.safeFocus&&l.confirmCount===1:l.inert&&l.hidden==='true'&&l.deleteFocus&&l.confirmCount===0)})()"));
+        assertEquals("Prompt height naturally interpolates and finishes at its current logical state", "true", js("(()=>{const q=window.qaSaveConfirmation,f=q.terminal,closed=!q.opening||q.rapid;return f.running.length===0&&(closed?f.height<=.5&&f.inert&&f.hidden==='true':f.height>20&&!f.inert&&f.opacity>=.999)&&(q.reduced?q.frames.every(f=>f.running.length===0):q.frames.some(f=>f.height>1&&f.height<q.intrinsic-1)&&q.events.some(e=>e.type==='transitionrun'&&e.property==='grid-template-rows'))})()"));
+        if ("true".equals(js("window.qaSaveConfirmation.rapid"))) {
+            assertEquals("A quick real button cancellation releases confirmation immediately and reverses the same prompt pose", "true", js("(()=>{const q=window.qaSaveConfirmation,b=q.reversalBefore,a=q.reversalAfter,l=q.cancelled;return b&&a&&l&&l.inert&&l.hidden==='true'&&l.deleteFocus&&l.confirmCount===0&&l.enabled&&(q.reduced?b.running.length===0:q.cancelAt>=q.firstGridRunAt&&b.height>1&&b.height<q.intrinsic-1&&b.running.some(x=>x.property==='grid-template-rows')&&Math.abs(b.height-a.height)<=1)})()"));
+        }
+    }
+
+    @Test public void saveConfirmationMotionKeepsNativeRecordsFocusAndDraft() throws Exception {
+        final String penultimate = ".save-slot-card:nth-last-child(2)", last = ".save-slot-card:last-child";
+        for (int party : new int[]{1, 2, 4}) {
+            fresh();
+            try {
+                viewport(390, 844); click("开始游戏");
+                for (int i = 1; i < party; i++) js("document.querySelectorAll('.preset-selection-input')[" + i + "].click()");
+                until("document.querySelectorAll('.preset-selection-input:checked').length===" + party); click("进入游戏");
+                fill(".dock-input", "先保留调查记录\n再询问委托人。"); menu("保存游戏"); until("document.querySelector('.toast')?.textContent==='已保存'"); menu("返回首页");
+                js("window.qaSaveFixtureReady=false;window.qaSaveFixtureError=null;Capacitor.Plugins.GameStorage.readAll().then(async({values})=>{const original=JSON.parse(values['trpg-saves-v2'])[0];"
+                        + "await Capacitor.Plugins.GameStorage.write({key:'trpg-saves-v2',value:JSON.stringify(Array.from({length:12},(_,i)=>({...original,id:original.id-i,savedAt:'2026/10/13 12:00:'+String(59-i).padStart(2,'0')})))});window.qaSaveFixtureReady=true}).catch(error=>{window.qaSaveFixtureError=String(error);window.qaSaveFixtureReady=true})");
+                until("window.qaSaveFixtureReady"); assertEquals("The record fixture uses the native encrypted storage", "null", js("window.qaSaveFixtureError"));
+                activity.recreate(); until("document.querySelector('.title-resume-preview')"); watchResizeErrors(); viewport(390, 844); click("继续游戏");
+                js("window.qaSaveGameBefore={draft:document.querySelector('.dock-input').value,actor:document.querySelector('.dock-input').getAttribute('aria-label'),party:Array.from(document.querySelectorAll('.party-compact strong'),e=>e.textContent),messages:document.querySelectorAll('.story-message.player').length};window.qaSaveConfirmationRecords=[]");
+                menu("读取存档"); until("document.querySelectorAll('.save-slot-card').length===12"); awaitUiMotion();
+                js("document.querySelector('.save-list').scrollTop=99999"); reachable(penultimate + " .save-slot-delete");
+                watchSaveConfirmation(penultimate, true, false, "native tap on penultimate Delete"); nativeTap(penultimate + " .save-slot-delete"); assertSaveConfirmationMotion();
+                reachable(penultimate + " .save-slot-actions.confirming .danger");
+                if (party == 2) screenshot("save-confirmation-native");
+                nativeTap(penultimate + " .save-slot-actions.confirming button:first-child");
+                assertEquals("Native Keep leaves every record and returns to this row immediately", "true", js("document.querySelectorAll('.save-slot-card').length===12&&document.activeElement===document.querySelector('" + penultimate + " .save-slot-delete')&&!document.querySelector('.save-slot-actions.confirming')"));
+                awaitUiMotion(); watchSaveConfirmation(penultimate, true, true, "native Delete then actual running frame current Keep button click"); nativeTap(penultimate + " .save-slot-delete"); assertSaveConfirmationMotion();
+                assertEquals("Quick cancellation has not removed any saved record", "12", js("document.querySelectorAll('.save-slot-card').length"));
+                js("document.querySelector('.save-list').scrollTop=99999"); nativeTap(last + " .save-slot-delete"); awaitUiMotion(); reachable(last + " .save-slot-actions.confirming .danger");
+                watchSaveConfirmation(last, false, false, "actual Android system Back cancels last record confirmation");
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK); assertSaveConfirmationMotion();
+                assertEquals("System Back cancels the prompt while preserving the reader and every record", "true", js("document.querySelector('.save-manager-card').getAttribute('role')==='dialog'&&document.querySelectorAll('.save-slot-card').length===12&&document.activeElement===document.querySelector('" + last + " .save-slot-delete')"));
+                nativeTap(".save-manager-close"); until("!document.querySelector('.save-manager-card')");
+                viewport(320, 844); nativeTap(".dock-input"); awaitSettledIme(true);
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK); awaitSettledIme(false);
+                // Real IME visibility is verified separately; this deliberately fixes the native WebView to 320x300.
+                viewport(320, 300); menu("读取存档"); until("document.querySelector('.save-manager-card[role=dialog]')"); awaitUiMotion();
+                js("document.querySelector('.save-list').scrollTop=99999;window.qaSaveShortScope={nativeImeOpened:true,nativeImeDismissed:true,mode:'fixed native WebView after actual IME visibility and dismissal',width:innerWidth,height:innerHeight}");
+                watchSaveConfirmation(last, true, false, "native Delete in fixed 320x300 window after actual IME dismissal"); nativeTap(last + " .save-slot-delete"); assertSaveConfirmationMotion();
+                reachable(last + " .save-slot-actions.confirming button:first-child"); reachable(last + " .save-slot-actions.confirming .danger");
+                assertEquals("The short-window confirmation keeps full touch controls inside the independently scrolling list", "true", js("(()=>{const row=document.querySelector('" + last + "'),l=document.querySelector('.save-list').getBoundingClientRect();return Array.from(row.querySelectorAll('.save-slot-actions button')).every(e=>{const r=e.getBoundingClientRect();return r.height>=44&&r.top>=l.top-.5&&r.bottom<=l.bottom+.5&&e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))})})()"));
+                if (party == 2) screenshot("save-confirmation-native-short");
+                watchSaveConfirmation(last, false, false, "actual Android Back in fixed 320x300 window"); InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK); assertSaveConfirmationMotion();
+                nativeTap(".save-manager-close"); until("!document.querySelector('.save-manager-card')");
+                assertEquals("All cancellations preserve the complete multiline draft, acting investigator, party and unsubmitted action", "true", js("(()=>{const q=window.qaSaveGameBefore;return document.querySelector('.dock-input').value===q.draft&&document.querySelector('.dock-input').getAttribute('aria-label')===q.actor&&JSON.stringify(Array.from(document.querySelectorAll('.party-compact strong'),e=>e.textContent))===JSON.stringify(q.party)&&document.querySelectorAll('.story-message.player').length===q.messages&&!document.querySelector('.thinking-line')})()"));
+                viewport(390, 844); menu("读取存档"); until("document.querySelectorAll('.save-slot-card').length===12");
+                js("document.querySelector('.save-list').scrollTop=99999;window.qaSaveIdsBefore=Array.from(document.querySelectorAll('.save-slot-card'),r=>r.dataset.saveId);window.qaSaveExpectedId=window.qaSaveIdsBefore.at(-1)");
+                nativeTap(last + " .save-slot-delete"); nativeTap(last + " .save-slot-actions.confirming .danger"); until("document.querySelectorAll('.save-slot-card').length===11");
+                assertEquals("Only the separately confirmed record is removed and focus returns to a remaining Load action", "true", js("(()=>{const after=Array.from(document.querySelectorAll('.save-slot-card'),r=>r.dataset.saveId);return window.qaSaveIdsBefore.filter(id=>!after.includes(id)).join(',')===window.qaSaveExpectedId&&document.activeElement===document.querySelector('" + last + " .save-slot-load')})()"));
+                js("window.qaSaveDurableReady=false;Capacitor.Plugins.GameStorage.readAll().then(({values})=>{window.qaSaveDurableIds=JSON.parse(values['trpg-saves-v2']).map(s=>String(s.id));window.qaSaveDurableReady=true})"); until("window.qaSaveDurableReady");
+                assertEquals("Native persistence contains precisely the eleven unremoved records", "true", js("window.qaSaveDurableIds.length===11&&!window.qaSaveDurableIds.includes(window.qaSaveExpectedId)&&window.qaSaveIdsBefore.every(id=>id===window.qaSaveExpectedId||window.qaSaveDurableIds.includes(id))"));
+                awaitSettledIme(false); assertNoResizeErrors();
+                System.out.println("SAVE_CONFIRMATION_NATIVE: " + js("JSON.stringify({party:" + party + ",source:'native Delete/Keep/Back; rapid reversal uses the current button handler',traces:(window.qaSaveConfirmationRecords?.length??0)+1,frames:window.qaSaveConfirmation.frames.length,short:window.qaSaveShortScope,removed:1,remaining:window.qaSaveDurableIds.length})"));
+            } finally {
+                if (activity != null) {
+                    try {
+                        js("window.qaSaveConfirmationCleanup?.()");
+                        savePanelMotionTrace("save-confirmation-native-party-" + party, "({completed:window.qaSaveConfirmationRecords??[],current:window.qaSaveConfirmation??null,short:window.qaSaveShortScope??null,beforeIds:window.qaSaveIdsBefore??null,durableIds:window.qaSaveDurableIds??null})");
+                    } finally { activity.close(); }
+                }
+            }
+        }
     }
 
     private void watchDisclosureSize(String selector) throws Exception {
@@ -1052,19 +1441,19 @@ public class GameAndroidTest {
                 js("document.querySelector('.save-list').scrollTop=99999");
                 reachable(".save-slot-card:last-child .save-slot-delete"); screenshot(prefix + "-saves");
                 js("document.querySelector('.save-slot-card:last-child .save-slot-delete').click()");
-                until("document.querySelector('.save-delete-confirmation')");
-                reachable(".save-delete-confirmation .danger");
+                until("document.querySelector('.save-slot-actions.confirming')");
+                reachable(".save-slot-actions.confirming .danger");
                 assertEquals("Deletion first focuses the safe choice", "true", js("document.activeElement.innerText==='保留存档'"));
                 InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
-                until("document.querySelector('.save-manager-card')&&!document.querySelector('.save-delete-confirmation')");
+                until("document.querySelector('.save-manager-card')&&!document.querySelector('.save-slot-actions.confirming')&&Array.from(document.querySelectorAll('.save-slot-controls .disclosure-motion')).every(e=>e.inert&&e.getAttribute('aria-hidden')==='true')");
                 assertEquals("Returning from confirmation retains every record and the original row", "true", js("document.querySelectorAll('.save-slot-card').length===4&&document.activeElement===document.querySelector('.save-slot-card:last-child .save-slot-delete')"));
                 reachable(".save-slot-card:last-child .save-slot-delete"); screenshot(prefix + "-save-return");
                 js("document.querySelector('.save-slot-card:last-child .save-slot-delete').click()");
-                until("document.querySelector('.save-delete-confirmation')");
+                until("document.querySelector('.save-slot-actions.confirming')");
                 click("保留存档");
                 assertEquals("Cancelling keeps every save", "4", js("document.querySelectorAll('.save-slot-card').length"));
                 js("document.querySelector('.save-slot-card:last-child .save-slot-delete').click()");
-                until("document.querySelector('.save-delete-confirmation')");
+                until("document.querySelector('.save-slot-actions.confirming')");
                 click("确认删除");
                 until("document.querySelectorAll('.save-slot-card').length===3");
                 assertEquals("Deleting a record focuses a remaining Load action", "true", js("document.activeElement.classList.contains('save-slot-load')"));
@@ -1644,7 +2033,7 @@ public class GameAndroidTest {
                 nativeTap(".ending-actions button:first-child"); until("document.querySelector('.investigation-ending')"); reachable("[aria-label='关闭资料']");
                 assertEquals("A new review starts from its authored default", "true", js("(document.querySelector('.investigation-history-toggle').getAttribute('aria-expanded')==='true')===" + authoredHistoryOpen + "&&document.querySelector('.info-drawer-page').scrollTop===0"));
                 nativeTap("[aria-label='关闭资料']"); until("document.activeElement===document.querySelector('.ending-actions button:first-child')"); viewport(size[0], size[1]);
-                until("document.querySelector('.info-drawer-react').getBoundingClientRect().left>=innerWidth-.5");
+                until("(()=>{const drawer=document.querySelector('.info-drawer-react');return !drawer.classList.contains('open')&&drawer.inert&&drawer.getAttribute('aria-hidden')==='true'&&!drawer.hasAttribute('role')&&!drawer.hasAttribute('data-ui-phase')&&getComputedStyle(drawer).opacity==='0'&&document.activeElement===document.querySelector('.ending-actions button:first-child')})()");
                 screenshot("ending-" + size[0]); nativeTap(".ending-actions button:last-child"); until("document.querySelector('.title-screen')"); click("回顾调查"); until("document.querySelector('.ending-dock')");
                 assertEquals("Offline review does not re-award player resources", "true", js("!document.querySelector('.thinking-line')&&!document.querySelector('.check-card')&&!document.querySelector('.dock-input')"));
                 menu("保存游戏"); SystemClock.sleep(300);

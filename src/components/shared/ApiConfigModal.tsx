@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ChevronDown, Eye, EyeOff, X } from 'lucide-react';
 import { useDialogFocus } from './useDialogFocus';
 import { useOverlayPresence } from './useOverlayPresence';
+import { useOverlayEntry } from './useOverlayEntry';
 import { DisclosureMotion } from './DisclosureMotion';
 import { TuningDialArt } from './TuningDialArt';
 import { usingNativeStorage } from '../../platform/storage';
@@ -32,6 +33,7 @@ export function ApiConfigModal({ onClose, onSave, open }: ApiConfigModalProps) {
   const [keyVisible, setKeyVisible] = useState(false);
   const savingRef = useRef(false);
   const dialogRef = useRef<HTMLFormElement>(null);
+  useOverlayEntry(motion.present, dialogRef);
   const feedbackFocus = useRef<ApiConfigField | 'storage' | null>(null);
   const close = () => { if (!savingRef.current) onClose(); };
   useDialogFocus(open, dialogRef, close, undefined, {

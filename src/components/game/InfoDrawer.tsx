@@ -5,6 +5,7 @@ import type { GameState } from '../../types/game';
 import { useDialogFocus } from '../shared/useDialogFocus';
 import { useReadingMotion } from '../shared/useReadingMotion';
 import { useOverlayPresence } from '../shared/useOverlayPresence';
+import { useOverlayEntry } from '../shared/useOverlayEntry';
 import { usePortraitLayout } from '../../platform/layout';
 import { storyData } from '../../data/storyData';
 import { ActionLogArchive, InvestigationProgress } from './InvestigationRecords';
@@ -40,6 +41,7 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
 
   const tabRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLElement>(null);
+  useOverlayEntry(motion.present, drawerRef);
   const [tabTop, setTabTop] = useState(43);
   const [dragging, setDragging] = useState(false);
   const dragState = useRef<{ pointerId: number; startY: number; startTop: number; moved: boolean } | null>(null);

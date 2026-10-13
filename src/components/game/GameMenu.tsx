@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom';
 import { AudioSettingsButton } from '../shared/AudioSettingsButton';
 import { useDialogFocus } from '../shared/useDialogFocus';
 import { useOverlayPresence } from '../shared/useOverlayPresence';
+import { useOverlayEntry } from '../shared/useOverlayEntry';
 import './game-menu.css';
 
 interface GameMenuProps {
@@ -23,6 +24,7 @@ interface GameMenuProps {
 export function GameMenu({ onClose, onHome, onLoad, onOpenApi, onRestart, onSave, open }: GameMenuProps) {
   const dialogRef = useRef<HTMLElement>(null);
   const motion = useOverlayPresence(open);
+  useOverlayEntry(motion.present, dialogRef);
   useDialogFocus(open, dialogRef, onClose, undefined, {
     getFallbackFocus: () => document.querySelector<HTMLButtonElement>('.dock-actor-avatar, .ending-actions button')
   });

@@ -4,7 +4,7 @@ import { DmDebugDrawer } from '../components/game/DmDebugDrawer';
 import { DiceRollOverlay } from '../components/game/DiceRollOverlay';
 import { DmJournalModal } from '../components/game/DmJournalModal';
 import { GameMenu } from '../components/game/GameMenu';
-import { GameNotice } from '../components/game/GameNotice';
+import { GameNotice } from '../components/shared/GameNotice';
 import { InfoDrawer, type InfoDrawerTab } from '../components/game/InfoDrawer';
 import { NarrativePanel } from '../components/game/NarrativePanel';
 import { EntityDetailModal } from '../components/game/EntityDetailModal';

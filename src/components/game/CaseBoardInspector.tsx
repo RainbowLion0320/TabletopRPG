@@ -3,6 +3,7 @@ import { ArrowLeft, ChevronRight, X } from 'lucide-react';
 import { useDialogFocus } from '../shared/useDialogFocus';
 import { useReadingMotion } from '../shared/useReadingMotion';
 import { useOverlayPresence } from '../shared/useOverlayPresence';
+import { useOverlayEntry } from '../shared/useOverlayEntry';
 import { CollapsibleSection } from '../shared/CollapsibleSection';
 import { useCaseBoardListLayout, useShortViewport } from '../../platform/layout';
 import { storyData } from '../../data/storyData';
@@ -91,6 +92,7 @@ export function CaseBoardInspector({ model, node: currentNode, onClose, onSelect
   const shortViewport = useShortViewport();
   const modal = mobile || shortViewport;
   const dialogRef = useRef<HTMLElement>(null);
+  useOverlayEntry(motion.present, dialogRef);
   const scrollRef = useRef<HTMLDivElement>(null);
   useReadingMotion(scrollRef, node?.id ?? '', Boolean(currentNode));
   const recordReading = useRef(new Map<string, { scrollTop: number; sourcesOpen: boolean }>());

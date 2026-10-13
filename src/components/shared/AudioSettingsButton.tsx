@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { gameAudio } from '../../audio/audio';
 import { useDialogFocus } from './useDialogFocus';
 import { useOverlayPresence } from './useOverlayPresence';
+import { useOverlayEntry } from './useOverlayEntry';
 import { AudioEmblemArt } from './AudioEmblemArt';
 import { TuningDialArt } from './TuningDialArt';
 import { CollapsibleSection } from './CollapsibleSection';
@@ -16,6 +17,7 @@ export function AudioSettingsButton({ className, iconOnly = false, onOpenChange 
   const settings = useSyncExternalStore(gameAudio.subscribe, gameAudio.getSnapshot);
   const volumeId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
+  useOverlayEntry(motion.present, dialogRef);
   const openerRef = useRef<HTMLButtonElement>(null);
   function changeOpen(next: boolean) {
     setOpen(next);
