@@ -4,10 +4,12 @@ title: 核心玩法循环
 tags: [gameplay, core, loop]
 sources: [project_plan.md, ../../docs/PRD.md, ../../docs/GDD.md]
 created: 2026-05-18
-updated: 2026-09-09
+updated: 2026-10-14
 ---
 
 # 核心玩法循环
+
+首次新建调查可先完成 [[concepts/onboarding]]：两轮本地固定内容仍走同一声明、真实骰子、剧情事件与存档链路，之后立即交回自由AI跑团；旧存档保持原循环。
 
 ## 概述
 
@@ -94,6 +96,7 @@ AI 不直接写 reducer。每轮固定执行：规则前置评估 → 玩家行�
 《雾中消逝》由 `scenarios/wuzhongxiaoshi/` 五个 YAML 文件维护，运行时、类型、KP 手册和案件板骨架均自动生成。场景移动同时受空间出口与剧情条件约束；必经节点连续 3 回合无进展时提示，6 回合时执行作者定义的失败推进。详见 [[scenario_engine]]。
 
 ## 被引用于
+- [[concepts/onboarding]]
 - [[overview]]
 - [[entities/ai_dm]]
 - [[entities/character_system]]

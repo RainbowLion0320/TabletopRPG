@@ -19,6 +19,7 @@ function configureApi() {
 
 beforeEach(() => {
   localStorage.clear();
+  localStorage.setItem('trpg-onboarding-v1', 'seen');
   vi.stubEnv('VITE_AI_API_KEY', '');
   dm.mockReset();
   dm.mockResolvedValue(response);

@@ -108,14 +108,16 @@ public class GameAndroidTest {
     private void fresh() throws Exception {
         SharedPreferences preferences = context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE);
         String seen = preferences.getString("trpg-opening-v1", null);
+        String guided = preferences.getString("trpg-onboarding-v1", null);
         preferences.edit().clear().commit();
         // Existing regressions represent returning players; the dedicated opening test
         // starts with an empty store and observes real first-launch playback separately.
         if (seen != null) preferences.edit().putString("trpg-opening-v1", seen).commit();
+        if (guided != null) preferences.edit().putString("trpg-onboarding-v1", guided).commit();
         activity = ActivityScenario.launch(MainActivity.class);
         until("document.querySelector('.title-screen')");
-        if (seen == null) {
-            js("window.qaPresentationReady=false;Capacitor.Plugins.GameStorage.write({key:'trpg-opening-v1',value:'seen'}).then(()=>window.qaPresentationReady=true)");
+        if (seen == null || guided == null) {
+            js("window.qaPresentationReady=false;Promise.all(['trpg-opening-v1','trpg-onboarding-v1'].map(key=>Capacitor.Plugins.GameStorage.write({key,value:'seen'}))).then(()=>window.qaPresentationReady=true)");
             until("window.qaPresentationReady");
             activity.recreate();
             until("document.querySelector('.title-screen')&&!document.querySelector('.opening-cinematic')");
@@ -251,6 +253,106 @@ public class GameAndroidTest {
         assertEquals("Feedback is readable above the actions and never intercepts input", "true", js("(()=>{const e=document.querySelector('.game-notice'),n=e.querySelector('.toast'),r=n.getBoundingClientRect(),d=document.querySelector('.action-dock').getBoundingClientRect(),t=document.querySelector('.game-top').getBoundingClientRect();return e.getAttribute('role')==='status'&&e.getAttribute('aria-live')==='polite'&&getComputedStyle(e).pointerEvents==='none'&&parseFloat(getComputedStyle(n).fontSize)>=15&&getComputedStyle(n).borderImageSource.includes('panel-frame')&&r.left>=0&&r.right<=innerWidth&&r.top>=t.bottom&&r.bottom<=d.top&&n.scrollWidth<=n.clientWidth+1})()"));
         if (Double.parseDouble(js("innerHeight")) > 300) readablePartyDossiers();
         assertEquals("Short confirmation leaves the NPC nameplate readable", "true", js("(()=>{const n=document.querySelector('.toast'),c=document.querySelector('.npc-nameplate');if(n.textContent!=='已保存'||!c)return true;const a=n.getBoundingClientRect(),b=c.getBoundingClientRect();return a.right<=b.left||a.left>=b.right||a.bottom<=b.top||a.top>=b.bottom})()"));
+    }
+
+    private void noviceInvestigation(int width, int height, int party) throws Exception {
+        fresh();
+        js("window.qaGuideFresh=false;Capacitor.Plugins.GameStorage.write({key:'trpg-onboarding-v1',value:null}).then(()=>window.qaGuideFresh=true)");
+        until("window.qaGuideFresh"); activity.recreate();
+        until("document.querySelector('.title-screen')&&!document.querySelector('.opening-cinematic')");
+        viewport(width, height); watchResizeErrors(); nativeTap(".title-new");
+        for (int i = 1; i < party; i++) {
+            String selection = ".preset-card-modern:nth-child(" + (i + 1) + ") .preset-select-mark";
+            js("document.querySelector(" + JSONObject.quote(selection) + ").scrollIntoView({block:'center'})");
+            nativeTap(selection);
+        }
+        nativeTap(".setup-footer .primary-btn"); until("document.querySelector('.game-screen')?.dataset.onboarding==='action'");
+        js("window.qaGuidePosts=0;const guideFetch=window.fetch;window.fetch=(url,options)=>{if(options?.method==='POST')window.qaGuidePosts++;return guideFetch(url,options)}");
+    }
+
+    private void awaitGuideSave(String step, boolean lockedRoll) throws Exception {
+        js("(()=>{window.qaGuideSaved=false;const guideProbe=setInterval(()=>Capacitor.Plugins.GameStorage.readAll().then(({values})=>{"
+            + "const raw=values['trpg-android-session-v1'];if(!raw)return;const record=JSON.parse(raw);"
+            + "if(record.state.onboarding?.step===" + JSONObject.quote(step) + (lockedRoll ? "&&record.roll?.phase==='revealed'" : "")
+            + "){window.qaGuideRecord=record;window.qaGuideSaved=true;clearInterval(guideProbe);}}),100)})()");
+        until("window.qaGuideSaved");
+    }
+
+    @Test public void firstInvestigationTeachesRealActionsDiceRecordsAndDossiersOffline() throws Exception {
+        for (int party : new int[]{1, 2, 4}) {
+            noviceInvestigation(party == 4 ? 360 : 390, party == 4 ? 640 : 844, party);
+            try {
+                assertEquals("The lesson keeps the keyboard closed and offers one real action", "true", js("document.querySelector('.dock-input').readOnly&&document.querySelectorAll('.suggestion-row>button').length===1&&!document.querySelector('#api-key')"));
+                reachable(".onboarding-dismiss"); reachable(".suggestion-row>button");
+                for (String stage : new String[]{"action", "search"}) {
+                    assertEquals("The two opening turns use authored, actionable content", JSONObject.quote(stage), js("document.querySelector('.game-screen').dataset.onboarding"));
+                    for (int actor = 0; actor < party; actor++) {
+                        nativeTap(".suggestion-row>button"); nativeTap(".dock-submit");
+                    }
+                }
+                until("document.querySelector('.game-screen').dataset.onboarding==='roll'");
+                assertEquals("No clue appears before the real roll", "false", js("document.querySelector('.narrative-scroll').textContent.includes('旧合影')"));
+                nativeTap(".check-card>button");
+                assertEquals("The tutorial reserves both its teaching line and confirmation before reveal", JSONObject.quote("72px"), js("getComputedStyle(document.querySelector('.onboarding-dice>footer')).minHeight"));
+                until("document.querySelector('.dice-roll-overlay.revealed')");
+                String dice = js("document.querySelector('.dice-roll-total').textContent");
+                awaitGuideSave("roll", true);
+                assertEquals("The encrypted record owns the pending lesson and the actual party", "true", js("window.qaGuideRecord.state.onboarding.pendingPhotoCheck&&window.qaGuideRecord.state.players.length===" + party + "&&window.qaGuideRecord.state.clues.length===0&&window.qaGuideRecord.roll.result.roll>=1&&window.qaGuideRecord.roll.result.roll<=100"));
+                if (party == 2) {
+                    assertNoResizeErrors();
+                    activity.moveToState(androidx.lifecycle.Lifecycle.State.CREATED);
+                    activity.recreate(); activity.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED);
+                    until("document.querySelector('.title-screen')"); viewport(390, 844); nativeTap(".title-continue");
+                    until("document.querySelector('.dice-roll-overlay.revealed')");
+                    watchResizeErrors();
+                    assertEquals("A recreated phone keeps the original locked dice and tutorial ownership", dice, js("document.querySelector('.dice-roll-total').textContent"));
+                    screenshot("guide-restored-real-dice");
+                    js("window.qaGuidePosts=0;const resumedFetch=window.fetch;window.fetch=(url,options)=>{if(options?.method==='POST')window.qaGuidePosts++;return resumedFetch(url,options)}");
+                }
+                nativeTap(".dice-roll-confirm"); until("document.querySelector('.game-screen').dataset.onboarding==='records'");
+                assertEquals("Free action is already available after the two local turns", "false", js("document.querySelector('.dock-input').readOnly"));
+                nativeTap(".drawer-tab"); until("document.querySelector('.info-drawer-react[role=dialog]')");
+                String photoSelector = ".case-board-mobile-card.item";
+                js("Array.from(document.querySelectorAll('.case-board-mobile-card.item')).find(e=>e.textContent.includes('合影照片')).scrollIntoView({block:'nearest'})");
+                nativeTap(photoSelector); until("document.querySelector('.case-board-inspector')");
+                assertEquals("The first evidence opens the real dossier with no hidden story truth", "true", js("document.querySelector('.case-board-inspector').textContent.includes('合影照片')&&!document.querySelector('.case-board-inspector').textContent.includes('私下勾连')"));
+                nativeTap(".case-board-inspector button[aria-label='关闭资料详情']");
+                nativeTap(".info-drawer-react button[aria-label='关闭资料']");
+                until("document.querySelector('.game-screen').dataset.onboarding==='character'");
+                nativeTap(".dock-actor-avatar"); until("document.querySelector('.investigator-sheet[role=dialog]')");
+                nativeTap(".investigator-tabs button:nth-child(2)");
+                assertEquals("The avatar teaches actual skill values", "true", js("document.querySelector('.investigator-body').textContent.includes('侦查')"));
+                nativeTap(".investigator-close"); until("document.querySelector('.game-screen').dataset.onboarding==='finish'");
+                nativeTap(".menu-button"); nativeTap(".game-menu .menu-list>button:first-child");
+                until("!document.querySelector('.onboarding-coach')");
+                awaitGuideSave("done", false);
+                assertEquals("The completed lesson preserves revealed clues, actor order and two normal history turns", "true", js("window.qaGuideRecord.state.clues.some(c=>c.id==='I02')&&window.qaGuideRecord.state.scenarioProgress.knownFactIds.includes('F05')&&!window.qaGuideRecord.state.scenarioProgress.knownFactIds.includes('F02')&&window.qaGuideRecord.state.conversationHistory.filter(t=>t.role==='user'&&!t.content.startsWith('【检定结果】')).length===2"));
+                assertEquals("Neither local lesson turn consumes an AI request", "0", js("window.qaGuidePosts"));
+                if (party == 1) screenshot("guide-completed-free-investigation");
+                assertNoResizeErrors();
+                activity.recreate(); until("document.querySelector('.title-screen')"); viewport(390, 844);
+                nativeTap(".title-new"); nativeTap(".setup-footer .primary-btn"); until("document.querySelector('.action-dock')");
+                assertEquals("Subsequent investigations have no repeated lesson or locked input", "true", js("!document.querySelector('.onboarding-coach')&&!document.querySelector('.dock-input').readOnly"));
+            } finally { activity.close(); }
+        }
+    }
+
+    @Test public void shortPhoneGuideCanSkipWithoutLosingAnUnconfirmedCheck() throws Exception {
+        noviceInvestigation(390, 460, 2);
+        try {
+            for (int round = 0; round < 2; round++) for (int actor = 0; actor < 2; actor++) {
+                reachable(".onboarding-dismiss"); nativeTap(".suggestion-row>button"); nativeTap(".dock-submit");
+            }
+            until("document.querySelector('.game-screen').dataset.onboarding==='roll'");
+            nativeTap(".onboarding-dismiss"); until("!document.querySelector('.onboarding-coach')");
+            nativeTap(".check-card>button"); until("document.querySelector('.dice-roll-overlay.revealed')");
+            nativeTap(".dice-roll-confirm"); until("document.querySelector('.suggestion-row')");
+            awaitGuideSave("skipped", false);
+            assertEquals("Skipping hides the lesson but still settles its previously requested real dice", "true", js("window.qaGuideRecord.state.clues.some(c=>c.id==='I02')&&!window.qaGuideRecord.state.pendingCheck&&!window.qaGuideRecord.state.onboarding.pendingPhotoCheck&&window.qaGuidePosts===0"));
+            fill(".dock-input", "我想从邻居的角度继续调查");
+            assertEquals("The next player action remains entirely freeform", JSONObject.quote("我想从邻居的角度继续调查"), js("document.querySelector('.dock-input').value"));
+            assertNoResizeErrors(); screenshot("guide-short-phone-skipped");
+        } finally { activity.close(); }
     }
 
     @Test public void bundledDefaultsStartWithoutConfigurationAndKeepPlayerSettings() throws Exception {

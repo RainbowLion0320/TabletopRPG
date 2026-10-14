@@ -7,6 +7,8 @@ import { HomeEmblemArt } from '../shared/HomeEmblemArt';
 import type { GameState } from '../../types/game';
 import { getScenarioDefinition, getScenarioProgressForState } from '../../scenario/engine';
 import { pendingDmFailureText } from '../../services/narrativeVisibility';
+import { guidedDeclaration } from '../../services/onboarding';
+import { OnboardingCoach } from './OnboardingCoach';
 import './ending-dock.css';
 import './turn-prompt.css';
 import './party-status.css';
@@ -25,6 +27,7 @@ interface ActionDockProps {
   onRetry?: () => void;
   onReview?: () => void;
   onHome?: () => void;
+  onFinishOnboarding?: (status: 'done' | 'skipped') => void;
 }
 
 export function ActionDock({
@@ -39,6 +42,7 @@ export function ActionDock({
   onInspectPlayer,
   onReview,
   onHome,
+  onFinishOnboarding,
   state
 }: ActionDockProps) {
   const currentActor = state.players[state.currentActorIndex] ?? state.players[0];
@@ -47,7 +51,8 @@ export function ActionDock({
   const retryOwnedFocus = useRef(false);
   const declaration = state.declarations[currentActor?.id ?? ''] ?? '';
   const isLastActor = state.currentActorIndex >= state.players.length - 1;
-  const currentSuggestions = currentActor
+  const guidedAction = currentActor ? guidedDeclaration(state, currentActor.id) : undefined;
+  const currentSuggestions = guidedAction ? [guidedAction] : currentActor
     ? state.suggestionsByPlayerId[currentActor.id] ?? state.suggestions
     : state.suggestions;
   const suggestionKey = useMemo(() => JSON.stringify([currentActor?.id, currentSuggestions.slice(0, 3)]),
@@ -67,11 +72,11 @@ export function ActionDock({
     wasReady.current = canDeclare;
     // Disabling a focused textarea drops desktop keyboard focus to the body.
     // Restore it only when no reader or dialog has taken ownership of focus.
-    if (!resumed || !autoFocusInput || document.activeElement !== document.body
+    if (!resumed || !autoFocusInput || guidedAction || document.activeElement !== document.body
       || Array.from(document.querySelectorAll('[role="dialog"][aria-modal="true"]'))
         .some(element => !element.closest('[inert], [aria-hidden="true"]'))) return;
     inputRef.current?.focus({ preventScroll: true });
-  }, [autoFocusInput, canDeclare]);
+  }, [autoFocusInput, canDeclare, guidedAction]);
 
   useLayoutEffect(() => {
     if (state.isThinking || !retryOwnedFocus.current) return;
@@ -128,6 +133,7 @@ export function ActionDock({
 
   return (
     <section className="action-dock">
+      {onFinishOnboarding && <OnboardingCoach state={state} onFinish={onFinishOnboarding} />}
       {hasPendingTurn && !state.isThinking && !state.pendingCheck ? (
         <div className="check-card" role="status">
           <div><strong>本轮行动已保留</strong><span>{pendingDmFailureText(state.messages) ?? '继续本轮，已确认的骰点无需重掷。'}</span></div>
@@ -180,10 +186,12 @@ export function ActionDock({
               rows={1}
               aria-label={`${currentActor.name}的行动`}
               enterKeyHint={portrait ? 'enter' : 'send'}
-              autoFocus={autoFocusInput}
+              autoFocus={autoFocusInput && !guidedAction}
+              readOnly={Boolean(guidedAction)}
+              aria-describedby={guidedAction ? 'first-investigation-tip' : undefined}
               disabled={!canDeclare}
               value={declaration}
-              placeholder={portrait ? '描述你的行动…' : `${currentActor.name} 想要做什么...`}
+              placeholder={guidedAction ? '点上方建议填入行动…' : portrait ? '描述你的行动…' : `${currentActor.name} 想要做什么...`}
               onChange={(event) => onDeclarationChange(currentActor.id, event.target.value)}
               onKeyDown={(event) => {
                 if (!portrait && event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229
@@ -196,7 +204,7 @@ export function ActionDock({
           </>
         ) : null}
         <button className="primary-action dock-submit" disabled={!allFilled || !canDeclare} onClick={() => {
-          if (!isLastActor) inputRef.current?.focus({ preventScroll: true });
+          if (!isLastActor && !guidedAction) inputRef.current?.focus({ preventScroll: true });
           onSubmit();
         }}>
           <img className="action-pen-art" src={actionPen} width={24} height={24} alt="" aria-hidden="true" draggable={false} decoding="async" />

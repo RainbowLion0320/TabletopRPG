@@ -469,7 +469,7 @@ for (const party of [1, 4]) {
       if (/\/(responses|chat\/completions)$/.test(new URL(request.url()).pathname) && !request.url().startsWith('https://android-short.test/')) externalRequests++;
     });
     await page.addInitScript(({ gameState, apiConfig }) => {
-      localStorage.clear(); localStorage.setItem('trpg-opening-v1', 'seen');
+      localStorage.clear(); localStorage.setItem('trpg-opening-v1', 'seen'); localStorage.setItem('trpg-onboarding-v1', 'seen');
       localStorage.setItem('trpg-api', JSON.stringify(apiConfig));
       localStorage.setItem('trpg-saves-v2', JSON.stringify([{
         id: 1718400000000, savedAt: '2026/6/15 20:00:00', scene: '摩勒住宅',
@@ -975,7 +975,7 @@ function createSmokeScenarioProgress(): ScenarioProgress {
 }
 
 async function gotoClean(page: Page) {
-  await page.addInitScript(() => { window.localStorage.clear(); window.localStorage.setItem('trpg-opening-v1', 'seen'); });
+  await page.addInitScript(() => { window.localStorage.clear(); window.localStorage.setItem('trpg-opening-v1', 'seen'); localStorage.setItem('trpg-onboarding-v1', 'seen'); });
   await page.goto('/');
 }
 
@@ -1089,7 +1089,7 @@ function createDynamicCaseBoardSave(): GameState {
 
 async function gotoWithSave(page: Page, gameState: GameState, apiConfig?: Record<string, string>) {
   await page.addInitScript(({ serializedState, apiConfig }) => {
-    window.localStorage.clear(); localStorage.setItem('trpg-opening-v1', 'seen');
+    window.localStorage.clear(); localStorage.setItem('trpg-opening-v1', 'seen'); localStorage.setItem('trpg-onboarding-v1', 'seen');
     window.localStorage.setItem('trpg-saves-v2', JSON.stringify([{
       id: 1718400000000,
       savedAt: '2026/6/15 20:00:00',
@@ -4761,7 +4761,7 @@ test('notification pictures settle on reduced motion and background while live s
 
 test('invalid save payloads are ignored on the title screen', async ({ page }) => {
   await page.addInitScript(() => {
-    window.localStorage.clear(); localStorage.setItem('trpg-opening-v1', 'seen');
+    window.localStorage.clear(); localStorage.setItem('trpg-opening-v1', 'seen'); localStorage.setItem('trpg-onboarding-v1', 'seen');
     window.localStorage.setItem('trpg-saves-v2', JSON.stringify([
       { id: 1, savedAt: 'broken', gameState: { players: [] } },
       'not-a-save'
@@ -4779,7 +4779,7 @@ test('portrait home keeps compact main actions and returns from utility settings
   test.setTimeout(60_000);
   await page.route('**/__api_config', route => route.fulfill({ status: 404, body: '' }));
   await page.addInitScript(() => {
-    localStorage.clear(); localStorage.setItem('trpg-opening-v1', 'seen');
+    localStorage.clear(); localStorage.setItem('trpg-opening-v1', 'seen'); localStorage.setItem('trpg-onboarding-v1', 'seen');
     localStorage.setItem('trpg-api', JSON.stringify({ provider: 'custom', protocol: 'responses', endpoint: 'https://home-layout.test/v1', model: 'test-only', apiKey: 'test-only' }));
   });
   for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 562, height: 1000 }]) {

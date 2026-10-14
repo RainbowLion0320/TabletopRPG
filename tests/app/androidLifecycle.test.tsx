@@ -31,7 +31,7 @@ afterAll(() => {
 
 beforeEach(() => {
   localStorage.clear(); listeners.clear(); vi.clearAllMocks();
-  localStorage.setItem('trpg-opening-v1', 'seen');
+  localStorage.setItem('trpg-opening-v1', 'seen'); localStorage.setItem('trpg-onboarding-v1', 'seen');
   vi.stubEnv('VITE_AI_API_KEY', '');
   vi.mocked(flushGameStorage).mockResolvedValue(undefined);
   vi.mocked(NativeApp.exitApp).mockResolvedValue(undefined);

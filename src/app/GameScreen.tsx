@@ -19,6 +19,7 @@ import type { NarrativeMarkTarget } from '../services/narrativeMarkup';
 import type { GameController } from './useGameController';
 import { captureGameContinuation, type GameContinuation } from './gameContinuation';
 import '../styles/desktop-game-layout.css';
+import { isOnboardingActive } from '../services/onboarding';
 
 interface GameScreenProps {
   autoFocusInput?: boolean;
@@ -38,10 +39,11 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
     const player = target.kind === 'person' && state.players.find((item) => item.id === target.id || item.name === (target.canonicalName ?? target.id));
     if (player) {
       setInspectedPlayerId(player.id);
+      controller.onboardingPanel('character', 'opened');
       return;
     }
     setNarrativeDetail(getNarrativeMarkDetail(target, state, sourceText));
-  }, [state]);
+  }, [state, controller.onboardingPanel]);
 
   function handleHome() {
     const continuation = captureGameContinuation(state, controller.diceRoll);
@@ -56,7 +58,7 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
   }
 
   return (
-    <main className="game-screen">
+    <main className="game-screen" data-onboarding={isOnboardingActive(state) ? state.onboarding?.step : undefined}>
       <SceneStage state={state} />
       <TopBar state={state} menuOpen={controller.menuOpen} onToggleMenu={() => controller.setMenuOpen(!controller.menuOpen)} />
       <GameMenu
@@ -67,6 +69,7 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
         onOpenApi={controller.openApiSettings}
         onRestart={handleRestart}
         onSave={controller.saveCurrentGame}
+        onboarding={state.onboarding?.step === 'finish'}
       />
       <SaveManagerModal
         open={controller.saveManagerOpen}
@@ -85,8 +88,8 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
         open={controller.drawerOpen}
         state={state}
         initialTab={drawerInitialTab}
-        onClose={() => controller.setDrawerOpen(false)}
-        onOpen={() => { setDrawerInitialTab('board'); controller.setDrawerOpen(true); }}
+        onClose={() => { controller.setDrawerOpen(false); controller.onboardingPanel('records', 'closed'); }}
+        onOpen={() => { setDrawerInitialTab('board'); controller.setDrawerOpen(true); controller.onboardingPanel('records', 'opened'); }}
       />
       <NarrativePanel state={state} onMarkOpen={handleNarrativeMarkOpen} />
       <ActionDock
@@ -99,14 +102,17 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
         onRetry={controller.retryPendingTurn}
         onSubmit={controller.submitAction}
         onSuggestion={controller.applySuggestion}
-        onInspectPlayer={setInspectedPlayerId}
+        onInspectPlayer={(id) => { setInspectedPlayerId(id); controller.onboardingPanel('character', 'opened'); }}
         onReview={() => { setDrawerInitialTab('progress'); controller.setDrawerOpen(true); }}
         onHome={handleHome}
+        onFinishOnboarding={controller.finishOnboarding}
       />
-      <DiceRollOverlay onConfirm={controller.confirmDiceResult} roll={controller.diceRoll} />
+      <DiceRollOverlay onConfirm={controller.confirmDiceResult} roll={controller.diceRoll} onboarding={isOnboardingActive(state) && Boolean(state.onboarding?.pendingPhotoCheck)} />
       <ApiConfigModal open={controller.apiOpen} onClose={() => controller.setApiOpen(false)} onSave={controller.saveApi} />
       <EntityDetailModal detail={narrativeDetail} onClose={() => setNarrativeDetail(null)} />
-      <InvestigatorSheet players={state.players} selectedId={inspectedPlayerId} onSelect={setInspectedPlayerId} onClose={() => setInspectedPlayerId(null)} />
+      <InvestigatorSheet players={state.players} selectedId={inspectedPlayerId} onSelect={setInspectedPlayerId}
+        onboarding={state.onboarding?.step === 'character'}
+        onClose={() => { setInspectedPlayerId(null); controller.onboardingPanel('character', 'closed'); }} />
       <GameNotice message={controller.toast} />
       <DmDebugDrawer onOpenJournal={controller.openJournal} />
     </main>

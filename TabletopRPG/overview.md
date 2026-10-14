@@ -4,10 +4,12 @@ title: 项目全局综述
 tags: [overview, project, aligned]
 sources: [project_plan.md, ../../docs/PRD.md, ../../docs/SPEC.md, ../../docs/GDD.md]
 created: 2026-05-14
-updated: 2026-10-13
+updated: 2026-10-14
 ---
 
 # AI 跑团游戏 · 项目全局综述
+
+0.5.74 在首次调查加入 [[concepts/onboarding]]：用接受委托和书桌侦查两轮实际体验教会行动、骰子和收集线索，再认识调查员档案与存档入口。随时可跳过，查阅阶段即可自由行动；不插入旧存档，不增加模型负向提示词或规则限制。
 
 ## 项目定位
 

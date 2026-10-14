@@ -28,16 +28,18 @@ export function useSaveSlots(notify: (text: string) => void) {
   }
 
   async function saveCurrentGame(gameState: GameState) {
-    if (pendingSnapshots.current.has(gameState)) return;
+    if (pendingSnapshots.current.has(gameState)) return false;
     pendingSnapshots.current.add(gameState);
     const revision = ++feedbackRevision.current;
     try {
       await saveGameStateAndPersist(gameState);
       refreshSaves();
       if (revision === feedbackRevision.current) notify('已保存');
+      return true;
     } catch {
       refreshSaves();
       if (revision === feedbackRevision.current) notify('未能保存，请检查设备存储空间后重试。');
+      return false;
     } finally {
       pendingSnapshots.current.delete(gameState);
     }

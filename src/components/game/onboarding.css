@@ -1,0 +1,70 @@
+/* A margin note on the painted investigation desk, not another blocking panel. */
+:root.fog-ui .onboarding-coach {
+  display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 8px; align-items: center;
+  min-width: 0; margin: 0 0 6px; padding: 7px 8px;
+  border-bottom: 1px solid var(--line-soft);
+  background: linear-gradient(90deg, rgb(var(--ui-accent-rgb) / .09), transparent);
+  color: var(--text);
+}
+.onboarding-coach > img { object-fit: contain; align-self: start; margin-top: 4px; }
+.onboarding-copy { min-width: 0; }
+.onboarding-caption { color: var(--quiet); font-size: 11px; margin-right: 7px; white-space: nowrap; }
+.onboarding-copy strong { font-family: var(--ui-font); font-weight: 400; font-size: 14px; }
+.onboarding-copy p { font-size: 13px; color: var(--muted); line-height: 1.55; margin: 3px 0 0; text-wrap: pretty; }
+:root.fog-ui .onboarding-dismiss {
+  border: 0; background: transparent; color: var(--accent); min-height: 44px; min-width: 44px;
+  padding: 3px 5px; font-size: 12px; font-family: var(--ui-font); white-space: nowrap;
+  text-decoration: underline; text-underline-offset: 4px; touch-action: manipulation;
+}
+:root.fog-ui .onboarding-panel-note {
+  color: var(--muted); font-size: 13px; line-height: 1.6; margin: 0 0 8px;
+  padding: 7px 10px; border-left: 2px solid var(--accent); flex: 0 0 auto;
+  background: rgb(var(--ui-accent-rgb) / .07);
+}
+.onboarding-dice-note { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 0; text-align: center; }
+:root.fog-ui .dice-roll-card.onboarding-dice > footer { flex-direction: column; align-items: center; gap: 6px; min-height: 72px; }
+.onboarding-confirm-slot { width: 100%; min-height: 48px; display: grid; place-items: center; }
+.portrait-ui .onboarding-dice .dice-roll-panel { width: min(100%, calc((var(--mobile-dialog-height) - 152px) * 639 / 890)); }
+:root.fog-ui:not(.portrait-ui) .dice-roll-card.onboarding-dice { width: min(540px, calc(100vw - 16px), calc((100dvh - 164px) * 639 / 890)); }
+:root.fog-ui .game-screen[data-onboarding='action']:not(:has(.dock-input:not(:placeholder-shown))) .suggestion-row button,
+:root.fog-ui .game-screen[data-onboarding='search']:not(:has(.dock-input:not(:placeholder-shown))) .suggestion-row button,
+:root.fog-ui .game-screen[data-onboarding='action']:has(.dock-input:not(:placeholder-shown)) .dock-submit:enabled,
+:root.fog-ui .game-screen[data-onboarding='search']:has(.dock-input:not(:placeholder-shown)) .dock-submit:enabled,
+:root.fog-ui .game-screen[data-onboarding='roll'] .check-card > button:enabled,
+:root.fog-ui .game-screen[data-onboarding='records'] .drawer-tab,
+:root.fog-ui .game-screen[data-onboarding='character'] .dock-actor-avatar,
+:root.fog-ui .game-screen[data-onboarding='finish'] .menu-button,
+:root.fog-ui .game-menu[data-onboarding='finish'] .menu-list > button:first-child {
+  outline: 1px solid var(--ui-focus); outline-offset: 2px;
+  animation: onboarding-beacon 1.8s ease-in-out infinite;
+}
+@keyframes onboarding-beacon {
+  0%, 100% { box-shadow: 0 0 0 2px rgb(var(--ui-accent-rgb) / .12); }
+  50% { box-shadow: 0 0 0 5px rgb(var(--ui-accent-rgb) / .24); }
+}
+@media (max-width: 380px) {
+  :root.fog-ui .onboarding-coach { grid-template-columns: minmax(0, 1fr) auto; gap: 5px; padding-inline: 5px; }
+  .onboarding-coach > img { display: none; }
+  .onboarding-caption { font-size: 10px; margin-right: 5px; }
+  .onboarding-copy strong { font-size: 13px; }
+  .onboarding-copy p { font-size: 12px; }
+}
+@media (max-height: 500px) {
+  :root.fog-ui .game-screen[data-onboarding] .action-dock .suggestion-row { display: flex; }
+  :root.fog-ui .game-screen[data-onboarding] .action-dock .party-strip-compact { display: none; }
+  :root.fog-ui .game-screen[data-onboarding='roll'] .dock-input-row { display: none; }
+  .onboarding-caption { display: none; }
+  :root.fog-ui .onboarding-coach { margin-bottom: 3px; padding-block: 3px; }
+  .onboarding-copy p { margin-top: 1px; font-size: 12px; line-height: 1.4; }
+  .onboarding-coach strong { font-size: 12px; }
+}
+@media (max-height: 420px) {
+  :root.fog-ui.portrait-ui .game-screen[data-onboarding] { grid-template-rows: max-content minmax(0, 0px) minmax(112px, 1fr) max-content; }
+  :root.fog-ui.portrait-ui .game-screen[data-onboarding] .action-dock { max-height: calc(var(--mobile-height) - var(--game-top) - 112px - var(--game-bottom)); }
+}
+/* When writing freely, yield the margin note to the phone keyboard. */
+.portrait-ui .game-screen[data-onboarding]:has(.dock-input:focus:not([readonly])) .onboarding-coach { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root.fog-ui .game-screen[data-onboarding] button,
+  :root.fog-ui .game-menu[data-onboarding] button { animation: none !important; }
+}

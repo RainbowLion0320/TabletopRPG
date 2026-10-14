@@ -11,6 +11,7 @@ import rollArt from '../../../assets/ui/dice/ui_dice_roll.webp';
 interface DiceRollOverlayProps {
   onConfirm: () => void;
   roll: DiceRollPresentation | null;
+  onboarding?: boolean;
 }
 
 const RESULT_TITLES: Record<DiceResult['level'], string> = {
@@ -43,9 +44,11 @@ function RollingDice({ revealed }: { revealed: boolean }) {
   );
 }
 
-export function DiceRollOverlay({ onConfirm, roll: currentRoll }: DiceRollOverlayProps) {
+export function DiceRollOverlay({ onConfirm, roll: currentRoll, onboarding = false }: DiceRollOverlayProps) {
   const motion = useOverlayPresence(currentRoll);
   const roll = motion.value;
+  const guideRef = useRef(onboarding);
+  if (currentRoll) guideRef.current = onboarding;
   const dialogRef = useRef<HTMLDivElement>(null);
   useOverlayEntry(motion.present, dialogRef);
   const confirmRef = useRef<HTMLButtonElement>(null);
@@ -63,6 +66,10 @@ export function DiceRollOverlay({ onConfirm, roll: currentRoll }: DiceRollOverla
   // Only the authoritative result supplies settled digits. The animation has
   // blank faces and consumes no randomness or media playback callbacks.
   const faces = percentileFaces(roll.result.roll);
+  const confirm = revealed ? <button className="dice-roll-confirm" onClick={onConfirm} ref={confirmRef} type="button">
+    <Check aria-hidden="true" size={16} />
+    确认结果
+  </button> : null;
 
   return (
     <div
@@ -77,7 +84,7 @@ export function DiceRollOverlay({ onConfirm, roll: currentRoll }: DiceRollOverla
       tabIndex={-1}
       style={{ '--dice-roll-duration': `${DICE_ROLL_DURATION_MS}ms` } as CSSProperties}
     >
-      <section className="dice-roll-card">
+      <section className={`dice-roll-card${guideRef.current ? ' onboarding-dice' : ''}`}>
         <header id="dice-roll-context">
           <h2 id="dice-roll-title" className="dice-roll-accessible">命运检定</h2>
           <p>{roll.check.player} · {roll.check.skill}</p>
@@ -121,12 +128,8 @@ export function DiceRollOverlay({ onConfirm, roll: currentRoll }: DiceRollOverla
         </div>
 
         <footer>
-          {revealed && (
-            <button className="dice-roll-confirm" onClick={onConfirm} ref={confirmRef} type="button">
-              <Check aria-hidden="true" size={16} />
-              确认结果
-            </button>
-          )}
+          {guideRef.current && <p className="onboarding-dice-note">点数越小越好，确认后继续。</p>}
+          {guideRef.current ? <div className="onboarding-confirm-slot">{confirm}</div> : confirm}
         </footer>
       </section>
     </div>

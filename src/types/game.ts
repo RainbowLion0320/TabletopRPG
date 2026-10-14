@@ -491,6 +491,17 @@ export interface RetrievedEpisodicMemory {
   reasons: string[];
 }
 
+export type OnboardingStep = 'action' | 'search' | 'roll' | 'records' | 'character' | 'finish' | 'done' | 'skipped';
+
+/** A first investigation belongs to its save, independently of the device preference. */
+export interface OnboardingState {
+  version: 1;
+  step: OnboardingStep;
+  /** A skipped lesson still settles its already requested roll locally. */
+  pendingPhotoCheck?: boolean;
+  openedPanel?: 'records' | 'character';
+}
+
 export interface GameState {
   players: Investigator[];
   /**
@@ -536,6 +547,7 @@ export interface GameState {
   caseBoard?: CaseBoardState;
   /** Authoritative structured scenario progression state (save format v8). */
   scenarioProgress: ScenarioProgress;
+  onboarding?: OnboardingState;
 }
 
 export interface AiResponse {

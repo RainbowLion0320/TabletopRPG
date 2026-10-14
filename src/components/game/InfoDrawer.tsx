@@ -189,6 +189,7 @@ export function InfoDrawer({ onClose, onOpen, open, state, initialTab = 'board' 
           </nav>
           <button aria-label="关闭资料" onClick={onClose} title="关闭"><X size={18} /></button>
         </header>
+        {open && state.onboarding?.step === 'records' && <p className="onboarding-panel-note">合影已收入案件板。点卡片查看详情，关上资料后继续调查；进度和日志也在这里。</p>}
 
         <div key={opening} ref={pageRef} className={`info-drawer-page ${activeTab}-page`} role="tabpanel" id={`${id}-page`} aria-labelledby={`${id}-${activeTab}`} tabIndex={activeTab === 'progress' ? 0 : undefined}>
         {motion.present && activeTab === 'progress' ? <InvestigationProgress state={state}

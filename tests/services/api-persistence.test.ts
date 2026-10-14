@@ -22,7 +22,7 @@ function nativeFixture(initial: Record<string, string>) {
     if (failing) throw new Error('controlled native write failure');
     if (value === null) disk.delete(key); else disk.set(key, value);
   }) };
-  const cache = createNativeStorage(initial, native); installGameStorage(cache);
+  const cache = createNativeStorage({ ...initial, 'trpg-onboarding-v1': 'seen' }, native); installGameStorage(cache);
   return { cache, disk, native, recover: () => { failing = false; } };
 }
 

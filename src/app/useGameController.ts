@@ -19,6 +19,8 @@ import { DmTurnCoordinator } from './dmTurnCoordinator';
 import type { DmSessionTask } from './dmTurnCoordinator';
 import { getApiConfigValidationError } from '../config/aiConfig';
 import { dmConnectionFailureText } from '../services/narrativeVisibility';
+import { buildOnboardingRoll, buildOnboardingTurn, guidedDeclaration, isOnboardingAction, isOnboardingActive } from '../services/onboarding';
+import { rememberOnboarding, shouldOfferOnboarding } from '../platform/onboarding';
 import {
   DICE_ROLL_DURATION_MS,
   type DiceRollPresentation
@@ -40,6 +42,9 @@ export function useGameController() {
   const diceRollInFlightRef = useRef(false);
   const foregroundTaskRef = useRef<DmSessionTask | null>(null);
   const submittedStateRef = useRef<GameState | null>(null);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const onboardingSaveRef = useRef<GameState | null>(null);
 
   useEffect(() => () => {
     dmCoordinatorRef.current.invalidate();
@@ -85,7 +90,9 @@ export function useGameController() {
   function startGame(players: Investigator[]) {
     cancelDiceRoll();
     dmCoordinatorRef.current.invalidate();
-    dispatch({ type: 'start', players });
+    const previous = saveSlots.refreshSaves();
+    const returning = stateRef.current.players.length > 0 && !isOnboardingActive(stateRef.current);
+    dispatch({ type: 'start', players, onboarding: shouldOfferOnboarding(Boolean(returning || previous.saves.length || previous.incompatible.length)) });
   }
 
   function restoreSession(restoredState: GameState, restoredRoll: DiceRollPresentation | null) {
@@ -112,8 +119,16 @@ export function useGameController() {
       notify('请先确认本次掷骰结果，再保存。');
       return;
     }
-    saveSlots.saveCurrentGame(state);
+    const finishing = state.onboarding?.step === 'finish';
+    // Store the completed lesson in this snapshot; loading it must not re-open the last tip.
+    if (finishing && onboardingSaveRef.current === state) return;
+    const snapshot = finishing ? gameReducer(state, { type: 'finishOnboarding', status: 'done' }) : state;
+    if (finishing) onboardingSaveRef.current = state;
     setMenuOpen(false);
+    void saveSlots.saveCurrentGame(snapshot).then((saved) => {
+      if (finishing && onboardingSaveRef.current === state) onboardingSaveRef.current = null;
+      if (saved && finishing && stateRef.current.onboarding === state.onboarding) finishOnboarding('done');
+    });
   }
 
   function openSaveManager() {
@@ -143,7 +158,9 @@ export function useGameController() {
     const declaration = state.declarations[actor.id]?.trim();
     if (!declaration) return;
     const isLast = state.currentActorIndex >= state.players.length - 1;
-    if (isLast && !requireApiConfig()) return;
+    const actions = isLast ? buildPlayerActions(state) : [];
+    const guidedTurn = isLast ? buildOnboardingTurn(state, actions) : null;
+    if (isLast && !guidedTurn && !requireApiConfig()) return;
     submittedStateRef.current = state;
 
     dispatch({
@@ -157,11 +174,11 @@ export function useGameController() {
     }
 
     // Last actor: aggregate every declaration and run one DM round for the party.
-    const actions = buildPlayerActions(state);
     const historyAction = { type: 'appendHistory' as const, role: 'user' as const, content: buildUserMessage(actions) };
     dispatch(historyAction);
     dispatch({ type: 'clearDeclarations' });
-    void runAi(actions, gameReducer(state, historyAction));
+    if (guidedTurn) dispatch({ type: 'resolveOnboardingTurn', actions });
+    else void runAi(actions, gameReducer(state, historyAction));
   }
 
   function applyBackgroundUpdate(update: DmBackgroundUpdate, sourceHistory: GameState['conversationHistory']) {
@@ -361,6 +378,10 @@ export function useGameController() {
     dispatch(diceAction);
     dispatch({ type: 'appendHistory', role: 'user', content: checkMessage });
     if (rolledState.pendingCheck || rolledState.scenarioProgress?.endingId) return;
+    if (buildOnboardingRoll(continuationState, check, result)) {
+      dispatch({ type: 'resolveOnboardingRoll', check, result });
+      return;
+    }
     void runAi([
       ...(check.continuationActions ?? []),
       ...(check.resolvedActions ?? []),
@@ -370,7 +391,7 @@ export function useGameController() {
 
   function applySuggestion(text: string) {
     const playerId = findSuggestionTargetPlayerId(state);
-    if (playerId) dispatch({ type: 'setDeclaration', playerId, text });
+    if (playerId) setDeclaration(playerId, text);
   }
 
   async function saveApi(config: ApiConfig) {
@@ -407,7 +428,18 @@ export function useGameController() {
   }
 
   function setDeclaration(playerId: string, text: string) {
+    if (isOnboardingAction(state) && text && text !== guidedDeclaration(state, playerId)) return;
     dispatch({ type: 'setDeclaration', playerId, text });
+  }
+
+  function finishOnboarding(status: 'done' | 'skipped') {
+    if (!isOnboardingActive(stateRef.current)) return;
+    rememberOnboarding();
+    dispatch({ type: 'finishOnboarding', status });
+  }
+
+  function onboardingPanel(panel: 'records' | 'character', phase: 'opened' | 'closed') {
+    dispatch({ type: 'onboardingPanel', panel, phase });
   }
 
   return {
@@ -419,6 +451,8 @@ export function useGameController() {
     diceRoll,
     drawerOpen,
     handleRoll,
+    finishOnboarding,
+    onboardingPanel,
     incompatibleSaves: saveSlots.incompatibleSaves,
     journalOpen,
     loadLatest,

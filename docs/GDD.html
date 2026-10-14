@@ -180,7 +180,7 @@ footer {
 <body>
 <nav id="sidebar">
   <div class="nav-title">GDD Mirror</div>
-<a href="#s0" class="">当前美术原稿 UI（0.5.72，2026-10-13）</a>
+<a href="#s0" class="">当前美术原稿 UI（0.5.74，2026-10-14）</a>
 <a href="#s1" class="">自动保存与检定连续性（0.5.1）</a>
 <a href="#s2" class="">安卓版实现补充（2026-09-09）</a>
 <a href="#s3" class="">0. 当前实现状态（2026-09-09 对齐补充）</a>
@@ -233,7 +233,8 @@ footer {
   <div class="content">
 <header class="doc-header"><h1>《雾中消逝》AI跑团 游戏设计文档 (GDD)</h1><p class="doc-subtitle">Full GDD mirror - Source: docs/GDD.md - Updated 2026-05-29</p></header>
 <blockquote><p>设计版本：v0.8 | 原始基线：2026-05-15</p><p>实现对齐补充：2026-10-14</p><p>规则体系：COC 第7版 | 首发模组：《雾中消逝》| 作者：舒爾茲上尉</p></blockquote>
-<h2 id="s0">当前美术原稿 UI（0.5.72，2026-10-13）</h2>
+<h2 id="s0">当前美术原稿 UI（0.5.74，2026-10-14）</h2>
+<p>0.5.74 用两轮短调查教会新玩家实际操作。先接受伊莎贝拉的委托，再搜查书桌抽屉；多人各自声明，由首位调查员进行真实侦查检定。合影只在确认骰子后发现，成功和失败使用已有剧情事件，失败保留额外十分钟代价。之后用短提示认识案件板、调查员档案与存档菜单，查阅时即可自由行动。随时跳过，已填行动和待确认检定继续保留；完成后不重复打扰，旧存档不插入引导。前两轮固定内容不消耗模型请求，之后交回正常AI DM。见 <a href="../TabletopRPG/concepts/onboarding.md">引导规则</a> 与 <a href="reviews/2026-10-14-first-investigation-guide.md">验收</a>。</p>
 <p>0.5.73 接入美术提供的伦敦雨雾开场：首次启动自动播放，片尾叠化到首页；随时跳过，首页小图标回看。完整横竖构图、独立音乐/音效、后台续播、减少动态与载入回退共同适配手机和网页，回看不改变调查或连接。见 <a href="reviews/2026-10-14-opening-cinematic.md">开场接入验收</a>。</p>
 <p>0.5.72 完善首页与存档视觉衔接：首页背景与控件一起短淡入，删除记录后幸存卡片平滑补位，操作继续即时响应。见 <a href="reviews/2026-10-13-screen-and-save-motion.md">首页与存档衔接验收</a>。</p>
 <p>0.5.71 完善保存与重试接续：不同快照按原链路保存，同快照待保存请求合并；晚反馈遵守会话边界，失败后的存档库与 API 配置恢复一致。DM 重试再次失败时恢复原按钮焦点，菜单和其他输入接管时不抢焦点，手机不强开键盘。见 <a href="reviews/2026-10-13-persistence-boundaries.md">保存与重试接续验收</a>。</p>

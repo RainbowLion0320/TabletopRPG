@@ -4,10 +4,12 @@ title: 存档系统
 tags: [save, storage, localStorage]
 sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-18
-updated: 2026-10-10
+updated: 2026-10-14
 ---
 
 # 存档系统
+
+0.5.74 将 [[concepts/onboarding]] 的阶段与待确认检定一起保存。首次引导的最后一步成功保存时记录为完成；保存失败保留提示供重试。已有v8存档不插入引导，存档格式与剧本哈希保持。
 
 ## 概述
 
@@ -104,6 +106,7 @@ interface SaveSlot {
 - 长期部署时考虑服务端存储或文件下载。
 
 ## 被引用于
+- [[concepts/onboarding]]
 - [[concepts/game_ui]]
 - [[concepts/android_app]]
 - [[overview]]

@@ -19,9 +19,10 @@ interface GameMenuProps {
   onOpenApi: () => void;
   onRestart: () => void;
   onHome: () => void;
+  onboarding?: boolean;
 }
 
-export function GameMenu({ onClose, onHome, onLoad, onOpenApi, onRestart, onSave, open }: GameMenuProps) {
+export function GameMenu({ onClose, onHome, onLoad, onOpenApi, onRestart, onSave, open, onboarding = false }: GameMenuProps) {
   const dialogRef = useRef<HTMLElement>(null);
   const motion = useOverlayPresence(open);
   useOverlayEntry(motion.present, dialogRef);
@@ -31,12 +32,13 @@ export function GameMenu({ onClose, onHome, onLoad, onOpenApi, onRestart, onSave
   if (!motion.present) return null;
   return createPortal(
     <div {...motion.layerProps} className="game-menu-backdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-    <aside ref={dialogRef} id="game-menu-panel" className="modal-card game-menu open" role={open ? 'dialog' : undefined} aria-modal={open || undefined} aria-labelledby="game-menu-title" tabIndex={-1}>
+    <aside ref={dialogRef} id="game-menu-panel" className="modal-card game-menu open" data-onboarding={onboarding ? 'finish' : undefined} role={open ? 'dialog' : undefined} aria-modal={open || undefined} aria-labelledby="game-menu-title" tabIndex={-1}>
       <header className="game-menu-header">
         <h2 id="game-menu-title">调查菜单</h2>
         <button type="button" className="ghost-btn game-menu-close" aria-label="关闭调查菜单" onClick={onClose}><X size={20} aria-hidden="true" /></button>
       </header>
       <div className="game-menu-body">
+        {onboarding && <p className="onboarding-panel-note">先保存一份调查记录，之后可随时读档继续。声音和AI设置也在这里。</p>}
         <div className="menu-list">
           <button onClick={onSave}><ArchiveRecordArt kind="file" />保存游戏</button>
           <button onClick={onLoad}><JournalArt />读取存档</button>
