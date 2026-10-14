@@ -16,14 +16,13 @@ interface InvestigatorSheetProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onClose: () => void;
-  onboarding?: boolean;
 }
 
 const attributes = [['STR', '力量'], ['CON', '体质'], ['SIZ', '体型'], ['DEX', '敏捷'], ['APP', '外貌'], ['INT', '智力'], ['POW', '意志'], ['EDU', '教育']] as const;
 const tabs = [['overview', '属性'], ['skills', '技能'], ['background', '随身与背景']] as const;
 type SheetTab = typeof tabs[number][0];
 
-export function InvestigatorSheet({ players, selectedId: currentId, onSelect, onClose, onboarding = false }: InvestigatorSheetProps) {
+export function InvestigatorSheet({ players, selectedId: currentId, onSelect, onClose }: InvestigatorSheetProps) {
   const motion = useOverlayPresence(currentId);
   const selectedId = motion.value ?? '';
   const open = Boolean(currentId);
@@ -105,7 +104,6 @@ export function InvestigatorSheet({ players, selectedId: currentId, onSelect, on
           </div>
           <button className="investigator-close ghost-btn" type="button" aria-label="关闭调查员档案" onClick={onClose}><X size={18} /></button>
         </header>
-        {open && onboarding && <p className="onboarding-panel-note">这里可以查看属性、技能和随身物品。关上档案后，继续你的调查。</p>}
 
         {players.length > 1 && <nav className="investigator-party" aria-label="查看队员">
           {players.map((member) => <button type="button" key={member.id} aria-pressed={member.id === selectedId} onClick={() => selectPlayer(member.id)}>{member.name}</button>)}

@@ -8,7 +8,6 @@ import type { GameState } from '../../types/game';
 import { getScenarioDefinition, getScenarioProgressForState } from '../../scenario/engine';
 import { pendingDmFailureText } from '../../services/narrativeVisibility';
 import { guidedDeclaration } from '../../services/onboarding';
-import { OnboardingCoach } from './OnboardingCoach';
 import './ending-dock.css';
 import './turn-prompt.css';
 import './party-status.css';
@@ -27,7 +26,6 @@ interface ActionDockProps {
   onRetry?: () => void;
   onReview?: () => void;
   onHome?: () => void;
-  onFinishOnboarding?: (status: 'done' | 'skipped') => void;
 }
 
 export function ActionDock({
@@ -42,7 +40,6 @@ export function ActionDock({
   onInspectPlayer,
   onReview,
   onHome,
-  onFinishOnboarding,
   state
 }: ActionDockProps) {
   const currentActor = state.players[state.currentActorIndex] ?? state.players[0];
@@ -133,7 +130,6 @@ export function ActionDock({
 
   return (
     <section className="action-dock">
-      {onFinishOnboarding && <OnboardingCoach state={state} onFinish={onFinishOnboarding} />}
       {hasPendingTurn && !state.isThinking && !state.pendingCheck ? (
         <div className="check-card" role="status">
           <div><strong>本轮行动已保留</strong><span>{pendingDmFailureText(state.messages) ?? '继续本轮，已确认的骰点无需重掷。'}</span></div>
@@ -188,7 +184,6 @@ export function ActionDock({
               enterKeyHint={portrait ? 'enter' : 'send'}
               autoFocus={autoFocusInput && !guidedAction}
               readOnly={Boolean(guidedAction)}
-              aria-describedby={guidedAction ? 'first-investigation-tip' : undefined}
               disabled={!canDeclare}
               value={declaration}
               placeholder={guidedAction ? '点上方建议填入行动…' : portrait ? '描述你的行动…' : `${currentActor.name} 想要做什么...`}

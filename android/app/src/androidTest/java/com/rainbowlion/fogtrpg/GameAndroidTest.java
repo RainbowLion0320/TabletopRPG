@@ -116,12 +116,12 @@ public class GameAndroidTest {
         if (guided != null) preferences.edit().putString("trpg-onboarding-v1", guided).commit();
         activity = ActivityScenario.launch(MainActivity.class);
         until("document.querySelector('.title-screen')");
-        if (seen == null || guided == null) {
-            js("window.qaPresentationReady=false;Promise.all(['trpg-opening-v1','trpg-onboarding-v1'].map(key=>Capacitor.Plugins.GameStorage.write({key,value:'seen'}))).then(()=>window.qaPresentationReady=true)");
-            until("window.qaPresentationReady");
-            activity.recreate();
-            until("document.querySelector('.title-screen')&&!document.querySelector('.opening-cinematic')");
-        }
+        // Seed through the real bridge, then reload the JS cache. A retained ciphertext
+        // alone is not proof that the current test represents a returning player.
+        js("window.qaPresentationReady=false;Promise.all(['trpg-opening-v1','trpg-onboarding-v1'].map(key=>Capacitor.Plugins.GameStorage.write({key,value:'seen'}))).then(()=>window.qaPresentationReady=true)");
+        until("window.qaPresentationReady");
+        activity.recreate();
+        until("document.querySelector('.title-screen')&&!document.querySelector('.opening-cinematic')");
         watchResizeErrors();
     }
     private void watchResizeErrors() throws Exception {
@@ -278,22 +278,30 @@ public class GameAndroidTest {
         until("window.qaGuideSaved");
     }
 
+    private void guideFocus(String selector) throws Exception {
+        String target = JSONObject.quote(selector);
+        until("(()=>{const e=document.querySelector(" + target + "),c=document.querySelector('.onboarding-cue');return e&&c&&(e.getAttribute('aria-describedby')||'').split(' ').includes(c.id)})()");
+        until("(()=>{const e=document.querySelector(" + target + "),r=e.getBoundingClientRect(),h=document.querySelector('.onboarding-spotlight').getBoundingClientRect();return Math.abs(h.x-r.x+4)<1&&Math.abs(h.y-r.y+4)<1})()");
+        assertEquals("A short floating cue spotlights the real control and leaves its tap available", "true", js("(()=>{const e=document.querySelector(" + target + "),r=e.getBoundingClientRect(),c=document.querySelector('.onboarding-coach'),b=c.getBoundingClientRect(),hand=document.querySelector('.onboarding-hand');return document.querySelector('.onboarding-cue').textContent.length<=12&&!c.closest('.action-dock')&&getComputedStyle(hand).pointerEvents==='none'&&e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))&&b.x>=9&&b.y>=9&&b.right<=innerWidth-9&&b.bottom<=innerHeight-9&&!(Math.min(b.right,r.right)>Math.max(b.left,r.left)&&Math.min(b.bottom,r.bottom)>Math.max(b.top,r.top))})()"));
+        reachable(".onboarding-dismiss");
+    }
+
     @Test public void firstInvestigationTeachesRealActionsDiceRecordsAndDossiersOffline() throws Exception {
         for (int party : new int[]{1, 2, 4}) {
             noviceInvestigation(party == 4 ? 360 : 390, party == 4 ? 640 : 844, party);
             try {
                 assertEquals("The lesson keeps the keyboard closed and offers one real action", "true", js("document.querySelector('.dock-input').readOnly&&document.querySelectorAll('.suggestion-row>button').length===1&&!document.querySelector('#api-key')"));
-                reachable(".onboarding-dismiss"); reachable(".suggestion-row>button");
+                guideFocus(".suggestion-row>button"); reachable(".suggestion-row>button");
                 for (String stage : new String[]{"action", "search"}) {
                     assertEquals("The two opening turns use authored, actionable content", JSONObject.quote(stage), js("document.querySelector('.game-screen').dataset.onboarding"));
                     for (int actor = 0; actor < party; actor++) {
-                        nativeTap(".suggestion-row>button"); nativeTap(".dock-submit");
+                        nativeTap(".suggestion-row>button"); guideFocus(".dock-submit"); nativeTap(".dock-submit");
                     }
                 }
                 until("document.querySelector('.game-screen').dataset.onboarding==='roll'");
                 assertEquals("No clue appears before the real roll", "false", js("document.querySelector('.narrative-scroll').textContent.includes('旧合影')"));
-                nativeTap(".check-card>button");
-                assertEquals("The tutorial reserves both its teaching line and confirmation before reveal", JSONObject.quote("72px"), js("getComputedStyle(document.querySelector('.onboarding-dice>footer')).minHeight"));
+                guideFocus(".check-card>button"); nativeTap(".check-card>button");
+                assertEquals("The result button retains its space while rolling", JSONObject.quote("48px"), js("getComputedStyle(document.querySelector('.onboarding-confirm-slot')).minHeight"));
                 until("document.querySelector('.dice-roll-overlay.revealed')");
                 String dice = js("document.querySelector('.dice-roll-total').textContent");
                 awaitGuideSave("roll", true);
@@ -309,21 +317,21 @@ public class GameAndroidTest {
                     screenshot("guide-restored-real-dice");
                     js("window.qaGuidePosts=0;const resumedFetch=window.fetch;window.fetch=(url,options)=>{if(options?.method==='POST')window.qaGuidePosts++;return resumedFetch(url,options)}");
                 }
-                nativeTap(".dice-roll-confirm"); until("document.querySelector('.game-screen').dataset.onboarding==='records'");
+                guideFocus(".dice-roll-confirm"); nativeTap(".dice-roll-confirm"); until("document.querySelector('.game-screen').dataset.onboarding==='records'");
                 assertEquals("Free action is already available after the two local turns", "false", js("document.querySelector('.dock-input').readOnly"));
-                nativeTap(".drawer-tab"); until("document.querySelector('.info-drawer-react[role=dialog]')");
+                guideFocus(".drawer-tab"); nativeTap(".drawer-tab"); until("document.querySelector('.info-drawer-react[role=dialog]')");
                 String photoSelector = ".case-board-mobile-card.item";
-                js("Array.from(document.querySelectorAll('.case-board-mobile-card.item')).find(e=>e.textContent.includes('合影照片')).scrollIntoView({block:'nearest'})");
+                guideFocus(photoSelector);
                 nativeTap(photoSelector); until("document.querySelector('.case-board-inspector')");
                 assertEquals("The first evidence opens the real dossier with no hidden story truth", "true", js("document.querySelector('.case-board-inspector').textContent.includes('合影照片')&&!document.querySelector('.case-board-inspector').textContent.includes('私下勾连')"));
                 nativeTap(".case-board-inspector button[aria-label='关闭资料详情']");
                 nativeTap(".info-drawer-react button[aria-label='关闭资料']");
                 until("document.querySelector('.game-screen').dataset.onboarding==='character'");
-                nativeTap(".dock-actor-avatar"); until("document.querySelector('.investigator-sheet[role=dialog]')");
-                nativeTap(".investigator-tabs button:nth-child(2)");
+                guideFocus(".dock-actor-avatar"); nativeTap(".dock-actor-avatar"); until("document.querySelector('.investigator-sheet[role=dialog]')");
+                guideFocus(".investigator-tabs button:nth-child(2)"); nativeTap(".investigator-tabs button:nth-child(2)");
                 assertEquals("The avatar teaches actual skill values", "true", js("document.querySelector('.investigator-body').textContent.includes('侦查')"));
                 nativeTap(".investigator-close"); until("document.querySelector('.game-screen').dataset.onboarding==='finish'");
-                nativeTap(".menu-button"); nativeTap(".game-menu .menu-list>button:first-child");
+                guideFocus(".menu-button"); nativeTap(".menu-button"); guideFocus(".game-menu .menu-list>button:first-child"); nativeTap(".game-menu .menu-list>button:first-child");
                 until("!document.querySelector('.onboarding-coach')");
                 awaitGuideSave("done", false);
                 assertEquals("The completed lesson preserves revealed clues, actor order and two normal history turns", "true", js("window.qaGuideRecord.state.clues.some(c=>c.id==='I02')&&window.qaGuideRecord.state.scenarioProgress.knownFactIds.includes('F05')&&!window.qaGuideRecord.state.scenarioProgress.knownFactIds.includes('F02')&&window.qaGuideRecord.state.conversationHistory.filter(t=>t.role==='user'&&!t.content.startsWith('【检定结果】')).length===2"));
@@ -2296,7 +2304,9 @@ public class GameAndroidTest {
                 until("window.qaDiceReveal.frames.length===24");
                 assertEquals("The result, faces, verdict and confirmation reveal in place with their own 160ms opacity animation", "true", js("(()=>{const f=window.qaDiceReveal.frames;return f.length>=12&&f[0].items.length===5&&f[0].items.every(e=>e.name==='dice-result-reveal'&&e.duration===160&&e.opacity<1)&&f[0].items.every((_,i)=>f.some(p=>p.items[i].opacity>0&&p.items[i].opacity<.999))&&f.at(-1).items.every(e=>e.opacity>=.999)})()"));
                 assertEquals("The confirmation is enabled and hit-testable at the reveal mutation, with focus in its first frames", "true", js("(()=>{const q=window.qaDiceReveal;return q.immediate.enabled&&q.immediate.live&&q.immediate.hit&&q.frames.slice(0,3).some(f=>f.focused)})()"));
-                assertEquals("Stable rolling and every result frame retain card, painted panel and reserved footer geometry", "true", js("(()=>{const q=window.qaDiceReveal;return q.rolling!==null&&q.rolling[2].height>=48&&q.frames.every(f=>f.rects.every((r,i)=>['top','left','width','height'].every(k=>Math.abs(r[k]-q.rolling[i][k])<=1)))})()"));
+                String stableGeometry = js("(()=>{const q=window.qaDiceReveal;return q.rolling!==null&&q.rolling[2].height>=48&&q.frames.every(f=>f.rects.every((r,i)=>['top','left','width','height'].every(k=>Math.abs(r[k]-q.rolling[i][k])<=1)))})()");
+                if (!"true".equals(stableGeometry)) System.out.println("DICE_GEOMETRY_NATIVE: " + js("JSON.stringify({rolling:window.qaDiceReveal.rolling,first:window.qaDiceReveal.frames[0].rects,last:window.qaDiceReveal.frames.at(-1).rects,guide:document.querySelector('.game-screen').dataset.onboarding??null})"));
+                assertEquals("Stable rolling and every result frame retain card, painted panel and reserved footer geometry", "true", stableGeometry);
                 assertEquals("Only the authoritative 55 and one verdict are shown", "true", js("document.querySelector('.dice-roll-total').textContent==='55'&&document.querySelector('.tens-die').textContent==='50'&&document.querySelector('.ones-die').textContent==='5'&&document.querySelectorAll('.dice-roll-outcome h3').length===1"));
                 System.out.println("DICE_REVEAL_NATIVE: " + js("JSON.stringify({party:" + party + ",first:window.qaDiceReveal.frames[0].items,last:window.qaDiceReveal.frames.at(-1).items.map(e=>e.opacity),intermediate:window.qaDiceReveal.frames[0].items.map((_,i)=>window.qaDiceReveal.frames.filter(f=>f.items[i].opacity>0&&f.items[i].opacity<.999).length),footer:window.qaDiceReveal.rolling[2].height,immediate:window.qaDiceReveal.immediate})"));
                 if (party == 2) screenshot("dice-reveal-native");

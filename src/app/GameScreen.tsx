@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { ActionDock } from '../components/game/ActionDock';
+import { OnboardingCoach } from '../components/game/OnboardingCoach';
 import { DmDebugDrawer } from '../components/game/DmDebugDrawer';
 import { DiceRollOverlay } from '../components/game/DiceRollOverlay';
 import { DmJournalModal } from '../components/game/DmJournalModal';
@@ -69,7 +70,6 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
         onOpenApi={controller.openApiSettings}
         onRestart={handleRestart}
         onSave={controller.saveCurrentGame}
-        onboarding={state.onboarding?.step === 'finish'}
       />
       <SaveManagerModal
         open={controller.saveManagerOpen}
@@ -93,7 +93,7 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
       />
       <NarrativePanel state={state} onMarkOpen={handleNarrativeMarkOpen} />
       <ActionDock
-        autoFocusInput={autoFocusInput}
+        autoFocusInput={autoFocusInput && !isOnboardingActive(state)}
         portrait={portrait}
         isDiceRolling={Boolean(controller.diceRoll)}
         state={state}
@@ -105,16 +105,17 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
         onInspectPlayer={(id) => { setInspectedPlayerId(id); controller.onboardingPanel('character', 'opened'); }}
         onReview={() => { setDrawerInitialTab('progress'); controller.setDrawerOpen(true); }}
         onHome={handleHome}
-        onFinishOnboarding={controller.finishOnboarding}
       />
       <DiceRollOverlay onConfirm={controller.confirmDiceResult} roll={controller.diceRoll} onboarding={isOnboardingActive(state) && Boolean(state.onboarding?.pendingPhotoCheck)} />
       <ApiConfigModal open={controller.apiOpen} onClose={() => controller.setApiOpen(false)} onSave={controller.saveApi} />
       <EntityDetailModal detail={narrativeDetail} onClose={() => setNarrativeDetail(null)} />
       <InvestigatorSheet players={state.players} selectedId={inspectedPlayerId} onSelect={setInspectedPlayerId}
-        onboarding={state.onboarding?.step === 'character'}
         onClose={() => { setInspectedPlayerId(null); controller.onboardingPanel('character', 'closed'); }} />
       <GameNotice message={controller.toast} />
       <DmDebugDrawer onOpenJournal={controller.openJournal} />
+      {isOnboardingActive(state) && <OnboardingCoach state={state} onFinish={controller.finishOnboarding}
+        dicePhase={controller.diceRoll?.phase} drawerOpen={controller.drawerOpen} menuOpen={controller.menuOpen}
+        characterOpen={Boolean(inspectedPlayerId)} blocked={Boolean(narrativeDetail) || controller.saveManagerOpen || controller.apiOpen || controller.journalOpen} />}
     </main>
   );
 }

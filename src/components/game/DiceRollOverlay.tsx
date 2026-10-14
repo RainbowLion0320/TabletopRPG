@@ -128,7 +128,6 @@ export function DiceRollOverlay({ onConfirm, roll: currentRoll, onboarding = fal
         </div>
 
         <footer>
-          {guideRef.current && <p className="onboarding-dice-note">点数越小越好，确认后继续。</p>}
           {guideRef.current ? <div className="onboarding-confirm-slot">{confirm}</div> : confirm}
         </footer>
       </section>

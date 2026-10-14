@@ -242,19 +242,28 @@ describe('first investigation with real game state', () => {
 });
 
 describe('novice controls', () => {
-  it('points to an actual suggestion and submission, keeps the IME out of the two lesson turns, and unlocks after skip', () => {
+  it('anchors a short cue to the actual suggestion and submission, keeps the IME out, and unlocks after skip', async () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => ({
+      x: 20, y: 200, width: 200, height: 44, top: 200, left: 20, right: 220, bottom: 244, toJSON: () => ({})
+    }));
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: '开始游戏', exact: true }));
     fireEvent.click(screen.getByRole('button', { name: '进入游戏', exact: true }));
     const input = screen.getByRole('textbox', { name: /的行动$/ }) as HTMLTextAreaElement;
     expect(input.readOnly).toBe(true);
-    expect(screen.getByLabelText('新手调查')).toHaveTextContent('轻点下面的建议');
-    fireEvent.click(screen.getByRole('button', { name: firstLessonAction() }));
+    expect(screen.getByLabelText('新手调查')).toHaveTextContent('点这里选择行动');
+    const suggestion = screen.getByRole('button', { name: firstLessonAction() });
+    expect(suggestion).toHaveAccessibleDescription('点这里选择行动');
+    expect(document.querySelector('.action-dock .onboarding-coach')).toBeNull();
+    expect(document.querySelector('.onboarding-hand')).not.toBeNull();
+    fireEvent.click(suggestion);
     expect(input.value).toBe(firstLessonAction());
-    expect(screen.getByLabelText('新手调查')).toHaveTextContent('点「提交」确认');
+    expect(screen.getByLabelText('新手调查')).toHaveTextContent('确认行动');
+    expect(suggestion).not.toHaveAttribute('aria-describedby');
+    expect(screen.getByRole('button', { name: '提交', exact: true })).toHaveAccessibleDescription('确认行动');
     fireEvent.click(screen.getByRole('button', { name: '提交', exact: true }));
-    expect(screen.getByLabelText('新手调查')).toHaveTextContent('调查身边的痕迹');
-    fireEvent.click(screen.getByRole('button', { name: '跳过引导', exact: true }));
+    expect(screen.getByLabelText('新手调查')).toHaveTextContent('选择调查行动');
+    fireEvent.click(screen.getByRole('button', { name: '跳过', exact: true }));
     expect(input.readOnly).toBe(false); expect(screen.queryByLabelText('新手调查')).toBeNull();
     expect(dm).not.toHaveBeenCalled();
   });

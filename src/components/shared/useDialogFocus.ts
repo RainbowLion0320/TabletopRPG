@@ -2,6 +2,14 @@ import { useEffect, useRef, type RefObject } from 'react';
 
 interface DialogEntry { element: HTMLElement; trapFocus: boolean; opener: HTMLElement | null }
 const dialogs: DialogEntry[] = [];
+const companions = new WeakMap<HTMLElement, Set<HTMLElement>>();
+
+/** A tutorial bubble belongs to its target's dialog, even when painted in a portal. */
+export function attachDialogCompanion(owner: HTMLElement, companion: HTMLElement) {
+  const region = companions.get(owner) ?? new Set<HTMLElement>();
+  companions.set(owner, region); region.add(companion);
+  return () => { region.delete(companion); if (!region.size) companions.delete(owner); };
+}
 const isActiveDialog = (entry: DialogEntry) => entry.element.isConnected
   && !entry.element.closest('[inert], [aria-hidden="true"]');
 const topDialog = (trapOnly = false) => [...dialogs].reverse().find((entry) => isActiveDialog(entry) && (!trapOnly || entry.trapFocus));
@@ -26,7 +34,9 @@ export function useDialogFocus(open: boolean, ref: RefObject<HTMLElement>, onClo
     const entry = { element: dialog, trapFocus, opener: previous };
     if (descendant < 0) dialogs.push(entry);
     else dialogs.splice(descendant, 0, entry);
-    const controls = () => Array.from(dialog.querySelectorAll<HTMLElement>(focusableSelector))
+    const regions = () => [dialog, ...Array.from(companions.get(dialog) ?? []).filter(element => element.isConnected)];
+    const containsFocus = (active: Element | null) => regions().some(region => region.contains(active));
+    const controls = () => regions().flatMap(region => Array.from(region.querySelectorAll<HTMLElement>(focusableSelector)))
       .filter((element) => element.tabIndex >= 0 && !element.hidden && !element.closest('[inert], [aria-hidden="true"]'))
       .filter((element) => {
         const collapsed = element.closest('details:not([open])');
@@ -50,7 +60,7 @@ export function useDialogFocus(open: boolean, ref: RefObject<HTMLElement>, onClo
         const elements = controls();
         const first = elements[0] ?? dialog;
         const last = elements[elements.length - 1] ?? dialog;
-        if (!dialog.contains(document.activeElement) || document.activeElement === dialog
+        if (!containsFocus(document.activeElement) || document.activeElement === dialog
           || (event.shiftKey ? document.activeElement === first : document.activeElement === last)) {
           event.preventDefault();
           (event.shiftKey ? last : first).focus();
@@ -66,7 +76,7 @@ export function useDialogFocus(open: boolean, ref: RefObject<HTMLElement>, onClo
       if (index >= 0) dialogs.splice(index, 1);
       const target = returnFocusRef?.current ?? previous;
       const active = document.activeElement;
-      const restore = active === document.body || dialog.contains(active);
+      const restore = active === document.body || containsFocus(active);
       if (!wasTopmost || !restore) return;
       const visible = (candidate: HTMLElement | null | undefined): candidate is HTMLElement => {
         if (!candidate?.isConnected || candidate.closest('[inert], [aria-hidden="true"]')) return false;
