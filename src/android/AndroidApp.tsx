@@ -6,6 +6,8 @@ import { ApiConfigModal } from '../components/shared/ApiConfigModal';
 import { ExitGameDialog } from './ExitGameDialog';
 import { CharacterSetup } from '../components/setup/CharacterSetup';
 import { TitleScreen } from '../components/setup/TitleScreen';
+import { OpeningCinematic } from '../components/setup/OpeningCinematic';
+import { useOpeningCinematic } from '../platform/opening';
 import { GameScreen } from '../app/GameScreen';
 import { GameNotice } from '../components/shared/GameNotice';
 import { useGameController } from '../app/useGameController';
@@ -35,6 +37,7 @@ export function AndroidApp({ partialRecovery = false }: { partialRecovery?: bool
   const [exitBusy, setExitBusy] = useState(false);
   const [exitError, setExitError] = useState('');
   const game = useGameController();
+  const opening = useOpeningCinematic();
   const exitingRef = useRef(false);
   const sessionRevision = useRef(0);
   const lastSnapshot = useRef<GameContinuation | null>(null);
@@ -128,11 +131,13 @@ export function AndroidApp({ partialRecovery = false }: { partialRecovery?: bool
   };
   const closeExit = () => { if (!exitingRef.current) { setExitOpen(false); setExitError(''); } };
   return <>
-    <AudioDirector screen={screen} state={game.state} roll={game.diceRoll} />
+    <AudioDirector screen={screen} state={game.state} roll={game.diceRoll} cinematicActive={opening.open} />
+    <OpeningCinematic key={opening.playId} open={opening.open} onFinish={opening.finish} returnFocusRef={opening.returnFocusRef} />
     {screen === 'title' ? <>
       <TitleScreen hasSaves={Boolean(session) || game.saves.length > 0} latestSave={game.saves[0]}
         continuation={session ? continuationPreview(session.state) : undefined}
-        onLoadLatest={resume} onNewGame={() => { game.restartSetup(); setScreen('setup'); }} onOpenApi={game.openApiSettings} overlayOpen={game.apiOpen || exitOpen} />
+        onLoadLatest={resume} onNewGame={() => { game.restartSetup(); setScreen('setup'); }} onOpenApi={game.openApiSettings} overlayOpen={game.apiOpen || exitOpen}
+        openingOpen={opening.open} onReplayOpening={opening.replay} />
       <ApiConfigModal open={game.apiOpen} onClose={() => game.setApiOpen(false)} onSave={game.saveApi} />
     </> : screen === 'setup' ? <CharacterSetup portrait onBack={() => setScreen('title')} onStart={start} /> :
       <GameScreen controller={{ ...game, saveCurrentGame: () => { flushDraft(); game.saveCurrentGame(); } }} portrait autoFocusInput={false}

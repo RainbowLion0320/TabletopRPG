@@ -1,0 +1,49 @@
+{
+  "source": "D:\\开场动画",
+  "date": "2026-10-14",
+  "originals": {
+    "竖版-纯音效.mp4": {
+      "bytes": 16373793,
+      "sha256": "dd5bef9487d80349e0d11cbf4b0d02f3b97ec72ac04737b37703c068d3b99221"
+    },
+    "竖版-bgm+音效.mp4": {
+      "bytes": 16398678,
+      "sha256": "ae82ef78cbca0f8fc6e4677a275a1696ebfc19f5c7f5663b4748afa9101c1616"
+    },
+    "横板-纯音效.mp4": {
+      "bytes": 17113312,
+      "sha256": "149d973c25b5ced432388ddf642b1f8ae9ce139fffef90f639b721917793f6df"
+    },
+    "横板-BGM+音效.mp4": {
+      "bytes": 17138214,
+      "sha256": "73b9d83ce9ba96e9281a664e53941a535776bbf1fca56de25b51fa76dd2e11f2"
+    }
+  },
+  "policy": "Original framing, 30fps, BT.709; silent H.264 pictures. Effects from supplied effects version; music derived from aligned mixed-minus-effects decoded tracks, not an original isolated stem.",
+  "files": {
+    "opening-effects.m4a": {
+      "bytes": 230420,
+      "sha256": "1c825098e3b4f78662b9a21a530fd8d0770abb450d889d7f567af82606f70587"
+    },
+    "opening-landscape-poster.webp": {
+      "bytes": 22154,
+      "sha256": "98dee1ee34416c519cc4417e6e7a5044d1aae8f38f16a55d137051c9df5be6c1"
+    },
+    "opening-landscape.mp4": {
+      "bytes": 5259216,
+      "sha256": "bb5a634b36e358898fcd9fc5f0db535a8ff3d17e3c5a10e9d5a6f22059242b7c"
+    },
+    "opening-music.m4a": {
+      "bytes": 362264,
+      "sha256": "86f9c95b2cbc20963c67e1612b4d6998e35a5f09a1cf4f0c9614344072324898"
+    },
+    "opening-portrait-poster.webp": {
+      "bytes": 34968,
+      "sha256": "8ef7fe70db0bd9ed4da1f2105ad16197afaed0ed91f9c967a94346f6fda5c0fb"
+    },
+    "opening-portrait.mp4": {
+      "bytes": 5366551,
+      "sha256": "d9fe0b452849d0f57d0720cf3524bda3dd9cdad99575ecc2b7a68d4243e38dc7"
+    }
+  }
+}

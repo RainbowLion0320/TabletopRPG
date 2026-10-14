@@ -3,6 +3,8 @@ import { AudioDirector } from '../audio/AudioDirector';
 import { ApiConfigModal } from '../components/shared/ApiConfigModal';
 import { CharacterSetup } from '../components/setup/CharacterSetup';
 import { TitleScreen } from '../components/setup/TitleScreen';
+import { OpeningCinematic } from '../components/setup/OpeningCinematic';
+import { useOpeningCinematic } from '../platform/opening';
 import { GameNotice } from '../components/shared/GameNotice';
 import type { Investigator } from '../types/game';
 import { GameScreen } from './GameScreen';
@@ -17,6 +19,7 @@ export function App() {
   const [continuation, setContinuation] = useState<GameContinuation | null>(null);
   const game = useGameController();
   const portrait = usePortraitLayout();
+  const opening = useOpeningCinematic();
 
   function startGame(players: Investigator[]) {
     game.startGame(players);
@@ -31,7 +34,8 @@ export function App() {
 
   return (
     <>
-      <AudioDirector screen={screen} state={game.state} roll={game.diceRoll} />
+      <AudioDirector screen={screen} state={game.state} roll={game.diceRoll} cinematicActive={opening.open} />
+      <OpeningCinematic key={opening.playId} open={opening.open} onFinish={opening.finish} returnFocusRef={opening.returnFocusRef} />
       {screen === 'title' ? <>
         <TitleScreen
           hasSaves={Boolean(continuation) || game.saves.length > 0}
@@ -41,6 +45,7 @@ export function App() {
           onNewGame={() => { game.restartSetup(); setScreen('setup'); }}
           onOpenApi={game.openApiSettings}
           overlayOpen={game.apiOpen}
+          openingOpen={opening.open} onReplayOpening={opening.replay}
         />
         <ApiConfigModal open={game.apiOpen} onClose={() => game.setApiOpen(false)} onSave={game.saveApi} />
         <GameNotice message={game.toast} />

@@ -6,7 +6,7 @@ import type { DiceRollPresentation } from '../../src/app/diceRollAnimation';
 import type { GameState } from '../../src/types/game';
 
 vi.mock('../../src/audio/audio', () => ({ gameAudio: {
-  unlock: vi.fn(), play: vi.fn(), setVisible: vi.fn(), setSoundscape: vi.fn(), setDiceRolling: vi.fn(), dispose: vi.fn(),
+  unlock: vi.fn(), play: vi.fn(), setVisible: vi.fn(), setSoundscape: vi.fn(), setDiceRolling: vi.fn(), setCinematicActive: vi.fn(), dispose: vi.fn(),
 } }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 const state = { currentScene: 'S01', scenarioProgress: { endingId: null } } as GameState;

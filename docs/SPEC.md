@@ -1,8 +1,10 @@
 # TabletopRPG Technical Spec
 
 > Version: v0.7
-> Updated: 2026-10-13
+> Updated: 2026-10-14
 > Scope: current React/Vite implementation
+
+In 0.5.73, `useOpeningCinematic` isolates the first-view preference (`trpg-opening-v1`) through the existing storage adapter. `OpeningCinematic` plays the artist picture with independently synchronized music/effects, suppresses game audio during playback, retains the final frame for a 650ms dissolve, and returns input/focus immediately on exit. A deliberate skip persists the preference; unavailable media does not. Backgrounding pauses the timeline, reduced motion suppresses automatic playback, and an 8s foreground loading guard releases home. Native builds contain only portrait media; web selects composition once per playback. Returning-player regression profiles explicitly seed the preference; actual fresh playback is separately observed in Chrome and the signed APK. See [opening verification](reviews/2026-10-14-opening-cinematic.md).
 
 In 0.5.72, the existing 220ms title fade applies to the whole screen. SaveManager locally continues surviving cards over 170ms after an actual deletion; deletion state and button focus still change immediately. Actual verified scope and evidence are in [screen and save motion verification](reviews/2026-10-13-screen-and-save-motion.md).
 

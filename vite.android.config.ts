@@ -4,7 +4,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { runtimeArtPlugin } from './scripts/runtime-art';
 import { getAndroidAiDefines } from './src/config/androidBuildDefaults';
-import { removeUnusedAndroidGraphWorkers } from './scripts/android-bundle';
+import { removeUnusedAndroidGraphWorkers, removeUnusedAndroidLandscapeOpening } from './scripts/android-bundle';
 
 const root = import.meta.dirname;
 
@@ -18,6 +18,7 @@ export default defineConfig(({ command }) => ({
     generateBundle: { order: 'post', handler(_options, bundle) {
       this.emitFile({ type: 'asset', fileName: 'unsupported.html', source: fs.readFileSync(path.join(root, 'mobile/unsupported.html'), 'utf8') });
       removeUnusedAndroidGraphWorkers(bundle);
+      removeUnusedAndroidLandscapeOpening(bundle);
     } },
   }, react(), runtimeArtPlugin(root)],
   define: { ...getAndroidAiDefines(command, process.env), 'import.meta.env.ANDROID_PUBLIC_NATIVE_BUNDLE': 'true' },

@@ -10,6 +10,7 @@ async function startGameWithApi(page: Page, config: Record<string, string> = {
 }, partySize: 1 | 2 | 3 | 4 = 2) {
   await page.addInitScript(() => {
     window.localStorage.clear();
+    window.localStorage.setItem('trpg-opening-v1', 'seen');
   });
   await page.addInitScript((apiConfig) => {
     window.localStorage.setItem('trpg-api', JSON.stringify(apiConfig));

@@ -106,9 +106,20 @@ public class GameAndroidTest {
         assertEquals("Painted home navigation remains decorative and its original button receives touch", "true", js("(()=>{const e=document.querySelector(" + JSONObject.quote(selector) + "),r=e.getBoundingClientRect();return getComputedStyle(e).pointerEvents==='none'&&e.alt===''&&e.getAttribute('aria-hidden')==='true'&&r.width===20&&r.height===20&&e.closest('button').contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))})()"));
     }
     private void fresh() throws Exception {
-        context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE).edit().clear().commit();
+        SharedPreferences preferences = context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE);
+        String seen = preferences.getString("trpg-opening-v1", null);
+        preferences.edit().clear().commit();
+        // Existing regressions represent returning players; the dedicated opening test
+        // starts with an empty store and observes real first-launch playback separately.
+        if (seen != null) preferences.edit().putString("trpg-opening-v1", seen).commit();
         activity = ActivityScenario.launch(MainActivity.class);
         until("document.querySelector('.title-screen')");
+        if (seen == null) {
+            js("window.qaPresentationReady=false;Capacitor.Plugins.GameStorage.write({key:'trpg-opening-v1',value:'seen'}).then(()=>window.qaPresentationReady=true)");
+            until("window.qaPresentationReady");
+            activity.recreate();
+            until("document.querySelector('.title-screen')&&!document.querySelector('.opening-cinematic')");
+        }
         watchResizeErrors();
     }
     private void watchResizeErrors() throws Exception {
@@ -1216,8 +1227,8 @@ public class GameAndroidTest {
                 reachable(".title-actions .primary-btn");
                 until("Array.from(document.querySelectorAll('.title-mark,.title-actions img')).every(e=>e.complete&&e.naturalWidth>0)");
                 assertEquals("Original artist logo and home buttons decode inside the APK", "true", js("document.querySelector('.title-mark').naturalWidth===674&&Array.from(document.querySelectorAll('.title-actions img')).every(e=>e.naturalWidth===498)"));
-                assertEquals("New players see one compact main action and separate settings", "true", js("document.querySelectorAll('.title-actions button').length===1&&Array.from(document.querySelectorAll('.title-actions button')).every(e=>{const r=e.getBoundingClientRect();return r.width<=240.5&&r.height>=48&&r.height<=64})&&document.querySelectorAll('.title-utilities button').length===2"));
-                reachable(".title-settings"); reachable(".title-audio");
+                assertEquals("New players see one compact main action and lightweight replay/settings", "true", js("document.querySelectorAll('.title-actions button').length===1&&Array.from(document.querySelectorAll('.title-actions button')).every(e=>{const r=e.getBoundingClientRect();return r.width<=240.5&&r.height>=48&&r.height<=64})&&document.querySelectorAll('.title-utilities button').length===3"));
+                reachable(".title-opening"); reachable(".title-settings"); reachable(".title-audio");
                 if (size[0] == 320) {
                     js("window.qaPaintedArtReady=false;window.qaPaintedArtError=false;window.qaPaintedArtDiagnostics='';"
                         + "Promise.all(['panel-frame','icon-frame','dice-panel','portrait-mount','input-frame','heading-rule','control-stud'].map(name=>new Promise((resolve,reject)=>{"
@@ -2350,6 +2361,72 @@ public class GameAndroidTest {
             }
             js("['top','right','bottom','left'].forEach((side,index)=>{const p='--safe-area-inset-'+side,v=window.qaOriginalInsets[index];if(v)document.documentElement.style.setProperty(p,v);else document.documentElement.style.removeProperty(p)})");
         } finally { activity.close(); }
+    }
+
+    @Test public void firstOpeningPlaysNaturallyAndReplayKeepsNativeSettingsAndReturn() throws Exception {
+        context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE).edit().clear().commit();
+        activity = ActivityScenario.launch(MainActivity.class);
+        try {
+            until("document.querySelector('.opening-cinematic video')?.currentTime>.25");
+            viewport(390, 844);
+            watchResizeErrors();
+            js("window.qaOpening={events:[],frames:[],background:[]};(()=>{const q=window.qaOpening,l=document.querySelector('.opening-cinematic'),v=l.querySelector('video');const read=()=>({at:performance.now(),phase:l.dataset.uiPhase,opacity:Number(getComputedStyle(l).opacity),inert:l.inert,role:l.getAttribute('role'),hitDisabled:getComputedStyle(l).pointerEvents==='none',time:v.currentTime,duration:v.duration,width:v.videoWidth,height:v.videoHeight,fit:getComputedStyle(v).objectFit,audio:[...l.querySelectorAll('audio')].map(a=>({time:a.currentTime,volume:a.volume,paused:a.paused}))});v.addEventListener('ended',e=>{q.naturalEnded=e.isTrusted;q.ended=read()});let started=false;const observer=new MutationObserver(()=>{if(l.dataset.uiPhase==='closing'&&!started){started=true;q.closing=read();const sample=()=>{q.frames.push(read());if(l.isConnected)requestAnimationFrame(sample);else{q.removedAt=performance.now();observer.disconnect()}};requestAnimationFrame(sample)}});observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['data-ui-phase']});q.playing=read();})()");
+            assertEquals("The supplied portrait plays uncropped and keeps home unavailable until exit", "true", js("(()=>{const v=document.querySelector('.opening-cinematic video'),r=v.getBoundingClientRect(),s=document.querySelector('.opening-skip').getBoundingClientRect();return v.videoWidth===1080&&v.videoHeight===1920&&v.muted&&v.playsInline&&getComputedStyle(v).objectFit==='contain'&&document.querySelector('.title-screen').inert&&r.width===innerWidth&&r.height===innerHeight&&s.width>=44&&s.height>=44&&document.documentElement.scrollWidth<=innerWidth})()"));
+            reachable(".opening-skip");
+            java.util.Map<String, ?> before = new java.util.HashMap<>(context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE).getAll());
+            screenshot("opening-native-playing");
+            until("window.qaOpening.naturalEnded&&window.qaOpening.removedAt");
+            assertEquals("The real video reaches its end and dissolves while input and focus return immediately", "true", js("(()=>{const q=window.qaOpening,c=q.closing,f=q.frames.filter(x=>x.opacity>0&&x.opacity<1);return q.naturalEnded&&Math.abs(q.ended.duration-14.866667)<.01&&q.ended.time===q.ended.duration&&c.role===null&&c.inert&&c.hitDisabled&&f.length>0&&q.frames.every(x=>x.inert&&x.role===null&&x.audio.every(a=>a.paused))&&q.removedAt-c.at>=600&&q.removedAt-c.at<1500&&!document.querySelector('.title-screen').inert&&document.activeElement===document.querySelector('.title-actions button')})()"));
+            SharedPreferences preferences = context.getSharedPreferences("fog-game-v1", Context.MODE_PRIVATE);
+            js("window.qaOpeningPersisted=false;Capacitor.Plugins.GameStorage.readAll().then(({values})=>window.qaOpeningPersisted=values['trpg-opening-v1']==='seen')");
+            until("window.qaOpeningPersisted");
+            String sealed = preferences.getString("trpg-opening-v1", null);
+            assertNotNull("First-view preference uses the real native store", sealed);
+            assertNotEquals("First-view preference is encrypted", "seen", sealed);
+            assertEquals("Encrypted preference uses the existing authenticated format", 1, Base64.decode(sealed, Base64.NO_WRAP)[0]);
+            java.util.Map<String, ?> after = new java.util.HashMap<>(preferences.getAll());
+            after.remove("trpg-opening-v1");
+            assertEquals("Automatic viewing changes only its first-view preference", before, after);
+            savePanelMotionTrace("opening-native-natural", "({scope:'Real signed APK WebView; natural video ended and compositor frames',native:Capacitor.isNativePlatform(),trace:window.qaOpening})");
+            screenshot("opening-native-title");
+            activity.recreate();
+            until("document.querySelector('button[aria-label=回看开场]')");
+            watchResizeErrors();
+            assertEquals("Subsequent launches open home directly", "false", js("Boolean(document.querySelector('.opening-cinematic'))"));
+            nativeTap("button[aria-label=声音设置]");
+            nativeTap("[aria-label=背景音乐]");
+            nativeTap(".audio-close");
+            nativeTap("button[aria-label=回看开场]");
+            until("document.querySelector('.opening-cinematic video')?.currentTime>1&&document.querySelector('.opening-cinematic audio:last-of-type').currentTime>.5");
+            assertEquals("Music off still allows the supplied sound effects", "true", js("(()=>{const a=[...document.querySelectorAll('.opening-cinematic audio')];return a[0].paused&&a[0].volume===0&&!a[1].paused&&a[1].volume===.55})()"));
+            js("window.qaOpeningPause=null;document.addEventListener('visibilitychange',()=>{if(document.hidden){const v=document.querySelector('.opening-cinematic video');window.qaOpeningPause={time:v.currentTime,paused:v.paused,audio:[...document.querySelectorAll('.opening-cinematic audio')].map(a=>a.paused)}}},{once:true})");
+            activity.moveToState(androidx.lifecycle.Lifecycle.State.CREATED);
+            SystemClock.sleep(350);
+            activity.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED);
+            until("window.qaOpeningPause&&document.querySelector('.opening-cinematic video')&&!document.querySelector('.opening-cinematic video').paused");
+            assertEquals("Real Android backgrounding pauses both picture and sounds and continues their timeline", "true", js("(()=>{const q=window.qaOpeningPause,v=document.querySelector('.opening-cinematic video');return q.paused&&q.audio.every(Boolean)&&v.currentTime>=q.time&&v.currentTime-q.time<1})()"));
+            savePanelMotionTrace("opening-native-effects-and-background", "({scope:'Real Android activity background and resume; effects-only replay',background:window.qaOpeningPause,current:[...document.querySelectorAll('.opening-cinematic video,.opening-cinematic audio')].map(a=>({time:a.currentTime,paused:a.paused,volume:a.volume}))})");
+            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+            until("!document.querySelector('.opening-cinematic')&&document.activeElement===document.querySelector('button[aria-label=回看开场]')");
+            assertEquals("Replay back keeps the encrypted first-view marker", sealed, preferences.getString("trpg-opening-v1", null));
+            nativeTap("button[aria-label=声音设置]");
+            nativeTap("[aria-label=背景音乐]");
+            nativeTap("[aria-label=游戏音效]");
+            nativeTap(".audio-close");
+            nativeTap("button[aria-label=回看开场]");
+            until("document.querySelector('.opening-cinematic video')?.currentTime>.5&&document.querySelector('.opening-cinematic audio:first-of-type').currentTime>.25");
+            assertEquals("Effects off keeps music separately available", "true", js("(()=>{const a=[...document.querySelectorAll('.opening-cinematic audio')];return !a[0].paused&&a[0].volume===.3&&a[1].paused&&a[1].volume===0})()"));
+            js("window.qaOpeningInsets=['bottom','left','right'].map(n=>[n,document.documentElement.style.getPropertyValue('--safe-area-inset-'+n)]);for(const [n,v] of [['bottom','90px'],['left','30px'],['right','24px']])document.documentElement.style.setProperty('--safe-area-inset-'+n,v)");
+            assertEquals("Provided safe insets keep the original skip target inside the playable area", "true", js("(()=>{const r=document.querySelector('.opening-skip').getBoundingClientRect();return r.bottom<=innerHeight-90+.5&&r.left>=30&&r.right<=innerWidth-24+.5&&r.width>=44&&r.height>=44})()"));
+            screenshot("opening-native-music-only");
+            nativeTap(".opening-skip");
+            until("!document.querySelector('.opening-cinematic')");
+            js("for(const [n,v] of window.qaOpeningInsets)document.documentElement.style.setProperty('--safe-area-inset-'+n,v)");
+            nativeTap("button[aria-label=声音设置]");
+            assertEquals("Replay preserves the player's independent channel choices", "true", js("document.querySelector('[aria-label=背景音乐]').getAttribute('aria-checked')==='true'&&document.querySelector('[aria-label=游戏音效]').getAttribute('aria-checked')==='false'"));
+            nativeTap(".audio-close");
+            assertNoResizeErrors();
+        } finally { if (activity != null) activity.close(); }
     }
 
     @Test public void audioStartsOnTouchAndSwitchesPersist() throws Exception {

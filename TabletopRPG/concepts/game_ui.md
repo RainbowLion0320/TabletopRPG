@@ -2,12 +2,14 @@
 type: concept
 title: 共享交互 UI
 tags: [ui, art, mobile, android, web, accessibility]
-sources: [../../docs/UI_SYSTEM.md, ../../assets/ui/artist/README.md, ../../assets/ui/app-icon/README.md, ../../src/styles/game-ui.css, ../../src/styles/motion.css, ../../src/components/game/ActionDock.tsx, ../../src/components/game/useNarrativeReading.ts, ../../design-qa.md]
+sources: [../../assets/cinematics/README.md, ../../docs/UI_SYSTEM.md, ../../assets/ui/artist/README.md, ../../assets/ui/app-icon/README.md, ../../src/styles/game-ui.css, ../../src/styles/motion.css, ../../src/components/game/ActionDock.tsx, ../../src/components/game/useNarrativeReading.ts, ../../design-qa.md]
 created: 2026-09-09
-updated: 2026-10-13
+updated: 2026-10-14
 ---
 
 # 共享交互 UI
+
+0.5.73 接入美术提供的伦敦雨雾开场：首次启动自动播放，片尾叠化到首页；随时跳过，首页小图标回看。完整横竖构图、独立音乐/音效、后台续播、减少动态与载入回退共同适配手机和网页，回看不改变调查或连接。规则、素材与首次标记见 [[concepts/opening_cinematic]]。
 
 0.5.72 完善首页与存档视觉衔接：首页背景与控件一起短淡入，删除记录后幸存卡片平滑补位，操作继续即时响应。见 [首页与存档衔接验收](../../docs/reviews/2026-10-13-screen-and-save-motion.md)。
 
@@ -168,3 +170,4 @@ updated: 2026-10-13
 - [[concepts/tech_stack]]
 - [[entities/character_system]]
 - [[entities/save_system]]
+- [[concepts/opening_cinematic]]

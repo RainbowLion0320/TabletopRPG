@@ -2,12 +2,14 @@
 type: concept
 title: 音乐与音效系统
 tags: [audio, presentation, accessibility]
-sources: [../../docs/PRD.md, ../../docs/SPEC.md, ../../docs/GDD.md, ../../assets/audio/README.md, ../../assets/ui/artist/README.md]
+sources: [../../assets/cinematics/README.md, ../../docs/PRD.md, ../../docs/SPEC.md, ../../docs/GDD.md, ../../assets/audio/README.md, ../../assets/ui/artist/README.md]
 created: 2026-09-09
-updated: 2026-10-10
+updated: 2026-10-14
 ---
 
 # 音乐与音效系统
+
+0.5.73 接入美术提供的伦敦雨雾开场：首次启动自动播放，片尾叠化到首页；随时跳过，首页小图标回看。完整横竖构图、独立音乐/音效、后台续播、减少动态与载入回退共同适配手机和网页，回看不改变调查或连接。规则、素材与首次标记见 [[concepts/opening_cinematic]]。
 
 0.5.26 声音设置入口使用 20/24px 银蓝精绘声音徽记，背景音乐使用 24px 留声机、游戏音效使用 24px 声音徽记，标题复用 24px 调节盘，共十七张采用图。图像放在原图标位，保持真实控件名称、独立音乐/音效开关、音量/百分比/键盘行为、试听、折叠鸣谢、固定关闭与独立内区滚动；原偏好、草稿、后台暂停和声音缓存策略保持。保留中文核心数值与短窗口资料/档案返回，不增加玩家步骤、剧情物件、配置字段或模型限制。 见 [[concepts/game_ui]]。
 
@@ -32,3 +34,4 @@ updated: 2026-10-10
 - [[index]]
 - [[overview]]
 - [[decisions/mvp_scope]]
+- [[concepts/opening_cinematic]]

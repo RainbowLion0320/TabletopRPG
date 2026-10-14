@@ -16,6 +16,10 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     baseURL: `http://127.0.0.1:${port}`,
+    // Existing flow regressions represent returning players. Fresh cinematic playback
+    // is verified independently without this saved presentation preference.
+    storageState: { cookies: [], origins: [{ origin: `http://127.0.0.1:${port}`,
+      localStorage: [{ name: 'trpg-opening-v1', value: 'seen' }] }] },
     trace: 'on-first-retry'
   },
   projects: [

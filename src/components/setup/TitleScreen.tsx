@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { CirclePlay } from 'lucide-react';
 import type { SaveSlot } from '../../types/game';
 import fogVideo from '../../../assets/ui/artist/title-rain.webm';
 import fogPoster from '../../../assets/ui/artist/title-background.webp';
@@ -18,18 +19,21 @@ interface TitleScreenProps {
   latestSave?: SaveSlot;
   continuation?: ReturnType<typeof continuationPreview>;
   overlayOpen?: boolean;
+  openingOpen?: boolean;
+  onReplayOpening?: () => void;
 }
 
-export function TitleScreen({ hasSaves, latestSave, continuation, onLoadLatest, onNewGame, onOpenApi, overlayOpen = false }: TitleScreenProps) {
+export function TitleScreen({ hasSaves, latestSave, continuation, onLoadLatest, onNewGame, onOpenApi, overlayOpen = false,
+  openingOpen = false, onReplayOpening }: TitleScreenProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const primaryRef = useRef<HTMLButtonElement>(null);
   const [audioOpen, setAudioOpen] = useState(false);
-  const covered = overlayOpen || audioOpen;
+  const covered = overlayOpen || audioOpen || openingOpen;
   const preview = continuation ?? (latestSave ? { ...continuationPreview(latestSave.gameState, '最近存档'),
     players: latestSave.players, detail: latestSave.savedAt } : null);
   useLayoutEffect(() => {
-    if (document.activeElement === document.body) primaryRef.current?.focus({ preventScroll: true });
-  }, [hasSaves]);
+    if (!openingOpen && document.activeElement === document.body) primaryRef.current?.focus({ preventScroll: true });
+  }, [hasSaves, openingOpen]);
   useEffect(() => {
     const video = videoRef.current;
     if (!video || typeof window.matchMedia !== 'function') return;
@@ -56,7 +60,7 @@ export function TitleScreen({ hasSaves, latestSave, continuation, onLoadLatest, 
       : <><img src={continueArt} alt="" aria-hidden="true" /><span className="ui-visually-hidden">继续游戏</span></>}
   </button>;
   return (
-    <section className="title-screen">
+    <section className="title-screen" {...(openingOpen ? { inert: '', 'aria-hidden': true } : {})}>
       <div className="title-backdrop" aria-hidden="true">
         <video ref={videoRef} src={fogVideo} poster={fogPoster} muted loop playsInline preload="metadata" disablePictureInPicture />
       </div>
@@ -72,6 +76,8 @@ export function TitleScreen({ hasSaves, latestSave, continuation, onLoadLatest, 
         </div>
       </div>
       <nav className="title-utilities" aria-label="游戏设置">
+        {onReplayOpening && <button type="button" className="icon-text-btn audio-icon-button title-opening" aria-label="回看开场"
+          title="回看开场" data-sound="none" onClick={onReplayOpening}><CirclePlay size={24} aria-hidden="true" /></button>}
         <button type="button" className="icon-text-btn audio-icon-button title-settings" aria-label="AI 设置" title="AI 设置" aria-haspopup="dialog" onClick={onOpenApi}>
           <TuningDialArt size={24} />
         </button>

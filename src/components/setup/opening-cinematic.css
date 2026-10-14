@@ -1,0 +1,14 @@
+.opening-cinematic { position: fixed; inset: 0; z-index: 260; overflow: hidden; background: #05090e; opacity: 1; }
+.opening-cinematic > video { display: block; width: 100%; height: 100%; object-fit: contain; background: #05090e; }
+.opening-cinematic > audio { display: none; }
+.opening-cinematic[data-ui-phase='closing'] { opacity: 0; transition: opacity var(--opening-exit) ease-in-out; }
+.opening-controls { position: absolute; inset: auto max(18px, var(--safe-area-inset-right, env(safe-area-inset-right, 0px))) max(18px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) max(18px, var(--safe-area-inset-left, env(safe-area-inset-left, 0px))); display: flex; align-items: center; gap: 12px; }
+:root.fog-ui .opening-controls > button { min-height: 44px; padding: 0 18px; font-size: 15px; opacity: .85; }
+.opening-skip { order: 2; margin-left: auto; }
+.opening-enable-sound { order: 1; display: inline-flex; align-items: center; gap: 7px; }
+.opening-status { position: absolute; left: 50%; bottom: calc(76px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); transform: translateX(-50%); color: #d8e4ee; font-size: 13px; letter-spacing: .08em; text-shadow: 0 1px 4px #000; }
+.opening-status[hidden] { display: none; }
+.opening-status > span { display: inline-block; width: 1.5em; animation: opening-loading 1.4s ease-in-out infinite; }
+@keyframes opening-loading { 50% { opacity: .25; } }
+:root.fog-ui.ui-motion-paused .opening-status > span { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .opening-cinematic { transition: none !important; } .opening-status > span { animation: none; } }

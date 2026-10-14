@@ -1,8 +1,10 @@
 # TabletopRPG PRD
 
 > Version: v0.9
-> Updated: 2026-10-13
+> Updated: 2026-10-14
 > Product baseline: Vite + React + TypeScript MVP
+
+0.5.73 接入美术提供的伦敦雨雾开场：首次启动自动播放，片尾叠化到首页；随时跳过，首页小图标回看。完整横竖构图、独立音乐/音效、后台续播、减少动态与载入回退共同适配手机和网页，回看不改变调查或连接。见 [开场接入验收](reviews/2026-10-14-opening-cinematic.md)。
 
 0.5.72 完善首页与存档视觉衔接：首页背景与控件一起短淡入，删除记录后幸存卡片平滑补位，操作继续即时响应。见 [首页与存档衔接验收](reviews/2026-10-13-screen-and-save-motion.md)。
 

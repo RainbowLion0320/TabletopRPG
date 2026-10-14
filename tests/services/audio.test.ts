@@ -80,6 +80,23 @@ describe('audio preferences', () => {
 });
 
 describe('audio lifetime and races', () => {
+  it('gives cinematic stems exclusive sound ownership and restores the title without changing preferences', async () => {
+    engine.setSoundscape({ music: 'theme', ambience: 'rain' }); engine.unlock(); await flush();
+    const context = Context.instances[0], original = [...context.sources], settings = engine.getSnapshot();
+    engine.setCinematicActive(true); engine.play('diceLand'); await flush();
+    expect(original.every(source => source.stop.mock.calls.length === 1)).toBe(true);
+    expect(context.gains.slice(0, 2).map(bus => bus.gain.value)).toEqual([0, 0]); expect(context.sources).toHaveLength(2);
+    engine.setCinematicActive(false); await flush();
+    expect(context.sources).toHaveLength(4); expect(context.sources.slice(2).every(source => source.start.mock.calls.length === 1)).toBe(true);
+    expect(engine.getSnapshot()).toBe(settings);
+  });
+  it('cannot start pending title loops under a cinematic that opened during loading', async () => {
+    let release!: () => void; const gate = new Promise<void>(resolve => { release = resolve; });
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => { await gate; return response(url); }));
+    engine.setSoundscape({ music: 'theme', ambience: 'rain' }); engine.unlock(); engine.setCinematicActive(true);
+    release(); await flush(); expect(Context.instances[0].sources).toHaveLength(0);
+    engine.setCinematicActive(false); await flush(); expect(Context.instances[0].sources).toHaveLength(2);
+  });
   it('keeps an unchanged music track when the scene ambience changes in the background', async () => {
     engine.setSoundscape({ music: 'investigation', ambience: 'rain' }); engine.unlock(); await flush();
     const context = Context.instances[0], [music, rain] = context.sources;

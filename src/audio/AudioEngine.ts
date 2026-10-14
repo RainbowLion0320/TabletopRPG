@@ -23,6 +23,7 @@ export class AudioEngine {
   private effectGeneration = 0;
   private lastEffect = new Map<SoundEffect, number>();
   private visible = true;
+  private cinematicActive = false;
   private unlocked = false;
 
   getSnapshot = (): AudioSettings => this.settings;
@@ -83,6 +84,14 @@ export class AudioEngine {
     this.syncLane('dice');
   }
 
+  /** Cinematic stems own the soundscape temporarily; stored channel preferences stay intact. */
+  setCinematicActive(active: boolean): void {
+    this.cinematicActive = active;
+    this.updateVolumes();
+    if (active) this.stopEffects();
+    this.sync();
+  }
+
   setVisible(visible: boolean): void {
     this.visible = visible;
     this.updateVolumes();
@@ -136,12 +145,12 @@ export class AudioEngine {
   private updateVolumes(): void {
     if (!this.context) return;
     // Set zero immediately, including sources fading out from an earlier scene.
-    if (this.musicBus) this.musicBus.gain.value = this.visible && this.settings.musicEnabled ? this.settings.musicVolume : 0;
-    if (this.effectsBus) this.effectsBus.gain.value = this.visible && this.settings.effectsEnabled ? this.settings.effectsVolume : 0;
+    if (this.musicBus) this.musicBus.gain.value = this.visible && !this.cinematicActive && this.settings.musicEnabled ? this.settings.musicVolume : 0;
+    if (this.effectsBus) this.effectsBus.gain.value = this.visible && !this.cinematicActive && this.settings.effectsEnabled ? this.settings.effectsVolume : 0;
   }
 
   private canPlay(lane: Lane): boolean {
-    return this.visible && this.channelEnabled(lane);
+    return this.visible && !this.cinematicActive && this.channelEnabled(lane);
   }
 
   private channelEnabled(lane: Lane): boolean {

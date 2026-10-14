@@ -1,18 +1,20 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { DiceRollPresentation } from '../app/diceRollAnimation';
 import type { GameState } from '../types/game';
 import { gameAudio } from './audio';
 import { getSoundscape } from './catalog';
 
-export function AudioDirector({ screen, state, roll }: {
-  screen: 'title' | 'setup' | 'game'; state: GameState; roll: DiceRollPresentation | null;
+export function AudioDirector({ screen, state, roll, cinematicActive = false }: {
+  screen: 'title' | 'setup' | 'game'; state: GameState; roll: DiceRollPresentation | null; cinematicActive?: boolean;
 }) {
   const previousRoll = useRef<DiceRollPresentation | null>(null);
+  const cinematicRef = useRef(cinematicActive); cinematicRef.current = cinematicActive;
   const soundscape = getSoundscape(screen, state);
+  useLayoutEffect(() => { gameAudio.setCinematicActive(cinematicActive); }, [cinematicActive]);
   useEffect(() => {
     const gesture = (event: Event) => { if (event.isTrusted) gameAudio.unlock(); };
     const click = (event: MouseEvent) => {
-      if (!event.isTrusted || !(event.target instanceof Element)) return;
+      if (cinematicRef.current || !event.isTrusted || !(event.target instanceof Element)) return;
       const target = event.target.closest<HTMLElement>('button, [role="button"]');
       if (!target || target.matches(':disabled, [aria-disabled="true"]') || target.dataset.sound === 'none') return;
       gameAudio.play(target.dataset.sound === 'paper' ? 'paper' : 'click');
