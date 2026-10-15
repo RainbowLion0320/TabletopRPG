@@ -4,6 +4,8 @@
 
 每次修改提示词必须通过 Git commit 记录，保留完整可回溯历史。
 
+2026-10-15 / 0.5.80：MiMo的`COMPACT_NARRATOR_HEAD`合并重复说明，保留自由裁决、三层事实、资源／检定／场景权威、多人独立行动、失败推进、安全和关键词契约。完整动态上下文后置，原工具旁可同次调用`narrate_turn`交付正文；旧工具优先／JSON修复保留，Director继续审核。Pro思考和token预算保持。实现为`src/dm/narrator.ts`与统一client，见[技术契约](../docs/SPEC.md)和[验收](../docs/reviews/2026-10-15-dm-response-speed.md)。
+
 > 当前运行版提示词以内嵌常量形式分布在 `src/dm/` 管线中，主要包括 `src/dm/narrator.ts`、`src/dm/summarizer.ts`、`src/dm/memory/factExtractor.ts` 和 `src/dm/memory/system2Synthesizer.ts`。此目录用于后续外部化、版本化和对比不同提示词方案；新增文件后需要同步代码接入方式和 `docs/SPEC.md`。
 
 ## 文件命名规范

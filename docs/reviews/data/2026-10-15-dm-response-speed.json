@@ -1,0 +1,921 @@
+{
+  "date": "2026-10-15",
+  "baseline": "4232d3de5cd4be5bf4a51d0d0b1783ec595a54c3",
+  "candidateVersion": "0.5.80",
+  "model": "mimo-v2.6-pro",
+  "protocol": "responses",
+  "method": "same computer, official Token Plan, Pro thinking retained; foreground production pipeline live, side jobs isolated with identical empty fixtures",
+  "scope": "2 repeats x 1/2/4 players x dialogue/confirmed-check x baseline/candidate; complete usable validated turn, no tutorial delay; side jobs replaced with same fixtures, no phone/cellular speed claim",
+  "totals": {
+    "baseline": {
+      "samples": 12,
+      "accepted": 12,
+      "meanMs": 28507.583333333332,
+      "medianMs": 28994,
+      "foregroundRequests": 16
+    },
+    "candidate": {
+      "samples": 12,
+      "accepted": 12,
+      "meanMs": 26562.166666666668,
+      "medianMs": 22165.5,
+      "foregroundRequests": 13
+    }
+  },
+  "byPhase": {
+    "dialogue": {
+      "baseline": {
+        "samples": 6,
+        "accepted": 6,
+        "meanMs": 27334.166666666668,
+        "medianMs": 28252,
+        "foregroundRequests": 7
+      },
+      "candidate": {
+        "samples": 6,
+        "accepted": 6,
+        "meanMs": 32488.333333333332,
+        "medianMs": 31816.5,
+        "foregroundRequests": 7
+      }
+    },
+    "confirmed-check": {
+      "baseline": {
+        "samples": 6,
+        "accepted": 6,
+        "meanMs": 29681,
+        "medianMs": 28994,
+        "foregroundRequests": 9
+      },
+      "candidate": {
+        "samples": 6,
+        "accepted": 6,
+        "meanMs": 20636,
+        "medianMs": 20402.5,
+        "foregroundRequests": 6
+      }
+    }
+  },
+  "byPlayers": {
+    "1": {
+      "baseline": {
+        "samples": 4,
+        "accepted": 4,
+        "meanMs": 34267,
+        "medianMs": 33581,
+        "foregroundRequests": 6
+      },
+      "candidate": {
+        "samples": 4,
+        "accepted": 4,
+        "meanMs": 33469,
+        "medianMs": 31044,
+        "foregroundRequests": 5
+      }
+    },
+    "2": {
+      "baseline": {
+        "samples": 4,
+        "accepted": 4,
+        "meanMs": 27021,
+        "medianMs": 28994,
+        "foregroundRequests": 5
+      },
+      "candidate": {
+        "samples": 4,
+        "accepted": 4,
+        "meanMs": 23012.25,
+        "medianMs": 19188.5,
+        "foregroundRequests": 4
+      }
+    },
+    "4": {
+      "baseline": {
+        "samples": 4,
+        "accepted": 4,
+        "meanMs": 24234.75,
+        "medianMs": 25094,
+        "foregroundRequests": 5
+      },
+      "candidate": {
+        "samples": 4,
+        "accepted": 4,
+        "meanMs": 23205.25,
+        "medianMs": 23896,
+        "foregroundRequests": 4
+      }
+    }
+  },
+  "samples": [
+    {
+      "mode": "baseline",
+      "repeat": 0,
+      "players": 1,
+      "phase": "dialogue",
+      "fixtureHash": "3f93d8cced5f4122a10de81213e7a543a6375c39b6d39becbe99228c3e525d0f",
+      "foregroundMs": 30839,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16862,
+          "headersMs": 8158,
+          "firstPacketMs": 8160,
+          "completeMs": 30815,
+          "streaming": false,
+          "usage": {
+            "input_tokens": 4388,
+            "input_tokens_details": {
+              "cached_tokens": 4352
+            },
+            "output_tokens": 594,
+            "output_tokens_details": {
+              "reasoning_tokens": 374
+            },
+            "total_tokens": 4982
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "repeat": 0,
+      "players": 1,
+      "phase": "dialogue",
+      "fixtureHash": "3f93d8cced5f4122a10de81213e7a543a6375c39b6d39becbe99228c3e525d0f",
+      "foregroundMs": 41153,
+      "accepted": true,
+      "foregroundRequests": 2,
+      "requests": [
+        {
+          "inputBytes": 16008,
+          "headersMs": 63,
+          "firstPacketMs": 65,
+          "completeMs": 17943,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4245,
+            "input_tokens_details": {
+              "cached_tokens": 4224
+            },
+            "output_tokens": 408,
+            "output_tokens_details": {
+              "reasoning_tokens": 155
+            },
+            "total_tokens": 4653
+          }
+        },
+        {
+          "inputBytes": 16226,
+          "headersMs": 77,
+          "firstPacketMs": 79,
+          "completeMs": 23207,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4289,
+            "input_tokens_details": {
+              "cached_tokens": 4224
+            },
+            "output_tokens": 369,
+            "output_tokens_details": {
+              "reasoning_tokens": 105
+            },
+            "total_tokens": 4658
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "repeat": 0,
+      "players": 1,
+      "phase": "confirmed-check",
+      "fixtureHash": "0e7a3ff8a4f89d6765f6e36d1e1ec7f1231f94d5ec7f9301c1aa9e0967c60084",
+      "foregroundMs": 20935,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16049,
+          "headersMs": 1285,
+          "firstPacketMs": 1288,
+          "completeMs": 20935,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4269,
+            "input_tokens_details": {
+              "cached_tokens": 4224
+            },
+            "output_tokens": 318,
+            "output_tokens_details": {
+              "reasoning_tokens": 161
+            },
+            "total_tokens": 4587
+          }
+        }
+      ]
+    },
+    {
+      "mode": "baseline",
+      "repeat": 0,
+      "players": 1,
+      "phase": "confirmed-check",
+      "fixtureHash": "0e7a3ff8a4f89d6765f6e36d1e1ec7f1231f94d5ec7f9301c1aa9e0967c60084",
+      "foregroundMs": 34443,
+      "accepted": true,
+      "foregroundRequests": 2,
+      "requests": [
+        {
+          "inputBytes": 16903,
+          "headersMs": 8057,
+          "firstPacketMs": 8057,
+          "completeMs": 19699,
+          "streaming": false,
+          "usage": {
+            "input_tokens": 4412,
+            "input_tokens_details": {
+              "cached_tokens": 4352
+            },
+            "output_tokens": 144,
+            "output_tokens_details": {
+              "reasoning_tokens": 65
+            },
+            "total_tokens": 4556
+          }
+        },
+        {
+          "inputBytes": 14806,
+          "headersMs": 8043,
+          "firstPacketMs": 8044,
+          "completeMs": 14736,
+          "streaming": false,
+          "usage": {
+            "input_tokens": 3596,
+            "input_tokens_details": {
+              "cached_tokens": 3200
+            },
+            "output_tokens": 253,
+            "output_tokens_details": {
+              "reasoning_tokens": 17
+            },
+            "total_tokens": 3849
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "repeat": 0,
+      "players": 2,
+      "phase": "dialogue",
+      "fixtureHash": "435404e3a56cc8791fa5d1d0a910e39e9fb3dcccecc11d4237b9e8598d690012",
+      "foregroundMs": 37931,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16061,
+          "headersMs": 45,
+          "firstPacketMs": 46,
+          "completeMs": 37931,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4268,
+            "input_tokens_details": {
+              "cached_tokens": 4224
+            },
+            "output_tokens": 859,
+            "output_tokens_details": {
+              "reasoning_tokens": 584
+            },
+            "total_tokens": 5127
+          }
+        }
+      ]
+    },
+    {
+      "mode": "baseline",
+      "repeat": 0,
+      "players": 2,
+      "phase": "dialogue",
+      "fixtureHash": "435404e3a56cc8791fa5d1d0a910e39e9fb3dcccecc11d4237b9e8598d690012",
+      "foregroundMs": 19222,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16832,
+          "headersMs": 8058,
+          "firstPacketMs": 8058,
+          "completeMs": 19219,
+          "streaming": false,
+          "usage": {
+            "input_tokens": 4379,
+            "input_tokens_details": {
+              "cached_tokens": 4352
+            },
+            "output_tokens": 630,
+            "output_tokens_details": {
+              "reasoning_tokens": 365
+            },
+            "total_tokens": 5009
+          }
+        }
+      ]
+    },
+    {
+      "mode": "baseline",
+      "repeat": 0,
+      "players": 2,
+      "phase": "confirmed-check",
+      "fixtureHash": "04f76ed4c2c60c3776793d32c897a84798d62bc3db57b76c11c2b68ba60d93e3",
+      "foregroundMs": 27950,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16971,
+          "headersMs": 8058,
+          "firstPacketMs": 8058,
+          "completeMs": 27946,
+          "streaming": false,
+          "usage": {
+            "input_tokens": 4436,
+            "input_tokens_details": {
+              "cached_tokens": 3712
+            },
+            "output_tokens": 524,
+            "output_tokens_details": {
+              "reasoning_tokens": 281
+            },
+            "total_tokens": 4960
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "repeat": 0,
+      "players": 2,
+      "phase": "confirmed-check",
+      "fixtureHash": "04f76ed4c2c60c3776793d32c897a84798d62bc3db57b76c11c2b68ba60d93e3",
+      "foregroundMs": 15741,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16200,
+          "headersMs": 63,
+          "firstPacketMs": 65,
+          "completeMs": 15745,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4325,
+            "input_tokens_details": {
+              "cached_tokens": 4096
+            },
+            "output_tokens": 326,
+            "output_tokens_details": {
+              "reasoning_tokens": 108
+            },
+            "total_tokens": 4651
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "repeat": 0,
+      "players": 4,
+      "phase": "dialogue",
+      "fixtureHash": "81529ba6534dadcf2dfa038c01ec9f8488eea2a5328f1fcdb1a814c9c11746b5",
+      "foregroundMs": 25702,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16837,
+          "headersMs": 49,
+          "firstPacketMs": 54,
+          "completeMs": 25701,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4509,
+            "input_tokens_details": {
+              "cached_tokens": 4480
+            },
+            "output_tokens": 642,
+            "output_tokens_details": {
+              "reasoning_tokens": 284
+            },
+            "total_tokens": 5151
+          }
+        }
+      ]
+    },
+    {
+      "mode": "baseline",
+      "repeat": 0,
+      "players": 4,
+      "phase": "dialogue",
+      "fixtureHash": "81529ba6534dadcf2dfa038c01ec9f8488eea2a5328f1fcdb1a814c9c11746b5",
+      "foregroundMs": 25665,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 17448,
+          "headersMs": 8051,
+          "firstPacketMs": 8052,
+          "completeMs": 25661,
+          "streaming": false,
+          "usage": {
+            "input_tokens": 4560,
+            "input_tokens_details": {
+              "cached_tokens": 3840
+            },
+            "output_tokens": 611,
+            "output_tokens_details": {
+              "reasoning_tokens": 272
+            },
+            "total_tokens": 5171
+          }
+        }
+      ]
+    },
+    {
+      "mode": "baseline",
+      "repeat": 0,
+      "players": 4,
+      "phase": "confirmed-check",
+      "fixtureHash": "ed601a6e66bfd649e7b986551594c5f2368870ba4ad8b0acdf26a6a6a20a2627",
+      "foregroundMs": 21086,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 17780,
+          "headersMs": 8051,
+          "firstPacketMs": 8051,
+          "completeMs": 21083,
+          "streaming": false,
+          "usage": {
+            "input_tokens": 4687,
+            "input_tokens_details": {
+              "cached_tokens": 4352
+            },
+            "output_tokens": 470,
+            "output_tokens_details": {
+              "reasoning_tokens": 116
+            },
+            "total_tokens": 5157
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "repeat": 0,
+      "players": 4,
+      "phase": "confirmed-check",
+      "fixtureHash": "ed601a6e66bfd649e7b986551594c5f2368870ba4ad8b0acdf26a6a6a20a2627",
+      "foregroundMs": 16719,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 17169,
+          "headersMs": 43,
+          "firstPacketMs": 43,
+          "completeMs": 16719,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4636,
+            "input_tokens_details": {
+              "cached_tokens": 4224
+            },
+            "output_tokens": 384,
+            "output_tokens_details": {
+              "reasoning_tokens": 82
+            },
+            "total_tokens": 5020
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "repeat": 1,
+      "players": 1,
+      "phase": "dialogue",
+      "fixtureHash": "3f93d8cced5f4122a10de81213e7a543a6375c39b6d39becbe99228c3e525d0f",
+      "foregroundMs": 51918,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16008,
+          "headersMs": 45,
+          "firstPacketMs": 45,
+          "completeMs": 51916,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4245,
+            "input_tokens_details": {
+              "cached_tokens": 4224
+            },
+            "output_tokens": 1409,
+            "output_tokens_details": {
+              "reasoning_tokens": 1194
+            },
+            "total_tokens": 5654
+          }
+        }
+      ]
+    },
+    {
+      "mode": "baseline",
+      "repeat": 1,
+      "players": 1,
+      "phase": "dialogue",
+      "fixtureHash": "3f93d8cced5f4122a10de81213e7a543a6375c39b6d39becbe99228c3e525d0f",
+      "foregroundMs": 32719,
+      "accepted": true,
+      "foregroundRequests": 2,
+      "requests": [
+        {
+          "inputBytes": 16862,
+          "headersMs": 8038,
+          "firstPacketMs": 8038,
+          "completeMs": 23048,
+          "streaming": false,
+          "usage": {
+            "input_tokens": 4388,
+            "input_tokens_details": {
+              "cached_tokens": 3712
+            },
+            "output_tokens": 437,
+            "output_tokens_details": {
+              "reasoning_tokens": 408
+            },
+            "total_tokens": 4825
+          }
+        },
+        {
+          "inputBytes": 15710,
+          "headersMs": 8053,
+          "firstPacketMs": 8053,
+          "completeMs": 9669,
+          "streaming": false,
+          "usage": {
+            "input_tokens": 3831,
+            "input_tokens_details": {
+              "cached_tokens": 3328
+            },
+            "output_tokens": 232,
+            "output_tokens_details": {
+              "reasoning_tokens": 7
+            },
+            "total_tokens": 4063
+          }
+        }
+      ]
+    },
+    {
+      "mode": "baseline",
+      "repeat": 1,
+      "players": 1,
+      "phase": "confirmed-check",
+      "fixtureHash": "0e7a3ff8a4f89d6765f6e36d1e1ec7f1231f94d5ec7f9301c1aa9e0967c60084",
+      "foregroundMs": 39067,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16903,
+          "headersMs": 8029,
+          "firstPacketMs": 8030,
+          "completeMs": 39065,
+          "streaming": false,
+          "usage": {
+            "input_tokens": 4412,
+            "input_tokens_details": {
+              "cached_tokens": 4224
+            },
+            "output_tokens": 849,
+            "output_tokens_details": {
+              "reasoning_tokens": 628
+            },
+            "total_tokens": 5261
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "repeat": 1,
+      "players": 1,
+      "phase": "confirmed-check",
+      "fixtureHash": "0e7a3ff8a4f89d6765f6e36d1e1ec7f1231f94d5ec7f9301c1aa9e0967c60084",
+      "foregroundMs": 19870,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16049,
+          "headersMs": 39,
+          "firstPacketMs": 43,
+          "completeMs": 19870,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4269,
+            "input_tokens_details": {
+              "cached_tokens": 4096
+            },
+            "output_tokens": 489,
+            "output_tokens_details": {
+              "reasoning_tokens": 210
+            },
+            "total_tokens": 4758
+          }
+        }
+      ]
+    },
+    {
+      "mode": "baseline",
+      "repeat": 1,
+      "players": 2,
+      "phase": "dialogue",
+      "fixtureHash": "435404e3a56cc8791fa5d1d0a910e39e9fb3dcccecc11d4237b9e8598d690012",
+      "foregroundMs": 30874,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16832,
+          "headersMs": 8038,
+          "firstPacketMs": 8038,
+          "completeMs": 30872,
+          "streaming": false,
+          "usage": {
+            "input_tokens": 4379,
+            "input_tokens_details": {
+              "cached_tokens": 4352
+            },
+            "output_tokens": 836,
+            "output_tokens_details": {
+              "reasoning_tokens": 554
+            },
+            "total_tokens": 5215
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "repeat": 1,
+      "players": 2,
+      "phase": "dialogue",
+      "fixtureHash": "435404e3a56cc8791fa5d1d0a910e39e9fb3dcccecc11d4237b9e8598d690012",
+      "foregroundMs": 16136,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16061,
+          "headersMs": 60,
+          "firstPacketMs": 64,
+          "completeMs": 16136,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4268,
+            "input_tokens_details": {
+              "cached_tokens": 4224
+            },
+            "output_tokens": 372,
+            "output_tokens_details": {
+              "reasoning_tokens": 131
+            },
+            "total_tokens": 4640
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "repeat": 1,
+      "players": 2,
+      "phase": "confirmed-check",
+      "fixtureHash": "04f76ed4c2c60c3776793d32c897a84798d62bc3db57b76c11c2b68ba60d93e3",
+      "foregroundMs": 22241,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16200,
+          "headersMs": 59,
+          "firstPacketMs": 61,
+          "completeMs": 22241,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4325,
+            "input_tokens_details": {
+              "cached_tokens": 4224
+            },
+            "output_tokens": 475,
+            "output_tokens_details": {
+              "reasoning_tokens": 185
+            },
+            "total_tokens": 4800
+          }
+        }
+      ]
+    },
+    {
+      "mode": "baseline",
+      "repeat": 1,
+      "players": 2,
+      "phase": "confirmed-check",
+      "fixtureHash": "04f76ed4c2c60c3776793d32c897a84798d62bc3db57b76c11c2b68ba60d93e3",
+      "foregroundMs": 30038,
+      "accepted": true,
+      "foregroundRequests": 2,
+      "requests": [
+        {
+          "inputBytes": 16971,
+          "headersMs": 8046,
+          "firstPacketMs": 8046,
+          "completeMs": 16123,
+          "streaming": false,
+          "usage": {
+            "input_tokens": 4436,
+            "input_tokens_details": {
+              "cached_tokens": 4352
+            },
+            "output_tokens": 338,
+            "output_tokens_details": {
+              "reasoning_tokens": 311
+            },
+            "total_tokens": 4774
+          }
+        },
+        {
+          "inputBytes": 15412,
+          "headersMs": 8058,
+          "firstPacketMs": 8058,
+          "completeMs": 13911,
+          "streaming": false,
+          "usage": {
+            "input_tokens": 3780,
+            "input_tokens_details": {
+              "cached_tokens": 2688
+            },
+            "output_tokens": 344,
+            "output_tokens_details": {
+              "reasoning_tokens": 88
+            },
+            "total_tokens": 4124
+          }
+        }
+      ]
+    },
+    {
+      "mode": "baseline",
+      "repeat": 1,
+      "players": 4,
+      "phase": "dialogue",
+      "fixtureHash": "81529ba6534dadcf2dfa038c01ec9f8488eea2a5328f1fcdb1a814c9c11746b5",
+      "foregroundMs": 24686,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 17448,
+          "headersMs": 8066,
+          "firstPacketMs": 8066,
+          "completeMs": 24683,
+          "streaming": false,
+          "usage": {
+            "input_tokens": 4560,
+            "input_tokens_details": {
+              "cached_tokens": 4480
+            },
+            "output_tokens": 534,
+            "output_tokens_details": {
+              "reasoning_tokens": 219
+            },
+            "total_tokens": 5094
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "repeat": 1,
+      "players": 4,
+      "phase": "dialogue",
+      "fixtureHash": "81529ba6534dadcf2dfa038c01ec9f8488eea2a5328f1fcdb1a814c9c11746b5",
+      "foregroundMs": 22090,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16837,
+          "headersMs": 58,
+          "firstPacketMs": 58,
+          "completeMs": 22092,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4509,
+            "input_tokens_details": {
+              "cached_tokens": 4480
+            },
+            "output_tokens": 523,
+            "output_tokens_details": {
+              "reasoning_tokens": 187
+            },
+            "total_tokens": 5032
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "repeat": 1,
+      "players": 4,
+      "phase": "confirmed-check",
+      "fixtureHash": "ed601a6e66bfd649e7b986551594c5f2368870ba4ad8b0acdf26a6a6a20a2627",
+      "foregroundMs": 28310,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 17169,
+          "headersMs": 43,
+          "firstPacketMs": 44,
+          "completeMs": 28313,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4636,
+            "input_tokens_details": {
+              "cached_tokens": 4608
+            },
+            "output_tokens": 663,
+            "output_tokens_details": {
+              "reasoning_tokens": 334
+            },
+            "total_tokens": 5299
+          }
+        }
+      ]
+    },
+    {
+      "mode": "baseline",
+      "repeat": 1,
+      "players": 4,
+      "phase": "confirmed-check",
+      "fixtureHash": "ed601a6e66bfd649e7b986551594c5f2368870ba4ad8b0acdf26a6a6a20a2627",
+      "foregroundMs": 25502,
+      "accepted": true,
+      "foregroundRequests": 2,
+      "requests": [
+        {
+          "inputBytes": 17780,
+          "headersMs": 8053,
+          "firstPacketMs": 8053,
+          "completeMs": 9636,
+          "streaming": false,
+          "usage": {
+            "input_tokens": 4687,
+            "input_tokens_details": {
+              "cached_tokens": 4352
+            },
+            "output_tokens": 224,
+            "output_tokens_details": {
+              "reasoning_tokens": 163
+            },
+            "total_tokens": 4911
+          }
+        },
+        {
+          "inputBytes": 15821,
+          "headersMs": 8054,
+          "firstPacketMs": 8054,
+          "completeMs": 15864,
+          "streaming": false,
+          "usage": {
+            "input_tokens": 3917,
+            "input_tokens_details": {
+              "cached_tokens": 2816
+            },
+            "output_tokens": 387,
+            "output_tokens_details": {
+              "reasoning_tokens": 13
+            },
+            "total_tokens": 4304
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -180,6 +180,7 @@ export interface DmToolCall {
 // ---------- 管线 IO（Phase 0 占位） ----------
 
 export interface DmTurnInput {
+  onProgress?: (phase: import('./llm/types').LlmProgress) => void;
   /** 完整游戏状态（只读） */
   state: GameState;
   /** 本轮玩家行动声明 */

@@ -42,7 +42,7 @@ function shuffledLines(): string[] {
   return lines;
 }
 
-export function ThinkingIndicator() {
+export function ThinkingIndicator({ phase }: { phase?: import('../../dm/llm/types').LlmProgress } = {}) {
   const [lines] = useState(shuffledLines);
   const [index, setIndex] = useState(0);
   useEffect(() => {
@@ -55,7 +55,7 @@ export function ThinkingIndicator() {
     document.addEventListener('visibilitychange', update);
     return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', update); };
   }, [lines.length]);
-  const text = lines[index];
+  const text = phase === 'receiving' ? '这一幕的回应，正在落笔' : lines[index];
   return (
     <div
       aria-busy="true"

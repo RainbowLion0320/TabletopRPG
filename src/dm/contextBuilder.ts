@@ -77,6 +77,8 @@ export interface DmContextStatic {
 }
 
 export interface DmContextDynamic {
+  /** Exact entities mentioned this turn; same authorized lookup snapshots. */
+  referencedEntities?: string[];
   currentScene: SceneSnapshot;
   reachableScenes: Array<{ id: SceneId; name: string; desc: string }>;
   /** 当前场景在场（已解锁公开面 + 已解锁 secrets + 可选 mind 信息） */

@@ -16,6 +16,17 @@ afterEach(() => {
 });
 
 describe('DmTurnCoordinator', () => {
+  it('gives background memory its own bounded deadline after a slow foreground turn', async () => {
+    vi.useFakeTimers();
+    const coordinator = new DmTurnCoordinator(), task = coordinator.begin(100);
+    await vi.advanceTimersByTimeAsync(90);
+    coordinator.enterBackground(task, 100);
+    await vi.advanceTimersByTimeAsync(90);
+    expect(coordinator.isCurrent(task)).toBe(true);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(task.timedOut).toBe(true);
+    coordinator.finish(task);
+  });
   it('lets later background updates through after a non-cooperating task times out', async () => {
     vi.useFakeTimers();
     const coordinator = new DmTurnCoordinator();

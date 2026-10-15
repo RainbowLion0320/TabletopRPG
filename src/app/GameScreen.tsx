@@ -92,7 +92,7 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
         onClose={() => { controller.setDrawerOpen(false); controller.onboardingPanel('records', 'closed'); }}
         onOpen={() => { setDrawerInitialTab('board'); controller.setDrawerOpen(true); controller.onboardingPanel('records', 'opened'); }}
       />
-      <NarrativePanel state={state} onMarkOpen={handleNarrativeMarkOpen} />
+      <NarrativePanel state={state} thinkingProgress={controller.dmProgress} onMarkOpen={handleNarrativeMarkOpen} />
       <ActionDock
         autoFocusInput={autoFocusInput && !isOnboardingActive(state)}
         portrait={portrait}

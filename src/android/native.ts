@@ -10,6 +10,9 @@ export interface NativeStore {
 export interface NativeHttp {
   request(options: { id: string; url: string; method: string; headers: Record<string, string>; body: string }): Promise<{ status: number; body: string }>;
   cancel(options: { id: string }): Promise<void>;
+  stream?(options: { id: string; url: string; method: string; headers: Record<string, string>; body: string },
+    callback: (value: { status?: number; contentType?: string; chunk?: string; done?: boolean } | null,
+      error?: { message?: string }) => void): Promise<string>;
 }
 const store = registerPlugin<NativeStore>('GameStorage');
 const http = registerPlugin<NativeHttp>('AiTransport');
@@ -60,22 +63,52 @@ export function createNativeTransport(native: NativeHttp): ModelTransport {
     if (signal?.aborted) { reject(signal.reason ?? new DOMException('Aborted', 'AbortError')); return; }
     const id = `${Date.now()}-${++requestSequence}`;
     let settled = false;
+    let streamController: ReadableStreamDefaultController<Uint8Array> | undefined;
+    let headersReceived = false;
+    const cleanup = () => { settled = true; signal?.removeEventListener('abort', abort); };
+    const fail = (error: unknown) => {
+      if (settled) return;
+      if (headersReceived) streamController?.error(error); else reject(error);
+      cleanup();
+    };
     const abort = () => {
       if (settled) return;
-      settled = true;
-      signal?.removeEventListener('abort', abort);
       void native.cancel({ id }).catch(() => undefined);
-      reject(signal?.reason ?? new DOMException('Aborted', 'AbortError'));
+      fail(signal?.reason ?? new DOMException('Aborted', 'AbortError'));
     };
     signal?.addEventListener('abort', abort, { once: true });
     const headers: Record<string, string> = {};
     new Headers(init.headers).forEach((value, key) => { headers[key] = value; });
+    let streaming = false;
+    try { streaming = JSON.parse(typeof init.body === 'string' ? init.body : '{}').stream === true; } catch { /* ordinary request */ }
+    if (streaming && native.stream) {
+      const body = new ReadableStream<Uint8Array>({
+        start: controller => { streamController = controller; },
+        cancel: () => { if (!settled) { cleanup(); void native.cancel({ id }).catch(() => undefined); } }
+      });
+      void native.stream({ id, url, method: init.method ?? 'POST', headers, body: typeof init.body === 'string' ? init.body : '' }, (value, error) => {
+        if (settled) return;
+        if (error) { fail(new Error(error.message ?? '模型响应读取失败')); return; }
+        if (!value) { fail(new Error('模型响应为空')); return; }
+        if (value.status !== undefined && !headersReceived) {
+          headersReceived = true;
+          resolve(new Response([204, 205, 304].includes(value.status) ? null : body,
+            { status: value.status, headers: { 'Content-Type': value.contentType ?? 'application/json' } }));
+        }
+        if (value.chunk && headersReceived) streamController?.enqueue(new TextEncoder().encode(value.chunk));
+        if (value.done) {
+          if (!headersReceived) { fail(new Error('模型响应缺少状态')); return; }
+          streamController?.close(); cleanup();
+        }
+      }).catch(fail);
+      return;
+    }
     void native.request({ id, url, method: init.method ?? 'POST', headers, body: typeof init.body === 'string' ? init.body : '' })
       .then((result) => {
         if (settled) return;
         resolve(new Response([204, 205, 304].includes(result.status) ? null : result.body, { status: result.status }));
-      }).catch((error: unknown) => { if (!settled) reject(error); })
-      .finally(() => { settled = true; signal?.removeEventListener('abort', abort); });
+      }).catch(fail)
+      .finally(cleanup);
   });
 }
 

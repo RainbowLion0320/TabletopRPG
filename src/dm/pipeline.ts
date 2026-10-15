@@ -764,10 +764,28 @@ export async function runDmTurn(
   };
 
   let narrator: Awaited<ReturnType<typeof callNarrator>>;
+  // Prefetch only exact mentions with the same reveal policy as lookup_entity.
+  // Keep lookup available for genuinely missing information and free-form play.
+  const actionText = input.actions.map(action => action.action).join('\n');
+  const references: string[] = [];
+  const addReference = (kind: string, id: string) => {
+    if (references.length >= 4) return;
+    const text = lookupResolver(kind, id);
+    if (text) references.push(text);
+  };
+  for (const [name, npc] of Object.entries(kb.npcs)) {
+    if (!ctx.dynamic.currentScene.public.npcs.includes(name)
+      && [name, ...(npc.public.aliases ?? [])].some(alias => alias.length >= 2 && actionText.includes(alias))) addReference('npc', name);
+  }
+  for (const scene of ctx.dynamic.reachableScenes) if (actionText.includes(scene.name)) addReference('scene', scene.id);
+  for (const clue of input.state.clues) if (!ctx.dynamic.currentScene.public.items.includes(clue.id)
+    && actionText.includes(clue.name)) addReference('item', clue.id);
+  if (references.length) ctx.dynamic.referencedEntities = references;
   const narratorStart = nowMs();
   try {
     narrator = await callNarrator(config, {
       maxAttempts: input.narratorAttempts,
+      onProgress: input.onProgress,
       retryCorrection: input.retryCorrection,
       ctx,
       actions: input.actions,

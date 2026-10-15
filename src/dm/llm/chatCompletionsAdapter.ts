@@ -33,7 +33,8 @@ export async function requestChatCompletionsJson(
   const hasTools = request.useTools !== false && Boolean(request.tools?.length);
   const body: Record<string, unknown> = {
     model: config.model,
-    messages: toChatMessages(mimo ? `${request.instructions}\n返回正文时输出符合以下 schema 的 JSON 对象；需要工具时使用工具通道。\n${JSON.stringify(request.schema)}` : request.instructions, request.input),
+    messages: toChatMessages(mimo ? `${request.instructions}\n返回正文时输出符合以下 schema 的 JSON 对象；需要工具时使用工具通道。\n${JSON.stringify(request.schema)}` : request.instructions,
+      request.context ? [{ role: 'system', content: request.context }, ...request.input] : request.input),
     [mimo ? 'max_completion_tokens' : 'max_tokens']: (request.maxOutputTokens ?? 1024) + (mimo ? 4096 : 0),
     response_format: mimo ? { type: hasTools ? 'text' : 'json_object' } : {
       type: 'json_schema',
@@ -44,6 +45,7 @@ export async function requestChatCompletionsJson(
       }
     }
   };
+  if (mimo && request.label === 'Narrator') { body.stream = true; body.stream_options = { include_usage: true }; }
 
   if (request.useTools !== false && request.tools?.length) {
     body.tools = request.tools;
@@ -60,7 +62,7 @@ export async function requestChatCompletionsJson(
       },
       body: JSON.stringify(body),
       signal: request.signal
-    }, request.label);
+    }, request.label, { protocol: 'chat-completions', observation: request.observation });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (error instanceof AiHttpError && [400, 422].includes(error.status)

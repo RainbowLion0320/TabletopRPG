@@ -1,10 +1,13 @@
 import { AiConnectionError, AiHttpError, AiResponseFormatError } from './errors';
 import { modelFetch } from './transport';
+import { readModelStream } from './stream';
+import type { RequestObservation } from './metrics';
 
 export async function requestJsonResponse<T extends object>(
   url: string,
   init: RequestInit,
-  label: string
+  label: string,
+  options?: { protocol: 'responses' | 'chat-completions'; observation?: RequestObservation }
 ): Promise<T> {
   let response: Response;
   try {
@@ -12,7 +15,15 @@ export async function requestJsonResponse<T extends object>(
   } catch (error) {
     throwConnectionError(error, init.signal);
   }
-  return readJsonResponse<T>(response, label, init.signal);
+  options?.observation?.headers();
+  const data = response.ok && response.headers.get('content-type')?.includes('text/event-stream') && options
+    ? await readModelStream(response, options.protocol, options.observation) as T
+    : await readJsonResponse<T>(response, label, init.signal);
+  const info = data as T & { usage?: unknown; error?: { message?: string } };
+  options?.observation?.usage(info.usage);
+  if (info.error) throw new AiHttpError(response.status, info.error.message);
+  options?.observation?.progress('receiving');
+  return data;
 }
 
 function throwConnectionError(error: unknown, signal?: AbortSignal | null): never {

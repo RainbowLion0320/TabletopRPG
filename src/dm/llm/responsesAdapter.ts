@@ -34,7 +34,7 @@ export async function requestResponsesJson(
   const body: Record<string, unknown> = {
     model: config.model,
     instructions: mimo ? `${request.instructions}\n返回正文时输出符合以下 schema 的 JSON 对象；需要工具时使用工具通道。\n${JSON.stringify(request.schema)}` : request.instructions,
-    input: toResponsesInput(request.input),
+    input: toResponsesInput(request.context ? [{ role: 'system', content: request.context }, ...request.input] : request.input),
     max_output_tokens: (request.maxOutputTokens ?? 1024) + (mimo ? 4096 : 0),
     text: {
       format: mimo ? { type: hasTools ? 'text' : 'json_object' } : {
@@ -47,6 +47,7 @@ export async function requestResponsesJson(
     store: false
   };
   if (mimo) body.reasoning = { effort: 'high' };
+  if (mimo && request.label === 'Narrator') body.stream = true;
 
   if (request.useTools !== false && request.tools?.length) {
     body.tools = toResponsesTools(request.tools);
@@ -61,7 +62,7 @@ export async function requestResponsesJson(
     },
     body: JSON.stringify(body),
     signal: request.signal
-  }, request.label);
+  }, request.label, { protocol: 'responses', observation: request.observation });
   const rawFunctionItems = responseFunctionItems(data);
   return {
     rawText: extractResponsesText(data),

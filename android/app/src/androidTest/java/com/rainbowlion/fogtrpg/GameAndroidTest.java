@@ -1857,6 +1857,51 @@ public class GameAndroidTest {
         } finally { if (activity != null) activity.close(); }
     }
 
+    @Test(timeout = 180000) public void mimoStreamsStayPrivateAndCompleteSingleAndMultiplayerTurns() throws Exception {
+        for (int party : new int[] {1, 2, 4}) {
+            AtomicInteger narratorCalls = new AtomicInteger();
+            AtomicReference<Boolean> streamedRequest = new AtomicReference<>(false);
+            try (MockWebServer server = new MockWebServer()) {
+                server.setDispatcher(new Dispatcher() {
+                    @Override public MockResponse dispatch(RecordedRequest request) {
+                        String body = request.getBody().readUtf8();
+                        if (!body.contains("COC 第七版 AI DM Agent")) return new MockResponse().setHeader("Content-Type", "application/json")
+                            .setBody("{\"output_text\":\"{\\\"facts\\\":[],\\\"nodes\\\":[],\\\"edges\\\":[]}\"}");
+                        narratorCalls.incrementAndGet();
+                        streamedRequest.set(body.contains("\"stream\":true") && body.contains("narrate_turn"));
+                        String turn = "{\"narrative\":\"伊莎贝拉递来温水，调查员们在客厅安静交谈。\",\"activeNpc\":\"伊莎贝拉·摩勒\",\"nextPrompt\":\"\",\"playerChoices\":{},\"keywords\":[]}";
+                        StringBuilder events = new StringBuilder("data: {\"type\":\"response.reasoning_text.delta\",\"delta\":\"PRIVATE_NATIVE_REASONING\"}\n\n")
+                            .append("data: {\"type\":\"response.output_text.delta\",\"output_index\":0,\"content_index\":0,\"delta\":\"尚未审核的片段\"}\n\n");
+                        for (int i = 0; i < 250; i++) events.append(": pending\n\n");
+                        events.append("data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"output\":[{\"type\":\"function_call\",\"call_id\":\"narration1\",\"name\":\"narrate_turn\",\"arguments\":")
+                            .append(JSONObject.quote(turn)).append("}]}}\n\n");
+                        return new MockResponse().setHeader("Content-Type", "text/event-stream")
+                            .setChunkedBody(events.toString(), 128).throttleBody(128, 100, TimeUnit.MILLISECONDS);
+                    }
+                });
+                server.start(); fresh(); viewport(390, 844);
+                configure(server.url("/v1").toString(), "responses");
+                click("AI 设置"); fill("#api-provider", "mimo");
+                js("(()=>{const b=document.querySelector('.api-connection-toggle');if(b?.getAttribute('aria-expanded')!=='true')b.click()})()");
+                fill("#api-protocol", "responses"); fill("#api-endpoint", server.url("/v1").toString());
+                fill("#api-key", "android-qa-only-token"); fill("#api-model", "mimo-v2.6-pro"); click("保存");
+                click("开始游戏");
+                for (int i = 1; i < party; i++) js("document.querySelectorAll('.preset-card-modern strong')[" + i + "].click()");
+                click("进入游戏");
+                for (int i = 0; i < party; i++) { fill(".dock-input", "我坐下来，请她慢慢说，不做推断。"); click(i == party - 1 ? "提交" : "下一位"); }
+                until("document.querySelector('.thinking-line-text')?.textContent.includes('正在落笔')");
+                assertEquals("Partial prose and private thought never enter the story", "false", js("/尚未审核|PRIVATE_NATIVE/.test(document.body.innerText)"));
+                if (party == 1) screenshot("dm-speed-native-streaming-wait");
+                until("document.querySelector('.narrative-scroll').textContent.includes('伊莎贝拉递来温水')&&!document.querySelector('.thinking-line')");
+                assertTrue("Installed APK requested a streamed complete turn", streamedRequest.get());
+                assertEquals("A whole party uses one foreground model request", 1, narratorCalls.get());
+                assertEquals("Every player's action appears once", String.valueOf(party), js("document.querySelectorAll('.story-message.player').length"));
+                assertEquals("No internal format or reasoning reaches the final story", "false", js("/PRIVATE_NATIVE|尚未审核|proposals/.test(document.body.innerText)"));
+                screenshot("dm-speed-native-streaming-party-" + party);
+            } finally { if (activity != null) activity.close(); }
+        }
+    }
+
     @Test public void semanticRecoveryKeepsDiagnosticsPrivateAndConnectsFreeActionDice() throws Exception {
         AtomicInteger calls = new AtomicInteger();
         AtomicInteger retainedCorrections = new AtomicInteger();

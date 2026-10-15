@@ -60,6 +60,16 @@ export class DmTurnCoordinator {
     this.activeTasks.delete(task);
   }
 
+  enterBackground(task: DmSessionTask, timeoutMs: number): void {
+    if (!this.isCurrent(task)) return;
+    if (task.timeoutId !== undefined) clearTimeout(task.timeoutId);
+    // A slow foreground response must not consume the memory worker's budget.
+    task.timeoutId = setTimeout(() => {
+      task.timedOut = true;
+      task.controller.abort(new DOMException('DM background update timed out', 'TimeoutError'));
+    }, timeoutMs);
+  }
+
   invalidate(): void {
     this.generation += 1;
     for (const task of this.activeTasks) {

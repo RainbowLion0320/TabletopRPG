@@ -1,7 +1,8 @@
 import type { OpenAiTool } from '../tools';
+import type { RequestObservation } from './metrics';
 
 export interface LlmTextInputMessage {
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   content: string;
 }
 
@@ -43,16 +44,24 @@ export interface LlmToolCall {
 export interface LlmJsonRequest {
   label: string;
   instructions: string;
+  /** Dynamic authoritative context, kept after the cacheable instructions. */
+  context?: string;
   input: LlmInputItem[];
   schemaName: string;
   schema: Record<string, unknown>;
   maxOutputTokens?: number;
-  tools?: OpenAiTool[];
+  tools?: OpenAiTool<string>[];
   useTools?: boolean;
   /** Defaults to true. Authored turns can fail fast into deterministic narration. */
   retryOnAbort?: boolean;
+  priority?: 'foreground' | 'background';
+  onProgress?: (phase: LlmProgress) => void;
+  /** Populated by the shared client, never serialized into model requests. */
+  observation?: RequestObservation;
   signal?: AbortSignal;
 }
+
+export type LlmProgress = 'connected' | 'reasoning' | 'receiving';
 
 export interface LlmResult {
   rawText: string;

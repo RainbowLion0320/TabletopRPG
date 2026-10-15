@@ -14,10 +14,10 @@ import type { DmToolCall, DmToolName } from './types';
 // ---------- OpenAI function calling schema ----------
 
 /** OpenAI Responses function tool schema. */
-export interface OpenAiTool {
+export interface OpenAiTool<Name extends string = DmToolName> {
   type: 'function';
   function: {
-    name: DmToolName;
+    name: Name;
     description: string;
     parameters: {
       type: 'object';
@@ -30,12 +30,12 @@ export interface OpenAiTool {
 
 export interface OpenAiResponseTool {
   type: 'function';
-  name: DmToolName;
+  name: string;
   description: string;
   parameters: OpenAiTool['function']['parameters'];
 }
 
-export function toResponsesTools(tools: OpenAiTool[]): OpenAiResponseTool[] {
+export function toResponsesTools(tools: OpenAiTool<string>[]): OpenAiResponseTool[] {
   return tools.map((tool) => ({
     type: 'function',
     name: tool.function.name,

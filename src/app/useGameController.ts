@@ -15,6 +15,7 @@ import type { ApiConfig, GameState, Investigator } from '../types/game';
 import { AiProviderConfigError } from '../dm/llm/errors';
 import { runDmTurn } from '../dm/pipeline';
 import type { DmBackgroundUpdate } from '../dm/types';
+import type { LlmProgress } from '../dm/llm/types';
 import { DmTurnCoordinator } from './dmTurnCoordinator';
 import type { DmSessionTask } from './dmTurnCoordinator';
 import { getApiConfigValidationError } from '../config/aiConfig';
@@ -39,6 +40,7 @@ export function useGameController() {
   const [saveManagerOpen, setSaveManagerOpen] = useState(false);
   const [journalOpen, setJournalOpen] = useState(false);
   const [diceRoll, setDiceRoll] = useState<DiceRollPresentation | null>(null);
+  const [dmProgress, setDmProgress] = useState<LlmProgress>('connected');
   const dmCoordinatorRef = useRef(new DmTurnCoordinator());
   const diceRollInFlightRef = useRef(false);
   const foregroundTaskRef = useRef<DmSessionTask | null>(null);
@@ -266,18 +268,21 @@ export function useGameController() {
     const task = coordinator.begin(AI_DM_TIMEOUT_MS);
     foregroundTaskRef.current = task;
     try {
+      setDmProgress('connected');
       dispatch({ type: 'setThinking', value: true });
       // Keep automatic recovery, but cap the fallback to one fresh attempt
       // instead of nesting three full two-attempt Narrator runs.
       let turnResult: Awaited<ReturnType<typeof runDmTurn>>;
       try {
         turnResult = await coordinator.waitFor(task, runDmTurn(config, {
-          state: turnState, actions, signal: task.controller.signal
+          state: turnState, actions, signal: task.controller.signal,
+          onProgress: phase => { if (coordinator.isCurrent(task)) setDmProgress(phase); }
         }));
       } catch (error) {
         if (!(error instanceof AiResponseFormatError) || !coordinator.isCurrent(task)) throw error;
         turnResult = await coordinator.waitFor(task, runDmTurn(config, {
           state: turnState, actions, signal: task.controller.signal, narratorAttempts: 1,
+          onProgress: phase => { if (coordinator.isCurrent(task)) setDmProgress(phase); },
           retryCorrection: error.retryCorrection
         }));
       }
@@ -316,6 +321,7 @@ export function useGameController() {
         dispatch({ type: 'appendEvents', events });
       }
       if (backgroundUpdate) {
+        coordinator.enterBackground(task, AI_DM_TIMEOUT_MS);
         void coordinator.enqueue(
           task,
           backgroundUpdate,
@@ -488,6 +494,7 @@ export function useGameController() {
     continueOnboardingReading,
     deleteSaveSlot: saveSlots.deleteSaveSlot,
     diceRoll,
+    dmProgress,
     drawerOpen,
     handleRoll,
     finishOnboarding,

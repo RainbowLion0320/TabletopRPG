@@ -13,6 +13,7 @@ import { isPlayerVisibleMessage } from '../../services/narrativeVisibility';
 import './narrative-tools.css';
 
 interface NarrativePanelProps {
+  thinkingProgress?: import('../../dm/llm/types').LlmProgress;
   state: GameState;
   onMarkOpen?: (target: NarrativeMarkTarget, sourceText: string) => void;
 }
@@ -107,7 +108,7 @@ const StoryMessage = memo(function StoryMessage({ id, arriving, type, text, play
   && before.keywordsKey === after.keywordsKey && before.markup.signature === after.markup.signature
   && before.onMarkOpen === after.onMarkOpen && before.elementRef === after.elementRef);
 
-export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
+export function NarrativePanel({ onMarkOpen, state, thinkingProgress }: NarrativePanelProps) {
   const ref = useRef<HTMLDivElement>(null);
   const latestMessageRef = useRef<HTMLDivElement>(null);
   const onMarkOpenRef = useRef(onMarkOpen);
@@ -175,7 +176,7 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
             markup={markup} onMarkOpen={openMark} elementRef={index === visibleMessages.length - 1 ? latestMessageRef : undefined} />;
         })}
       </div>
-      {state.isThinking || state.onboarding?.pendingTurn ? <ThinkingIndicator /> : null}
+      {state.isThinking || state.onboarding?.pendingTurn ? <ThinkingIndicator phase={thinkingProgress} /> : null}
     </div>
   );
 }

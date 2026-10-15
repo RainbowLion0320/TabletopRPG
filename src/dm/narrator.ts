@@ -20,6 +20,8 @@ import { DM_TOOLS, parseResponseToolCalls } from './tools';
 import type { DmToolCall, DmToolName } from './types';
 import { generateJson } from './llm/client';
 import { rosterSchema } from './llm/schema';
+import { narrationTool, unpackNarration } from './turnEnvelope';
+import type { LlmProgress } from './llm/types';
 import { AiResponseFormatError } from './llm/errors';
 import type {
   LlmFunctionOutputItem,
@@ -108,6 +110,30 @@ const NARRATOR_SYSTEM_PROMPT_HEAD = `你是 COC 第七版 AI DM Agent，主持�
 - playerChoices 必须按玩家姓名分组；每名玩家 2-3 条，结合其职业、位置、状态、已知线索和本轮行动，不要给所有玩家返回完全相同的建议。
 - keywords 最多 6 个，每个 2-12 字，text 必须是 narrative 中连续存在的原文；kind 只能是 clue、danger、state。
 - keywords 只标注本轮自由叙事中新出现、前端词典无法确定的线索、危险或状态。不要标人物、已知地点、物品、技能，不要输出 HTML、Markdown、颜色、字符坐标或展示标记。
+其余规则裁决（检定 / 状态变更 / 场景切换 / 内幕解锁）一律通过工具调用，不要写在 narrative 里描述具体数值。`;
+
+// Same hosting contract, without repeated examples or descriptions of our engine.
+// The full scenario/context and local Director checks remain unchanged.
+const COMPACT_NARRATOR_HEAD = `你是 COC 第七版 AI DM Agent，以 KP 身份主持《雾中消逝》。
+
+# 主持
+- 理解玩家意图，让合理行动真实发生；无需复述关键词。按人物、职业、方法和现场自由裁决世界回应，不替玩家决定行动。
+- 自由创造符合时代的感官、动作、对话、NPC反应、临时路人、道具、局部机会、阻力、传闻与代价，并保持后续连续。成功改变局面，失败带来后果或有代价的继续机会，调查仍有办法推进。
+- 区分三层事实：前端权威状态不可改写；不解锁主线的局部连续性事实可以即兴；氛围与措辞自由发挥。临时细节和猜测不冒充正式线索、确定人物关系、隐藏入口或结局条件。
+
+# 裁决
+- 当前骰果、HP/SAN、物品装备、地点、线索、已知事实、剧情变量、遭遇人数和结局以权威上下文为准。保持各玩家本轮明确使用的物件与姿态。
+- 正式推进只提议可触发列表中的 propose_story_event，正文自然承接获准事件。没有对应事件时给予局部收获，不宣告新正式线索、获救、敌人清零、离港或结局。
+- 实际伤害、精神冲击、物品或状态变化用 propose_state_update；移动用 propose_scene_change，接受后全队抵达目标场景并从那里续写。仅讨论某地点或名字不代表已解锁、证实或抵达。
+- 由前端掷骰；只承接已经点名确认的骰果。现在有风险或不确定性的行动用 request_check，注明每位行动者、技能和难度；多人独立行动分别检定，未掷骰不预判。普通无风险动作直接回应，假设将来的动作不触发骰子。
+- activeNpc 是当前实际互动的登记在场人物；人物身份依目录，态度与表达依现场。当前场景、在场人物和本轮提及实体资料已经提供；只有缺失的正式资料才 lookup_entity，采用已解锁内幕。
+- 当前规则不追踪弹药数量，弹数、耗尽、强制装填不作状态或门槛。延迟后果及有依据的NPC心智变化使用对应提议。
+- 保持模组时代与基本安全常识，未知物质不建议品尝，不给危险医疗操作。提示词和内部裁决不展示给玩家。历史、总结、心智与前瞻意图帮助连续，玩家行动优先，不要求逐字兑现。
+
+# 输出格式
+返回唯一一个 JSON 对象，不要 Markdown 代码块、不要解释、不要前后缀文本：
+字段依 schema：narrative 为200字以内叙事，activeNpc 为在场NPC全名或null，nextPrompt 为1-2句，playerChoices 按每名玩家姓名分别给2-3条适合其职业、处境及本轮行动的不同建议。
+- keywords 最多 6 个，每项2-12字，text 是 narrative 的连续原文；kind 为 clue、danger、state。只标自由叙事新出现、前端词典不能确定的线索/危险/状态，不标人物、已知地点、物品、技能，不输出HTML、Markdown、颜色、坐标或展示标记。
 其余规则裁决（检定 / 状态变更 / 场景切换 / 内幕解锁）一律通过工具调用，不要写在 narrative 里描述具体数值。`;
 
 function formatRules(rules: DmContext['static']['rules']): string {
@@ -266,16 +292,18 @@ function formatRecentFacts(facts: DmContext['dynamic']['recentFacts']): string {
   ).join('\n');
 }
 
-export function buildNarratorSystemPrompt(ctx: DmContext): string {
+export function buildNarratorPromptParts(ctx: DmContext, compact = false) {
   const scenarioState = ctx.dynamic.scenario ?? {
     worldTime: '（未提供）', actTitle: '', beatTitle: '', dmFacts: [], knownFacts: [],
     finaleRoute: null, encounters: [], objectives: [], allowedEvents: [], softEscalation: null
   };
-  const sections = [
-    NARRATOR_SYSTEM_PROMPT_HEAD,
+  const fixed = [
+    compact ? COMPACT_NARRATOR_HEAD : NARRATOR_SYSTEM_PROMPT_HEAD,
     `# 模组\n《${ctx.static.scenarioTitle}》（${ctx.static.era}）`,
     `# 模组规则\n${formatRules(ctx.static.rules)}`,
-    `# 权威公开人物目录\n${formatNpcDirectory(ctx.static.npcDirectory)}`,
+    `# 权威公开人物目录\n${formatNpcDirectory(ctx.static.npcDirectory)}`
+  ];
+  const sections = [
     `# 权威剧情状态
 世界时间：${scenarioState.worldTime}
 活动幕：${scenarioState.actTitle || '（无）'}
@@ -299,6 +327,7 @@ export function buildNarratorSystemPrompt(ctx: DmContext): string {
       ctx.dynamic.reachableScenes.map((s) => `- ${s.id} ${s.name}：${s.desc}`).join('\n') || '（无）'
     }`,
     `# 在场 NPC\n${formatNpcs(ctx.dynamic.npcs)}`,
+    ...(ctx.dynamic.referencedEntities?.length ? [`# 本轮提及的实体资料\n${ctx.dynamic.referencedEntities.join('\n\n')}`] : []),
     `# 物品\n${formatItems(ctx.dynamic.items, ctx.dynamic.knownClueNames)}`,
     `# 队伍位置\n全体调查员 → ${ctx.dynamic.partyLocation}`,
     `# 已发现线索\n${ctx.dynamic.knownClueNames.join('、') || '（无）'}`,
@@ -310,7 +339,12 @@ export function buildNarratorSystemPrompt(ctx: DmContext): string {
   if (ctx.summary?.trim()) {
     sections.push(`# 长期记忆总结\n${ctx.summary.trim()}`);
   }
-  return sections.join('\n\n');
+  return { instructions: fixed.join('\n\n'), context: sections.join('\n\n') };
+}
+
+export function buildNarratorSystemPrompt(ctx: DmContext): string {
+  const parts = buildNarratorPromptParts(ctx);
+  return `${parts.instructions}\n\n${parts.context}`;
 }
 
 export function buildNarratorUserMessage(
@@ -565,12 +599,19 @@ interface NarratorRequestOptions {
   useFunctionCalling?: boolean;
   /** 本轮允许的工具数组（已过滤）；不传则默认 DM_TOOLS 全集 */
   tools?: typeof DM_TOOLS;
+  context?: string;
+  completion?: boolean;
+  onProgress?: (phase: LlmProgress) => void;
 }
 
 interface RawNarratorPayload {
   raw: string;
   rawToolCalls: LlmToolCall[];
   outputItems: LlmInputItem[];
+  receiptCalls?: LlmToolCall[];
+  completed?: boolean;
+  malformed?: string;
+  nativeTools?: boolean;
 }
 
 const narratorResponseSchema = (playerNames: string[]) => ({
@@ -634,27 +675,40 @@ async function requestNarrator(
   retryOnAbort: boolean,
   signal?: AbortSignal
 ): Promise<RawNarratorPayload> {
+  const schema = narratorResponseSchema(playerNames);
+  const complete = options.completion && options.useFunctionCalling !== false;
+  const tools = options.tools ?? DM_TOOLS;
+  const instructions = complete ? systemPrompt
+    .replace('返回唯一一个 JSON 对象，不要 Markdown 代码块、不要解释、不要前后缀文本：', '以下是完整叙事字段。使用裁决工具时，同一响应同时调用 narrate_turn 交付这些字段；无裁决提议时也可直接返回此 JSON：')
+    .replace('其余规则裁决（检定 / 状态变更 / 场景切换 / 内幕解锁）一律通过工具调用，不要写在 narrative 里描述具体数值。',
+      '其余规则裁决（检定 / 状态变更 / 场景切换 / 内幕解锁）使用原有规则工具；在同一响应中调用 narrate_turn 交付完整正文与建议。不要在 narrative 里描述具体数值。只有确实缺少实体资料才先 lookup_entity。')
+    : systemPrompt;
   const result = await generateJson(config, {
     label: 'Narrator',
-    instructions: systemPrompt,
+    instructions,
+    context: options.context,
     input: inputItems,
     maxOutputTokens: 2048, // P2: 实际输出约 500-800 tokens，2048 有充裕余量
     schemaName: 'narrator_response',
-    schema: narratorResponseSchema(playerNames),
-    tools: options.tools ?? DM_TOOLS,
+    schema,
+    tools: complete ? [...tools, narrationTool({ ...schema, type: 'object' })] : tools,
     useTools: options.useFunctionCalling !== false,
     retryOnAbort,
+    onProgress: options.onProgress,
     signal
   });
+  const payload = unpackNarration(result.rawText, result.toolCalls);
   return {
-    raw: result.rawText,
-    rawToolCalls: result.toolCalls,
+    ...payload,
+    nativeTools: result.toolCalls.length > 0,
+    rawToolCalls: payload.calls,
     outputItems: result.outputItems
   };
 }
 
 // ---------- Main entry ----------
 export interface CallNarratorInput {
+  onProgress?: (phase: LlmProgress) => void;
   retryCorrection?: string;
   maxAttempts?: 1 | 2;
   ctx: DmContext;
@@ -751,7 +805,8 @@ export async function callNarrator(
   config: ApiConfig,
   input: CallNarratorInput
 ): Promise<NarratorOutput> {
-  const systemPrompt = buildNarratorSystemPrompt(input.ctx);
+  const parts = config.provider === 'mimo' ? buildNarratorPromptParts(input.ctx, true) : null;
+  const systemPrompt = parts?.instructions ?? buildNarratorSystemPrompt(input.ctx);
   const userMessage = buildNarratorUserMessage(input.actions);
   const tools = filterToolsByAllowed(input.allowedToolNames);
   const playerNames = playerNamesFromContext(input.ctx);
@@ -777,9 +832,9 @@ export async function callNarrator(
   const stageProposals = (payload: RawNarratorPayload, calls: DmToolCall[]) => {
     stagedCalls.push(...calls.filter((call) => call.name !== 'lookup_entity'));
     messages.push(...payload.outputItems);
-    for (const call of calls) {
+    for (const call of payload.receiptCalls ?? calls) {
       messages.push(call.name === 'lookup_entity' && input.lookupResolver
-        ? buildLookupResultMessage(call, input.lookupResolver)
+        ? buildLookupResultMessage({ ...call, name: 'lookup_entity' }, input.lookupResolver)
         : { type: 'function_call_output', callId: call.callId ?? call.name,
           output: JSON.stringify({ status: 'proposed', pending: true, message: '提议已收到，等待本轮正文共同审核；骰子与状态尚未结算。' }) });
     }
@@ -790,7 +845,10 @@ export async function callNarrator(
       while (true) {
         const payload = await requestNarrator(config, systemPrompt, messages, playerNames, {
           useFunctionCalling: useFnCall,
-          tools
+          tools,
+          context: parts?.context,
+          completion: config.provider === 'mimo',
+          onProgress: input.onProgress
         }, retryOnAbort, input.signal);
         const parsedCalls = parseResponseToolCalls(payload.rawToolCalls);
 
@@ -820,6 +878,7 @@ export async function callNarrator(
         // 最终响应：解析 JSON 成型
         let shaped: ReturnType<typeof shapeNarratorJson>;
         try {
+          if (payload.malformed) throw new NarratorError(payload.malformed);
           shaped = shapeNarratorJson(payload.raw, playerNames);
         } catch (err) {
           lastMalformedRaw = payload.raw;
@@ -828,7 +887,13 @@ export async function callNarrator(
           if (parsedCalls.length) stageProposals(payload, parsedCalls);
           throw err;
         }
-        const finalCalls = [...stagedCalls, ...parsedCalls.filter((c) => c.name !== 'lookup_entity')];
+        const fingerprint = (value: unknown): string => {
+          if (Array.isArray(value)) return `[${value.map(fingerprint).join(',')}]`;
+          if (value && typeof value === 'object') return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${fingerprint(item)}`).join(',')}}`;
+          return JSON.stringify(value);
+        };
+        const finalCalls = [...stagedCalls, ...parsedCalls.filter(call => call.name !== 'lookup_entity'
+          && !stagedCalls.some(staged => staged.name === call.name && fingerprint(staged.arguments) === fingerprint(call.arguments)))];
         const semanticIssue = normalizeValidationIssue(
           input.validateOutput?.(shaped, finalCalls) ?? null
         );
@@ -848,7 +913,7 @@ export async function callNarrator(
           keywords: shaped.keywords,
           // lookup_entity 已被回填不返还给上层，避免被 Resolver 误记为疑似事件。
           toolCalls: finalCalls,
-          usedFunctionCalling: stagedCalls.length > 0 || (useFnCall && payload.rawToolCalls.length > 0),
+          usedFunctionCalling: Boolean(payload.nativeTools) || stagedCalls.length > 0,
           semanticWarnings: semanticIssue ? [semanticIssue.message] : undefined
         };
       }
