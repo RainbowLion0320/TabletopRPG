@@ -409,7 +409,7 @@ public class GameAndroidTest {
         fresh();
         try {
             viewport(390, 844); click("AI 设置"); until("document.querySelector('#api-key')");
-            assertEquals("APK ships the intended model and Token Plan service with a masked credential", "true", js("document.querySelector('#api-provider').value==='mimo'&&document.querySelector('#api-protocol').value==='responses'&&document.querySelector('#api-model').value==='mimo-v2.6-pro'&&document.querySelector('#api-endpoint').value==='https://token-plan-cn.xiaomimimo.com/v1'&&document.querySelector('#api-key').type==='password'&&document.querySelector('#api-key').value.length>0"));
+            assertEquals("APK ships the intended model and Token Plan service with a masked credential", "true", js("document.querySelector('#api-provider').value==='mimo'&&document.querySelector('#api-protocol').value==='responses'&&document.querySelector('#api-model').value==='mimo-v2.6-flash'&&document.querySelector('#api-endpoint').value==='https://token-plan-cn.xiaomimimo.com/v1'&&document.querySelector('#api-key').type==='password'&&document.querySelector('#api-key').value.length>0"));
             js("document.querySelector('.api-config-close').click()");
             click("开始游戏"); click("进入游戏"); until("document.querySelector('.action-dock')");
             assertEquals("First-time player starts directly without an API prompt", "false", js("Boolean(document.querySelector('#api-config-modal-title'))"));
@@ -478,7 +478,7 @@ public class GameAndroidTest {
             InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
             until("!document.querySelector('.api-config-card')");
             click("AI 设置");
-            until("document.querySelector('#api-provider')?.value==='mimo'&&document.querySelector('#api-model')?.value==='mimo-v2.6-pro'");
+            until("document.querySelector('#api-provider')?.value==='mimo'&&document.querySelector('#api-model')?.value==='mimo-v2.6-flash'");
             assertNoResizeErrors();
         } finally {
             info.flags = originalFlags; automation.setServiceInfo(info);
@@ -1400,7 +1400,7 @@ public class GameAndroidTest {
                 click("AI 设置");
                 until("document.querySelector('.api-config-fields')");
                 titlePlayback(true);
-                assertEquals("Bundled MiMo settings are quiet, masked and keep advanced connection fields collapsed", "true", js("!document.querySelector('.api-config-card [role=alert]')&&document.querySelector('#api-provider').value==='mimo'&&document.querySelector('#api-model').value==='mimo-v2.6-pro'&&document.querySelector('#api-key').type==='password'&&!(document.querySelector('.api-connection-toggle').getAttribute('aria-expanded')==='true')"));
+                assertEquals("Bundled MiMo settings are quiet, masked and keep advanced connection fields collapsed", "true", js("!document.querySelector('.api-config-card [role=alert]')&&document.querySelector('#api-provider').value==='mimo'&&document.querySelector('#api-model').value==='mimo-v2.6-flash'&&document.querySelector('#api-key').type==='password'&&!(document.querySelector('.api-connection-toggle').getAttribute('aria-expanded')==='true')"));
                 for (String field : new String[] {"#api-provider", "#api-key", "#api-model", ".api-connection-toggle"}) reachable(field);
                 reachable(".api-config-close");
                 reachable(".api-config-card footer .primary-btn"); screenshot(prefix + "-api");
@@ -1430,7 +1430,7 @@ public class GameAndroidTest {
                         InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
                         until("!document.querySelector('.api-config-card')");
                         click("AI 设置");
-                        until("document.querySelector('#api-provider')?.value==='mimo'&&document.querySelector('#api-model')?.value==='mimo-v2.6-pro'");
+                        until("document.querySelector('#api-provider')?.value==='mimo'&&document.querySelector('#api-model')?.value==='mimo-v2.6-flash'");
                     } finally {
                         info.flags = originalFlags;
                         automation.setServiceInfo(info);
@@ -1868,7 +1868,7 @@ public class GameAndroidTest {
                         if (!body.contains("COC 第七版 AI DM Agent")) return new MockResponse().setHeader("Content-Type", "application/json")
                             .setBody("{\"output_text\":\"{\\\"facts\\\":[],\\\"nodes\\\":[],\\\"edges\\\":[]}\"}");
                         narratorCalls.incrementAndGet();
-                        streamedRequest.set(body.contains("\"stream\":true") && body.contains("narrate_turn"));
+                        streamedRequest.set(body.contains("\"stream\":true") && body.contains("narrate_turn") && body.contains("\"model\":\"mimo-v2.6-flash\""));
                         String turn = "{\"narrative\":\"伊莎贝拉递来温水，调查员们在客厅安静交谈。\",\"activeNpc\":\"伊莎贝拉·摩勒\",\"nextPrompt\":\"\",\"playerChoices\":{},\"keywords\":[]}";
                         StringBuilder events = new StringBuilder("data: {\"type\":\"response.reasoning_text.delta\",\"delta\":\"PRIVATE_NATIVE_REASONING\"}\n\n")
                             .append("data: {\"type\":\"response.output_text.delta\",\"output_index\":0,\"content_index\":0,\"delta\":\"尚未审核的片段\"}\n\n");
@@ -1884,7 +1884,7 @@ public class GameAndroidTest {
                 click("AI 设置"); fill("#api-provider", "mimo");
                 js("(()=>{const b=document.querySelector('.api-connection-toggle');if(b?.getAttribute('aria-expanded')!=='true')b.click()})()");
                 fill("#api-protocol", "responses"); fill("#api-endpoint", server.url("/v1").toString());
-                fill("#api-key", "android-qa-only-token"); fill("#api-model", "mimo-v2.6-pro"); click("保存");
+                fill("#api-key", "android-qa-only-token"); fill("#api-model", "mimo-v2.6-flash"); click("保存");
                 click("开始游戏");
                 for (int i = 1; i < party; i++) js("document.querySelectorAll('.preset-card-modern strong')[" + i + "].click()");
                 click("进入游戏");

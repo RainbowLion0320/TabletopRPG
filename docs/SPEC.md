@@ -4,6 +4,8 @@
 > Updated: 2026-10-15
 > Scope: current React/Vite implementation
 
+0.5.81 将APK构建默认模型改为`mimo-v2.6-flash`。MiMo适配按provider处理，Pro和Flash共用Responses／Chat、思考、原token预算、工具及SSE链路；Narrator和后台维护均使用同一解析配置，不为后台私自指定另一模型。默认连接不写入`trpg-api`，因此无手动覆盖的安装升级自然采用Flash；明确保存的Pro或其他连接继续优先。网页及预览凭证策略不变。真实HTTPS回归发现Activity销毁时连接池evict可能发送TLS close_notify，改为专用后台线程取消及关闭网络，保留主线程StrictMode。见 [Flash验收](reviews/2026-10-15-mimo-flash-default.md)。
+
 0.5.80 MiMo Narrator使用等义压缩的主持契约和稳定instructions/schema，完整动态上下文作为system input后置，近期窗口与长期记忆保持。仅传输正文的`narrate_turn`可与原裁决工具同次返回，解包后仍走Director／StateResolver；旧工具优先响应和真实wire回执修复保留，跨修复重复提议去重。精确提及实体按原授权快照预取至多4项，按需查询继续可用。
 
 统一client前台1槽、后台最多2槽，前台活动时新后台只启动至1槽；相同连接与内容的在途维护共享、订阅者独立取消，无完成结果缓存。后台获独立180秒预算，按原会话／回合顺序落地。两种adapter保留Pro思考及原token预算，Narrator接收SSE并兼容JSON；完整终包即收束，按wire ID保留网关终包遗漏的工具，失败／断流不提交。安卓原生callback分段保留取消与体积限制。仅在内存保留100条不含凭证、地址、正文或思考的耗时／用量／缓存元数据。见 [验证记录](reviews/2026-10-15-dm-response-speed.md)。

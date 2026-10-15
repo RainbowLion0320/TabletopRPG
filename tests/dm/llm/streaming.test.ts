@@ -8,7 +8,7 @@ import { createNativeTransport, type NativeHttp } from '../../../src/android/nat
 import { installModelTransport } from '../../../src/dm/llm/transport';
 import type { ApiConfig } from '../../../src/types/game';
 
-const config: ApiConfig = { provider: 'mimo', protocol: 'responses', model: 'mimo-v2.6-pro', endpoint: 'https://unit.test/v1', apiKey: 'private-test-key' };
+const config: ApiConfig = { provider: 'mimo', protocol: 'responses', model: 'mimo-v2.6-flash', endpoint: 'https://unit.test/v1', apiKey: 'private-test-key' };
 const request = { label: 'Narrator', instructions: 'Return JSON', schemaName: 'test', schema: { type: 'object' }, input: [{ role: 'user' as const, content: '观察' }] };
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; }
 function sse(events: unknown[], step = 7) {

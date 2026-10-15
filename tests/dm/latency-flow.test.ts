@@ -7,7 +7,7 @@ import { classifyIntent } from '../../src/dm/intentClassifier';
 import { makeInvestigator, makeState } from './fixtures';
 import type { ApiConfig } from '../../src/types/game';
 
-const config: ApiConfig = { provider: 'mimo', protocol: 'responses', model: 'mimo-v2.6-pro', endpoint: 'https://unit.test/v1', apiKey: 'tp-test-only' };
+const config: ApiConfig = { provider: 'mimo', protocol: 'responses', model: 'mimo-v2.6-flash', endpoint: 'https://unit.test/v1', apiKey: 'tp-test-only' };
 afterEach(() => vi.unstubAllGlobals());
 describe('one complete turn preserves the original game authority and party freedom', () => {
   it.each([1, 2, 4])('returns all %i players and proposals in one request, without an acknowledgement round', async count => {
@@ -17,6 +17,7 @@ describe('one complete turn preserves the original game authority and party free
     const proposals = players.map(player => ({ name: 'request_check', arguments: { player: player.name, skill: '机械维修', difficulty: '普通', reason: '修理复杂的自备器械' } }));
     const fetchMock = vi.fn(async (_url, init) => {
       const body = JSON.parse(init.body);
+      expect(body.model).toBe('mimo-v2.6-flash');
       expect(body.reasoning).toEqual({ effort: 'high' });
       expect(body.tools.map((tool: { name: string }) => tool.name)).toContain('narrate_turn');
       expect(body.tools.map((tool: { name: string }) => tool.name)).toContain('request_check');

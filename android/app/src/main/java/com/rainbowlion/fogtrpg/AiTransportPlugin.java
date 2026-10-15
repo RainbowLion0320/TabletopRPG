@@ -125,9 +125,13 @@ public class AiTransportPlugin extends Plugin {
         call.resolve();
     }
     @Override protected void handleOnDestroy() {
-        for (Call request : requests.values()) request.cancel();
         requests.clear();
-        client.dispatcher().executorService().shutdown();
-        client.connectionPool().evictAll();
+        // TLS socket close can send close_notify. Android destroys Activities
+        // on the UI thread, so cancel and release sockets on a worker instead.
+        new Thread(() -> {
+            client.dispatcher().cancelAll();
+            try { client.connectionPool().evictAll(); }
+            finally { client.dispatcher().executorService().shutdown(); }
+        }, "fog-ai-http-cleanup").start();
     }
 }

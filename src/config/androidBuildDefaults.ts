@@ -8,7 +8,7 @@ export function getAndroidAiDefines(command: 'build' | 'serve', env: Record<stri
     if (!/^https:\/\/token-plan-(?:cn|sgp|ams)\.xiaomimimo\.com\/v1$/.test(endpoint)) {
       throw new Error('MIMO_TOKEN_PLAN_ENDPOINT must be an official MiMo Token Plan regional base URL.');
     }
-    Object.assign(fields, { PROVIDER: 'mimo', PROTOCOL: 'responses', ENDPOINT: endpoint, API_KEY: apiKey, MODEL: 'mimo-v2.6-pro' });
+    Object.assign(fields, { PROVIDER: 'mimo', PROTOCOL: 'responses', ENDPOINT: endpoint, API_KEY: apiKey, MODEL: 'mimo-v2.6-flash' });
   }
   return Object.fromEntries(Object.entries(fields).map(([key, value]) => [`import.meta.env.VITE_AI_${key}`, JSON.stringify(value)]));
 }

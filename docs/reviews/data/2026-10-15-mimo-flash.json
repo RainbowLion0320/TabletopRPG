@@ -1,0 +1,1139 @@
+{
+  "date": "2026-10-15",
+  "version": "0.5.81",
+  "pipelineCommit": "e8cacfddd0eb99a043eed24390735bd188aa8a04",
+  "models": {
+    "baseline": "mimo-v2.6-pro",
+    "candidate": "mimo-v2.6-flash"
+  },
+  "protocol": "responses",
+  "method": "same current production pipeline, computer, official Token Plan, thinking retained; only model differs; foreground live, side jobs isolated with identical empty fixtures",
+  "scope": "24 live foreground turns plus 12 local authored-check runs. Same production pipeline; only model changes. Side jobs isolated with identical fixtures. Full usable result, not first packet; no cellular-device latency claim.",
+  "totals": {
+    "baseline": {
+      "samples": 12,
+      "accepted": 12,
+      "meanMs": 34316.083333333336,
+      "medianMs": 29424,
+      "requests": 13
+    },
+    "candidate": {
+      "samples": 12,
+      "accepted": 12,
+      "meanMs": 22770.083333333332,
+      "medianMs": 19414.5,
+      "requests": 12
+    }
+  },
+  "byPhase": {
+    "dialogue": {
+      "baseline": {
+        "samples": 6,
+        "accepted": 6,
+        "meanMs": 39990,
+        "medianMs": 33612,
+        "requests": 6
+      },
+      "candidate": {
+        "samples": 6,
+        "accepted": 6,
+        "meanMs": 24036.666666666668,
+        "medianMs": 19414.5,
+        "requests": 6
+      }
+    },
+    "confirmed-check": {
+      "baseline": {
+        "samples": 6,
+        "accepted": 6,
+        "meanMs": 28642.166666666668,
+        "medianMs": 25841,
+        "requests": 7
+      },
+      "candidate": {
+        "samples": 6,
+        "accepted": 6,
+        "meanMs": 21503.5,
+        "medianMs": 19820,
+        "requests": 6
+      }
+    }
+  },
+  "byPlayers": {
+    "1": {
+      "baseline": {
+        "samples": 4,
+        "accepted": 4,
+        "meanMs": 31141.75,
+        "medianMs": 32376,
+        "requests": 4
+      },
+      "candidate": {
+        "samples": 4,
+        "accepted": 4,
+        "meanMs": 26419,
+        "medianMs": 22634.5,
+        "requests": 4
+      }
+    },
+    "2": {
+      "baseline": {
+        "samples": 4,
+        "accepted": 4,
+        "meanMs": 47120,
+        "medianMs": 48428.5,
+        "requests": 5
+      },
+      "candidate": {
+        "samples": 4,
+        "accepted": 4,
+        "meanMs": 18794.75,
+        "medianMs": 18839.5,
+        "requests": 4
+      }
+    },
+    "4": {
+      "baseline": {
+        "samples": 4,
+        "accepted": 4,
+        "meanMs": 24686.5,
+        "medianMs": 24820.5,
+        "requests": 4
+      },
+      "candidate": {
+        "samples": 4,
+        "accepted": 4,
+        "meanMs": 23096.5,
+        "medianMs": 23150.5,
+        "requests": 4
+      }
+    }
+  },
+  "pairs": [
+    {
+      "repeat": 0,
+      "players": 1,
+      "phase": "dialogue",
+      "proMs": 28188,
+      "flashMs": 42999,
+      "proRequests": 1,
+      "flashRequests": 1
+    },
+    {
+      "repeat": 0,
+      "players": 1,
+      "phase": "confirmed-check",
+      "proMs": 19253,
+      "flashMs": 25437,
+      "proRequests": 1,
+      "flashRequests": 1
+    },
+    {
+      "repeat": 0,
+      "players": 2,
+      "phase": "dialogue",
+      "proMs": 67704,
+      "flashMs": 18767,
+      "proRequests": 1,
+      "flashRequests": 1
+    },
+    {
+      "repeat": 0,
+      "players": 2,
+      "phase": "confirmed-check",
+      "proMs": 23919,
+      "flashMs": 18503,
+      "proRequests": 1,
+      "flashRequests": 1
+    },
+    {
+      "repeat": 0,
+      "players": 4,
+      "phase": "dialogue",
+      "proMs": 18445,
+      "flashMs": 25573,
+      "proRequests": 1,
+      "flashRequests": 1
+    },
+    {
+      "repeat": 0,
+      "players": 4,
+      "phase": "confirmed-check",
+      "proMs": 27763,
+      "flashMs": 20728,
+      "proRequests": 1,
+      "flashRequests": 1
+    },
+    {
+      "repeat": 1,
+      "players": 1,
+      "phase": "dialogue",
+      "proMs": 36564,
+      "flashMs": 19832,
+      "proRequests": 1,
+      "flashRequests": 1
+    },
+    {
+      "repeat": 1,
+      "players": 1,
+      "phase": "confirmed-check",
+      "proMs": 40562,
+      "flashMs": 17408,
+      "proRequests": 1,
+      "flashRequests": 1
+    },
+    {
+      "repeat": 1,
+      "players": 2,
+      "phase": "dialogue",
+      "proMs": 58379,
+      "flashMs": 18997,
+      "proRequests": 1,
+      "flashRequests": 1
+    },
+    {
+      "repeat": 1,
+      "players": 2,
+      "phase": "confirmed-check",
+      "proMs": 38478,
+      "flashMs": 18912,
+      "proRequests": 2,
+      "flashRequests": 1
+    },
+    {
+      "repeat": 1,
+      "players": 4,
+      "phase": "dialogue",
+      "proMs": 30660,
+      "flashMs": 18052,
+      "proRequests": 1,
+      "flashRequests": 1
+    },
+    {
+      "repeat": 1,
+      "players": 4,
+      "phase": "confirmed-check",
+      "proMs": 21878,
+      "flashMs": 28033,
+      "proRequests": 1,
+      "flashRequests": 1
+    }
+  ],
+  "flashFasterPairs": 8,
+  "localAuthoredChecks": {
+    "samples": 12,
+    "accepted": 12,
+    "modelRequests": 0,
+    "partySizes": [
+      1,
+      2,
+      4
+    ]
+  },
+  "samples": [
+    {
+      "mode": "baseline",
+      "model": "mimo-v2.6-pro",
+      "repeat": 0,
+      "players": 1,
+      "phase": "dialogue",
+      "fixtureHash": "3f93d8cced5f4122a10de81213e7a543a6375c39b6d39becbe99228c3e525d0f",
+      "foregroundMs": 28188,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16008,
+          "headersMs": 141,
+          "firstPacketMs": 142,
+          "completeMs": 28184,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4245,
+            "input_tokens_details": {
+              "cached_tokens": 4224
+            },
+            "output_tokens": 667,
+            "output_tokens_details": {
+              "reasoning_tokens": 444
+            },
+            "total_tokens": 4912
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "model": "mimo-v2.6-flash",
+      "repeat": 0,
+      "players": 1,
+      "phase": "dialogue",
+      "fixtureHash": "3f93d8cced5f4122a10de81213e7a543a6375c39b6d39becbe99228c3e525d0f",
+      "foregroundMs": 42999,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16010,
+          "headersMs": 38,
+          "firstPacketMs": 40,
+          "completeMs": 42995,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4245,
+            "input_tokens_details": {
+              "cached_tokens": 0
+            },
+            "output_tokens": 736,
+            "output_tokens_details": {
+              "reasoning_tokens": 369
+            },
+            "total_tokens": 4981
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "model": "mimo-v2.6-flash",
+      "repeat": 0,
+      "players": 1,
+      "phase": "request-check",
+      "fixtureHash": "4e2cbd78ec54d35b5fbaf4dcac2dcd950c39a48b3c58f78f605384b9177b5548",
+      "foregroundMs": 1,
+      "accepted": true,
+      "foregroundRequests": 0,
+      "requests": []
+    },
+    {
+      "mode": "baseline",
+      "model": "mimo-v2.6-pro",
+      "repeat": 0,
+      "players": 1,
+      "phase": "request-check",
+      "fixtureHash": "4e2cbd78ec54d35b5fbaf4dcac2dcd950c39a48b3c58f78f605384b9177b5548",
+      "foregroundMs": 0,
+      "accepted": true,
+      "foregroundRequests": 0,
+      "requests": []
+    },
+    {
+      "mode": "baseline",
+      "model": "mimo-v2.6-pro",
+      "repeat": 0,
+      "players": 1,
+      "phase": "confirmed-check",
+      "fixtureHash": "0e7a3ff8a4f89d6765f6e36d1e1ec7f1231f94d5ec7f9301c1aa9e0967c60084",
+      "foregroundMs": 19253,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16049,
+          "headersMs": 41,
+          "firstPacketMs": 41,
+          "completeMs": 19253,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4269,
+            "input_tokens_details": {
+              "cached_tokens": 4096
+            },
+            "output_tokens": 477,
+            "output_tokens_details": {
+              "reasoning_tokens": 289
+            },
+            "total_tokens": 4746
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "model": "mimo-v2.6-flash",
+      "repeat": 0,
+      "players": 1,
+      "phase": "confirmed-check",
+      "fixtureHash": "0e7a3ff8a4f89d6765f6e36d1e1ec7f1231f94d5ec7f9301c1aa9e0967c60084",
+      "foregroundMs": 25437,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16051,
+          "headersMs": 58,
+          "firstPacketMs": 59,
+          "completeMs": 25437,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4269,
+            "input_tokens_details": {
+              "cached_tokens": 4096
+            },
+            "output_tokens": 546,
+            "output_tokens_details": {
+              "reasoning_tokens": 199
+            },
+            "total_tokens": 4815
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "model": "mimo-v2.6-flash",
+      "repeat": 0,
+      "players": 2,
+      "phase": "dialogue",
+      "fixtureHash": "435404e3a56cc8791fa5d1d0a910e39e9fb3dcccecc11d4237b9e8598d690012",
+      "foregroundMs": 18767,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16063,
+          "headersMs": 39,
+          "firstPacketMs": 40,
+          "completeMs": 18766,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4268,
+            "input_tokens_details": {
+              "cached_tokens": 1152
+            },
+            "output_tokens": 384,
+            "output_tokens_details": {
+              "reasoning_tokens": 74
+            },
+            "total_tokens": 4652
+          }
+        }
+      ]
+    },
+    {
+      "mode": "baseline",
+      "model": "mimo-v2.6-pro",
+      "repeat": 0,
+      "players": 2,
+      "phase": "dialogue",
+      "fixtureHash": "435404e3a56cc8791fa5d1d0a910e39e9fb3dcccecc11d4237b9e8598d690012",
+      "foregroundMs": 67704,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16061,
+          "headersMs": 42,
+          "firstPacketMs": 44,
+          "completeMs": 67704,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4268,
+            "input_tokens_details": {
+              "cached_tokens": 4224
+            },
+            "output_tokens": 1725,
+            "output_tokens_details": {
+              "reasoning_tokens": 1460
+            },
+            "total_tokens": 5993
+          }
+        }
+      ]
+    },
+    {
+      "mode": "baseline",
+      "model": "mimo-v2.6-pro",
+      "repeat": 0,
+      "players": 2,
+      "phase": "request-check",
+      "fixtureHash": "580f387d62d9bb8701970b9d5e4063917c45fee686ca7d99e57851681d0f0f34",
+      "foregroundMs": 1,
+      "accepted": true,
+      "foregroundRequests": 0,
+      "requests": []
+    },
+    {
+      "mode": "candidate",
+      "model": "mimo-v2.6-flash",
+      "repeat": 0,
+      "players": 2,
+      "phase": "request-check",
+      "fixtureHash": "580f387d62d9bb8701970b9d5e4063917c45fee686ca7d99e57851681d0f0f34",
+      "foregroundMs": 1,
+      "accepted": true,
+      "foregroundRequests": 0,
+      "requests": []
+    },
+    {
+      "mode": "candidate",
+      "model": "mimo-v2.6-flash",
+      "repeat": 0,
+      "players": 2,
+      "phase": "confirmed-check",
+      "fixtureHash": "04f76ed4c2c60c3776793d32c897a84798d62bc3db57b76c11c2b68ba60d93e3",
+      "foregroundMs": 18503,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16202,
+          "headersMs": 42,
+          "firstPacketMs": 43,
+          "completeMs": 18503,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4325,
+            "input_tokens_details": {
+              "cached_tokens": 4096
+            },
+            "output_tokens": 432,
+            "output_tokens_details": {
+              "reasoning_tokens": 137
+            },
+            "total_tokens": 4757
+          }
+        }
+      ]
+    },
+    {
+      "mode": "baseline",
+      "model": "mimo-v2.6-pro",
+      "repeat": 0,
+      "players": 2,
+      "phase": "confirmed-check",
+      "fixtureHash": "04f76ed4c2c60c3776793d32c897a84798d62bc3db57b76c11c2b68ba60d93e3",
+      "foregroundMs": 23919,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16200,
+          "headersMs": 51,
+          "firstPacketMs": 52,
+          "completeMs": 23920,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4325,
+            "input_tokens_details": {
+              "cached_tokens": 4096
+            },
+            "output_tokens": 602,
+            "output_tokens_details": {
+              "reasoning_tokens": 302
+            },
+            "total_tokens": 4927
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "model": "mimo-v2.6-flash",
+      "repeat": 0,
+      "players": 4,
+      "phase": "dialogue",
+      "fixtureHash": "81529ba6534dadcf2dfa038c01ec9f8488eea2a5328f1fcdb1a814c9c11746b5",
+      "foregroundMs": 25573,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16839,
+          "headersMs": 33,
+          "firstPacketMs": 35,
+          "completeMs": 25571,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4509,
+            "input_tokens_details": {
+              "cached_tokens": 1152
+            },
+            "output_tokens": 632,
+            "output_tokens_details": {
+              "reasoning_tokens": 248
+            },
+            "total_tokens": 5141
+          }
+        }
+      ]
+    },
+    {
+      "mode": "baseline",
+      "model": "mimo-v2.6-pro",
+      "repeat": 0,
+      "players": 4,
+      "phase": "dialogue",
+      "fixtureHash": "81529ba6534dadcf2dfa038c01ec9f8488eea2a5328f1fcdb1a814c9c11746b5",
+      "foregroundMs": 18445,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16837,
+          "headersMs": 41,
+          "firstPacketMs": 41,
+          "completeMs": 18444,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4509,
+            "input_tokens_details": {
+              "cached_tokens": 4480
+            },
+            "output_tokens": 578,
+            "output_tokens_details": {
+              "reasoning_tokens": 109
+            },
+            "total_tokens": 5087
+          }
+        }
+      ]
+    },
+    {
+      "mode": "baseline",
+      "model": "mimo-v2.6-pro",
+      "repeat": 0,
+      "players": 4,
+      "phase": "request-check",
+      "fixtureHash": "b097ebfc8be853754618a57da50c82a303c105a3aed7da74b3bb9bdedd926e1b",
+      "foregroundMs": 1,
+      "accepted": true,
+      "foregroundRequests": 0,
+      "requests": []
+    },
+    {
+      "mode": "candidate",
+      "model": "mimo-v2.6-flash",
+      "repeat": 0,
+      "players": 4,
+      "phase": "request-check",
+      "fixtureHash": "b097ebfc8be853754618a57da50c82a303c105a3aed7da74b3bb9bdedd926e1b",
+      "foregroundMs": 1,
+      "accepted": true,
+      "foregroundRequests": 0,
+      "requests": []
+    },
+    {
+      "mode": "candidate",
+      "model": "mimo-v2.6-flash",
+      "repeat": 0,
+      "players": 4,
+      "phase": "confirmed-check",
+      "fixtureHash": "ed601a6e66bfd649e7b986551594c5f2368870ba4ad8b0acdf26a6a6a20a2627",
+      "foregroundMs": 20728,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 17171,
+          "headersMs": 175,
+          "firstPacketMs": 175,
+          "completeMs": 20730,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4636,
+            "input_tokens_details": {
+              "cached_tokens": 4288
+            },
+            "output_tokens": 466,
+            "output_tokens_details": {
+              "reasoning_tokens": 130
+            },
+            "total_tokens": 5102
+          }
+        }
+      ]
+    },
+    {
+      "mode": "baseline",
+      "model": "mimo-v2.6-pro",
+      "repeat": 0,
+      "players": 4,
+      "phase": "confirmed-check",
+      "fixtureHash": "ed601a6e66bfd649e7b986551594c5f2368870ba4ad8b0acdf26a6a6a20a2627",
+      "foregroundMs": 27763,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 17169,
+          "headersMs": 28,
+          "firstPacketMs": 29,
+          "completeMs": 27763,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4636,
+            "input_tokens_details": {
+              "cached_tokens": 4608
+            },
+            "output_tokens": 583,
+            "output_tokens_details": {
+              "reasoning_tokens": 265
+            },
+            "total_tokens": 5219
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "model": "mimo-v2.6-flash",
+      "repeat": 1,
+      "players": 1,
+      "phase": "dialogue",
+      "fixtureHash": "3f93d8cced5f4122a10de81213e7a543a6375c39b6d39becbe99228c3e525d0f",
+      "foregroundMs": 19832,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16010,
+          "headersMs": 51,
+          "firstPacketMs": 53,
+          "completeMs": 19832,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4245,
+            "input_tokens_details": {
+              "cached_tokens": 4224
+            },
+            "output_tokens": 423,
+            "output_tokens_details": {
+              "reasoning_tokens": 181
+            },
+            "total_tokens": 4668
+          }
+        }
+      ]
+    },
+    {
+      "mode": "baseline",
+      "model": "mimo-v2.6-pro",
+      "repeat": 1,
+      "players": 1,
+      "phase": "dialogue",
+      "fixtureHash": "3f93d8cced5f4122a10de81213e7a543a6375c39b6d39becbe99228c3e525d0f",
+      "foregroundMs": 36564,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16008,
+          "headersMs": 57,
+          "firstPacketMs": 59,
+          "completeMs": 36563,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4245,
+            "input_tokens_details": {
+              "cached_tokens": 4224
+            },
+            "output_tokens": 904,
+            "output_tokens_details": {
+              "reasoning_tokens": 684
+            },
+            "total_tokens": 5149
+          }
+        }
+      ]
+    },
+    {
+      "mode": "baseline",
+      "model": "mimo-v2.6-pro",
+      "repeat": 1,
+      "players": 1,
+      "phase": "request-check",
+      "fixtureHash": "4e2cbd78ec54d35b5fbaf4dcac2dcd950c39a48b3c58f78f605384b9177b5548",
+      "foregroundMs": 0,
+      "accepted": true,
+      "foregroundRequests": 0,
+      "requests": []
+    },
+    {
+      "mode": "candidate",
+      "model": "mimo-v2.6-flash",
+      "repeat": 1,
+      "players": 1,
+      "phase": "request-check",
+      "fixtureHash": "4e2cbd78ec54d35b5fbaf4dcac2dcd950c39a48b3c58f78f605384b9177b5548",
+      "foregroundMs": 0,
+      "accepted": true,
+      "foregroundRequests": 0,
+      "requests": []
+    },
+    {
+      "mode": "candidate",
+      "model": "mimo-v2.6-flash",
+      "repeat": 1,
+      "players": 1,
+      "phase": "confirmed-check",
+      "fixtureHash": "0e7a3ff8a4f89d6765f6e36d1e1ec7f1231f94d5ec7f9301c1aa9e0967c60084",
+      "foregroundMs": 17408,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16051,
+          "headersMs": 56,
+          "firstPacketMs": 58,
+          "completeMs": 17408,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4269,
+            "input_tokens_details": {
+              "cached_tokens": 4224
+            },
+            "output_tokens": 361,
+            "output_tokens_details": {
+              "reasoning_tokens": 110
+            },
+            "total_tokens": 4630
+          }
+        }
+      ]
+    },
+    {
+      "mode": "baseline",
+      "model": "mimo-v2.6-pro",
+      "repeat": 1,
+      "players": 1,
+      "phase": "confirmed-check",
+      "fixtureHash": "0e7a3ff8a4f89d6765f6e36d1e1ec7f1231f94d5ec7f9301c1aa9e0967c60084",
+      "foregroundMs": 40562,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16049,
+          "headersMs": 48,
+          "firstPacketMs": 50,
+          "completeMs": 40562,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4269,
+            "input_tokens_details": {
+              "cached_tokens": 4224
+            },
+            "output_tokens": 987,
+            "output_tokens_details": {
+              "reasoning_tokens": 803
+            },
+            "total_tokens": 5256
+          }
+        }
+      ]
+    },
+    {
+      "mode": "baseline",
+      "model": "mimo-v2.6-pro",
+      "repeat": 1,
+      "players": 2,
+      "phase": "dialogue",
+      "fixtureHash": "435404e3a56cc8791fa5d1d0a910e39e9fb3dcccecc11d4237b9e8598d690012",
+      "foregroundMs": 58379,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16061,
+          "headersMs": 41,
+          "firstPacketMs": 43,
+          "completeMs": 58379,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4268,
+            "input_tokens_details": {
+              "cached_tokens": 4224
+            },
+            "output_tokens": 1442,
+            "output_tokens_details": {
+              "reasoning_tokens": 1149
+            },
+            "total_tokens": 5710
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "model": "mimo-v2.6-flash",
+      "repeat": 1,
+      "players": 2,
+      "phase": "dialogue",
+      "fixtureHash": "435404e3a56cc8791fa5d1d0a910e39e9fb3dcccecc11d4237b9e8598d690012",
+      "foregroundMs": 18997,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16063,
+          "headersMs": 58,
+          "firstPacketMs": 59,
+          "completeMs": 18997,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4268,
+            "input_tokens_details": {
+              "cached_tokens": 4224
+            },
+            "output_tokens": 448,
+            "output_tokens_details": {
+              "reasoning_tokens": 113
+            },
+            "total_tokens": 4716
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "model": "mimo-v2.6-flash",
+      "repeat": 1,
+      "players": 2,
+      "phase": "request-check",
+      "fixtureHash": "580f387d62d9bb8701970b9d5e4063917c45fee686ca7d99e57851681d0f0f34",
+      "foregroundMs": 1,
+      "accepted": true,
+      "foregroundRequests": 0,
+      "requests": []
+    },
+    {
+      "mode": "baseline",
+      "model": "mimo-v2.6-pro",
+      "repeat": 1,
+      "players": 2,
+      "phase": "request-check",
+      "fixtureHash": "580f387d62d9bb8701970b9d5e4063917c45fee686ca7d99e57851681d0f0f34",
+      "foregroundMs": 0,
+      "accepted": true,
+      "foregroundRequests": 0,
+      "requests": []
+    },
+    {
+      "mode": "baseline",
+      "model": "mimo-v2.6-pro",
+      "repeat": 1,
+      "players": 2,
+      "phase": "confirmed-check",
+      "fixtureHash": "04f76ed4c2c60c3776793d32c897a84798d62bc3db57b76c11c2b68ba60d93e3",
+      "foregroundMs": 38478,
+      "accepted": true,
+      "foregroundRequests": 2,
+      "requests": [
+        {
+          "inputBytes": 16200,
+          "headersMs": 38,
+          "firstPacketMs": 39,
+          "completeMs": 22907,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4325,
+            "input_tokens_details": {
+              "cached_tokens": 4096
+            },
+            "output_tokens": 557,
+            "output_tokens_details": {
+              "reasoning_tokens": 268
+            },
+            "total_tokens": 4882
+          }
+        },
+        {
+          "inputBytes": 16418,
+          "headersMs": 97,
+          "firstPacketMs": 98,
+          "completeMs": 15572,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4369,
+            "input_tokens_details": {
+              "cached_tokens": 4224
+            },
+            "output_tokens": 406,
+            "output_tokens_details": {
+              "reasoning_tokens": 32
+            },
+            "total_tokens": 4775
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "model": "mimo-v2.6-flash",
+      "repeat": 1,
+      "players": 2,
+      "phase": "confirmed-check",
+      "fixtureHash": "04f76ed4c2c60c3776793d32c897a84798d62bc3db57b76c11c2b68ba60d93e3",
+      "foregroundMs": 18912,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16202,
+          "headersMs": 79,
+          "firstPacketMs": 81,
+          "completeMs": 18912,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4325,
+            "input_tokens_details": {
+              "cached_tokens": 4288
+            },
+            "output_tokens": 468,
+            "output_tokens_details": {
+              "reasoning_tokens": 107
+            },
+            "total_tokens": 4793
+          }
+        }
+      ]
+    },
+    {
+      "mode": "baseline",
+      "model": "mimo-v2.6-pro",
+      "repeat": 1,
+      "players": 4,
+      "phase": "dialogue",
+      "fixtureHash": "81529ba6534dadcf2dfa038c01ec9f8488eea2a5328f1fcdb1a814c9c11746b5",
+      "foregroundMs": 30660,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16837,
+          "headersMs": 127,
+          "firstPacketMs": 129,
+          "completeMs": 30659,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4509,
+            "input_tokens_details": {
+              "cached_tokens": 4480
+            },
+            "output_tokens": 856,
+            "output_tokens_details": {
+              "reasoning_tokens": 513
+            },
+            "total_tokens": 5365
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "model": "mimo-v2.6-flash",
+      "repeat": 1,
+      "players": 4,
+      "phase": "dialogue",
+      "fixtureHash": "81529ba6534dadcf2dfa038c01ec9f8488eea2a5328f1fcdb1a814c9c11746b5",
+      "foregroundMs": 18052,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 16839,
+          "headersMs": 48,
+          "firstPacketMs": 50,
+          "completeMs": 18052,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4509,
+            "input_tokens_details": {
+              "cached_tokens": 4480
+            },
+            "output_tokens": 453,
+            "output_tokens_details": {
+              "reasoning_tokens": 85
+            },
+            "total_tokens": 4962
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "model": "mimo-v2.6-flash",
+      "repeat": 1,
+      "players": 4,
+      "phase": "request-check",
+      "fixtureHash": "b097ebfc8be853754618a57da50c82a303c105a3aed7da74b3bb9bdedd926e1b",
+      "foregroundMs": 1,
+      "accepted": true,
+      "foregroundRequests": 0,
+      "requests": []
+    },
+    {
+      "mode": "baseline",
+      "model": "mimo-v2.6-pro",
+      "repeat": 1,
+      "players": 4,
+      "phase": "request-check",
+      "fixtureHash": "b097ebfc8be853754618a57da50c82a303c105a3aed7da74b3bb9bdedd926e1b",
+      "foregroundMs": 1,
+      "accepted": true,
+      "foregroundRequests": 0,
+      "requests": []
+    },
+    {
+      "mode": "baseline",
+      "model": "mimo-v2.6-pro",
+      "repeat": 1,
+      "players": 4,
+      "phase": "confirmed-check",
+      "fixtureHash": "ed601a6e66bfd649e7b986551594c5f2368870ba4ad8b0acdf26a6a6a20a2627",
+      "foregroundMs": 21878,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 17169,
+          "headersMs": 40,
+          "firstPacketMs": 42,
+          "completeMs": 21878,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4636,
+            "input_tokens_details": {
+              "cached_tokens": 4608
+            },
+            "output_tokens": 537,
+            "output_tokens_details": {
+              "reasoning_tokens": 203
+            },
+            "total_tokens": 5173
+          }
+        }
+      ]
+    },
+    {
+      "mode": "candidate",
+      "model": "mimo-v2.6-flash",
+      "repeat": 1,
+      "players": 4,
+      "phase": "confirmed-check",
+      "fixtureHash": "ed601a6e66bfd649e7b986551594c5f2368870ba4ad8b0acdf26a6a6a20a2627",
+      "foregroundMs": 28033,
+      "accepted": true,
+      "foregroundRequests": 1,
+      "requests": [
+        {
+          "inputBytes": 17171,
+          "headersMs": 55,
+          "firstPacketMs": 55,
+          "completeMs": 28033,
+          "streaming": true,
+          "usage": {
+            "input_tokens": 4636,
+            "input_tokens_details": {},
+            "output_tokens": 762,
+            "output_tokens_details": {
+              "reasoning_tokens": 386
+            },
+            "total_tokens": 5398
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -10,7 +10,8 @@ const tool = { type: 'function_call', id: 'fc_1', call_id: 'call_1', name: 'requ
 const reply = (body: object) => new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
 afterEach(() => vi.unstubAllGlobals());
 
-describe('MiMo structured output and tool continuation', () => {
+describe.each(['mimo-v2.6-pro', 'mimo-v2.6-flash'])('MiMo %s structured output and tool continuation', model => {
+  const selected = { ...config, model };
   it('permits tool calls, preserves opaque reasoning and uses JSON mode for the final prose', async () => {
     const bodies: Record<string, any>[] = [];
     vi.stubGlobal('fetch', vi.fn(async (_url, init) => {
@@ -18,14 +19,15 @@ describe('MiMo structured output and tool continuation', () => {
       return reply(bodies.length === 1 ? { status: 'completed', output: [reasoning, tool] }
         : { status: 'completed', output: [reasoning, { type: 'message', content: [{ type: 'output_text', text: '{"narrative":"门廊里很安静。"}' }] }] });
     }));
-    const first = await generateJson(config, { ...request, tools: [DM_TOOLS[0]] });
+    const first = await generateJson(selected, { ...request, tools: [DM_TOOLS[0]] });
+    expect(bodies[0].model).toBe(model);
     expect(first.rawText).toBe('');
     expect(first.toolCalls).toHaveLength(1);
     expect(bodies[0].text.format).toEqual({ type: 'text' });
     expect(bodies[0].reasoning).toEqual({ effort: 'high' });
     expect(bodies[0].max_output_tokens).toBe(4224);
     expect(bodies[0].instructions).toContain(JSON.stringify(request.schema));
-    const final = await generateJson(config, { ...request, input: [...request.input, ...first.outputItems, { type: 'function_call_output', callId: 'call_1', output: '{"pending":true}' }], useTools: false });
+    const final = await generateJson(selected, { ...request, input: [...request.input, ...first.outputItems, { type: 'function_call_output', callId: 'call_1', output: '{"pending":true}' }], useTools: false });
     expect(bodies[1].text.format).toEqual({ type: 'json_object' });
     expect(bodies[1].tools).toBeUndefined();
     expect(bodies[1].input).toContainEqual(reasoning);
@@ -41,8 +43,9 @@ describe('MiMo structured output and tool continuation', () => {
         ? { content: null, reasoning_content: 'Private model reasoning.', tool_calls: [{ id: 'call_1', type: 'function', function: { name: tool.name, arguments: tool.arguments } }] }
         : { content: '{"narrative":"门廊里很安静。"}' } }] });
     }));
-    const chat = { ...config, protocol: 'chat-completions' as const };
+    const chat = { ...selected, protocol: 'chat-completions' as const };
     const first = await generateJson(chat, { ...request, tools: [DM_TOOLS[0]] });
+    expect(bodies[0].model).toBe(model);
     await generateJson(chat, { ...request, input: [...request.input, ...first.outputItems, { type: 'function_call_output', callId: 'call_1', output: '{"pending":true}' }], useTools: false });
     expect(bodies[0].response_format).toEqual({ type: 'text' });
     expect(bodies[0].max_completion_tokens).toBe(4224);

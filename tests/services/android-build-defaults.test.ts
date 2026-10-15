@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { getAndroidAiDefines } from '../../src/config/androidBuildDefaults';
 
 describe('APK-only MiMo defaults', () => {
-  it('uses the Token Plan endpoint and latest Pro while ignoring web defaults', () => {
+  it('uses the Token Plan endpoint and Flash while ignoring web defaults', () => {
     const defines = getAndroidAiDefines('build', { APIKEY_MIMO: 'tp-test-only', VITE_AI_API_KEY: 'unrelated-web-key' });
     expect(JSON.parse(defines['import.meta.env.VITE_AI_PROVIDER'])).toBe('mimo');
     expect(JSON.parse(defines['import.meta.env.VITE_AI_PROTOCOL'])).toBe('responses');
     expect(JSON.parse(defines['import.meta.env.VITE_AI_ENDPOINT'])).toBe('https://token-plan-cn.xiaomimimo.com/v1');
-    expect(JSON.parse(defines['import.meta.env.VITE_AI_MODEL'])).toBe('mimo-v2.6-pro');
+    expect(JSON.parse(defines['import.meta.env.VITE_AI_MODEL'])).toBe('mimo-v2.6-flash');
     expect(JSON.parse(defines['import.meta.env.VITE_AI_API_KEY'])).toBe('tp-test-only');
   });
   it('never carries a real shell key into development previews or keyless builds', () => {

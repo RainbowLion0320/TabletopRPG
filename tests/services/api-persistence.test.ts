@@ -60,7 +60,7 @@ describe('API connection persistence failure', () => {
 
   it('removes a failed first override so bundled defaults still apply after storage recovers', async () => {
     vi.stubEnv('DEV', false); const fetch = vi.fn(); vi.stubGlobal('fetch', fetch); vi.stubEnv('VITE_AI_PROVIDER', 'mimo'); vi.stubEnv('VITE_AI_PROTOCOL', 'responses');
-    vi.stubEnv('VITE_AI_ENDPOINT', 'https://bundled.example.invalid/v1'); vi.stubEnv('VITE_AI_MODEL', 'mimo-v2.6-pro'); vi.stubEnv('VITE_AI_API_KEY', 'bundled-qa-only');
+    vi.stubEnv('VITE_AI_ENDPOINT', 'https://bundled.example.invalid/v1'); vi.stubEnv('VITE_AI_MODEL', 'mimo-v2.6-flash'); vi.stubEnv('VITE_AI_API_KEY', 'bundled-qa-only');
     const bundled = getEnvDefaultApiConfig(), { cache, disk, recover } = nativeFixture({ 'trpg-other': 'unchanged' });
     await expect(persistApiConfig(connectionB)).rejects.toThrow('保存失败');
     const immediateConfig = readApiConfig(), immediateRaw = cache.getItem(API_KEY);
