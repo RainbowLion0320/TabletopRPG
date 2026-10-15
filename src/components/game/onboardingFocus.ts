@@ -1,6 +1,6 @@
-import { useLayoutEffect, useState, type RefObject } from 'react';
+import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
 
-export interface FocusTarget { element: HTMLElement; text: string }
+export interface FocusTarget { element: HTMLElement; text: string; reading?: boolean }
 export interface CueRect { x: number; y: number; width: number; height: number }
 interface CueBounds extends CueRect { right: number; bottom: number }
 const clamp = (value: number, low: number, high: number) => Math.max(low, Math.min(high, value));
@@ -17,6 +17,7 @@ export function positionOnboardingBubble(target: CueRect, viewport: CueBounds, s
 }
 
 export function useOnboardingFocus(resolve: () => FocusTarget | null, bubbleRef: RefObject<HTMLElement>) {
+  const revealedReply = useRef<HTMLElement | null>(null);
   const [focus, setFocus] = useState<(FocusTarget & {
     rect: CueRect; bubble: ReturnType<typeof positionOnboardingBubble>; hand: { x: number; y: number };
   }) | null>(null);
@@ -50,6 +51,13 @@ export function useOnboardingFocus(resolve: () => FocusTarget | null, bubbleRef:
       }
       if (revealed !== element) {
         revealed = element;
+        if (target.reading && revealedReply.current !== element) {
+          revealedReply.current = element;
+          const panel = element.closest<HTMLElement>('.narrative-scroll');
+          panel?.scrollTo({ top: element.offsetTop, behavior: 'auto' });
+          if (document.activeElement === document.body || document.activeElement?.matches('.dock-submit')) panel?.focus({ preventScroll: true });
+          schedule(); return;
+        }
         // Reveal a clue below the fold once, then let the player scroll freely.
         if (element.matches('.case-board-mobile-card') && (bottom - y < box.height - 1)) {
           element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });

@@ -500,6 +500,10 @@ export interface OnboardingState {
   /** A skipped lesson still settles its already requested roll locally. */
   pendingPhotoCheck?: boolean;
   openedPanel?: 'records' | 'character';
+  /** Already submitted locally; resumes its short presentation delay after loading. */
+  pendingTurn?: 'action' | 'search';
+  /** The actual DM reply remains highlighted until the reader continues. */
+  readingMessageId?: string;
 }
 
 export interface GameState {

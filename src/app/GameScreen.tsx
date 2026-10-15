@@ -59,7 +59,8 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
   }
 
   return (
-    <main className="game-screen" data-onboarding={isOnboardingActive(state) ? state.onboarding?.step : undefined}>
+    <main className="game-screen" data-onboarding={isOnboardingActive(state) ? state.onboarding?.step : undefined}
+      data-onboarding-reading={state.onboarding?.readingMessageId ? 'true' : undefined}>
       <SceneStage state={state} />
       <TopBar state={state} menuOpen={controller.menuOpen} onToggleMenu={() => controller.setMenuOpen(!controller.menuOpen)} />
       <GameMenu
@@ -114,6 +115,7 @@ export function GameScreen({ controller, onHome, onRestart, autoFocusInput = tru
       <GameNotice message={controller.toast} />
       <DmDebugDrawer onOpenJournal={controller.openJournal} />
       {isOnboardingActive(state) && <OnboardingCoach state={state} onFinish={controller.finishOnboarding}
+        onContinueReading={controller.continueOnboardingReading}
         dicePhase={controller.diceRoll?.phase} drawerOpen={controller.drawerOpen} menuOpen={controller.menuOpen}
         characterOpen={Boolean(inspectedPlayerId)} blocked={Boolean(narrativeDetail) || controller.saveManagerOpen || controller.apiOpen || controller.journalOpen} />}
     </main>

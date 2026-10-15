@@ -4,6 +4,8 @@
 > Updated: 2026-10-15
 > Scope: current React/Vite implementation
 
+0.5.78 将本地引导结算拆为提交、1400ms可取消等待和回复阅读。`beginOnboardingTurn`持有完整队伍的`pendingDmActions`与`pendingTurn`；控制器沿用会话协调器，取消/重开/读档后的旧回调不能落地。结算原子追加用户历史并清理声明，`readingMessageId`只绑定最新真实DM记录；精确匹配的继续操作才解除行动/掷骰禁用。三处阅读仅首次显露新回复，弹窗往返保留读位。存档仍v8、引导仍version1，可选字段严格校验，无有效元数据的旧存档保持原流程。跳过保留已提交回合与已锁骰点的本地结算归属。前两轮无模型请求，真实AI计时和提示词不变。见 [回应节奏验收](reviews/2026-10-15-onboarding-reply-pacing.md)。
+
 In 0.5.77, attribute stamps center on both axes inside the existing tile. Each path stores a square viewBox centered on its real drawing bounds, so uneven source margins no longer shift the visible mark. Static metadata and SVG xMidYMid meet preserve proportions without runtime measurements or extra reflows. Shared CSS centers the viewport in setup and live records; labels and values remain foreground. See [centering verification](reviews/2026-10-15-attribute-centering.md).
 
 0.5.76 为生命、魔力、理智、幸运和八项基础属性补齐十二种单色剪影底纹。心脏、灵焰、人物侧影、四叶草、屈臂、盾牌、身形尺标、翼靴、手镜、大脑、烛火和书本对应固定含义；选角与局内档案共用矢量，银灰低对比填充，名称与实际数值在前景。剪影不占布局、不拦截触摸、不重复朗读属性，系统强制高对比时隐藏。手机竖屏优先并兼顾网页。见 [属性剪影计划](plans/2026-10-15-attribute-silhouettes.md) 与 [验收](reviews/2026-10-15-attribute-silhouettes.md)。

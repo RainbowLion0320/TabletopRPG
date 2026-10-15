@@ -13,17 +13,26 @@ interface OnboardingCoachProps {
   menuOpen: boolean;
   blocked: boolean;
   onFinish: (status: 'done' | 'skipped') => void;
+  onContinueReading: (messageId: string) => void;
 }
 
 /** A short cue beside the real control; the artwork never captures its tap. */
-export function OnboardingCoach({ state, dicePhase, drawerOpen, characterOpen, menuOpen, blocked, onFinish }: OnboardingCoachProps) {
+export function OnboardingCoach({ state, dicePhase, drawerOpen, characterOpen, menuOpen, blocked, onFinish, onContinueReading }: OnboardingCoachProps) {
   const step = state.onboarding!.step;
+  const readingMessageId = state.onboarding?.readingMessageId;
   const filled = Boolean(state.declarations[state.players[state.currentActorIndex]?.id]?.trim());
   const inspectedPhoto = useRef(false);
   const previousStep = useRef(step);
   if (previousStep.current !== step) { inspectedPhoto.current = false; previousStep.current = step; }
   const resolve = useCallback((): FocusTarget | null => {
-    if (blocked) return null;
+    if (blocked || state.isThinking || state.onboarding?.pendingTurn) return null;
+    if (readingMessageId) {
+      if (drawerOpen || characterOpen || menuOpen || dicePhase) return null;
+      const element = Array.from(document.querySelectorAll<HTMLElement>('.story-message.dm'))
+        .find(message => message.dataset.messageId === readingMessageId);
+      return element ? { element, reading: true, text: step === 'search' ? '先看伊莎贝拉的回应'
+        : step === 'roll' ? '先看看为什么要检定' : '先看看这次发现' } : null;
+    }
     const find = (selector: string, text: string): FocusTarget | null => {
       const element = Array.from(document.querySelectorAll<HTMLElement>(selector))
         .find(control => !control.closest('[inert], [aria-hidden="true"]') && control.getBoundingClientRect().width > 0);
@@ -61,7 +70,7 @@ export function OnboardingCoach({ state, dicePhase, drawerOpen, characterOpen, m
         : find('.menu-button', '菜单里可以保存');
     }
     return null;
-  }, [step, filled, state.currentActorIndex, state.players.length, dicePhase, drawerOpen, characterOpen, menuOpen, blocked]);
+  }, [step, readingMessageId, state.isThinking, state.onboarding?.pendingTurn, filled, state.currentActorIndex, state.players.length, dicePhase, drawerOpen, characterOpen, menuOpen, blocked]);
   const bubbleRef = useRef<HTMLElement>(null);
   const focus = useOnboardingFocus(resolve, bubbleRef);
   const id = useId();
@@ -92,11 +101,13 @@ export function OnboardingCoach({ state, dicePhase, drawerOpen, characterOpen, m
     <aside className="onboarding-coach" aria-label="新手调查" data-onboarding-step={step}
       data-side={bubble.side} ref={bubbleRef} style={{ left: bubble.x, top: bubble.y, '--cue-arrow': `${bubble.arrow}px` } as CSSProperties}>
       <span id={id} className="onboarding-cue" role="status" aria-live="polite" aria-atomic="true">{focus.text}</span>
+      {focus.reading && readingMessageId && <button type="button" className="onboarding-read-next"
+        onClick={() => onContinueReading(readingMessageId)}>看完继续</button>}
       <button type="button" className="onboarding-dismiss" onClick={() => onFinish(step === 'finish' ? 'done' : 'skipped')}>
         {step === 'finish' ? '完成' : '跳过'}
       </button>
     </aside>
-    <span className="onboarding-hand" aria-hidden="true" style={{ left: hand.x - 12, top: hand.y - 4 }}>
+    {!focus.reading && <span className="onboarding-hand" aria-hidden="true" style={{ left: hand.x - 12, top: hand.y - 4 }}>
       <svg viewBox="0 0 40 48" width="40" height="48">
         <defs><linearGradient id={`${id}-glove`} x2=".8" y2="1"><stop stopColor="#fff6dc"/><stop offset="1" stopColor="#c5d9ec"/></linearGradient></defs>
         <circle className="onboarding-tap" cx="12" cy="4" r="8" fill="none" stroke="#e7ca8e" strokeWidth="1.5" />
@@ -104,6 +115,6 @@ export function OnboardingCoach({ state, dicePhase, drawerOpen, characterOpen, m
         <path d="M16 20v7m7-5v7m7-4v6M13 39h19" fill="none" stroke="#607d98" strokeWidth="1.2" strokeLinecap="round" />
         <path d="M14 40h18l-1 6H15Z" fill="#e0c18b" stroke="#344a60" strokeWidth="1.3" />
       </svg>
-    </span>
+    </span>}
   </div>, document.body);
 }

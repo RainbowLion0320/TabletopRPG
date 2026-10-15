@@ -61,7 +61,8 @@ export function ActionDock({
   const progress = getScenarioProgressForState(state);
   const ending = scenario.progression.endings.find((item) => item.id === progress.endingId);
   const hasPendingTurn = Boolean(state.pendingDmActions?.length);
-  const canDeclare = !ending && !isDiceRolling && !state.isThinking && !hasPendingTurn && !state.pendingCheck;
+  const readingReply = Boolean(state.onboarding?.readingMessageId);
+  const canDeclare = !ending && !isDiceRolling && !state.isThinking && !readingReply && !hasPendingTurn && !state.pendingCheck;
   const wasReady = useRef(canDeclare);
 
   useLayoutEffect(() => {
@@ -130,7 +131,7 @@ export function ActionDock({
 
   return (
     <section className="action-dock">
-      {hasPendingTurn && !state.isThinking && !state.pendingCheck ? (
+      {hasPendingTurn && !state.isThinking && !state.pendingCheck && !state.onboarding?.pendingTurn ? (
         <div className="check-card" role="status">
           <div><strong>本轮行动已保留</strong><span>{pendingDmFailureText(state.messages) ?? '继续本轮，已确认的骰点无需重掷。'}</span></div>
           <button ref={retryRef} className="secondary-action" onClick={(event) => {
@@ -151,7 +152,7 @@ export function ActionDock({
               难度：{state.pendingCheck.difficulty}，阈值 {state.pendingCheck.threshold ?? '-'}
             </span>
           </div>
-          <button className="secondary-action" disabled={isDiceRolling || state.isThinking} onClick={onRoll}>
+          <button className="secondary-action" disabled={isDiceRolling || state.isThinking || readingReply} onClick={onRoll}>
             <img className="dice-emblem-art" src={diceEmblem} width={24} height={24} alt="" aria-hidden="true" draggable={false} decoding="async" />
             {isDiceRolling ? '掷骰中' : '掷骰'}
           </button>
@@ -161,7 +162,7 @@ export function ActionDock({
       {!hasPendingTurn && !state.pendingCheck && !state.isThinking && currentSuggestions.length ? (
         <div className="suggestion-row" key={suggestionKey}>
           {currentSuggestions.slice(0, 3).map((text) => (
-            <button key={text} onClick={() => onSuggestion(text)}><span className="action-suggestion-text">{text}</span></button>
+            <button key={text} disabled={readingReply} onClick={() => onSuggestion(text)}><span className="action-suggestion-text">{text}</span></button>
           ))}
         </div>
       ) : null}

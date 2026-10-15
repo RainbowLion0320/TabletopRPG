@@ -33,14 +33,22 @@ export function guidedDeclaration(state: GameState, playerId: string): string | 
   return (state.onboarding?.step === 'action' ? firstActions : searchActions)[index];
 }
 
+function matchesLessonActions(state: GameState, step: 'action' | 'search', actions: CheckContinuationAction[]): boolean {
+  return actions.length === state.players.length && actions.every((action, index) =>
+    action.player === state.players[index].name && action.action === (step === 'action' ? firstActions : searchActions)[index]);
+}
+
 /** Fixed replies are only for the displayed lesson actions, never arbitrary declarations. */
 export function buildOnboardingTurn(state: GameState, actions: CheckContinuationAction[]): { response: AiResponse; onboarding: OnboardingState } | null {
-  if (!isOnboardingAction(state) || state.currentScene !== 'S01' || !state.players.length
-    || actions.length !== state.players.length || actions.some((action, index) =>
-      action.player !== state.players[index].name || action.action !== guidedDeclaration(state, state.players[index].id))) return null;
+  const step = state.onboarding?.pendingTurn ?? state.onboarding?.step;
+  if ((step !== 'action' && step !== 'search') || state.currentScene !== 'S01' || !state.players.length
+    || state.onboarding?.readingMessageId || !matchesLessonActions(state, step, actions)) return null;
+  if (state.onboarding?.step === 'skipped' && (!state.onboarding.pendingTurn
+    || !state.pendingDmActions || !matchesLessonActions(state, step, state.pendingDmActions))) return null;
 
   const lead = state.players[0];
-  if (state.onboarding?.step === 'action') {
+  const skipped = state.onboarding?.step === 'skipped';
+  if (step === 'action') {
     return {
       response: {
         activeNpc: '伊莎贝拉·摩勒',
@@ -48,7 +56,7 @@ export function buildOnboardingTurn(state: GameState, actions: CheckContinuation
         stateUpdate: { storyEventIds: ['EV_ACCEPT_COMMISSION'] },
         playerChoices: Object.fromEntries(state.players.map((player, index) => [player.id, [searchActions[index]]]))
       },
-      onboarding: { version: 1, step: 'search' }
+      onboarding: { version: 1, step: skipped ? 'skipped' : 'search' }
     };
   }
 
@@ -69,7 +77,7 @@ export function buildOnboardingTurn(state: GameState, actions: CheckContinuation
         }
       }, state.players)
     },
-    onboarding: { version: 1, step: 'roll', pendingPhotoCheck: true }
+    onboarding: { version: 1, step: skipped ? 'skipped' : 'roll', pendingPhotoCheck: true }
   };
 }
 
@@ -106,6 +114,11 @@ export function normalizeOnboarding(value: unknown, state: GameState): Onboardin
   const step = source.step as OnboardingState['step'];
   const found = state.scenarioProgress.clueStates.I02 !== 'unknown';
   const ownsCheck = source.pendingPhotoCheck === true && state.currentScene === 'S01' && !found && isLessonCheck(state.pendingCheck, state);
+  const pendingTurn = (source.pendingTurn === 'action' || source.pendingTurn === 'search')
+    && (step === source.pendingTurn || step === 'skipped') && state.currentScene === 'S01' && !found && !state.pendingCheck
+    && Boolean(state.scenarioProgress.variables.commissionAccepted) === (source.pendingTurn === 'search')
+    && state.pendingDmActions && matchesLessonActions(state, source.pendingTurn, state.pendingDmActions)
+    ? source.pendingTurn : undefined;
   if (['action', 'search', 'roll'].includes(step) && state.currentScene !== 'S01') return undefined;
   if (step === 'action' && (state.scenarioProgress.variables.commissionAccepted || state.conversationHistory.length)) return undefined;
   if (step === 'search' && (!state.scenarioProgress.variables.commissionAccepted || found || state.pendingCheck)) return undefined;
@@ -113,6 +126,10 @@ export function normalizeOnboarding(value: unknown, state: GameState): Onboardin
   if (['records', 'character', 'finish'].includes(step) && !found) return undefined;
   return {
     version: 1, step,
+    ...(pendingTurn ? { pendingTurn } : {}),
+    ...(!pendingTurn && ['search', 'roll', 'records'].includes(step) && typeof source.readingMessageId === 'string'
+      && state.messages.filter(message => message.type === 'dm').slice(-1)[0]?.id === source.readingMessageId
+      ? { readingMessageId: source.readingMessageId } : {}),
     ...(ownsCheck ? { pendingPhotoCheck: true } : {}),
     ...(source.openedPanel === step && (step === 'records' || step === 'character') ? { openedPanel: step } : {})
   };

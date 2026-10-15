@@ -11,6 +11,7 @@ import { readSaves, saveGameState } from '../../src/services/storage';
 import { getDmRequestTurn } from '../../src/services/turns';
 import { installGameStorage } from '../../src/platform/storage';
 import { ONBOARDING_SEEN_KEY } from '../../src/platform/onboarding';
+import { ONBOARDING_REPLY_DELAY_MS } from '../../src/app/onboardingReply';
 import { DICE_ROLL_DURATION_MS } from '../../src/app/diceRollAnimation';
 import type { GameState } from '../../src/types/game';
 
@@ -34,17 +35,25 @@ beforeEach(() => {
 });
 afterEach(() => { installGameStorage(localStorage); localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllEnvs(); vi.useRealTimers(); });
 
-function declareRound(result: ControllerRef) {
+function readReply(result: ControllerRef) {
+  const id = result.current.state.onboarding?.readingMessageId;
+  if (id) act(() => result.current.continueOnboardingReading(id));
+}
+async function declareRound(result: ControllerRef) {
+  readReply(result);
+  vi.useFakeTimers();
   for (const player of result.current.state.players) {
     const text = guidedDeclaration(result.current.state, player.id)!;
     expect(text).toBeTruthy();
     act(() => result.current.applySuggestion(text));
     act(() => result.current.submitAction());
   }
+  await act(async () => { await vi.advanceTimersByTimeAsync(ONBOARDING_REPLY_DELAY_MS); });
+  vi.useRealTimers();
 }
-function toCheck(result: ControllerRef, count = 1) {
+async function toCheck(result: ControllerRef, count = 1) {
   act(() => result.current.startGame(party(count)));
-  declareRound(result); declareRound(result);
+  await declareRound(result); await declareRound(result); readReply(result);
   expect(result.current.state.onboarding?.step).toBe('roll');
 }
 async function confirmRoll(result: ControllerRef, roll = 10) {
@@ -56,6 +65,7 @@ async function confirmRoll(result: ControllerRef, roll = 10) {
   vi.useRealTimers();
 }
 function readPanels(result: ControllerRef) {
+  readReply(result);
   act(() => result.current.onboardingPanel('records', 'opened'));
   act(() => result.current.onboardingPanel('records', 'closed'));
   act(() => result.current.onboardingPanel('character', 'opened'));
@@ -67,15 +77,22 @@ describe('first investigation with real game state', () => {
     const { result } = renderHook(useGameController);
     act(() => result.current.startGame(party(count)));
     expect(result.current.state.onboarding?.step).toBe('action');
+    vi.useFakeTimers();
     for (const [index, player] of result.current.state.players.entries()) {
       act(() => result.current.applySuggestion(guidedDeclaration(result.current.state, player.id)!));
       act(() => { result.current.submitAction(); result.current.submitAction(); });
-      expect(result.current.state.onboarding?.step).toBe(index === count - 1 ? 'search' : 'action');
+      expect(result.current.state.onboarding?.step).toBe('action');
+      if (index === count - 1) expect(result.current.state.isThinking).toBe(true);
     }
+    await act(async () => { await vi.advanceTimersByTimeAsync(ONBOARDING_REPLY_DELAY_MS - 1); });
+    expect(result.current.state.scenarioProgress.variables.commissionAccepted).toBe(false);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+    vi.useRealTimers();
+    expect(result.current.state.onboarding?.readingMessageId).toBe(result.current.state.messages.filter(m => m.type === 'dm').slice(-1)[0].id);
     expect(result.current.state.scenarioProgress.variables.commissionAccepted).toBe(true);
     expect(result.current.state.scenarioProgress.knownFactIds).toContain('F04');
     expect(result.current.state.messages.filter(message => message.type === 'player')).toHaveLength(count);
-    declareRound(result);
+    await declareRound(result); readReply(result);
     const check = result.current.state.pendingCheck!;
     expect(check.player).toBe(result.current.state.players[0].name);
     expect(check.threshold).toBe(getSkillTotal(result.current.state.players[0], '侦查'));
@@ -93,7 +110,7 @@ describe('first investigation with real game state', () => {
   });
 
   for (const roll of [10, 90, 100]) it(`honors the real ${roll} outcome and the authored fail-forward cost exactly once`, async () => {
-    const { result } = renderHook(useGameController); toCheck(result);
+    const { result } = renderHook(useGameController); await toCheck(result);
     const before = result.current.state.scenarioProgress.worldTime;
     await confirmRoll(result, roll);
     const progress = result.current.state.scenarioProgress;
@@ -108,7 +125,7 @@ describe('first investigation with real game state', () => {
     expect(settled.messages.every(message => !message.text.includes('私下勾连'))).toBe(true);
   });
 
-  it('keeps a partially declared multiplayer lesson intact through save hydration', () => {
+  it('keeps a partially declared multiplayer lesson intact through save hydration', async () => {
     const { result } = renderHook(useGameController);
     act(() => result.current.startGame(party(4)));
     act(() => result.current.applySuggestion(guidedDeclaration(result.current.state, result.current.state.players[0].id)!));
@@ -117,16 +134,19 @@ describe('first investigation with real game state', () => {
     act(() => result.current.loadSaveSlot(saved));
     expect(result.current.state.currentActorIndex).toBe(1);
     expect(result.current.state.onboarding?.step).toBe('action');
+    vi.useFakeTimers();
     for (const player of result.current.state.players.slice(1)) {
       act(() => result.current.applySuggestion(guidedDeclaration(result.current.state, player.id)!));
       act(() => result.current.submitAction());
     }
+    await act(async () => { await vi.advanceTimersByTimeAsync(ONBOARDING_REPLY_DELAY_MS); });
+    vi.useRealTimers();
     expect(result.current.state.messages.filter(message => message.type === 'player')).toHaveLength(4);
     expect(result.current.state.scenarioProgress.firedEventIds.filter(id => id === 'EV_ACCEPT_COMMISSION')).toHaveLength(1);
   });
 
-  it('restores a locked lesson roll and settles it without rolling again or contacting AI', () => {
-    const { result } = renderHook(useGameController); toCheck(result, 2);
+  it('restores a locked lesson roll and settles it without rolling again or contacting AI', async () => {
+    const { result } = renderHook(useGameController); await toCheck(result, 2);
     const saved = hydrateGameState(JSON.parse(JSON.stringify(result.current.state)));
     const check = saved.pendingCheck!;
     act(() => result.current.restoreSession(saved, { check, result: { roll: 100, level: 'fumble', label: '大失败' }, phase: 'revealed' }));
@@ -137,7 +157,7 @@ describe('first investigation with real game state', () => {
   });
 
   it('can skip with a pending check, keep its locked dice, and still finish that actual investigation locally', async () => {
-    const { result } = renderHook(useGameController); toCheck(result);
+    const { result } = renderHook(useGameController); await toCheck(result);
     const check = result.current.state.pendingCheck;
     act(() => result.current.finishOnboarding('skipped'));
     expect(result.current.state.pendingCheck).toBe(check);
@@ -164,7 +184,7 @@ describe('first investigation with real game state', () => {
   });
 
   it('requires actual opening and closing of the indicated reader, without moving the story or rolling again', async () => {
-    const { result } = renderHook(useGameController); toCheck(result); await confirmRoll(result);
+    const { result } = renderHook(useGameController); await toCheck(result); await confirmRoll(result);
     const history = result.current.state.conversationHistory;
     act(() => result.current.onboardingPanel('records', 'closed'));
     expect(result.current.state.onboarding?.step).toBe('records');
@@ -178,7 +198,7 @@ describe('first investigation with real game state', () => {
   });
 
   it('saves the finished guide only after a real successful save and never reopens its final tip on load', async () => {
-    const { result } = renderHook(useGameController); toCheck(result); await confirmRoll(result); readPanels(result);
+    const { result } = renderHook(useGameController); await toCheck(result); await confirmRoll(result); readPanels(result);
     act(() => { result.current.saveCurrentGame(); result.current.saveCurrentGame(); });
     await waitFor(() => expect(result.current.state.onboarding?.step).toBe('done'));
     expect(readSaves()).toHaveLength(1); expect(readSaves()[0].gameState.onboarding?.step).toBe('done');
@@ -188,7 +208,7 @@ describe('first investigation with real game state', () => {
   });
 
   it('leaves the final guide retryable if persistence fails', async () => {
-    const { result } = renderHook(useGameController); toCheck(result); await confirmRoll(result); readPanels(result);
+    const { result } = renderHook(useGameController); await toCheck(result); await confirmRoll(result); readPanels(result);
     const original = Storage.prototype.setItem;
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
       if (key === 'trpg-saves-v2') throw new Error('quota'); original.call(this, key, value);
@@ -200,7 +220,7 @@ describe('first investigation with real game state', () => {
   });
 
   it('hands the third turn to the normal DM with both authored turns, the true roll and revealed evidence', async () => {
-    const { result } = renderHook(useGameController); toCheck(result); await confirmRoll(result); readPanels(result);
+    const { result } = renderHook(useGameController); await toCheck(result); await confirmRoll(result); readPanels(result);
     act(() => result.current.finishOnboarding('done'));
     localStorage.setItem('trpg-api', JSON.stringify({ apiKey: 'test-key', provider: 'openai', protocol: 'responses' }));
     const player = result.current.state.players[0];
@@ -235,6 +255,86 @@ describe('first investigation with real game state', () => {
     expect(saved.onboarding).toBeUndefined(); expect(saved.pendingCheck?.skill).toBe('聆听');
   });
 
+  it('keeps a new reply readable until acknowledged and ignores stale read confirmations', async () => {
+    const { result } = renderHook(useGameController);
+    act(() => result.current.startGame(party(1)));
+    await declareRound(result);
+    const state = result.current.state;
+    const id = state.onboarding!.readingMessageId!;
+    expect(hydrateGameState(state).onboarding?.readingMessageId).toBe(id);
+    vi.useFakeTimers();
+    act(() => result.current.continueOnboardingReading('an-old-reply'));
+    act(() => result.current.setDeclaration(state.players[0].id, guidedDeclaration(state, state.players[0].id)!));
+    act(() => result.current.submitAction());
+    await act(async () => { await vi.advanceTimersByTimeAsync(20_000); });
+    expect(result.current.state).toBe(state);
+    expect(result.current.state.onboarding?.readingMessageId).toBe(id);
+    act(() => result.current.continueOnboardingReading(id));
+    expect(result.current.state.onboarding?.readingMessageId).toBeUndefined();
+    expect(result.current.state.onboarding?.step).toBe('search');
+    const invalid = hydrateGameState({ ...state, onboarding: { ...state.onboarding!, readingMessageId: 'missing-reply' } });
+    expect(invalid.onboarding?.step).toBe('search'); expect(invalid.onboarding?.readingMessageId).toBeUndefined();
+    expect(dm).not.toHaveBeenCalled();
+  });
+
+  it('resumes a saved local waiting turn once without sending AI or duplicating declarations', async () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(useGameController);
+    act(() => result.current.startGame(party(2)));
+    for (const player of result.current.state.players) {
+      act(() => result.current.applySuggestion(guidedDeclaration(result.current.state, player.id)!));
+      act(() => result.current.submitAction());
+    }
+    expect(result.current.state.onboarding?.pendingTurn).toBe('action');
+    expect(result.current.state.conversationHistory).toHaveLength(0);
+    await act(async () => { await vi.advanceTimersByTimeAsync(500); });
+    const saved = hydrateGameState(JSON.parse(JSON.stringify(result.current.state)));
+    expect(saved.onboarding?.pendingTurn).toBe('action');
+    act(() => result.current.restoreSession(saved, null));
+    await act(async () => { await vi.advanceTimersByTimeAsync(900); });
+    expect(result.current.state.scenarioProgress.variables.commissionAccepted).toBe(false);
+    await act(async () => { await vi.advanceTimersByTimeAsync(500); });
+    expect(result.current.state.scenarioProgress.variables.commissionAccepted).toBe(true);
+    expect(result.current.state.messages.filter(m => m.type === 'player')).toHaveLength(2);
+    expect(result.current.state.conversationHistory.map(h => h.role)).toEqual(['user', 'assistant']);
+    expect(result.current.state.onboarding?.readingMessageId).toBeTruthy(); expect(dm).not.toHaveBeenCalled();
+  });
+
+  it('cancels a local waiting turn when starting another investigation', async () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(useGameController);
+    act(() => result.current.startGame(party(1)));
+    act(() => result.current.applySuggestion(guidedDeclaration(result.current.state, result.current.state.players[0].id)!));
+    act(() => result.current.submitAction());
+    act(() => result.current.returnHome());
+    act(() => result.current.startGame(party(4)));
+    const fresh = result.current.state;
+    await act(async () => { await vi.advanceTimersByTimeAsync(ONBOARDING_REPLY_DELAY_MS * 2); });
+    expect(result.current.state).toBe(fresh);
+    expect(fresh.players).toHaveLength(4); expect(fresh.scenarioProgress.variables.commissionAccepted).toBe(false);
+    expect(fresh.messages.filter(m => m.type === 'player')).toHaveLength(0); expect(dm).not.toHaveBeenCalled();
+  });
+
+  for (const step of ['action', 'search']) it(`settles an already submitted ${step} turn after skipping without a fake model request`, async () => {
+    const { result } = renderHook(useGameController);
+    act(() => result.current.startGame(party(2)));
+    if (step === 'search') { await declareRound(result); readReply(result); }
+    vi.useFakeTimers();
+    for (const player of result.current.state.players) {
+      act(() => result.current.applySuggestion(guidedDeclaration(result.current.state, player.id)!));
+      act(() => result.current.submitAction());
+    }
+    act(() => result.current.finishOnboarding('skipped'));
+    expect(hydrateGameState(result.current.state).onboarding?.pendingTurn).toBe(step);
+    await act(async () => { await vi.advanceTimersByTimeAsync(ONBOARDING_REPLY_DELAY_MS); });
+    expect(result.current.state.isThinking).toBe(false);
+    expect(result.current.state.onboarding?.step).toBe('skipped');
+    expect(result.current.state.onboarding?.readingMessageId).toBeUndefined();
+    expect(result.current.state.pendingDmActions).toBeUndefined();
+    expect(Boolean(result.current.state.pendingCheck)).toBe(step === 'search');
+    expect(dm).not.toHaveBeenCalled();
+  });
+
   it('rejects authored replies for arbitrary freeform actions instead of silently replacing their outcome', () => {
     const state = gameReducer(createInitialGameState(party(1)), { type: 'start', players: party(1), onboarding: true });
     expect(gameReducer(state, { type: 'resolveOnboardingTurn', actions: [{ player: state.players[0].name, action: '离开住宅' }] })).toBe(state);
@@ -261,7 +361,17 @@ describe('novice controls', () => {
     expect(screen.getByLabelText('新手调查')).toHaveTextContent('确认行动');
     expect(suggestion).not.toHaveAttribute('aria-describedby');
     expect(screen.getByRole('button', { name: '提交', exact: true })).toHaveAccessibleDescription('确认行动');
+    vi.useFakeTimers();
     fireEvent.click(screen.getByRole('button', { name: '提交', exact: true }));
+    expect(screen.queryByLabelText('新手调查')).toBeNull();
+    expect(input.disabled).toBe(true);
+    await act(async () => { await vi.advanceTimersByTimeAsync(ONBOARDING_REPLY_DELAY_MS); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(48); });
+    vi.useRealTimers();
+    expect(await screen.findByLabelText('新手调查')).toHaveTextContent('先看伊莎贝拉的回应');
+    expect(document.querySelector('.onboarding-hand')).toBeNull();
+    expect(input.disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: '看完继续', exact: true }));
     expect(screen.getByLabelText('新手调查')).toHaveTextContent('选择调查行动');
     fireEvent.click(screen.getByRole('button', { name: '跳过', exact: true }));
     expect(input.readOnly).toBe(false); expect(screen.queryByLabelText('新手调查')).toBeNull();

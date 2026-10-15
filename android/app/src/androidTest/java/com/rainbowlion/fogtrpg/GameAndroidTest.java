@@ -2,6 +2,7 @@ package com.rainbowlion.fogtrpg;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.app.Activity;
 import android.graphics.Bitmap;
 import android.os.SystemClock;
 import android.util.Base64;
@@ -14,6 +15,8 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry;
+import androidx.test.runner.lifecycle.Stage;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -23,6 +26,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -34,12 +38,30 @@ import static org.junit.Assert.*;
 @RunWith(AndroidJUnit4.class)
 public class GameAndroidTest {
     private ActivityScenario<MainActivity> activity;
+    private boolean guideNativeTouches;
     private final Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
 
+    private void withActivity(Consumer<MainActivity> action) {
+        if (guideNativeTouches) {
+            // The guide's continuous hand animation can keep the UI queue non-idle.
+            // Post the requested operation directly and check its own result.
+            InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+                for (Activity current : ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)) {
+                    if (current instanceof MainActivity) {
+                        action.accept((MainActivity) current);
+                        return;
+                    }
+                }
+                fail("No resumed game activity");
+            });
+        } else {
+            activity.onActivity(action::accept);
+        }
+    }
     private String js(String expression) throws Exception {
         CountDownLatch done = new CountDownLatch(1);
         AtomicReference<String> result = new AtomicReference<>();
-        activity.onActivity(a -> a.getBridge().getWebView().evaluateJavascript(expression, value -> { result.set(value); done.countDown(); }));
+        withActivity(a -> a.getBridge().getWebView().evaluateJavascript(expression, value -> { result.set(value); done.countDown(); }));
         assertTrue("JavaScript callback", done.await(10, TimeUnit.SECONDS));
         return result.get();
     }
@@ -132,6 +154,13 @@ public class GameAndroidTest {
         until("window.__qaResizeSettled");
         assertEquals("Viewport and action restoration do not recurse during observation", "0", js("window.__qaResizeErrors.length"));
     }
+    private void sendNativePointer(MotionEvent event) {
+        // The guide pulses continuously. Avoid waiting for global input/animation
+        // idleness in this fixture; real injected events still take the native path,
+        // and each caller verifies the resulting control or story state.
+        if (guideNativeTouches) assertTrue("Native guide touch was accepted", InstrumentationRegistry.getInstrumentation().getUiAutomation().injectInputEvent(event, false));
+        else InstrumentationRegistry.getInstrumentation().sendPointerSync(event);
+    }
     private void nativeTap(String selector) throws Exception {
         nativeTap(selector, 0);
     }
@@ -141,26 +170,26 @@ public class GameAndroidTest {
     private void nativeTap(String selector, int driftCssY, String pointSelector) throws Exception {
         reachable(selector);
         CountDownLatch painted = new CountDownLatch(1);
-        activity.onActivity(a -> a.getBridge().getWebView().postVisualStateCallback(SystemClock.uptimeMillis(), new WebView.VisualStateCallback() {
+        withActivity(a -> a.getBridge().getWebView().postVisualStateCallback(SystemClock.uptimeMillis(), new WebView.VisualStateCallback() {
             @Override public void onComplete(long requestId) { painted.countDown(); }
         }));
         assertTrue("The target DOM has been drawn before sending real touch", painted.await(10, TimeUnit.SECONDS));
         if (!selector.equals(pointSelector)) assertEquals("The requested touch point reaches its original control", "true", js("(()=>{const e=document.querySelector(" + JSONObject.quote(selector) + "),r=document.querySelector(" + JSONObject.quote(pointSelector) + ").getBoundingClientRect();return e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))})()"));
         org.json.JSONArray point = new org.json.JSONArray(js("(()=>{const r=document.querySelector(" + JSONObject.quote(pointSelector) + ").getBoundingClientRect();return [(r.x+r.width/2)*devicePixelRatio,(r.y+r.height/2)*devicePixelRatio,devicePixelRatio]})()"));
         int[] origin = new int[2];
-        activity.onActivity(a -> a.getBridge().getWebView().getLocationOnScreen(origin));
+        withActivity(a -> a.getBridge().getWebView().getLocationOnScreen(origin));
         long now = SystemClock.uptimeMillis();
         float screenX = (float) point.getDouble(0) + origin[0], screenY = (float) point.getDouble(1) + origin[1];
         MotionEvent down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, screenX, screenY, 0);
         float endY = (float) (screenY + driftCssY * point.getDouble(2));
         MotionEvent up = MotionEvent.obtain(now, now + 80, MotionEvent.ACTION_UP, screenX, endY, 0);
-        InstrumentationRegistry.getInstrumentation().sendPointerSync(down);
+        sendNativePointer(down);
         if (driftCssY != 0) {
             MotionEvent move = MotionEvent.obtain(now, now + 40, MotionEvent.ACTION_MOVE, screenX, endY, 0);
-            InstrumentationRegistry.getInstrumentation().sendPointerSync(move);
+            sendNativePointer(move);
             move.recycle();
         }
-        InstrumentationRegistry.getInstrumentation().sendPointerSync(up);
+        sendNativePointer(up);
         down.recycle(); up.recycle();
     }
     private void configure(String endpoint, String protocol) throws Exception {
@@ -189,7 +218,7 @@ public class GameAndroidTest {
 
     private void viewport(int width, int height) throws Exception {
         double scale = Double.parseDouble(js("devicePixelRatio"));
-        activity.onActivity(a -> {
+        withActivity(a -> {
             WebView web = a.getBridge().getWebView();
             ViewGroup.LayoutParams params = web.getLayoutParams();
             params.width = (int) Math.round(width * scale);
@@ -256,6 +285,7 @@ public class GameAndroidTest {
     }
 
     private void noviceInvestigation(int width, int height, int party) throws Exception {
+        guideNativeTouches = true;
         fresh();
         js("window.qaGuideFresh=false;Capacitor.Plugins.GameStorage.write({key:'trpg-onboarding-v1',value:null}).then(()=>window.qaGuideFresh=true)");
         until("window.qaGuideFresh"); activity.recreate();
@@ -286,7 +316,14 @@ public class GameAndroidTest {
         reachable(".onboarding-dismiss");
     }
 
-    @Test public void firstInvestigationTeachesRealActionsDiceRecordsAndDossiersOffline() throws Exception {
+    private void readGuideReply() throws Exception {
+        until("document.querySelector('.onboarding-read-next')&&document.querySelector('.game-screen').dataset.onboardingReading==='true'");
+        assertEquals("The next action waits for the player to read the actual DM reply", "true", js("(()=>{const messages=document.querySelectorAll('.story-message.dm'),reply=messages[messages.length-1],cue=document.querySelector('.onboarding-coach'),input=document.querySelector('.dock-input'),check=document.querySelector('.check-card>button');return !!reply&&reply.getAttribute('aria-describedby')===cue.querySelector('.onboarding-cue').id&&input.disabled&&(!check||check.disabled)&&!document.querySelector('.onboarding-hand')})()"));
+        reachable(".onboarding-read-next"); nativeTap(".onboarding-read-next");
+        until("!document.querySelector('.game-screen[data-onboarding-reading=true]')");
+    }
+
+    @Test(timeout = 180000) public void firstInvestigationTeachesRealActionsDiceRecordsAndDossiersOffline() throws Exception {
         for (int party : new int[]{1, 2, 4}) {
             noviceInvestigation(party == 4 ? 360 : 390, party == 4 ? 640 : 844, party);
             try {
@@ -297,6 +334,7 @@ public class GameAndroidTest {
                     for (int actor = 0; actor < party; actor++) {
                         nativeTap(".suggestion-row>button"); guideFocus(".dock-submit"); nativeTap(".dock-submit");
                     }
+                    readGuideReply();
                 }
                 until("document.querySelector('.game-screen').dataset.onboarding==='roll'");
                 assertEquals("No clue appears before the real roll", "false", js("document.querySelector('.narrative-scroll').textContent.includes('旧合影')"));
@@ -318,6 +356,7 @@ public class GameAndroidTest {
                     js("window.qaGuidePosts=0;const resumedFetch=window.fetch;window.fetch=(url,options)=>{if(options?.method==='POST')window.qaGuidePosts++;return resumedFetch(url,options)}");
                 }
                 guideFocus(".dice-roll-confirm"); nativeTap(".dice-roll-confirm"); until("document.querySelector('.game-screen').dataset.onboarding==='records'");
+                readGuideReply();
                 assertEquals("Free action is already available after the two local turns", "false", js("document.querySelector('.dock-input').readOnly"));
                 guideFocus(".drawer-tab"); nativeTap(".drawer-tab"); until("document.querySelector('.info-drawer-react[role=dialog]')");
                 String photoSelector = ".case-board-mobile-card.item";
@@ -345,11 +384,14 @@ public class GameAndroidTest {
         }
     }
 
-    @Test public void shortPhoneGuideCanSkipWithoutLosingAnUnconfirmedCheck() throws Exception {
+    @Test(timeout = 90000) public void shortPhoneGuideCanSkipWithoutLosingAnUnconfirmedCheck() throws Exception {
         noviceInvestigation(390, 460, 2);
         try {
-            for (int round = 0; round < 2; round++) for (int actor = 0; actor < 2; actor++) {
-                reachable(".onboarding-dismiss"); nativeTap(".suggestion-row>button"); nativeTap(".dock-submit");
+            for (int round = 0; round < 2; round++) {
+                for (int actor = 0; actor < 2; actor++) {
+                    reachable(".onboarding-dismiss"); nativeTap(".suggestion-row>button"); nativeTap(".dock-submit");
+                }
+                readGuideReply();
             }
             until("document.querySelector('.game-screen').dataset.onboarding==='roll'");
             nativeTap(".onboarding-dismiss"); until("!document.querySelector('.onboarding-coach')");
@@ -463,8 +505,8 @@ public class GameAndroidTest {
         MotionEvent down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, bounds.centerX(), bounds.centerY(), 0);
         MotionEvent up = MotionEvent.obtain(now, now + 80, MotionEvent.ACTION_UP, bounds.centerX(), bounds.centerY(), 0);
         try {
-            InstrumentationRegistry.getInstrumentation().sendPointerSync(down);
-            InstrumentationRegistry.getInstrumentation().sendPointerSync(up);
+            sendNativePointer(down);
+            sendNativePointer(up);
         } finally { down.recycle(); up.recycle(); }
     }
 

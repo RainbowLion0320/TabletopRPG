@@ -21,6 +21,7 @@ import { getApiConfigValidationError } from '../config/aiConfig';
 import { dmConnectionFailureText } from '../services/narrativeVisibility';
 import { buildOnboardingRoll, buildOnboardingTurn, guidedDeclaration, isOnboardingAction, isOnboardingActive } from '../services/onboarding';
 import { rememberOnboarding, shouldOfferOnboarding } from '../platform/onboarding';
+import { waitForOnboardingReply } from './onboardingReply';
 import {
   DICE_ROLL_DURATION_MS,
   type DiceRollPresentation
@@ -50,6 +51,13 @@ export function useGameController() {
     dmCoordinatorRef.current.invalidate();
     diceRollInFlightRef.current = false;
   }, []);
+
+  useEffect(() => {
+    if (!state.onboarding?.pendingTurn || !state.pendingDmActions?.length) return;
+    const task = foregroundTaskRef.current;
+    if (task && !dmCoordinatorRef.current.isCurrent(task)) foregroundTaskRef.current = null;
+    if (!foregroundTaskRef.current) void runOnboardingTurn(state.pendingDmActions);
+  }, [state]);
 
   useEffect(() => {
     if (!diceRoll || diceRoll.phase !== 'rolling') return;
@@ -149,7 +157,7 @@ export function useGameController() {
 
   function submitAction() {
     if (!state.players.length || state.pendingCheck || state.pendingDmActions?.length
-      || state.isThinking || foregroundTaskRef.current || state.scenarioProgress?.endingId
+      || state.isThinking || state.onboarding?.readingMessageId || foregroundTaskRef.current || state.scenarioProgress?.endingId
       || diceRollInFlightRef.current || submittedStateRef.current === state) return;
 
     // Players declare sequentially, then the complete party turn is resolved once.
@@ -173,12 +181,33 @@ export function useGameController() {
       return;
     }
 
+    if (guidedTurn) {
+      dispatch({ type: 'beginOnboardingTurn', actions });
+      return;
+    }
+
     // Last actor: aggregate every declaration and run one DM round for the party.
     const historyAction = { type: 'appendHistory' as const, role: 'user' as const, content: buildUserMessage(actions) };
     dispatch(historyAction);
     dispatch({ type: 'clearDeclarations' });
-    if (guidedTurn) dispatch({ type: 'resolveOnboardingTurn', actions });
-    else void runAi(actions, gameReducer(state, historyAction));
+    void runAi(actions, gameReducer(state, historyAction));
+  }
+
+  async function runOnboardingTurn(actions: PlayerAction[]) {
+    if (foregroundTaskRef.current || !buildOnboardingTurn(stateRef.current, actions)) return;
+    const coordinator = dmCoordinatorRef.current;
+    const task = coordinator.begin(AI_DM_TIMEOUT_MS);
+    foregroundTaskRef.current = task;
+    dispatch({ type: 'setThinking', value: true });
+    try {
+      await coordinator.waitFor(task, waitForOnboardingReply(task.controller.signal));
+      if (coordinator.isCurrent(task)) dispatch({ type: 'resolveOnboardingTurn', actions });
+    } catch {
+      if (coordinator.isSessionCurrent(task)) dispatch({ type: 'setThinking', value: false });
+    } finally {
+      coordinator.finish(task);
+      if (foregroundTaskRef.current === task) foregroundTaskRef.current = null;
+    }
   }
 
   function applyBackgroundUpdate(update: DmBackgroundUpdate, sourceHistory: GameState['conversationHistory']) {
@@ -345,11 +374,12 @@ export function useGameController() {
   function retryPendingTurn() {
     if (!state.pendingDmActions?.length || state.isThinking || state.pendingCheck
       || state.scenarioProgress?.endingId) return;
-    void runAi(state.pendingDmActions);
+    if (state.onboarding?.pendingTurn) void runOnboardingTurn(state.pendingDmActions);
+    else void runAi(state.pendingDmActions);
   }
 
   function handleRoll() {
-    if (!state.pendingCheck || state.isThinking || state.scenarioProgress?.endingId || diceRollInFlightRef.current) return;
+    if (!state.pendingCheck || state.isThinking || state.onboarding?.readingMessageId || state.scenarioProgress?.endingId || diceRollInFlightRef.current) return;
     const check = state.pendingCheck;
     const result = rollD100(check);
     diceRollInFlightRef.current = true;
@@ -428,6 +458,7 @@ export function useGameController() {
   }
 
   function setDeclaration(playerId: string, text: string) {
+    if (state.onboarding?.readingMessageId || state.onboarding?.pendingTurn) return;
     if (isOnboardingAction(state) && text && text !== guidedDeclaration(state, playerId)) return;
     dispatch({ type: 'setDeclaration', playerId, text });
   }
@@ -442,11 +473,16 @@ export function useGameController() {
     dispatch({ type: 'onboardingPanel', panel, phase });
   }
 
+  function continueOnboardingReading(messageId: string) {
+    dispatch({ type: 'continueOnboardingReading', messageId });
+  }
+
   return {
     apiOpen,
     applySuggestion,
     closeJournal,
     confirmDiceResult,
+    continueOnboardingReading,
     deleteSaveSlot: saveSlots.deleteSaveSlot,
     diceRoll,
     drawerOpen,

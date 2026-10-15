@@ -175,7 +175,7 @@ export function NarrativePanel({ onMarkOpen, state }: NarrativePanelProps) {
             markup={markup} onMarkOpen={openMark} elementRef={index === visibleMessages.length - 1 ? latestMessageRef : undefined} />;
         })}
       </div>
-      {state.isThinking ? <ThinkingIndicator /> : null}
+      {state.isThinking || state.onboarding?.pendingTurn ? <ThinkingIndicator /> : null}
     </div>
   );
 }

@@ -29,6 +29,7 @@ import {
 } from '../dm/caseBoardModel';
 import { defaultActiveNpcForScene, resolveActiveNpcForScene } from './sceneFocus';
 import { buildOnboardingRoll, buildOnboardingTurn, isOnboardingActive, normalizeOnboarding } from '../services/onboarding';
+import { buildUserMessage } from '../services/aiDm';
 
 export type GameAction =
   | { type: 'start'; players: Investigator[]; onboarding?: boolean }
@@ -62,6 +63,8 @@ export type GameAction =
   | { type: 'consumeProspectiveIntent'; id: string }
   | { type: 'decayProspectiveIntents' }
   | { type: 'resolveOnboardingTurn'; actions: CheckContinuationAction[] }
+  | { type: 'beginOnboardingTurn'; actions: CheckContinuationAction[] }
+  | { type: 'continueOnboardingReading'; messageId: string }
   | { type: 'resolveOnboardingRoll'; check: CheckRequest; result: DiceResult }
   | { type: 'onboardingPanel'; panel: 'records' | 'character'; phase: 'opened' | 'closed' }
   | { type: 'finishOnboarding'; status: 'done' | 'skipped' };
@@ -1634,14 +1637,23 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         ...createInitialGameState(action.players),
         ...(action.onboarding && action.players.length ? { onboarding: { version: 1 as const, step: 'action' as const } } : {})
       };
+    case 'beginOnboardingTurn': {
+      if (state.onboarding?.pendingTurn || !buildOnboardingTurn(state, action.actions)
+        || (state.onboarding?.step !== 'action' && state.onboarding?.step !== 'search')) return state;
+      return { ...state, isThinking: true, pendingDmActions: action.actions,
+        onboarding: { ...state.onboarding, pendingTurn: state.onboarding.step } };
+    }
     case 'resolveOnboardingTurn': {
       const turn = buildOnboardingTurn(state, action.actions);
       if (!turn) return state;
-      const next = gameReducer(state, {
+      const history = gameReducer(state, { type: 'appendHistory', role: 'user', content: buildUserMessage(action.actions) });
+      const next = gameReducer(history, {
         type: 'applyAiResponse', response: turn.response, raw: JSON.stringify(turn.response),
         actorName: state.players[0]?.name
       });
-      return { ...next, declarations: {}, currentActorIndex: 0, onboarding: turn.onboarding };
+      const readingMessageId = next.messages.filter(message => message.type === 'dm').slice(-1)[0]?.id;
+      return { ...next, declarations: {}, currentActorIndex: 0,
+        onboarding: { ...turn.onboarding, ...(turn.onboarding.step !== 'skipped' ? { readingMessageId } : {}) } };
     }
     case 'resolveOnboardingRoll': {
       const turn = buildOnboardingRoll(state, action.check, action.result);
@@ -1650,17 +1662,23 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         type: 'applyAiResponse', response: turn.response, raw: JSON.stringify(turn.response),
         actorName: action.check.player
       });
-      return { ...next, onboarding: turn.onboarding };
+      const readingMessageId = next.messages.filter(message => message.type === 'dm').slice(-1)[0]?.id;
+      return { ...next, onboarding: { ...turn.onboarding, ...(turn.onboarding.step !== 'skipped' ? { readingMessageId } : {}) } };
     }
+    case 'continueOnboardingReading':
+      return isOnboardingActive(state) && state.onboarding?.readingMessageId === action.messageId
+        ? { ...state, onboarding: { ...state.onboarding!, readingMessageId: undefined } } : state;
     case 'onboardingPanel': {
-      if (state.onboarding?.step !== action.panel) return state;
+      if (state.onboarding?.step !== action.panel || state.onboarding.readingMessageId) return state;
       if (action.phase === 'opened') return { ...state, onboarding: { ...state.onboarding, openedPanel: action.panel } };
       if (state.onboarding.openedPanel !== action.panel) return state;
       return { ...state, onboarding: { version: 1, step: action.panel === 'records' ? 'character' : 'finish' } };
     }
     case 'finishOnboarding':
       return isOnboardingActive(state)
-        ? { ...state, onboarding: { version: 1, step: action.status, ...(state.onboarding?.pendingPhotoCheck ? { pendingPhotoCheck: true } : {}) } }
+        ? { ...state, onboarding: { version: 1, step: action.status,
+          ...(state.onboarding?.pendingPhotoCheck ? { pendingPhotoCheck: true } : {}),
+          ...(state.onboarding?.pendingTurn ? { pendingTurn: state.onboarding.pendingTurn } : {}) } }
         : state;
     case 'restore':
       return hydrateGameState(action.state);

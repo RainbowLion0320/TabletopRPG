@@ -4,10 +4,12 @@ title: 存档系统
 tags: [save, storage, localStorage]
 sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-18
-updated: 2026-10-14
+updated: 2026-10-15
 ---
 
 # 存档系统
+
+0.5.78 将 [[concepts/onboarding]] 的已共同提交本地回合与未读回应作为可选元数据保存。读档恢复等待或「看完继续」，不会重复追加玩家声明；跳过不丢已接收行动与已锁骰点。沿用v8与现有加密方式，缺少字段的旧存档保持原流程。见 [回应节奏验收](../../docs/reviews/2026-10-15-onboarding-reply-pacing.md)。
 
 0.5.74 将 [[concepts/onboarding]] 的阶段与待确认检定一起保存。首次引导的最后一步成功保存时记录为完成；保存失败保留提示供重试。已有v8存档不插入引导，存档格式与剧本哈希保持。
 

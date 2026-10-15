@@ -4,12 +4,12 @@ title: 核心玩法循环
 tags: [gameplay, core, loop]
 sources: [project_plan.md, ../../docs/PRD.md, ../../docs/GDD.md]
 created: 2026-05-18
-updated: 2026-10-14
+updated: 2026-10-15
 ---
 
 # 核心玩法循环
 
-首次新建调查可先完成 [[concepts/onboarding]]：两轮本地固定内容仍走同一声明、真实骰子、剧情事件与存档链路，之后立即交回自由AI跑团；旧存档保持原循环。
+首次新建调查可先完成 [[concepts/onboarding]]：两轮本地固定内容仍走同一声明、真实骰子、剧情事件与存档链路；共同提交后显示约1.4秒推演动画，新回复与检定说明先聚焦对话，点「看完继续」再操作。读完发现后交回自由AI跑团；旧存档保持原循环。
 
 ## 概述
 

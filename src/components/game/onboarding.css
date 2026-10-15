@@ -15,6 +15,12 @@
 .onboarding-coach[data-side='above']::before { bottom: -6px; transform: translateX(-50%) rotate(45deg); }
 .onboarding-coach[data-side='below']::before { top: -6px; transform: translateX(-50%) rotate(225deg); }
 .onboarding-cue { white-space: nowrap; }
+:root.fog-ui .onboarding-coach .onboarding-read-next { flex: 0 0 auto; min-height: 44px; min-width: 64px;
+  padding: 0 7px; border: 0; background: none; box-shadow: none; color: #f8dfa7;
+  font: 400 14px/1.4 var(--ui-font); letter-spacing: 0; cursor: pointer; pointer-events: auto; touch-action: manipulation; }
+:root.fog-ui .onboarding-coach .onboarding-read-next::before,
+:root.fog-ui .onboarding-coach .onboarding-read-next::after { display: none; }
+:root.fog-ui .onboarding-coach .onboarding-read-next:focus-visible { outline: 2px solid #f2d7a2; outline-offset: -4px; }
 :root.fog-ui .onboarding-coach .onboarding-dismiss { flex: 0 0 auto; display: grid; place-items: center;
   min-width: 44px; min-height: 44px; padding: 0 3px; margin: 0; border: 0; border-image: none; border-radius: 0;
   background: none; box-shadow: none; color: #b7c9db; font: 400 12px/1 var(--ui-font); letter-spacing: 0;
