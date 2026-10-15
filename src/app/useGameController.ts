@@ -395,9 +395,12 @@ export function useGameController() {
     if (!diceRoll || diceRoll.phase !== 'revealed' || !diceRollInFlightRef.current) return;
     const { check, result } = diceRoll;
     const checkMessage = buildDiceResultMessage(check, result);
-    const resultAction = buildDiceResultAction(state, check, checkMessage, result);
-    const diceAction = { type: 'applyDiceResult' as const, result, resultAction, randomSeed: Math.random() };
+    const draftResultAction = buildDiceResultAction(state, check, checkMessage, result);
+    const diceAction = { type: 'applyDiceResult' as const, result, resultAction: draftResultAction, randomSeed: Math.random() };
     const rolledState = gameReducer(state, diceAction);
+    // Carry only the resources this exact roll already changed. The same seeded
+    // transition is committed below; queue continuations retain its receipt.
+    const resultAction = buildDiceResultAction(state, check, checkMessage, result, rolledState);
     const continuationState = gameReducer(rolledState, {
       type: 'appendHistory',
       role: 'user',
@@ -405,7 +408,7 @@ export function useGameController() {
     });
     diceRollInFlightRef.current = false;
     setDiceRoll(null);
-    dispatch(diceAction);
+    dispatch({ ...diceAction, resultAction });
     dispatch({ type: 'appendHistory', role: 'user', content: checkMessage });
     if (rolledState.pendingCheck || rolledState.scenarioProgress?.endingId) return;
     if (buildOnboardingRoll(continuationState, check, result)) {

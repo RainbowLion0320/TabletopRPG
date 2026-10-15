@@ -11,7 +11,6 @@ import { useOpeningCinematic } from '../platform/opening';
 import { GameScreen } from '../app/GameScreen';
 import { GameNotice } from '../components/shared/GameNotice';
 import { useGameController } from '../app/useGameController';
-import { readApiConfig } from '../services/storage';
 import { flushGameStorage } from '../platform/storage';
 import { isNativeAndroid } from './native';
 import { readMobileSession, writeMobileSession, type MobileSession } from './session';
@@ -21,6 +20,7 @@ import './android-feedback.css';
 
 type Screen = 'title' | 'setup' | 'game';
 type SessionCheckpoint = { snapshot: GameContinuation; revision: number };
+type AndroidNotice = { recovery?: string; save?: string };
 
 function onlyDeclarationChanged(previous: GameContinuation, next: GameContinuation): boolean {
   if (previous.roll !== next.roll || previous.state.declarations === next.state.declarations) return false;
@@ -32,7 +32,8 @@ function onlyDeclarationChanged(previous: GameContinuation, next: GameContinuati
 export function AndroidApp({ partialRecovery = false }: { partialRecovery?: boolean }) {
   const [screen, setScreen] = useState<Screen>('title');
   const [session, setSession] = useState<MobileSession | null>(null);
-  const [notice, setNotice] = useState(partialRecovery ? '部分本机记录暂时无法读取，其他有效存档仍可继续。' : '');
+  const [notice, setNotice] = useState<AndroidNotice>(() => partialRecovery
+    ? { recovery: '部分本机记录暂时无法读取，其他有效存档仍可继续。' } : {});
   const [exitOpen, setExitOpen] = useState(false);
   const [exitBusy, setExitBusy] = useState(false);
   const [exitError, setExitError] = useState('');
@@ -47,8 +48,15 @@ export function AndroidApp({ partialRecovery = false }: { partialRecovery?: bool
 
   const persistCheckpoint = useCallback(({ snapshot, revision }: SessionCheckpoint) => {
     void writeMobileSession(snapshot.state, snapshot.roll)
-      .then(value => { if (sessionRevision.current === revision) setSession(value); })
-      .catch(() => { if (sessionRevision.current === revision) setNotice('自动保存失败，请检查设备存储空间。当前游戏仍可继续。'); });
+      .then(value => {
+        if (sessionRevision.current !== revision) return;
+        setSession(value);
+        setNotice(current => current.save ? { ...current, save: undefined } : current);
+      })
+      .catch(() => {
+        if (sessionRevision.current === revision) setNotice(current => ({ ...current,
+          save: '自动保存失败，请检查设备存储空间。当前游戏仍可继续。' }));
+      });
   }, []);
   const flushDraft = useCallback(() => {
     window.clearTimeout(draftTimer.current); draftTimer.current = undefined;
@@ -78,7 +86,7 @@ export function AndroidApp({ partialRecovery = false }: { partialRecovery?: bool
     try { setSession(readMobileSession()); }
     catch (error) {
       if (import.meta.env.DEV) console.warn('[session] 无法读取自动续玩记录', error);
-      setNotice('自动续玩记录暂时无法读取，请使用手动存档继续。');
+      setNotice(current => ({ ...current, recovery: '自动续玩记录暂时无法读取，请使用手动存档继续。' }));
     }
   }, []);
   useLayoutEffect(() => {
@@ -104,23 +112,26 @@ export function AndroidApp({ partialRecovery = false }: { partialRecovery?: bool
         gameAudio.setVisible(isActive);
         if (!isActive) {
           flushDraft();
-          void flushGameStorage().catch(() => setNotice('保存失败，请检查设备存储空间。'));
+          const revision = sessionRevision.current;
+          void flushGameStorage()
+            .then(() => {
+              if (sessionRevision.current === revision) setNotice(current => current.save ? { ...current, save: undefined } : current);
+            })
+            .catch(() => {
+              if (sessionRevision.current === revision) setNotice(current => ({ ...current, save: '保存失败，请检查设备存储空间。' }));
+            });
         }
       }),
     ];
     return () => { listeners.forEach(listener => { void listener.then(handle => handle.remove()); }); };
   }, [flushDraft]);
 
-  const configureIfNeeded = (state?: GameState) => {
-    if (state && continuationPreview(state).completed) return;
-    if (!readApiConfig()) game.setApiOpen(true);
-  };
   const start = (players: Investigator[]) => {
-    game.startGame(players); setScreen('game'); setNotice(''); configureIfNeeded();
+    game.startGame(players); setScreen('game'); setNotice({});
   };
   const resume = () => {
-    if (session) { game.restoreSession(session.state, session.roll); setScreen('game'); configureIfNeeded(session.state); }
-    else if (game.loadLatest()) { setScreen('game'); configureIfNeeded(game.saves[0]?.gameState); }
+    if (session) { game.restoreSession(session.state, session.roll); setScreen('game'); }
+    else if (game.loadLatest()) setScreen('game');
   };
   const exit = async () => {
     if (exitingRef.current) return;
@@ -130,6 +141,7 @@ export function AndroidApp({ partialRecovery = false }: { partialRecovery?: bool
     finally { exitingRef.current = false; setExitBusy(false); }
   };
   const closeExit = () => { if (!exitingRef.current) { setExitOpen(false); setExitError(''); } };
+  const noticeText = notice.recovery ?? notice.save;
   return <>
     <AudioDirector screen={screen} state={game.state} roll={game.diceRoll} cinematicActive={opening.open} />
     <OpeningCinematic key={opening.playId} open={opening.open} onFinish={opening.finish} returnFocusRef={opening.returnFocusRef} />
@@ -143,7 +155,8 @@ export function AndroidApp({ partialRecovery = false }: { partialRecovery?: bool
       <GameScreen controller={{ ...game, saveCurrentGame: () => { flushDraft(); game.saveCurrentGame(); } }} portrait autoFocusInput={false}
         onHome={(snapshot) => { rememberSession(snapshot, true); setScreen('title'); }}
         onRestart={(snapshot) => { rememberSession(snapshot, true); setScreen('setup'); }} />}
-    {notice && <div className="android-notice" role="alert"><span>{notice}</span><button className="secondary-action" onClick={() => setNotice('')}>知道了</button></div>}
+    {noticeText && <div className="android-notice" role="alert"><span>{noticeText}</span><button className="secondary-action"
+      onClick={() => setNotice(current => current.recovery ? { ...current, recovery: undefined } : { ...current, save: undefined })}>知道了</button></div>}
     {screen !== 'game' && <GameNotice key={screen} message={screen === 'title' ? game.toast : ''} />}
     <ExitGameDialog open={exitOpen} busy={exitBusy} error={exitError} onClose={closeExit} onExit={() => void exit()} />
   </>;

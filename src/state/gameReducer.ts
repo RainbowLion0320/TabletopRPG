@@ -12,6 +12,7 @@ import {
 import { normalizeNarrativeKeywordHints } from '../services/narrativeKeywords';
 import { isDmFailureMessage, isPlayerVisibleMessage } from '../services/narrativeVisibility';
 import { advanceCheckQueue, enqueueCheck, prepareCheck } from '../services/dice';
+import { normalizeSettledResources } from '../services/checkSettlement';
 import { countCompletedGameTurns } from '../services/turns';
 import {
   buildFinaleSuggestions,
@@ -235,6 +236,8 @@ function normalizeCheckActions(value: unknown): CheckContinuationAction[] | unde
     const actionPlayer = stringValue(item.player);
     const actionText = stringValue(item.action);
     if (!actionPlayer || !actionText) return [];
+    const settledResources = isRecord(item.checkResult)
+      ? normalizeSettledResources(item.checkResult.settledResources) : undefined;
     const checkResult = isRecord(item.checkResult)
       && ['success', 'hard', 'crit', 'fail', 'fumble'].includes(String(item.checkResult.outcome))
       && typeof item.checkResult.skill === 'string'
@@ -243,7 +246,8 @@ function normalizeCheckActions(value: unknown): CheckContinuationAction[] | unde
           outcome: item.checkResult.outcome as DiceResult['level'],
           targetItemIds: Array.isArray(item.checkResult.targetItemIds)
             ? item.checkResult.targetItemIds.filter((id): id is string => typeof id === 'string' && Object.prototype.hasOwnProperty.call(storyData.items, id))
-            : undefined
+            : undefined,
+          ...(settledResources ? { settledResources } : {})
         }
       : undefined;
     return [{
@@ -577,7 +581,9 @@ function normalizeStatUpdate(value: unknown) {
   if (!isRecord(value)) return {};
   return Object.fromEntries(Object.entries(value).flatMap(([name, delta]) => {
     const numeric = numberValue(delta, Number.NaN);
-    return Number.isFinite(numeric) ? [[name, numeric]] : [];
+    // Resource counters use whole points. Normalize at settlement, so saving
+    // and restoring cannot silently turn the same fractional injury into more damage.
+    return Number.isFinite(numeric) ? [[name, Math.trunc(numeric)]] : [];
   }));
 }
 

@@ -95,13 +95,13 @@ export const DM_TOOLS: OpenAiTool[] = [
         properties: {
           hp: {
             type: 'object',
-            description: '玩家名 → HP 变动（负数为伤害，正数为治疗）',
-            additionalProperties: { type: 'number' }
+            description: '玩家名 → HP 整数变动（负数为伤害，正数为治疗）',
+            additionalProperties: { type: 'integer' }
           },
           san: {
             type: 'object',
-            description: '玩家名 → SAN 变动',
-            additionalProperties: { type: 'number' }
+            description: '玩家名 → SAN 整数变动',
+            additionalProperties: { type: 'integer' }
           },
           flags: {
             type: 'object',

@@ -4,6 +4,8 @@
 > Updated: 2026-10-15
 > Scope: current React/Vite implementation
 
+0.5.79 修正叙事与规则结算边界：`request_check`等待审工具与回执在JSON正文修复中保留，语义重做仍清空旧提议；伤害识别排除否定、治愈、险些／假设及他人血迹，终幕剩余敌人数审核仅约束相关活动遭遇并考虑本轮已批准事件。控制器从同一随机种子的作者结算实际前后值生成可选`checkResult.settledResources`，随多人队列、待重试行动及原存档恢复；两处伤害审核与默认推断读取本轮回执，显式新伤害仍经原审核。HP/SAN在入库时统一向零截断为整数，有限旧格式继续兼容。安卓写入成功只撤销保存类提醒，读取恢复提醒独立保留，旧后台回调按revision隔离；模型配置在实际调用时检查。存档仍v8，无新增模型调用或重试层。见 [深度检查验收](reviews/2026-10-15-deep-game-audit.md)。
+
 0.5.78 将本地引导结算拆为提交、1400ms可取消等待和回复阅读。`beginOnboardingTurn`持有完整队伍的`pendingDmActions`与`pendingTurn`；控制器沿用会话协调器，取消/重开/读档后的旧回调不能落地。结算原子追加用户历史并清理声明，`readingMessageId`只绑定最新真实DM记录；精确匹配的继续操作才解除行动/掷骰禁用。三处阅读仅首次显露新回复，弹窗往返保留读位。存档仍v8、引导仍version1，可选字段严格校验，无有效元数据的旧存档保持原流程。跳过保留已提交回合与已锁骰点的本地结算归属。前两轮无模型请求，真实AI计时和提示词不变。见 [回应节奏验收](reviews/2026-10-15-onboarding-reply-pacing.md)。
 
 In 0.5.77, attribute stamps center on both axes inside the existing tile. Each path stores a square viewBox centered on its real drawing bounds, so uneven source margins no longer shift the visible mark. Static metadata and SVG xMidYMid meet preserve proportions without runtime measurements or extra reflows. Shared CSS centers the viewport in setup and live records; labels and values remain foreground. See [centering verification](reviews/2026-10-15-attribute-centering.md).

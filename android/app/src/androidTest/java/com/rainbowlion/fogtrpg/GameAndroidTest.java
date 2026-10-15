@@ -1807,6 +1807,56 @@ public class GameAndroidTest {
         }
     }
 
+    @Test(timeout = 120000) public void authoredFumbleNarrationKeepsItsSettledHpThroughNativeRestore() throws Exception {
+        AtomicInteger narratorCalls = new AtomicInteger();
+        AtomicReference<Boolean> receivedReceipt = new AtomicReference<>(false);
+        try (MockWebServer server = new MockWebServer()) {
+            server.setDispatcher(new Dispatcher() {
+                @Override public MockResponse dispatch(RecordedRequest request) {
+                    String body = request.getBody().readUtf8();
+                    boolean narrator = body.contains("COC 第七版 AI DM Agent");
+                    if (narrator) {
+                        narratorCalls.incrementAndGet();
+                        receivedReceipt.set(body.contains("已结算资源") && body.contains("HP -1"));
+                    }
+                    String text = narrator
+                        ? "{\"narrative\":\"亨利·格雷的手臂受伤，退回掩体。甲板上的敌人仍在抵抗。\",\"activeNpc\":null,\"nextPrompt\":\"\",\"playerChoices\":{}}"
+                        : "{\"facts\":[],\"nodes\":[],\"edges\":[]}";
+                    return new MockResponse().setHeader("Content-Type", "application/json")
+                        .setBody("{\"output_text\":" + JSONObject.quote(text) + ",\"output\":[]}");
+                }
+            });
+            server.start(); fresh(); viewport(390, 844);
+            configure(server.url("/v1").toString(), "responses");
+            nativeTap(".title-new"); nativeTap(".setup-footer .primary-btn");
+            js("window.qaSettledReady=false;window.qaSettledError=null;Capacitor.Plugins.GameStorage.readAll().then(async({values})=>{try{"
+                + "const r=JSON.parse(values['trpg-android-session-v1']),s=r.state,p=s.scenarioProgress;"
+                + "s.currentScene='S05';s.messages=[];s.conversationHistory=[];delete s.onboarding;delete s.pendingDmActions;"
+                + "Object.assign(p.beatStates,{B01:'completed',B02:'completed',B05:'completed',B06:'active'});"
+                + "Object.assign(p.variables,{finaleRoute:'combat',combatRoundStarted:true});p.encounters.ENC01.state='active';"
+                + "p.clocks.fusangEscape={value:2,active:true,visible:true};"
+                + "s.pendingCheck={scenarioCheckId:'CHECK_COMBAT',player:s.players[0].name,skill:'格斗（拳）',difficulty:'普通'};"
+                + "window.qaSettledHp=s.players[0].currentHp;r.roll={check:s.pendingCheck,result:{roll:100,level:'fumble',label:'大失败（100）'},phase:'revealed'};"
+                + "await Capacitor.Plugins.GameStorage.write({key:'trpg-android-session-v1',value:JSON.stringify(r)});"
+                + "}catch(error){window.qaSettledError=String(error)}window.qaSettledReady=true})");
+            until("window.qaSettledReady"); assertEquals("The locked author check uses a real encrypted checkpoint", "null", js("window.qaSettledError"));
+            int initialHp = Integer.parseInt(js("window.qaSettledHp"));
+            activity.recreate(); until("document.querySelector('.title-continue')"); viewport(390, 844);
+            nativeTap(".title-continue"); until("document.querySelector('.dice-roll-overlay.revealed')");
+            nativeTap(".dice-roll-confirm");
+            until("Array.from(document.querySelectorAll('.story-message.dm')).some(e=>e.textContent.includes('退回掩体'))&&!document.querySelector('.thinking-line')");
+            assertEquals("A settled author injury does not trigger a false format retry", 1, narratorCalls.get());
+            assertTrue("The actual native request identifies the already-applied resource delta", receivedReceipt.get());
+            assertEquals("The rule charges the fumble exactly once", String.valueOf(initialHp - 1), js("Number(document.querySelector('.party-compact .bar-value').textContent.split('/')[0])"));
+            nativeTap(".menu-button"); nativeTap(".game-menu .menu-list>button:first-child");
+            activity.recreate(); until("document.querySelector('.title-continue')"); viewport(390, 844);
+            nativeTap(".title-continue"); until("document.querySelector('.party-compact .bar-value')");
+            assertEquals("Encrypted restore preserves the already-settled HP", String.valueOf(initialHp - 1), js("Number(document.querySelector('.party-compact .bar-value').textContent.split('/')[0])"));
+            assertEquals("Reading a restored reply does not call the model again", 1, narratorCalls.get());
+            screenshot("deep-audit-authored-fumble-once");
+        } finally { if (activity != null) activity.close(); }
+    }
+
     @Test public void semanticRecoveryKeepsDiagnosticsPrivateAndConnectsFreeActionDice() throws Exception {
         AtomicInteger calls = new AtomicInteger();
         AtomicInteger retainedCorrections = new AtomicInteger();

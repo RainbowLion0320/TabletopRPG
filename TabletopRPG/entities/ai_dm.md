@@ -4,10 +4,12 @@ title: AI DM 系统
 tags: [ai, core, implemented]
 sources: [project_plan.md, ../../docs/SPEC.md]
 created: 2026-05-14
-updated: 2026-10-09
+updated: 2026-10-15
 ---
 
 # AI DM 系统
+
+0.5.79 修复JSON正文修复丢弃待审工具、否定／止血／他人血迹误认伤害、普通危险消除误触终幕敌人数规则的问题。已结算作者检定资源通过本轮`settledResources`回执接续，伤势复述不再要求或默认再次扣血；显式新伤害仍走原审核。工具与回执只在语义重做时清空，资源整数入库和读档一致。模型协议、既有重试上限、自由行动和剧情事实保持，未新增模型请求或负向提示词层。见 [深度检查验收](../../docs/reviews/2026-10-15-deep-game-audit.md)。
 
 ## 角色定位
 

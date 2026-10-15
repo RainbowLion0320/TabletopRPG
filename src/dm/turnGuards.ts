@@ -1,6 +1,7 @@
 import type { AiResponse, CheckRequest, GameState, SceneId } from '../types/game';
 import type { PlayerAction } from '../services/aiDm';
 import { getDmRequestTurn } from '../services/turns';
+import { getSettledResourceDelta } from '../services/checkSettlement';
 import type { DmToolCall, KnowledgeBase } from './types';
 import { getActiveKnowledgeBase } from './knowledgeBase';
 import { COMBAT_ACTION_RE, hasAffirmativeMatch } from '../services/actionIntent';
@@ -799,7 +800,10 @@ function narrativeHarmsPlayer(narrative: string, playerName: string): boolean {
   const player = playerNames.length === 1
     ? escapeRegex(playerNames[0])
     : `(?:${playerNames.map(escapeRegex).join('|')})`;
-  const text = narrative.replace(new RegExp(
+  const text = narrative
+    .replace(/(?:伤口|旧伤)[^，。；！？\n]{0,8}(?:已经|已)?(?:愈合|痊愈|止血|不再(?:流血|渗血|出血))/g, '')
+    .replace(/(?:没有|并未|未曾|不再|并不|未)(?:再|重新|继续|受到|遭受)?(?:受伤|流血|渗血|出血|骨折|剧痛|出现.{0,4}(?:伤口|血口|血痕))/g, '')
+    .replace(new RegExp(
     `${player}[^，。；！？\\n]{0,8}(?:没有|并未|未曾|未)(?:受到|遭受)?[^，。；！？\\n]{0,4}(?:受伤|流血|渗血|出血|骨折|伤口|血痕|剧痛)[^，。；！？\\n]*`,
     'g'
   ), '');
@@ -838,6 +842,20 @@ function textSimilarity(left: string, right: string): number {
   return overlap / Math.max(1, new Set([...aSet, ...bSet]).size);
 }
 
+/** A lone actor can be addressed as "you", but nearby blood is not their injury. */
+function directlyHarmsUnnamedInvestigator(narrative: string): boolean {
+  const body = '(?:手臂|前臂|小臂|手掌|手指|指尖|虎口|肋部|肋骨|皮肤|肩膀|身体|头|脸|颈|肩|胸|背|腰|腹|手(?!套)|腿|膝|脚)';
+  const actor = '(?:你(?!们)|调查员|玩家角色)';
+  const injured = '(?:受(?:了)?伤|流血|渗血|出血|骨折|传来.{0,4}剧痛)';
+  const strike = '(?:击中|打中|砸中|划伤|抓伤|刺伤|咬伤|撕伤|砍伤|灼伤)';
+  const direct = new RegExp(`${actor}(?:的?${body})?(?:${injured}|(?:被|受到|遭到)[^，。；！？\\n]{0,16}${strike})`);
+  const struck = new RegExp(`${strike}(?:了)?${actor}的?${body}`);
+  return narrative.split(/[，。；！？\n]/).some((clause) => {
+    if (/(?:没有|没|未|不曾|并非|不会|不再|避免|如果|假如|可能|也许|险些|差点|几乎|风险|是否|曾经|先前|之前|已经愈合|已愈合)/.test(clause)) return false;
+    return direct.test(clause) || struck.test(clause);
+  });
+}
+
 /** Fallback only: explicit model state tools remain authoritative when present. */
 export function inferNarrativeConsequences(
   response: AiResponse,
@@ -850,23 +868,19 @@ export function inferNarrativeConsequences(
 
   const harmPattern = /中弹|被[^，。；！？\n]{0,12}击中|受伤|流血|渗血|出血|血口|血痕|血丝|灼伤|划伤|划过|抓伤|刺伤|咬伤|撕伤|划出(?:一道)?(?:伤口|血痕|细痕)|骨折|剧痛/;
   if (harmPattern.test(narrative)) {
-    const harmClauses = narrative
-      .split(/[，。；！？\n]/)
-      .filter((clause) => harmPattern.test(clause));
     const namedVictims = state.players.filter((player) =>
       narrativeHarmsPlayer(narrative, player.name)
-    );
-    const explicitlyTargetsInvestigator = harmClauses.some((clause) =>
-      /(?:调查员|玩家角色|你(?:被|的|受到)|你们(?:被|受到))/.test(clause)
     );
     const involvedPlayers = state.players.filter((player) => involved.has(player.name));
     const victims = namedVictims.length
       ? namedVictims
-      : explicitlyTargetsInvestigator && involvedPlayers.length === 1
+      : involvedPlayers.length === 1 && directlyHarmsUnnamedInvestigator(narrative)
         ? involvedPlayers
         : [];
     for (const player of victims) {
-      if (hp[player.name] === undefined) mergeDelta(hp, player.name, -1);
+      if (hp[player.name] === undefined && getSettledResourceDelta(actions, player.name, 'hp') >= 0) {
+        mergeDelta(hp, player.name, -1);
+      }
     }
   }
   return {
@@ -1515,7 +1529,9 @@ export function validateNarratorSemantics(
   ) {
     return '终幕普通战斗检定失败只推进逃脱时钟，不得叙述或提交调查员伤害；只有大失败才由结构化事件扣除 HP';
   }
-  const uncommittedHarm = harmedPlayers.find((player) => !(hpDeltas[player.name] < 0));
+  const uncommittedHarm = harmedPlayers.find((player) =>
+    !(hpDeltas[player.name] < 0) && getSettledResourceDelta(actions, player.name, 'hp') >= 0
+  );
   if (uncommittedHarm) {
     return `正文写明${uncommittedHarm.name}受到实际伤害时，必须同步调用 propose_state_update 写入负 HP`;
   }
@@ -1965,6 +1981,7 @@ export function validateAuthoritativeNarratorSemantics(
   }, {});
   const uncommittedHarm = state.players.find((player) =>
     narrativeHarmsPlayer(output.narrative, player.name) && !(hpDeltas[player.name] < 0)
+    && getSettledResourceDelta(actions, player.name, 'hp') >= 0
   );
   if (uncommittedHarm) {
     return `正文写明${uncommittedHarm.name}受到实际伤害时，必须同步提议 HP 变化`;
@@ -1982,12 +1999,24 @@ export function validateAuthoritativeNarratorSemantics(
     return '正文不得在剧情事件结算前宣告人物获救、船只离港或结局发生';
   }
 
-  const encounter = progress.encounters.ENC01;
+  const encounterProgress = proposedEvents.length
+    ? processScenarioTurn(progress, {
+        currentScene: outputSceneId,
+        storyEventIds: proposedEvents.map((event) => event.id),
+        turn: getDmRequestTurn(state.conversationHistory, state.summarizedTurnCount),
+        completeTurn: false,
+        random: () => 0,
+        actorName: actions[actions.length - 1]?.player
+      }).progress
+    : progress;
+  const encounter = encounterProgress.encounters.ENC01;
   const encounterCount = getScenarioDefinition().world.encounters.find((item) => item.id === 'ENC01')?.count ?? 0;
   const remainingOpponents = Math.max(0, encounterCount - (encounter?.defeated ?? 0));
   if (
-    remainingOpponents > 0
-    && /(?:所有|全部|剩余)[^。；！？\n]{0,12}(?:深潜者|敌人)[^。；！？\n]{0,16}(?:倒下|被击败|失去战斗能力|逃走|撤退)|威胁[^。；！？\n]{0,8}(?:解除|消失)/.test(output.narrative)
+    outputSceneId === 'S05'
+    && encounter?.state === 'active'
+    && remainingOpponents > 0
+    && /(?:所有|全部|剩余)[^。；！？\n]{0,12}(?:深潜者|敌人)[^。；！？\n]{0,16}(?:倒下|被击败|失去战斗能力|逃走|撤退)|(?:深潜者|敌人)(?:的)?威胁[^。；！？\n]{0,8}(?:解除|消失)/.test(output.narrative)
   ) {
     return '正文不得越过结构化遭遇的剩余敌人数量';
   }

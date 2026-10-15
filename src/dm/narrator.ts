@@ -774,6 +774,17 @@ export async function callNarrator(
   const maxAttempts = input.maxAttempts ?? 2;
   const retryOnAbort = true;
 
+  const stageProposals = (payload: RawNarratorPayload, calls: DmToolCall[]) => {
+    stagedCalls.push(...calls.filter((call) => call.name !== 'lookup_entity'));
+    messages.push(...payload.outputItems);
+    for (const call of calls) {
+      messages.push(call.name === 'lookup_entity' && input.lookupResolver
+        ? buildLookupResultMessage(call, input.lookupResolver)
+        : { type: 'function_call_output', callId: call.callId ?? call.name,
+          output: JSON.stringify({ status: 'proposed', pending: true, message: '提议已收到，等待本轮正文共同审核；骰子与状态尚未结算。' }) });
+    }
+  };
+
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
       while (true) {
@@ -801,14 +812,7 @@ export async function callNarrator(
         // Acknowledge receipt once; the Director still decides whether to apply
         // them after the final narrative. No dice or state changes happen here.
         if (!payload.raw.trim() && parsedCalls.some(call => call.name !== 'lookup_entity') && !stagedCalls.length) {
-          stagedCalls = parsedCalls.filter(call => call.name !== 'lookup_entity');
-          messages.push(...payload.outputItems);
-          for (const call of parsedCalls) {
-            messages.push(call.name === 'lookup_entity' && input.lookupResolver
-              ? buildLookupResultMessage(call, input.lookupResolver)
-              : { type: 'function_call_output', callId: call.callId ?? call.name,
-                output: JSON.stringify({ status: 'proposed', pending: true, message: '提议已收到，等待本轮正文共同审核；骰子与状态尚未结算。' }) });
-          }
+          stageProposals(payload, parsedCalls);
           useFnCall = false;
           continue;
         }
@@ -819,6 +823,9 @@ export async function callNarrator(
           shaped = shapeNarratorJson(payload.raw, playerNames);
         } catch (err) {
           lastMalformedRaw = payload.raw;
+          // A broken prose object does not invalidate separately parsed tools.
+          // Keep them pending while repairing the prose, then review together.
+          if (parsedCalls.length) stageProposals(payload, parsedCalls);
           throw err;
         }
         const finalCalls = [...stagedCalls, ...parsedCalls.filter((c) => c.name !== 'lookup_entity')];
@@ -864,12 +871,15 @@ export async function callNarrator(
       }
       // 语义错误仍需工具能力；只有格式错误才切到 JSON-only 兜底。
       useFnCall = err instanceof NarratorSemanticError;
-      lookupRoundsUsed = 0;
-      stagedCalls = [];
-      // 重置话柄到首轮 user（丢弃上一次部分走过的 lookup 循环中间态）。
-      messages.length = 0;
-      messages.push(...input.history.filter((turn) => turn.content.trim()));
-      messages.push({ role: 'user', content: userMessage });
+      if (useFnCall) {
+        // Semantic corrections replace the proposal; JSON repair keeps its
+        // existing tool exchange so a pending roll/state delta is not lost.
+        lookupRoundsUsed = 0;
+        stagedCalls = [];
+        messages.length = 0;
+        messages.push(...input.history.filter((turn) => turn.content.trim()));
+        messages.push({ role: 'user', content: userMessage });
+      }
       if (semanticCorrection) {
         messages.push({
           role: 'user',

@@ -271,6 +271,8 @@ export interface CheckContinuationAction {
     skill: string;
     outcome: DiceResult['level'];
     targetItemIds?: string[];
+    /** Actual local rule deltas already applied for this investigator's roll. */
+    settledResources?: { hp?: number; san?: number };
   };
 }
 
