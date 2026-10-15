@@ -3,11 +3,10 @@
 .attribute-tile > .attribute-emblem {
   position: absolute;
   z-index: 0;
-  right: 0;
-  bottom: -3px;
+  inset: 0;
+  margin: auto;
   height: 92%;
-  width: auto;
-  max-width: 100%;
+  width: 100%;
   color: var(--text);
   opacity: .14;
   pointer-events: none;
