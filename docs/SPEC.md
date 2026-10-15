@@ -1,8 +1,10 @@
 # TabletopRPG Technical Spec
 
 > Version: v0.7
-> Updated: 2026-10-14
+> Updated: 2026-10-15
 > Scope: current React/Vite implementation
+
+0.5.76 为生命、魔力、理智、幸运和八项基础属性补齐十二种单色剪影底纹。心脏、灵焰、人物侧影、四叶草、屈臂、盾牌、身形尺标、翼靴、手镜、大脑、烛火和书本对应固定含义；选角与局内档案共用矢量，银灰低对比填充，名称与实际数值在前景。剪影不占布局、不拦截触摸、不重复朗读属性，系统强制高对比时隐藏。手机竖屏优先并兼顾网页。见 [属性剪影计划](plans/2026-10-15-attribute-silhouettes.md) 与 [验收](reviews/2026-10-15-attribute-silhouettes.md)。
 
 In 0.5.75, optional `GameState.onboarding` persists a versioned first-investigation lesson without changing save format v8 or scenario content. `src/services/onboarding.ts` supplies two authored turns only for the displayed declarations. Replies pass through the existing reducer and approved story events; actual `rollD100` results determine the photo event and its fail-forward cost. A skipped pending lesson still settles its already requested roll locally. Reader steps advance after actual open/close, and the final save writes a completed snapshot only on successful persistence. Completion/skip records `trpg-onboarding-v1` through the shared storage adapter; old saves and existing investigations do not receive a guide. No tutorial requests or negative prompts are added to the model pipeline. Normal DM history includes both turns and the real check, so the next free action is turn 3. `OnboardingCoach` now paints a short anchored bubble, masked spotlight and vector tap hand in a portal. `onboardingFocus.ts` measures real controls against scroll clipping, the visual viewport and native safe-area variables; it reveals a mobile photo card once, suspends occluded targets and tracks only bounded layout motion. Decorative layers pass pointers through. The bubble registers as a focus companion of its target dialog, so Skip participates in its keyboard loop without opening another modal. Reduced motion keeps static cues. No save/domain migration. See [focus verification](reviews/2026-10-14-onboarding-focus.md).
 

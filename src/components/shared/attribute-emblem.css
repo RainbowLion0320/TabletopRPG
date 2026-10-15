@@ -1,0 +1,19 @@
+/* Quiet, single-ink background stamps. Never affect layout or intercept a tap. */
+.attribute-tile { position: relative; isolation: isolate; overflow: hidden; }
+.attribute-tile > .attribute-emblem {
+  position: absolute;
+  z-index: 0;
+  right: 0;
+  bottom: -3px;
+  height: 92%;
+  width: auto;
+  max-width: 100%;
+  color: var(--text);
+  opacity: .14;
+  pointer-events: none;
+  user-select: none;
+}
+.attribute-tile > :not(.attribute-emblem) { position: relative; z-index: 1; }
+@media (forced-colors: active) {
+  .attribute-tile > .attribute-emblem { display: none; }
+}

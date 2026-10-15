@@ -4,10 +4,12 @@ title: Android 游戏客户端
 tags: [android, apk, capacitor, storage, release]
 sources: [../../assets/cinematics/README.md, ../../docs/ANDROID.md, ../../docs/SPEC.md, ../../docs/PRD.md]
 created: 2026-09-09
-updated: 2026-10-14
+updated: 2026-10-15
 ---
 
 # Android 游戏客户端
+
+0.5.76 补齐十二种单色属性剪影，生命／魔力／理智／幸运和八项基础属性在选角与局内档案统一映射。沿用银蓝数值格，低对比银灰底印不占布局、不拦截触摸，名称和实际数值保持前景；强制高对比隐藏装饰。无新增操作或规则。见 [属性剪影验收](../../docs/reviews/2026-10-15-attribute-silhouettes.md)。
 
 0.5.75 精修 [[concepts/onboarding]]：前两轮无需模型请求，真实骰点决定合影事件和失败的额外时间；引导与待确认骰子随加密调查记录恢复，旧存档不插入教程。一句气泡、镂空高亮和点击小手覆盖实际控件，不占用行动区高度；手机安全边距、触控透传、短窗口与弹窗让位一并适配，随时跳过，之后自由跑团。
 

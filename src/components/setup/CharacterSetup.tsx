@@ -5,6 +5,7 @@ import { deriveInvestigatorStats } from '../../data/gameRules';
 import { createInvestigatorFromPreset, presets } from '../../data/presets';
 import type { Investigator } from '../../types/game';
 import { AudioSettingsButton } from '../shared/AudioSettingsButton';
+import { AttributeEmblem } from '../shared/AttributeEmblem';
 import './character-setup.css';
 
 interface CharacterSetupProps {
@@ -95,10 +96,10 @@ export function CharacterSetup({ onBack, onStart, portrait = false }: CharacterS
                     {specialties.map(([name, value]) => <span key={name}>{name}<em>{value}</em></span>)}
                   </div>
                   <div className="preset-vitals" aria-label={`${preset.name}派生数值`}>
-                    <span title="生命（HP）"><b>生命</b><em>{stats.hp}</em></span>
-                    <span title="魔力（MP）"><b>魔力</b><em>{stats.mp}</em></span>
-                    <span title="理智（SAN）"><b>理智</b><em>{stats.san}</em></span>
-                    <span><b>幸运</b><em>{stats.luck}</em></span>
+                    <span className="attribute-tile" title="生命（HP）"><AttributeEmblem stat="HP" /><b>生命</b><em>{stats.hp}</em></span>
+                    <span className="attribute-tile" title="魔力（MP）"><AttributeEmblem stat="MP" /><b>魔力</b><em>{stats.mp}</em></span>
+                    <span className="attribute-tile" title="理智（SAN）"><AttributeEmblem stat="SAN" /><b>理智</b><em>{stats.san}</em></span>
+                    <span className="attribute-tile"><AttributeEmblem stat="Luck" /><b>幸运</b><em>{stats.luck}</em></span>
                   </div>
                 </div>
               </label>
@@ -124,7 +125,8 @@ export function CharacterSetup({ onBack, onStart, portrait = false }: CharacterS
                 >
                   <div className="preset-attrs" aria-label={`${preset.name}完整属性`}>
                     {otherAttrRows.map(([key, label]) => (
-                      <span key={key}>
+                      <span key={key} className="attribute-tile">
+                        <AttributeEmblem stat={key} />
                         <b>{label}<small>{key}</small></b>
                         <em>{preset.attrs[key]}</em>
                       </span>

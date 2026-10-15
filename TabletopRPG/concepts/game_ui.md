@@ -4,10 +4,12 @@ title: 共享交互 UI
 tags: [ui, art, mobile, android, web, accessibility]
 sources: [../../assets/cinematics/README.md, ../../docs/UI_SYSTEM.md, ../../assets/ui/artist/README.md, ../../assets/ui/app-icon/README.md, ../../src/styles/game-ui.css, ../../src/styles/motion.css, ../../src/components/game/ActionDock.tsx, ../../src/components/game/useNarrativeReading.ts, ../../design-qa.md]
 created: 2026-09-09
-updated: 2026-10-14
+updated: 2026-10-15
 ---
 
 # 共享交互 UI
+
+0.5.76 补齐十二种单色属性剪影，生命／魔力／理智／幸运和八项基础属性在选角与局内档案统一映射。沿用银蓝数值格，低对比银灰底印不占布局、不拦截触摸，名称和实际数值保持前景；强制高对比隐藏装饰。无新增操作或规则。见 [属性剪影验收](../../docs/reviews/2026-10-15-attribute-silhouettes.md)。
 
 0.5.75 将 [[concepts/onboarding]] 精修为控件旁的一句气泡、镂空聚焦、高亮轮廓和点击小手，删除大段边注、步骤计数与弹窗重复说明，不占用行动区高度。提示跟随真实控件、滚动、窗口和安全边距；透传触控并让位其他弹窗。跳过保留44px触点，支持弹窗键盘循环；减少动态使用静态提示。手机与网页共用，详见 [UI规范](../../docs/UI_SYSTEM.md) 与 [聚焦验收](../../docs/reviews/2026-10-14-onboarding-focus.md)。
 

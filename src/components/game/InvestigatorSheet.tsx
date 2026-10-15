@@ -9,6 +9,7 @@ import { useReadingMotion } from '../shared/useReadingMotion';
 import { useOverlayPresence } from '../shared/useOverlayPresence';
 import { useOverlayEntry } from '../shared/useOverlayEntry';
 import { ArchiveEmptyState } from '../shared/ArchiveEmptyState';
+import { AttributeEmblem } from '../shared/AttributeEmblem';
 import './investigatorSheet.css';
 
 interface InvestigatorSheetProps {
@@ -117,14 +118,14 @@ export function InvestigatorSheet({ players, selectedId: currentId, onSelect, on
           onScroll={rememberReadingPosition}>
           {tab === 'overview' && <>
             <dl className="investigator-vitals" aria-label="当前状态">
-              <div data-stat="hp"><dt>生命 HP</dt><dd>{player.currentHp}<small> / {player.hp}</small></dd></div>
-              <div data-stat="mp"><dt>魔力 MP</dt><dd>{player.currentMp}<small> / {player.mp}</small></dd></div>
-              <div data-stat="san"><dt>理智 SAN</dt><dd>{player.currentSan}<small> / {player.san}</small></dd></div>
-              <div data-stat="luck"><dt>幸运</dt><dd>{player.luck}</dd></div>
+              <div className="attribute-tile" data-stat="hp"><AttributeEmblem stat="HP" /><dt>生命 HP</dt><dd>{player.currentHp}<small> / {player.hp}</small></dd></div>
+              <div className="attribute-tile" data-stat="mp"><AttributeEmblem stat="MP" /><dt>魔力 MP</dt><dd>{player.currentMp}<small> / {player.mp}</small></dd></div>
+              <div className="attribute-tile" data-stat="san"><AttributeEmblem stat="SAN" /><dt>理智 SAN</dt><dd>{player.currentSan}<small> / {player.san}</small></dd></div>
+              <div className="attribute-tile" data-stat="luck"><AttributeEmblem stat="Luck" /><dt>幸运</dt><dd>{player.luck}</dd></div>
             </dl>
             <h3>基础属性</h3>
             <dl className="investigator-attributes">
-              {attributes.map(([key, label]) => <div key={key}><dt>{label}<small>{key}</small></dt><dd>{player.attrs[key]}</dd></div>)}
+              {attributes.map(([key, label]) => <div key={key} className="attribute-tile"><AttributeEmblem stat={key} /><dt>{label}<small>{key}</small></dt><dd>{player.attrs[key]}</dd></div>)}
             </dl>
           </>}
 

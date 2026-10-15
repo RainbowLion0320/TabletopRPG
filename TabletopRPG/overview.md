@@ -4,10 +4,12 @@ title: 项目全局综述
 tags: [overview, project, aligned]
 sources: [project_plan.md, ../../docs/PRD.md, ../../docs/SPEC.md, ../../docs/GDD.md]
 created: 2026-05-14
-updated: 2026-10-14
+updated: 2026-10-15
 ---
 
 # AI 跑团游戏 · 项目全局综述
+
+0.5.76 为[[entities/character_system]]补齐十二项单色属性剪影，选角与局内档案统一为低对比银灰底印，沿用原银蓝材质、数值与布局；手机优先兼顾网页。图形辅助辨认，不增加玩家操作、提示弹窗或模型请求。见 [[concepts/game_ui]]。
 
 0.5.75 在首次调查精修 [[concepts/onboarding]]：用接受委托和书桌侦查两轮实际体验教会行动、骰子和收集线索，再认识调查员档案与存档入口；使用控件旁的一句气泡、镂空聚焦和点击小手，移除步骤标题、计数与重复长说明，不占用操作区高度。随时可跳过，查阅阶段即可自由行动；不插入旧存档，不增加模型负向提示词或规则限制。
 

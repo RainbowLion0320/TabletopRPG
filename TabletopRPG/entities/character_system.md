@@ -4,10 +4,12 @@ title: 角色系统
 tags: [character, coc, game-system]
 sources: [project_plan.md, ../../docs/PRD.md]
 created: 2026-05-18
-updated: 2026-10-10
+updated: 2026-10-15
 ---
 
 # 角色系统
+
+0.5.76 补齐十二种单色属性剪影，生命／魔力／理智／幸运和八项基础属性在选角与局内档案统一映射。沿用银蓝数值格，低对比银灰底印不占布局、不拦截触摸，名称和实际数值保持前景；强制高对比隐藏装饰。无新增操作或规则。见 [属性剪影验收](../../docs/reviews/2026-10-15-attribute-silhouettes.md)。
 
 ## 概述
 
