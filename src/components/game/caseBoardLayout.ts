@@ -18,7 +18,8 @@ export async function layoutNodes(nodes: CaseBoardDisplayNode[], edges: CaseBoar
     id: 'case-board',
     layoutOptions: {
       'elk.algorithm': 'layered', 'elk.direction': 'RIGHT', 'elk.edgeRouting': 'ORTHOGONAL',
-      'elk.spacing.nodeNode': '46', 'elk.layered.spacing.nodeNodeBetweenLayers': '96',
+      // Layer gaps have to clear a two-line relation caption, or the caption lands on a card.
+      'elk.spacing.nodeNode': '46', 'elk.layered.spacing.nodeNodeBetweenLayers': '150',
       'elk.spacing.componentComponent': '72', 'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES'
     },
     children: nodes.map((node) => ({ id: node.id, ...CASE_BOARD_NODE_SIZE[node.type] })),

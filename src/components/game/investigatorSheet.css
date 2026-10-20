@@ -24,8 +24,8 @@
 .investigator-vitals dd { margin: 6px 0 0; font-size: 22px; font-variant-numeric: tabular-nums; }
 .investigator-vitals dd small { font-size: 14px; color: var(--text); white-space: nowrap; }
 .investigator-vitals [data-stat='hp'] { --stat-color: #c4867e; }
-.investigator-vitals [data-stat='mp'] { --stat-color: #81a1ca; }
-.investigator-vitals [data-stat='san'] { --stat-color: #82b7aa; }
+.investigator-vitals [data-stat='mp'] { --stat-color: #8f7fa6; }
+.investigator-vitals [data-stat='san'] { --stat-color: #93a077; }
 .investigator-attributes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; margin: 0; }
 .investigator-attributes > div { border: 5px solid transparent; border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 5px / 0 stretch; background: var(--panel); text-align: center; padding: 6px 3px; }
 .investigator-attributes dt { font-size: 14px; color: var(--text); }

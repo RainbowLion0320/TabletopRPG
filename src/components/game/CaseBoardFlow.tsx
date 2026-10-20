@@ -3,12 +3,14 @@ import { Maximize, Minus, Plus } from 'lucide-react';
 import { Background, getViewportForBounds, MarkerType, Panel, ReactFlow, useReactFlow, useStore, useViewport, type Edge, type Node, type Viewport } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { CaseBoardNodeCard, type CaseBoardFlowNodeData } from './CaseBoardNodeCard';
+import { CaseFlowEdge, type CaseFlowEdgeType } from './CaseFlowEdge';
 import { layoutCaseBoardGraph, type CaseBoardGraphModel } from './caseBoardGraph';
 import { ArchiveEmptyState } from '../shared/ArchiveEmptyState';
 import './case-board-flow.css';
 
 const NODE_TYPES = { caseBoardNode: CaseBoardNodeCard };
-const EDGE_COLOR = { evidence: '#c4d9f1', suspicion: '#c799c7', route: '#8faad0', danger: '#de938b' };
+const EDGE_TYPES = { caseFlowEdge: CaseFlowEdge };
+const EDGE_COLOR = { evidence: '#c9b083', suspicion: '#b48a92', route: '#a08a6a', danger: '#c98b7a' };
 const MIN_ZOOM = .2;
 const MAX_ZOOM = 1.5;
 interface CaseBoardFlowProps { model: CaseBoardGraphModel; selectedId: string | null; onSelect: (id: string) => void }
@@ -94,22 +96,22 @@ export function CaseBoardFlow({ model, selectedId, onSelect }: CaseBoardFlowProp
   }));
   const flowEdges: Edge[] = model.edges.map((edge) => {
     const faded = Boolean(selectedId && edge.from !== selectedId && edge.to !== selectedId);
+    const related = Boolean(selectedId && !faded);
     return {
-      id: edge.id, source: edge.from, target: edge.to, label: edge.label, type: 'smoothstep',
+      id: edge.id, source: edge.from, target: edge.to, type: 'caseFlowEdge',
+      data: { label: edge.label, faded, related },
       className: `case-flow-edge ${edge.dynamic ? 'dynamic' : 'authored'} ${edge.tone} ${edge.certainty}${faded ? ' faded' : ''}`,
       markerEnd: edge.tone === 'route' ? { type: MarkerType.ArrowClosed, color: EDGE_COLOR.route } : undefined,
       style: { stroke: EDGE_COLOR[edge.tone], strokeWidth: selectedId && (edge.from === selectedId || edge.to === selectedId) ? 2.4 : 1.5,
-        strokeDasharray: edge.certainty === 'hypothesis' || edge.tone === 'danger' ? '6 5' : undefined, opacity: faded ? .16 : .82 },
-      labelStyle: { fill: 'var(--muted)', fontSize: 13 }, labelBgStyle: { fill: 'var(--panel-strong)', fillOpacity: .88 },
-      labelBgPadding: [5, 3] as [number, number], labelBgBorderRadius: 3
+        strokeDasharray: edge.certainty === 'hypothesis' || edge.tone === 'danger' ? '6 5' : undefined, opacity: faded ? .16 : .82 }
     };
   });
   return <div className="case-board-flow-wrap" aria-label="案件线索关系图">
-    {flowNodes.length ? <ReactFlow edges={flowEdges} nodes={flowNodes} nodeTypes={NODE_TYPES} maxZoom={MAX_ZOOM} minZoom={MIN_ZOOM}
+    {flowNodes.length ? <ReactFlow edges={flowEdges} nodes={flowNodes} nodeTypes={NODE_TYPES} edgeTypes={EDGE_TYPES} maxZoom={MAX_ZOOM} minZoom={MIN_ZOOM}
       nodesConnectable={false} nodesDraggable={false} nodesFocusable={false} edgesFocusable={false} deleteKeyCode={null}
       onNodeClick={(event, node) => { event.currentTarget.querySelector<HTMLButtonElement>('.case-flow-node')?.focus({ preventScroll: true }); onSelect(node.id); }} proOptions={{ hideAttribution: true }}>
       <CaseBoardCamera geometryKey={geometryKey} focusKey={focusKey} selectedId={selectedId} />
-      <Background color="rgba(196,217,241,.12)" gap={24} size={1} /><CaseBoardTools />
+      <Background color="rgba(201,176,131,.14)" gap={24} size={1} /><CaseBoardTools />
     </ReactFlow> : !failed && !model.nodes.length
       ? <ArchiveEmptyState className="case-board-empty">暂无案件资料。</ArchiveEmptyState>
       : <p className="empty-note">{failed ? '暂时无法整理关系图，请重新打开资料。' : '正在整理关系图...'}</p>}

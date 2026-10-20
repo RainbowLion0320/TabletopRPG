@@ -5,8 +5,9 @@ import { hydrateGameState } from '../state/gameReducer';
 import { ScenarioContentMismatchError } from '../scenario/engine';
 import { gameStorage, flushGameStorage } from '../platform/storage';
 
-const SAVE_KEY = 'trpg-saves-v2';
+export const SAVE_KEY = 'trpg-saves-v2';
 const API_KEY = 'trpg-api';
+export { API_KEY as API_CONFIG_KEY };
 const MAX_SAVES = 12;
 
 function parseArray(key: string): unknown[] {

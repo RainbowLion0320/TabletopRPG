@@ -47,17 +47,21 @@ interface Candidate extends TermDefinition {
   end: number;
 }
 
+/**
+ * Identity colors have to stay distinguishable without leaving the aged-brown
+ * palette, or a single name drags the whole scene back to a cool theme.
+ */
 export const PERSON_COLORS = [
-  '#f0b36a',
-  '#73cde0',
-  '#de8fb8',
-  '#91d28b',
-  '#d4b5ff',
-  '#f38b7c',
-  '#85b7f1',
-  '#d8cf72',
-  '#72d1b4',
-  '#cba07a'
+  '#d9a86c',
+  '#c98f6e',
+  '#c2ad72',
+  '#cf8a8a',
+  '#b8a878',
+  '#c4a3b0',
+  '#d4b48c',
+  '#b08f7a',
+  '#caa07a',
+  '#a8927a'
 ] as const;
 
 const RESULT_TERMS: Array<[string, NarrativeMarkKind]> = [

@@ -680,6 +680,9 @@ for (const size of [
     await page.evaluate(() => document.fonts.ready);
     await settleUiMotion(page);
     const portrait = await page.locator('html').evaluate(element => element.classList.contains('portrait-ui'));
+    // Hints start folded; the test walks in the way a reader would.
+    await page.locator('.suggestion-trigger').click();
+    await settleUiMotion(page);
     const row = page.locator('.suggestion-row'), input = page.locator('.dock-input');
     const previews = page.locator('.suggestion-row button');
     for (const box of await previews.evaluateAll(elements => elements.map(element => ({
@@ -1397,6 +1400,8 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }]) {
     page.on('console', message => { if (/same key/i.test(message.text())) warnings.push(message.text()); });
     await gotoWithSave(page, state);
     await page.getByRole('button', { name: '继续游戏', exact: true }).click();
+    await page.locator('.suggestion-trigger').click();
+    await settleUiMotion(page);
     const suggestions = page.locator('.suggestion-row button'), input = page.locator('.dock-input');
     await expect(suggestions).toHaveText(['检查门锁', '询问委托人', '观察街道']);
     await expect(input).toHaveValue(state.declarations.inspector);
@@ -2620,7 +2625,7 @@ for (const size of [{ width: 320, height: 568, party: 4 as const }, { width: 390
     await page.locator('.dock-input').fill(draft);
     writeFileSync(testInfo.outputPath('party-bounds.json'), JSON.stringify(await page.locator('.action-dock').evaluate(e => ({
       viewport: [innerWidth, innerHeight], dock: e.getBoundingClientRect().toJSON(), max: getComputedStyle(e).maxHeight,
-      children: Array.from(e.querySelectorAll('.suggestion-row,.dock-input-row,.party-strip-compact,.party-compact,.dock-input')).map(c => ({ name: c.className, rect: c.getBoundingClientRect().toJSON(), scrollHeight: c.scrollHeight, clientHeight: c.clientHeight }))
+      children: Array.from(e.querySelectorAll('.suggestion-disclosure,.suggestion-row,.dock-input-row,.party-strip-compact,.party-compact,.dock-input')).map(c => ({ name: c.className, rect: c.getBoundingClientRect().toJSON(), scrollHeight: c.scrollHeight, clientHeight: c.clientHeight }))
     }))));
     await verifyParty();
     for (let i = 0; i < size.party; i++) {
@@ -3207,6 +3212,8 @@ test('reference panel renders saved dynamic case board hypotheses', async ({ pag
   await eventDetail.getByRole('button', { name: '返回上一份资料', exact: true }).click();
   await expect(inspector.getByRole('button', { name: '信息来源', exact: true })).toHaveAttribute('aria-expanded', 'true');
   await inspector.getByRole('button', { name: '关闭资料详情', exact: true }).click();
+  // The board animates its camera when the selection changes; click the steady frame.
+  await page.waitForTimeout(500);
   await board.locator('.case-flow-node.theory.hypothesis', { hasText: '可能有内应协助' }).click();
   await expect(inspector.getByRole('button', { name: '信息来源', exact: true })).toHaveAttribute('aria-expanded', 'false');
   expect(await inspector.locator('.case-board-inspector-scroll').evaluate(element => element.scrollTop)).toBe(0);

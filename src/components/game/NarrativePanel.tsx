@@ -1,5 +1,5 @@
 import { memo, useCallback, useId, useLayoutEffect, useRef, useState, type CSSProperties, type Ref } from 'react';
-import { ChevronDown, Expand, Shrink } from 'lucide-react';
+import { ChevronDown, Maximize2, Minimize2 } from 'lucide-react';
 import type { GameState, NarrativeKeywordHint, NarrativeMessage } from '../../types/game';
 import { storyData } from '../../data/storyData';
 import {
@@ -9,6 +9,7 @@ import {
 } from '../../services/narrativeMarkup';
 import { ThinkingIndicator } from './ThinkingIndicator';
 import { useNarrativeReading } from './useNarrativeReading';
+import { useNarrativeResize } from './useNarrativeResize';
 import { isPlayerVisibleMessage } from '../../services/narrativeVisibility';
 import './narrative-tools.css';
 
@@ -110,10 +111,12 @@ const StoryMessage = memo(function StoryMessage({ id, arriving, type, text, play
 
 export function NarrativePanel({ onMarkOpen, state, thinkingProgress }: NarrativePanelProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const latestMessageRef = useRef<HTMLDivElement>(null);
   const onMarkOpenRef = useRef(onMarkOpen);
   const scrollId = useId();
   const [expanded, setExpanded] = useState(false);
+  const { resized, resizing, handleProps } = useNarrativeResize(panelRef, () => setExpanded(false));
   const visibleMessages = state.messages.filter(isPlayerVisibleMessage);
   const latestId = visibleMessages[visibleMessages.length - 1]?.id;
   const { hasNewContent, handleScroll, readNewContent } = useNarrativeReading(ref, latestMessageRef, visibleMessages);
@@ -129,7 +132,13 @@ export function NarrativePanel({ onMarkOpen, state, thinkingProgress }: Narrativ
   const activeNpc = state.activeNpcName ? storyData.npcs[state.activeNpcName] : null;
 
   return (
-    <div className={`narrative-panel${expanded ? ' expanded' : ''}`}>
+    <div className={`narrative-panel${expanded ? ' expanded' : ''}${resizing ? ' resizing' : ''}${resized ? ' resized' : ''}`} ref={panelRef}>
+      <div
+        {...handleProps}
+        className="narrative-resize-handle"
+        onDoubleClick={() => { handleScroll(); setExpanded(!expanded); }}
+        title="拖动调整剧情区域高度，双击最大化"
+      />
       <div className="narrative-header">
         {activeNpc ? (
           <button
@@ -155,14 +164,14 @@ export function NarrativePanel({ onMarkOpen, state, thinkingProgress }: Narrativ
           {hasNewContent && <button className="narrative-new-content" onClick={readNewContent} aria-label="查看新剧情" aria-controls={scrollId} type="button"><ChevronDown size={14} /><span className="narrative-new-content-label">新内容</span></button>}
           <button
             className="narrative-toggle-btn"
-            aria-label={expanded ? '收起剧情' : '展开剧情'}
+            aria-label={expanded ? '还原剧情高度' : '最大化剧情区域'}
             aria-expanded={expanded}
             aria-controls={scrollId}
             onClick={() => { handleScroll(); setExpanded(!expanded); }}
-            title={expanded ? '收起' : '展开'}
+            title={expanded ? '还原' : '最大化'}
             type="button"
           >
-            {expanded ? <Shrink size={16} /> : <Expand size={16} />}
+            {expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
           </button>
         </div>
       </div>

@@ -55,10 +55,35 @@ export async function readJsonResponse<T extends object>(
     throw new AiResponseFormatError(`${label} response must be a JSON object`);
   }
   if (!response.ok || data.error) {
-    const detail = typeof data.error?.message === 'string' ? data.error.message : undefined;
-    throw new AiHttpError(response.status, detail);
+    throw new AiHttpError(response.status, describeProviderError(data.error));
   }
   return data;
+}
+
+/**
+ * Gateways disagree on the error envelope: some nest a JSON string inside `error`,
+ * some send an object. Either way the player needs the provider's own reason, not
+ * a bare status, because it decides whether swapping a field can rescue the turn.
+ */
+export function describeProviderError(raw: unknown): string | undefined {
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (!trimmed) return undefined;
+    try {
+      const nested = JSON.parse(trimmed) as { error?: unknown; message?: unknown; message_zh?: unknown };
+      const inner = nested?.error as { message?: unknown; message_zh?: unknown } | undefined;
+      const text = inner?.message_zh ?? inner?.message ?? nested?.message_zh ?? nested?.message;
+      return typeof text === 'string' && text.trim() ? text : trimmed.slice(0, 200);
+    } catch {
+      return trimmed.slice(0, 200);
+    }
+  }
+  if (raw && typeof raw === 'object') {
+    const record = raw as { message_zh?: unknown; message?: unknown };
+    const text = record.message_zh ?? record.message;
+    if (typeof text === 'string' && text.trim()) return text;
+  }
+  return undefined;
 }
 
 export function parseFunctionArguments(raw: unknown): Record<string, unknown> | null {

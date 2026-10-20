@@ -6,9 +6,22 @@
 :root .case-board-tools button:enabled:active { filter: brightness(.92); transform: translateY(1px); }
 :root .case-board-tools button:disabled { color: var(--ui-ink); opacity: .55; cursor: default; }
 .react-flow__node-caseBoardNode { border-radius: 0; }
+/* Relation captions ride above the cards; below them a long line is cut in half. */
+.case-board-flow-wrap .react-flow__edgelabel-renderer { z-index: 5; }
+.case-flow-edge-label {
+  position: absolute; display: -webkit-box; overflow: hidden; max-width: 180px;
+  -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  padding: 3px 7px; border: 1px solid rgb(var(--ui-line-rgb) / .55); border-radius: 3px;
+  background: rgb(var(--ui-strong-rgb) / .97); box-shadow: 0 3px 10px #0009;
+  color: var(--muted); font-size: 13px; line-height: 1.35; text-align: center;
+  overflow-wrap: anywhere; pointer-events: none; opacity: .82;
+  transition: color 160ms ease, opacity 160ms ease, border-color 160ms ease;
+}
+.case-flow-edge-label.related { color: var(--accent); border-color: rgb(var(--ui-accent-rgb) / .65); opacity: 1; }
+.case-flow-edge-label.faded { opacity: .25; }
 .case-flow-node { --record-accent: var(--muted); position: relative; display: flex; width: 100%; height: 100%; padding: 0; overflow: hidden; border: 6px solid transparent; border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 6px / 0 stretch; border-radius: 0; background: var(--panel); color: var(--text); box-shadow: 0 5px 15px #0006; font: inherit; text-align: left; cursor: pointer; transition: opacity 180ms ease, box-shadow 180ms ease; }
-.case-flow-node.npc { --record-accent: #93b3c0; }
-.case-flow-node.scene { --record-accent: #a1b994; }
+.case-flow-node.npc { --record-accent: #b6a08a; }
+.case-flow-node.scene { --record-accent: #9aa87c; }
 .case-flow-node.event { --record-accent: var(--muted); }
 .case-flow-node.theory { --record-accent: var(--accent); }
 .case-flow-node.hypothesis .case-flow-node-meta { border-bottom: 1px dashed var(--record-accent); }

@@ -1,5 +1,6 @@
 import type { ResolvedApiConfig } from '../../config/aiConfig';
 import { AiHttpError, AiProtocolError } from './errors';
+import { isRelaxedGateway, rememberRelaxedGateway } from './gatewayCapabilities';
 import { collectTextContent, parseFunctionArguments, requestJsonResponse } from './http';
 import type {
   LlmFunctionCallItem,
@@ -31,47 +32,63 @@ export async function requestChatCompletionsJson(
 ): Promise<LlmResult> {
   const mimo = config.provider === 'mimo';
   const hasTools = request.useTools !== false && Boolean(request.tools?.length);
-  const body: Record<string, unknown> = {
-    model: config.model,
-    messages: toChatMessages(mimo ? `${request.instructions}\n返回正文时输出符合以下 schema 的 JSON 对象；需要工具时使用工具通道。\n${JSON.stringify(request.schema)}` : request.instructions,
-      request.context ? [{ role: 'system', content: request.context }, ...request.input] : request.input),
-    [mimo ? 'max_completion_tokens' : 'max_tokens']: (request.maxOutputTokens ?? 1024) + (mimo ? 4096 : 0),
-    response_format: mimo ? { type: hasTools ? 'text' : 'json_object' } : {
-      type: 'json_schema',
-      json_schema: {
-        name: request.schemaName,
-        strict: true,
-        schema: request.schema
-      }
-    }
-  };
-  if (mimo && request.label === 'Narrator') { body.stream = true; body.stream_options = { include_usage: true }; }
+  const url = `${config.endpoint.replace(/\/+$/, '')}/chat/completions`;
+  const gatewayKey = `${url}|${config.model}`;
 
-  if (request.useTools !== false && request.tools?.length) {
-    body.tools = request.tools;
-    body.tool_choice = 'auto';
-  }
+  // MiMo needs the schema in the prompt; other gateways may also refuse strict
+  // structured output, so the same relaxed shape doubles as the fallback below.
+  const buildBody = (relaxed: boolean): Record<string, unknown> => {
+    const body: Record<string, unknown> = {
+      model: config.model,
+      messages: toChatMessages(relaxed ? `${request.instructions}\n返回正文时输出符合以下 schema 的 JSON 对象；需要工具时使用工具通道。\n${JSON.stringify(request.schema)}` : request.instructions,
+        request.context ? [{ role: 'system', content: request.context }, ...request.input] : request.input),
+      [mimo ? 'max_completion_tokens' : 'max_tokens']: (request.maxOutputTokens ?? 1024) + (mimo ? 4096 : 0),
+      response_format: relaxed ? { type: hasTools ? 'text' : 'json_object' } : {
+        type: 'json_schema',
+        json_schema: {
+          name: request.schemaName,
+          strict: true,
+          schema: request.schema
+        }
+      }
+    };
+    if (mimo && request.label === 'Narrator') { body.stream = true; body.stream_options = { include_usage: true }; }
+    if (request.useTools !== false && request.tools?.length) {
+      body.tools = request.tools;
+      body.tool_choice = 'auto';
+    }
+    return body;
+  };
+
+  const send = (relaxed: boolean) => requestJsonResponse<ChatCompletionJson>(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${config.apiKey}`
+    },
+    body: JSON.stringify(buildBody(relaxed)),
+    signal: request.signal
+  }, request.label, { protocol: 'chat-completions', observation: request.observation });
 
   let data: ChatCompletionJson;
   try {
-    data = await requestJsonResponse<ChatCompletionJson>(`${config.endpoint.replace(/\/+$/, '')}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${config.apiKey}`
-      },
-      body: JSON.stringify(body),
-      signal: request.signal
-    }, request.label, { protocol: 'chat-completions', observation: request.observation });
+    data = await send(mimo || isRelaxedGateway(gatewayKey));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (error instanceof AiHttpError && [400, 422].includes(error.status)
+    // A gateway can reject strict structured output while still answering a plain
+    // JSON object. One relaxed retry keeps the turn alive instead of losing it.
+    if (!mimo && error instanceof AiHttpError && [400, 422].includes(error.status)
+      && /response.?format|output format|输出格式|结构化/i.test(message)) {
+      data = await send(true);
+      rememberRelaxedGateway(gatewayKey);
+    } else if (error instanceof AiHttpError && [400, 422].includes(error.status)
       && request.useTools !== false && request.tools?.length && /tool|function/i.test(message)) {
       throw new AiProtocolError(
         `当前协议/模型不支持工具调用：请切换 Responses，或使用支持 tools 的 chat-compatible endpoint。原始错误：${message}`
       );
+    } else {
+      throw error;
     }
-    throw error;
   }
 
   const message = firstAssistantMessage(data);

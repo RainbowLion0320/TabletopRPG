@@ -181,7 +181,7 @@
 .result-fail { --dice-accent: var(--muted); }
 .result-fumble { --dice-accent: #e9a092; }
 .result-crit { --dice-accent: #edd8ac; }
-.result-hard { --dice-accent: #d5e4f6; }
+.result-hard { --dice-accent: #ece0c8; }
 .result-success { --dice-accent: #c6dfd0; }
 
 /* Reveal only the settled content; geometry and confirmation remain immediate. */

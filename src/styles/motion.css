@@ -52,6 +52,8 @@
 :root.fog-ui .dock-actor-avatar img { animation: fog-content-enter 140ms ease-out; }
 /* Keep the same reading row and scroll node while giving the scene space back. */
 :root.fog-ui .game-screen { transition: grid-template-rows 240ms var(--ui-ease); }
+/* A finger already owns the timing; easing here would trail the pointer. */
+:root.fog-ui .game-screen[data-narrative-resizing] { transition: none; }
 :root.fog-ui .scene-stage { opacity: 1; transition: opacity 100ms ease 80ms; }
 :root.fog-ui .scene-art-canvas { position: relative; width: 100%; height: var(--scene-art-height, 100%); }
 :root.fog-ui .game-screen:has(.narrative-panel.expanded) .scene-stage { opacity: 0; transition-delay: 0ms; }

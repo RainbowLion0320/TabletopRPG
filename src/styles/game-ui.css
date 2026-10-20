@@ -1,46 +1,46 @@
 /* Original artist buttons and specialized silver-blue painted surfaces.
    Artwork owns material; live controls retain semantics, layout and input. */
 :root.fog-ui {
-  --bg: #0d1725;
-  --panel: #18283c;
-  --panel-strong: #101c2d;
-  --surface: #21374f;
-  --text: #eef3fb;
-  --muted: #b5c7e0;
-  --quiet: #91a9c9;
-  --accent: #c4d9f1;
-  --accent-deep: #8faad0;
-  --line: #6080a3;
-  --line-soft: #344d6b;
-  --red: #de938b;
-  --green: #90bbad;
+  --bg: #0f0d0b;
+  --panel: #1d1815;
+  --panel-strong: #14110f;
+  --surface: #2b241f;
+  --text: #e5ddd0;
+  --muted: #a99b89;
+  --quiet: #7c7065;
+  --accent: #c0a06c;
+  --accent-deep: #8d7148;
+  --line: #594936;
+  --line-soft: #332a22;
+  --red: #c07f6c;
+  --green: #96a07a;
   --ui-paper: var(--text);
-  --ui-ink: #23314a;
-  --ui-focus: #e7f4ff;
-  --ui-danger: #efb7b0;
-  --ui-danger-ink: #552231;
+  --ui-ink: #14100d;
+  --ui-focus: #f2e6cd;
+  --ui-danger: #e8b3a3;
+  --ui-danger-ink: #4a1f16;
   --ui-font: "Zihun Yunque", "Noto Serif SC", "Songti SC", serif;
   --ui-body-font: Georgia, "Noto Serif SC", "Songti SC", serif;
-  --ui-panel-frame: url('../../assets/ui/artist/panel-frame.webp');
+  --ui-panel-frame: url('../../assets/ui/artist/warm/panel-frame.webp');
   --ui-panel-slice: 96;
-  --ui-icon-frame: url('../../assets/ui/artist/icon-frame.webp');
-  --ui-dice-panel: url('../../assets/ui/artist/dice-panel.webp');
-  --ui-portrait-mount: url('../../assets/ui/artist/portrait-mount.webp');
-  --ui-input-frame: url('../../assets/ui/artist/input-frame.webp');
-  --ui-heading-rule: url('../../assets/ui/artist/heading-rule.webp');
-  --ui-control-stud: url('../../assets/ui/artist/control-stud.webp');
-  --ui-gauge-frame: url('../../assets/ui/artist/clock-gauge.webp');
-  --ui-primary-frame: url('../../assets/ui/artist/button-primary.webp');
-  --ui-secondary-frame: url('../../assets/ui/artist/button-secondary.webp');
-  --ui-bg-rgb: 13 23 37;
-  --ui-panel-rgb: 24 40 60;
-  --ui-strong-rgb: 16 28 45;
-  --ui-surface-rgb: 33 55 79;
-  --ui-text-rgb: 238 243 251;
-  --ui-muted-rgb: 181 199 224;
-  --ui-accent-rgb: 196 217 241;
-  --ui-line-rgb: 96 128 163;
-  --ui-line-soft-rgb: 52 77 107;
+  --ui-icon-frame: url('../../assets/ui/artist/warm/icon-frame.webp');
+  --ui-dice-panel: url('../../assets/ui/artist/warm/dice-panel.webp');
+  --ui-portrait-mount: url('../../assets/ui/artist/warm/portrait-mount.webp');
+  --ui-input-frame: url('../../assets/ui/artist/warm/input-frame.webp');
+  --ui-heading-rule: url('../../assets/ui/artist/warm/heading-rule.webp');
+  --ui-control-stud: url('../../assets/ui/artist/warm/control-stud.webp');
+  --ui-gauge-frame: url('../../assets/ui/artist/warm/clock-gauge.webp');
+  --ui-primary-frame: url('../../assets/ui/artist/warm/button-primary.webp');
+  --ui-secondary-frame: url('../../assets/ui/artist/warm/button-secondary.webp');
+  --ui-bg-rgb: 15 13 11;
+  --ui-panel-rgb: 29 24 21;
+  --ui-strong-rgb: 20 17 15;
+  --ui-surface-rgb: 43 36 31;
+  --ui-text-rgb: 229 221 208;
+  --ui-muted-rgb: 169 155 137;
+  --ui-accent-rgb: 192 160 108;
+  --ui-line-rgb: 89 73 54;
+  --ui-line-soft-rgb: 51 42 34;
   color-scheme: dark;
 }
 .ui-visually-hidden {
@@ -99,6 +99,16 @@
   border: 0; border-image: none;
   background: var(--ui-icon-frame) center / 100% 100% no-repeat;
 }
+/* The dialogue chrome is dark glass; the silver icon plate reads as a different material. */
+:root.fog-ui :is(.narrative-toggle-btn, .game-top .menu-button) { color: var(--accent); }
+:root.fog-ui :is(.narrative-toggle-btn, .game-top .menu-button)::before {
+  border: 1px solid rgb(var(--ui-line-rgb) / .28);
+  background: rgb(var(--ui-surface-rgb) / .34);
+  border-radius: 8px;
+}
+/* The plate owns the surface now, so the legacy tint underneath would double it up. */
+:root.fog-ui .game-top .menu-button,
+:root.fog-ui .game-top .menu-button:hover { background: transparent; border-color: transparent; }
 :root.fog-ui :is(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action) svg {
   flex-shrink: 0; stroke-width: 1.6;
 }
@@ -119,6 +129,8 @@
     .case-board-tools button, .case-board-inspector header button, .case-related-record):enabled:hover {
     filter: brightness(1.08); color: var(--ui-ink);
   }
+  :root.fog-ui :is(.narrative-toggle-btn, .game-top .menu-button):enabled:hover { color: var(--accent); }
+  :root.fog-ui :is(.narrative-toggle-btn, .game-top .menu-button):enabled:hover::before { background: rgb(var(--ui-surface-rgb) / .48); border-color: rgb(var(--ui-line-rgb) / .40); }
 }
 :root.fog-ui :where(.primary-btn, .ghost-btn, .icon-text-btn, .primary-action, .secondary-action,
   .dice-roll-confirm, .menu-button, .drawer-tab, .narrative-toggle-btn, .narrative-new-content,
@@ -166,16 +178,30 @@
 :root.fog-ui:not(.portrait-ui) .brand-scene::before, :root.fog-ui:not(.portrait-ui) .brand-scene::after { display: none; }
 :root.fog-ui:not(.portrait-ui) .menu-button { width: 44px; height: 44px; flex-shrink: 0; }
 :root.fog-ui:not(.portrait-ui) .scene-npc { height: calc(100% - 8px); }
+/* The painted frame keeps its corners; its opaque core stays out of the fill so the
+   scene can read through. Without `fill` the backdrop blur has something to soften. */
 :root.fog-ui :is(.narrative-panel, .action-dock) {
   border-color: transparent; border-radius: 8px;
-  border-image: var(--ui-panel-frame) var(--ui-panel-slice) fill / 8px / 0 stretch;
-  background: var(--panel); background-clip: padding-box; box-shadow: none;
+  border-image: var(--ui-panel-frame) var(--ui-panel-slice) / 8px / 0 stretch;
+  background: linear-gradient(180deg, rgb(43 36 31 / .78), rgb(20 17 15 / .86));
+  background-clip: padding-box;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .08);
+  backdrop-filter: blur(20px) saturate(120%);
+}
+:root.fog-ui .narrative-panel::before {
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: var(--ui-panel-frame) center / 100% 100% no-repeat;
+  opacity: .13; mix-blend-mode: soft-light; border-radius: inherit;
+}
+/* A maximised reader has no scene behind it; a firmer glass keeps the page from emptying out. */
+:root.fog-ui .game-screen:has(.narrative-panel.expanded) :is(.narrative-panel, .action-dock) {
+  background: linear-gradient(180deg, rgb(38 32 27 / .86), rgb(16 13 11 / .90));
 }
 :root.fog-ui .narrative-panel { border-bottom: 0; }
 :root.fog-ui .action-dock { border-top-color: transparent; }
 :root.fog-ui .story-message { border-radius: 4px; }
-:root.fog-ui .story-message.dm { border-left: 2px solid var(--accent); background: rgb(var(--ui-surface-rgb) / .25); }
-:root.fog-ui .story-message.player { background: var(--surface); border-right: 2px solid var(--accent); }
+:root.fog-ui .story-message.dm { border-left: 2px solid var(--accent); background: rgb(var(--ui-surface-rgb) / .14); }
+:root.fog-ui .story-message.player { background: rgb(var(--ui-surface-rgb) / .30); border-right: 2px solid var(--accent); }
 :root.fog-ui .message-label { color: var(--accent); letter-spacing: .06em; }
 :root.fog-ui .dock-actor-avatar { position: relative; isolation: isolate; width: 44px; height: 44px; padding: 4px; border: 1px solid transparent; border-radius: 3px; background: var(--panel-strong); cursor: pointer; }
 :root.fog-ui .dock-actor-avatar:active { outline: 1px solid var(--ui-focus); outline-offset: -3px; }

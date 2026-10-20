@@ -9,6 +9,12 @@ import { createScenarioProgress, getScenarioDefinition } from '../../src/scenari
 
 vi.mock('../../src/dm/pipeline', () => ({ runDmTurn: vi.fn() }));
 
+// Suggestions are folded by default; every test that reads them walks in the reader's way.
+function openTips() {
+  const trigger = screen.queryByRole('button', { name: '没思路？看看提示' });
+  if (trigger) fireEvent.click(trigger);
+}
+
 describe('ActionDock player-specific suggestions', () => {
   it.each(['END_A', 'END_B', 'END_C'])('keeps the authored %s outcome and party inspectable without reopening actions', (endingId) => {
     const state = makeState({ players: [makeInvestigator({ id: 'henry', name: '亨利' }), makeInvestigator({ id: 'ada', name: '艾达' })] });
@@ -109,6 +115,7 @@ describe('ActionDock player-specific suggestions', () => {
     const onSuggestion = vi.fn();
     const props = { onInspectPlayer: vi.fn(), isDiceRolling: false, onDeclarationChange: vi.fn(), onSubmit: vi.fn(), onRoll: vi.fn(), onSuggestion };
     const { container, rerender } = render(<ActionDock {...props} state={state} />);
+    openTips();
     const row = container.querySelector('.suggestion-row');
     const input = container.querySelector('.dock-input');
     fireEvent.click(screen.getByRole('button', { name: long }));
@@ -147,6 +154,7 @@ describe('ActionDock player-specific suggestions', () => {
       />
     );
 
+    openTips();
     expect(screen.getByRole('button', { name: '观察窗外动静' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '安抚伊莎贝拉' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '检查书桌暗格' })).toBeNull();

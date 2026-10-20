@@ -2,9 +2,9 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 :root {
-  --bg: #0d1725; --panel: #18283c; --panel-strong: #101c2d;
-  --line: #6080a3; --line-soft: #344d6b; --accent: #c4d9f1; --accent-deep: #8faad0;
-  --text: #eef3fb; --muted: #b5c7e0; --quiet: #91a9c9; --red: #de938b; --green: #90bbad;
+  --bg: #0f0d0b; --panel: #1d1815; --panel-strong: #14110f;
+  --line: #594936; --line-soft: #332a22; --accent: #c0a06c; --accent-deep: #8d7148;
+  --text: #e5ddd0; --muted: #a99b89; --quiet: #7c7065; --red: #c07f6c; --green: #96a07a;
   font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
   color: var(--text); background: var(--bg);
 }
@@ -184,7 +184,8 @@ button {
   border-radius: 10px 10px 0 0;
   background: linear-gradient(180deg, rgb(var(--ui-panel-rgb) / 0.92), rgb(var(--ui-strong-rgb) / 0.94));
   backdrop-filter: blur(14px);
-  padding: 0 28px 20px;
+  --narrative-pad-x: 28px;
+  padding: 0 var(--narrative-pad-x) 20px;
   transition: top 0.3s ease, bottom 0.3s ease;
 }
 
@@ -322,7 +323,7 @@ button {
 }
 
 .narrative-mark-location {
-  color: #76cbd1;
+  color: #a89a78;
   text-decoration-line: underline;
 }
 
@@ -333,7 +334,7 @@ button {
 
 .narrative-mark-skill,
 .narrative-mark-success {
-  color: #83cf94;
+  color: #9aa87c;
 }
 
 .narrative-mark-danger,
@@ -1103,10 +1104,10 @@ button {
   font-size: 10px;
 }
 
-.dm-debug-badge.ok { background: rgba(80,170,90,0.25); color: #8fe39a; }
+.dm-debug-badge.ok { background: rgba(130,150,90,0.25); color: #b0bd8c; }
 .dm-debug-badge.bad { background: rgba(190,80,80,0.25); color: #f0a0a0; }
 .dm-debug-badge.warn { background: rgb(var(--ui-muted-rgb) / 0.25); color: var(--text); }
-.dm-debug-badge.info { background: rgba(80,140,200,0.25); color: #9bc6ec; }
+.dm-debug-badge.info { background: rgba(160,130,80,0.25); color: #cbb193; }
 
 .dm-debug-detail {
   flex: 1;
@@ -1242,7 +1243,8 @@ button {
     right: 16px;
     bottom: 150px;
     max-height: calc(50vh - 150px);
-    padding: 0 16px 14px;
+    --narrative-pad-x: 16px;
+    padding: 0 var(--narrative-pad-x) 14px;
   }
   .narrative-panel.expanded {
     top: 0;

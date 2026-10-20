@@ -15,9 +15,12 @@
   :root.fog-ui:not(.portrait-ui) .game-screen .suggestion-row { display: none; }
   :root.fog-ui:not(.portrait-ui) .game-screen .dock-input { max-height: 66px; }
   :root.fog-ui:not(.portrait-ui) .game-screen .action-dock { padding: 6px 10px; }
-  :root.fog-ui:not(.portrait-ui) .game-screen .narrative-panel { padding: 0 12px 6px; }
+  :root.fog-ui:not(.portrait-ui) .game-screen .narrative-panel { --narrative-pad-x: 12px; padding: 0 var(--narrative-pad-x) 6px; }
   :root.fog-ui:not(.portrait-ui) .game-screen .narrative-header { padding: 0; }
 }
 @media (max-height: 300px) {
   :root.fog-ui:not(.portrait-ui) .game-screen .party-strip-compact { display: none; }
 }
+
+/* A height dragged by the reader replaces the even split; the scene row gives it back. */
+:root.fog-ui:not(.portrait-ui) .game-screen[data-narrative-resized] { grid-template-rows: 64px minmax(0, 1fr) var(--narrative-height) max-content; }

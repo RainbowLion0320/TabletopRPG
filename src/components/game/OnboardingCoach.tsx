@@ -109,11 +109,11 @@ export function OnboardingCoach({ state, dicePhase, drawerOpen, characterOpen, m
     </aside>
     {!focus.reading && <span className="onboarding-hand" aria-hidden="true" style={{ left: hand.x - 12, top: hand.y - 4 }}>
       <svg viewBox="0 0 40 48" width="40" height="48">
-        <defs><linearGradient id={`${id}-glove`} x2=".8" y2="1"><stop stopColor="#fff6dc"/><stop offset="1" stopColor="#c5d9ec"/></linearGradient></defs>
+        <defs><linearGradient id={`${id}-glove`} x2=".8" y2="1"><stop stopColor="#fff6dc"/><stop offset="1" stopColor="#e8dcc4"/></linearGradient></defs>
         <circle className="onboarding-tap" cx="12" cy="4" r="8" fill="none" stroke="#e7ca8e" strokeWidth="1.5" />
-        <path d="M9 26V6c0-5 7-5 7 0v14c3-4 7-2 7 2 4-3 7-1 7 3 4-2 7 1 6 5l-3 9c-1 3-4 5-8 5h-9c-3-1-6-4-8-7L3 29c-3-5 3-8 6-3Z" fill={`url(#${id}-glove)`} stroke="#344a60" strokeWidth="1.7" strokeLinejoin="round" />
-        <path d="M16 20v7m7-5v7m7-4v6M13 39h19" fill="none" stroke="#607d98" strokeWidth="1.2" strokeLinecap="round" />
-        <path d="M14 40h18l-1 6H15Z" fill="#e0c18b" stroke="#344a60" strokeWidth="1.3" />
+        <path d="M9 26V6c0-5 7-5 7 0v14c3-4 7-2 7 2 4-3 7-1 7 3 4-2 7 1 6 5l-3 9c-1 3-4 5-8 5h-9c-3-1-6-4-8-7L3 29c-3-5 3-8 6-3Z" fill={`url(#${id}-glove)`} stroke="#4a3a2a" strokeWidth="1.7" strokeLinejoin="round" />
+        <path d="M16 20v7m7-5v7m7-4v6M13 39h19" fill="none" stroke="#8a7358" strokeWidth="1.2" strokeLinecap="round" />
+        <path d="M14 40h18l-1 6H15Z" fill="#e0c18b" stroke="#4a3a2a" strokeWidth="1.3" />
       </svg>
     </span>}
   </div>, document.body);

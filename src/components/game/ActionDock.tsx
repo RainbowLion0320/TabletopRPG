@@ -1,9 +1,11 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Lightbulb } from 'lucide-react';
 import actionPen from '../../../assets/ui/artist/action-pen.webp';
 import caseSeal from '../../../assets/ui/artist/case-seal.webp';
 import diceEmblem from '../../../assets/ui/artist/dice-emblem.webp';
 import { JournalArt } from '../shared/JournalArt';
 import { HomeEmblemArt } from '../shared/HomeEmblemArt';
+import { DisclosureMotion } from '../shared/DisclosureMotion';
 import type { GameState } from '../../types/game';
 import { getScenarioDefinition, getScenarioProgressForState } from '../../scenario/engine';
 import { pendingDmFailureText } from '../../services/narrativeVisibility';
@@ -49,6 +51,26 @@ export function ActionDock({
   const declaration = state.declarations[currentActor?.id ?? ''] ?? '';
   const isLastActor = state.currentActorIndex >= state.players.length - 1;
   const guidedAction = currentActor ? guidedDeclaration(state, currentActor.id) : undefined;
+  // Tips stay folded unless the reader asks; the lesson steps cannot work without them.
+  const [tipsOpen, setTipsOpen] = useState(false);
+  const tipsId = useId();
+  const tipsRef = useRef<HTMLDivElement>(null);
+  const tipsTriggerRef = useRef<HTMLButtonElement>(null);
+  const tipsWereVisible = useRef(false);
+  const mustShowTips = Boolean(guidedAction);
+  const tipsVisible = tipsOpen || mustShowTips;
+  const activeElement = typeof document === 'undefined' ? null : document.activeElement;
+  // Folding makes the body inert; a keyboard reader inside it must land back on the trigger.
+  const closingTipsFocus = !tipsVisible && tipsWereVisible.current && tipsRef.current?.contains(activeElement)
+    ? activeElement : null;
+
+  useLayoutEffect(() => {
+    tipsWereVisible.current = tipsVisible;
+    if (!closingTipsFocus || tipsTriggerRef.current?.closest('[inert], [aria-hidden="true"]')) return;
+    if (document.activeElement === closingTipsFocus || document.activeElement === document.body) {
+      tipsTriggerRef.current?.focus({ preventScroll: true });
+    }
+  }, [tipsVisible, closingTipsFocus]);
   const currentSuggestions = guidedAction ? [guidedAction] : currentActor
     ? state.suggestionsByPlayerId[currentActor.id] ?? state.suggestions
     : state.suggestions;
@@ -160,10 +182,22 @@ export function ActionDock({
       ) : null}
 
       {!hasPendingTurn && !state.pendingCheck && !state.isThinking && currentSuggestions.length ? (
-        <div className="suggestion-row" key={suggestionKey}>
-          {currentSuggestions.slice(0, 3).map((text) => (
-            <button key={text} disabled={readingReply} onClick={() => onSuggestion(text)}><span className="action-suggestion-text">{text}</span></button>
-          ))}
+        <div className="suggestion-disclosure" data-expanded={tipsVisible} ref={tipsRef}>
+          {mustShowTips ? (
+            <span className="suggestion-trigger is-static"><Lightbulb size={13} aria-hidden="true" />示例行动 · 提示默认收起</span>
+          ) : (
+            <button ref={tipsTriggerRef} type="button" className="suggestion-trigger"
+              aria-expanded={tipsVisible} aria-controls={tipsId} onClick={() => setTipsOpen(!tipsOpen)}>
+              <Lightbulb size={13} aria-hidden="true" />{tipsVisible ? '收起提示' : '没思路？看看提示'}
+            </button>
+          )}
+          <DisclosureMotion open={tipsVisible} id={tipsId}>
+            <div className="suggestion-row" key={suggestionKey}>
+              {currentSuggestions.slice(0, 3).map((text) => (
+                <button key={text} disabled={readingReply} onClick={() => onSuggestion(text)}><span className="action-suggestion-text">{text}</span></button>
+              ))}
+            </div>
+          </DisclosureMotion>
         </div>
       ) : null}
 
