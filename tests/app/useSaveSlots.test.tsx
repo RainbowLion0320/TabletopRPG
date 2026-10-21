@@ -36,7 +36,7 @@ function deferredNativeStorage() {
         resolve: () => { apply({ key, value }); resolve(); }, reject }));
     }
   };
-  installGameStorage(createNativeStorage({ 'trpg-onboarding-v1': 'seen' }, native));
+  installGameStorage(createNativeStorage({ 'trpg-tutorial-opt-out': 'off' }, native));
   return {
     pending, writes,
     records: () => JSON.parse(disk.get(SAVE_KEY) ?? '[]') as SaveSlot[],

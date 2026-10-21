@@ -100,9 +100,9 @@ export function useGameController() {
   function startGame(players: Investigator[]) {
     cancelDiceRoll();
     dmCoordinatorRef.current.invalidate();
-    const previous = saveSlots.refreshSaves();
-    const returning = stateRef.current.players.length > 0 && !isOnboardingActive(stateRef.current);
-    dispatch({ type: 'start', players, onboarding: shouldOfferOnboarding(Boolean(returning || previous.saves.length || previous.incompatible.length)) });
+    saveSlots.refreshSaves();
+    // Every new game walks the guide again, whatever was played before.
+    dispatch({ type: 'start', players, onboarding: shouldOfferOnboarding() });
   }
 
   function restoreSession(restoredState: GameState, restoredRoll: DiceRollPresentation | null) {

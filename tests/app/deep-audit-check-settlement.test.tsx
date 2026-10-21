@@ -11,7 +11,7 @@ const dm = vi.mocked(runDmTurn);
 
 beforeEach(() => {
   localStorage.clear();
-  localStorage.setItem('trpg-onboarding-v1', 'seen');
+  localStorage.setItem('trpg-tutorial-opt-out', 'off');
   localStorage.setItem('trpg-api', JSON.stringify({ apiKey: 'unit-test-key', provider: 'openai', protocol: 'responses' }));
   vi.stubEnv('VITE_AI_API_KEY', '');
   dm.mockReset();

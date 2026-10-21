@@ -23,10 +23,11 @@ export default defineConfig({
     : [['list']],
   use: {
     baseURL: `http://127.0.0.1:${port}`,
-    // Existing flow regressions represent returning players. Fresh opening and
-    // first-investigation guidance are verified independently without these preferences.
+    // Existing flow regressions represent returning players who already know the
+    // controls, so the guide is switched off here. Its own behaviour is covered by
+    // tests/app/onboarding.test.tsx, which starts real games without this opt-out.
     storageState: { cookies: [], origins: [{ origin: `http://127.0.0.1:${port}`,
-      localStorage: [{ name: 'trpg-opening-v1', value: 'seen' }, { name: 'trpg-onboarding-v1', value: 'seen' }] }] },
+      localStorage: [{ name: 'trpg-opening-v1', value: 'seen' }, { name: 'trpg-tutorial-opt-out', value: 'off' }] }] },
     trace: 'on-first-retry'
   },
   projects: [

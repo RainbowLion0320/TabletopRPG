@@ -10,7 +10,7 @@ import { getSkillTotal } from '../../src/services/dice';
 import { readSaves, saveGameState } from '../../src/services/storage';
 import { getDmRequestTurn } from '../../src/services/turns';
 import { installGameStorage } from '../../src/platform/storage';
-import { ONBOARDING_SEEN_KEY } from '../../src/platform/onboarding';
+import { ONBOARDING_SEEN_KEY, TUTORIAL_OPT_OUT_KEY, shouldOfferOnboarding } from '../../src/platform/onboarding';
 import { ONBOARDING_REPLY_DELAY_MS } from '../../src/app/onboardingReply';
 import { DICE_ROLL_DURATION_MS } from '../../src/app/diceRollAnimation';
 import type { GameState } from '../../src/types/game';
@@ -166,7 +166,8 @@ describe('first investigation with real game state', () => {
     expect(result.current.state.onboarding?.step).toBe('skipped');
     expect(result.current.state.clues).toHaveLength(1); expect(dm).not.toHaveBeenCalled();
     act(() => result.current.startGame(party(1)));
-    expect(result.current.state.onboarding).toBeUndefined();
+    // A new game always replays the guide, even right after finishing one.
+    expect(result.current.state.onboarding?.step).toBe('action');
   });
 
   it('does not discard already declared teammates when a player skips mid-turn', async () => {
@@ -235,13 +236,28 @@ describe('first investigation with real game state', () => {
     expect(context.state.onboarding?.step).toBe('done');
   });
 
-  it('does not insert guidance into an existing investigation or a returning player’s next game', () => {
+  it('opens the guide on every new game while leaving a loaded investigation untouched', () => {
     const old = createInitialGameState(party(1)); saveGameState(old);
     const { result } = renderHook(useGameController);
     act(() => result.current.startGame(party(1)));
-    expect(result.current.state.onboarding).toBeUndefined();
+    expect(result.current.state.onboarding?.step).toBe('action');
     act(() => result.current.loadLatest());
     expect(result.current.state.onboarding).toBeUndefined();
+    act(() => result.current.startGame(party(1)));
+    expect(result.current.state.onboarding?.step).toBe('action');
+  });
+
+  it('keeps offering the guide after a finished one unless the device opts out', async () => {
+    const { result } = renderHook(useGameController); await toCheck(result); await confirmRoll(result); readPanels(result);
+    act(() => result.current.finishOnboarding('done'));
+    expect(localStorage.getItem(ONBOARDING_SEEN_KEY)).toBe('seen');
+    expect(shouldOfferOnboarding()).toBe(true);
+    act(() => result.current.returnHome());
+    act(() => result.current.startGame(party(1)));
+    expect(result.current.state.onboarding?.step).toBe('action');
+    localStorage.setItem(TUTORIAL_OPT_OUT_KEY, 'off');
+    expect(shouldOfferOnboarding()).toBe(false);
+    act(() => result.current.returnHome());
     act(() => result.current.startGame(party(1)));
     expect(result.current.state.onboarding).toBeUndefined();
   });

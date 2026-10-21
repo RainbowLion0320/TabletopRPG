@@ -24,7 +24,7 @@ afterAll(() => {
 
 beforeEach(() => {
   localStorage.clear(); vi.stubEnv('VITE_AI_API_KEY', ''); write.mockReset();
-  localStorage.setItem('trpg-opening-v1', 'seen'); localStorage.setItem('trpg-onboarding-v1', 'seen');
+  localStorage.setItem('trpg-opening-v1', 'seen'); localStorage.setItem('trpg-tutorial-opt-out', 'off');
   write.mockImplementation(async (state, roll) => ({ version: 1, savedAt: 1234, state, roll }));
   vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(); vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
 });

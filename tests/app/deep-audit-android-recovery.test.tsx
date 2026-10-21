@@ -107,7 +107,7 @@ describe('native save recovery notices', () => {
       if (value === null) disk.delete(key); else disk.set(key, value);
     };
     installGameStorage(createNativeStorage({
-      [SESSION_KEY]: raw, 'trpg-opening-v1': 'seen', 'trpg-onboarding-v1': 'seen',
+      [SESSION_KEY]: raw, 'trpg-opening-v1': 'seen', 'trpg-tutorial-opt-out': 'off',
       'trpg-api': JSON.stringify({ apiKey: 'test-only', provider: 'custom', protocol: 'chat-completions', endpoint: 'https://unit.test/v1', model: 'qa-model' })
     }, { readAll: async () => ({ values: {} }), write }));
     render(<AndroidApp partialRecovery={partialRecovery} />);

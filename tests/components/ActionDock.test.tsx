@@ -258,7 +258,7 @@ describe('ActionDock retry focus across real controller outcomes', () => {
 
   beforeEach(() => {
     localStorage.clear();
-    localStorage.setItem('trpg-onboarding-v1', 'seen');
+    localStorage.setItem('trpg-tutorial-opt-out', 'off');
     vi.stubEnv('VITE_AI_API_KEY', '');
     localStorage.setItem('trpg-api', JSON.stringify({ apiKey: 'test-key', provider: 'openai', protocol: 'responses' }));
     dm.mockReset();

@@ -45,7 +45,7 @@ async function restoredGame(party = 1, history = 0) {
   });
   installGameStorage(createNativeStorage({ [SESSION_KEY]: raw, 'trpg-api': JSON.stringify({
     apiKey: 'unit-test-key', provider: 'custom', protocol: 'chat-completions', endpoint: 'https://unit.test/v1', model: 'qa-model'
-  }), 'trpg-opening-v1': 'seen', 'trpg-onboarding-v1': 'seen' }, { readAll: async () => ({ values: {} }), write }));
+  }), 'trpg-opening-v1': 'seen', 'trpg-tutorial-opt-out': 'off' }, { readAll: async () => ({ values: {} }), write }));
   const view = render(<AndroidApp />);
   fireEvent.click(screen.getByRole('button', { name: '继续游戏', exact: true }));
   await act(async () => { await flushGameStorage(); }); write.mockClear();
