@@ -2280,6 +2280,8 @@ test('portrait selection keeps one investigator per row across the former 600px 
 test('player action messages keep the player name and action on one line', async ({ page }) => {
   await startNewGame(page, 2);
 
+  // Hints ship folded, so the example actions have to be asked for first.
+  await page.locator('.suggestion-trigger').click();
   await page.getByRole('button', { name: '侦查门廊与窗边痕迹' }).click();
   await page.getByRole('button', { name: '下一位' }).click();
 

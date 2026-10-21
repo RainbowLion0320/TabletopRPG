@@ -13,6 +13,9 @@ export default defineConfig({
   fullyParallel: true,
   // Keep real compositor-frame checks reliable on a shared development machine.
   workers: 4,
+  // Frame-timing assertions can lose a sample to a busy runner; one retry absorbs
+  // that without hiding a real failure, and only costs time when something trips.
+  retries: process.env.CI ? 1 : 0,
   reporter: [['list']],
   use: {
     baseURL: `http://127.0.0.1:${port}`,

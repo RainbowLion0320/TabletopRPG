@@ -93,11 +93,12 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
   .portrait-ui .game-screen { --scene-height: 0px; }
   .portrait-ui .scene-stage { visibility: hidden; }
   .portrait-ui .scene-npc { visibility: hidden; }
-  .portrait-ui .game-screen:has(.dock-input:focus) .suggestion-row { display: none; }
+  .portrait-ui .game-screen:has(.dock-input:focus) .suggestion-disclosure { display: none; }
   .portrait-ui .modal-card { padding: 12px; }
 }
 @media (max-height: 420px) {
-  .portrait-ui .game-screen .suggestion-row { display: none; }
+  /* Hiding the row alone would leave the folded trigger behind and still cost height. */
+  .portrait-ui .game-screen .suggestion-disclosure { display: none; }
 }
 /* Keep a long action from pushing the short-screen party row outside the dock. */
 @media (max-height: 600px) and (min-height: 341px) {
@@ -112,7 +113,7 @@ html.portrait-ui, .portrait-ui body, .portrait-ui #root { width: 100%; height: 1
   .portrait-ui .game-screen { --game-top: 0px; padding-top: var(--mobile-top); }
   /* Keep the original controls in the existing story heading; no second toolbar row. */
   :root.fog-ui.portrait-ui .game-screen > .game-top { position: absolute; top: 0; left: 0; right: 0; width: 100%; height: 0; min-height: 0; margin: 0; padding: 0; display: block; border: 0; background: transparent; z-index: 25; pointer-events: none; }
-  :root.fog-ui.portrait-ui .game-top .brand-block, .portrait-ui .suggestion-row { display: none; }
+  :root.fog-ui.portrait-ui .game-top .brand-block, .portrait-ui .suggestion-disclosure { display: none; }
   :root.fog-ui.portrait-ui .menu-button { position: fixed; top: calc(var(--mobile-top) + 1px); right: calc(var(--mobile-right) + 9px); pointer-events: auto; }
   .portrait-ui .drawer-tab { display: grid; top: calc(var(--mobile-top) + 1px) !important; right: calc(var(--mobile-right) + 59px); z-index: 25; }
   :root.fog-ui.portrait-ui .game-screen .narrative-header { padding-right: 100px; grid-template-columns: minmax(44px, 1fr) auto; }

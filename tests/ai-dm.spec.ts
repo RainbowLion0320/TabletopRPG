@@ -709,6 +709,9 @@ test('AI DM handles first player action through a chat-compatible provider', asy
   await expect.poll(() => narratorAttempts).toBe(1);
   await expect(page.locator('.story-message.dm p', { hasText: 'The chat-compatible narrator response is shown.' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Inspect the dock' })).toHaveCount(0);
+  // Hints ship folded; the trigger only carries aria-expanded while it is a button.
+  const foldedHints = page.locator('.suggestion-trigger[aria-expanded="false"]');
+  if (await foldedHints.count()) await foldedHints.click();
   await expect(page.getByRole('button', { name: 'Check the footprints' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Watch the fog' })).toHaveCount(0);
   await page.getByRole('textbox', { name: '亨利·格雷的行动', exact: true }).fill('Prepare the next move.');

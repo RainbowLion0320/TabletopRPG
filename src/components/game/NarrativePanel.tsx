@@ -164,11 +164,11 @@ export function NarrativePanel({ onMarkOpen, state, thinkingProgress }: Narrativ
           {hasNewContent && <button className="narrative-new-content" onClick={readNewContent} aria-label="查看新剧情" aria-controls={scrollId} type="button"><ChevronDown size={14} /><span className="narrative-new-content-label">新内容</span></button>}
           <button
             className="narrative-toggle-btn"
-            aria-label={expanded ? '还原剧情高度' : '最大化剧情区域'}
+            aria-label={expanded ? '收起剧情' : '展开剧情'}
             aria-expanded={expanded}
             aria-controls={scrollId}
             onClick={() => { handleScroll(); setExpanded(!expanded); }}
-            title={expanded ? '还原' : '最大化'}
+            title={expanded ? '收起' : '展开'}
             type="button"
           >
             {expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}

@@ -12,6 +12,9 @@
   :root.fog-ui:not(.portrait-ui) .scene-stage { visibility: hidden; }
 }
 @media (max-height: 400px) {
+  /* The folded hint block owns a trigger above the row, so the whole disclosure
+     has to go: hiding only the row would leave the pill eating reading height. */
+  :root.fog-ui:not(.portrait-ui) .game-screen .suggestion-disclosure,
   :root.fog-ui:not(.portrait-ui) .game-screen .suggestion-row { display: none; }
   :root.fog-ui:not(.portrait-ui) .game-screen .dock-input { max-height: 66px; }
   :root.fog-ui:not(.portrait-ui) .game-screen .action-dock { padding: 6px 10px; }

@@ -12,5 +12,10 @@
   55% { box-shadow: 0 0 0 7px rgb(var(--ui-accent-rgb) / 0), 0 0 28px rgb(var(--ui-accent-rgb) / .52); }
 }
 :root.fog-ui .action-dock .check-card > button:enabled { animation: check-roll-attention 1.9s ease-in-out infinite; }
+/* The global reduce rule clears .check-card itself, but this halo lives on the
+   child button, so it has to opt out on its own. */
+@media (prefers-reduced-motion: reduce) {
+  :root.fog-ui .action-dock .check-card > button { animation: none !important; }
+}
 .dice-emblem-art { flex: 0 0 24px; width: 24px; height: 24px; object-fit: contain; pointer-events: none; }
 :root .action-dock:has(.check-card) .dock-input-row { display: none; }
