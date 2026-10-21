@@ -11,7 +11,7 @@ import asset7 from '../../../../assets/avatars/montreal.png';
 import asset8 from '../../../../assets/avatars/bartender.png';
 import asset9 from '../../../../assets/avatars/deep_one_envoy.png';
 
-export const scenarioContentHash = "318462cc1d0fed89";
+export const scenarioContentHash = "3fe4797c4667e637";
 export const scenarioAssetUrls: Record<string, string> = {
   "scene.S01": asset0,
   "scene.S02": asset1,
@@ -164,7 +164,9 @@ export const generatedScenarioModule = {
         "aliases": [
           "摩勒家",
           "住宅",
-          "别墅"
+          "别墅",
+          "客厅",
+          "摩勒家客厅"
         ],
         "assetId": "scene.S01",
         "npcIds": [

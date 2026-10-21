@@ -80,6 +80,28 @@ describe('intentClassifier', () => {
     expect(result.hasMovement).toBe(true);
   });
 
+  it('treats the colloquial single-character 回 as movement', () => {
+    // 「回客厅」比「回到客厅」更常说；漏掉它会让 Director 不开放切场工具。
+    for (const text of ['我们回客厅吧', '回码头', '先回摩勒家']) {
+      const result = classifyIntent([action(text)]);
+      expect(result.hasMovement, text).toBe(true);
+      expect(result.intentKind, text).toBe('move');
+    }
+  });
+
+  it('does not read 回答/回想 as movement', () => {
+    for (const text of ['回答他的问题', '回想刚才看到的细节', '回复伊莎贝拉']) {
+      const result = classifyIntent([action(text)]);
+      expect(result.hasMovement, text).toBe(false);
+      expect(result.intentKind, text).not.toBe('move');
+    }
+  });
+
+  it('still suppresses movement when the party only discusses going back', () => {
+    const result = classifyIntent([action('我建议先回客厅商量一下')]);
+    expect(result.hasMovement).toBe(false);
+  });
+
   it('uses the highest-priority intent across all players', () => {
     const result = classifyIntent([action('我搜寻地面'), action('我开枪还击', '艾达')]);
     expect(result.intentKind).toBe('combat');

@@ -52,8 +52,19 @@ interface DictEntry {
 const MOVEMENT_KEYWORDS = [
   '去', '前往', '前去', '赶往', '去往', '动身', '出发', '离开', '进入', '走进',
   '走向', '来到', '抵达', '回到', '返回', '转移到', '换个地方', '潜入', '潜行',
-  '溜', '逃跑', '逃走', '撤退', '后撤'
+  '溜', '逃跑', '逃走', '撤退', '后撤',
+  // 「回」是口语里最常见的回场说法（回客厅、回码头），单列一条；
+  // 判 hasMovement 前先剔掉「回答/回想」这类非移动复合词，见 stripNonMovementWords。
+  '回'
 ] as const;
+
+/**
+ * 「回」同时出现在回答、回想、回复等非移动词里。
+ * 直接按单字命中会把讨论消息当成转场，所以先抹掉这些复合词再判定。
+ */
+function stripNonMovementWords(text: string): string {
+  return text.replace(/回(?:答|想|忆|复|应|头|来|合|避|归|顾|溯|执|绝|旋|声)/g, '·');
+}
 
 const DICTIONARY: DictEntry[] = [
   // ---- 观察 / 探查 ----
@@ -122,7 +133,7 @@ const DICTIONARY: DictEntry[] = [
   {
     keywords: [
       '去', '前往', '前去', '赶往', '去往', '动身', '出发', '离开', '进入', '走进',
-      '走向', '来到', '抵达', '回到', '返回', '转移到', '换个地方'
+      '走向', '来到', '抵达', '回到', '返回', '转移到', '换个地方', '回'
     ],
     skills: [],
     kind: 'move'
@@ -228,13 +239,16 @@ export function classifyIntent(actions: PlayerAction[]): ClassifiedIntent {
       hasConflict = true;
       intentKind = 'combat';
     }
-    const onlyDiscussesMovement = /(?:提醒|建议|询问|商量|考虑|计划|打算)[^，。；！？\n]{0,18}(?:前往|赶往|去往|出发|动身|返回|离开|抵达|到达)/.test(text);
-    if (!onlyDiscussesMovement && MOVEMENT_KEYWORDS.some((keyword) => text.includes(keyword))) {
+    const movementText = stripNonMovementWords(text);
+    const onlyDiscussesMovement = /(?:提醒|建议|询问|商量|考虑|计划|打算)[^，。；！？\n]{0,18}(?:前往|赶往|去往|出发|动身|返回|离开|抵达|到达|回到|回(?![到来答想忆复应头合避归]))/.test(movementText);
+    if (!onlyDiscussesMovement && MOVEMENT_KEYWORDS.some((keyword) => movementText.includes(keyword))) {
       hasMovement = true;
     }
 
     for (const entry of DICTIONARY) {
-      const hit = entry.keywords.some((kw) => text.includes(kw.toLowerCase()));
+      // 移动类条目按剔掉「回答/回想」后的文本判定，避免单字「回」误伤社交对话。
+      const haystack = entry.kind === 'move' ? movementText : text;
+      const hit = entry.keywords.some((kw) => haystack.includes(kw.toLowerCase()));
       if (!hit) continue;
       if (entry.kind === 'move' && onlyDiscussesMovement) continue;
       for (const skill of entry.skills) skillSet.add(skill);

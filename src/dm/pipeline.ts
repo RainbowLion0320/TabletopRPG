@@ -697,11 +697,20 @@ export async function runDmTurn(
     call.arguments.eventId === 'EV_CHOOSE_NEGOTIATION'
     || call.arguments.eventId === 'EV_CHOOSE_COMBAT'
   );
+  // 模型的场景切换判定此前被整条丢弃，只留正则推断。但正则只认得字典里的说法，
+  // 玩家说「回客厅」「我们该走了」时模型听懂了也切不动。现在改为：
+  // 模型发起的切换同样进候选，只剔除与正则推断重复、或原地打转的那条，
+  // 真正的安全性交给 validateSceneChange（场景必须存在且与当前场景邻接）。
+  const duplicateOfInferredScene = (call: DmToolCall) =>
+    inferredSceneCall !== null
+    && String(call.arguments.targetSceneId) === String(inferredSceneCall.arguments.targetSceneId);
   const buildCandidateCalls = (modelCalls: DmToolCall[]) => [
     ...(inferredSceneCall ? [inferredSceneCall] : []),
     ...inferredStoryCalls,
     ...modelCalls.filter((call) =>
-      call.name !== 'propose_scene_change'
+      !(call.name === 'propose_scene_change'
+        && (duplicateOfInferredScene(call)
+          || String(call.arguments.targetSceneId) === input.state.currentScene))
       && !(settlesFinaleRoute && call.name === 'request_check')
       && !(call.name === 'propose_story_event' && inferredStoryCalls.some((inferred) =>
         inferred.arguments.eventId === call.arguments.eventId
@@ -855,6 +864,9 @@ export async function runDmTurn(
     turn: currentTurn,
     pendingBefore: input.state.pendingConsequences ?? []
   });
+  // 之后的检定续接动作要按真正落地的场景来写。此前只认正则推断，
+  // 模型发起的切换会让续接动作仍描述旧场景；sceneChange 为 null 表示被拒，此时不套用。
+  const movedSceneId = (resolved.legacyResponse.stateUpdate?.sceneChange || undefined) as SceneId | undefined;
   if (resolved.legacyResponse.check) {
     const requestedChecks = [
       resolved.legacyResponse.check,
@@ -862,11 +874,11 @@ export async function runDmTurn(
     ].map((check) => ({ ...check, queuedChecks: undefined }));
     resolved.legacyResponse.check = chainChecks(
       requestedChecks,
-      inferredSceneCall
+      movedSceneId
         ? buildPostMoveContinuationActions(
             input.actions,
             input.state,
-            String(inferredSceneCall.arguments.targetSceneId) as SceneId,
+            movedSceneId,
             kb
           )
         : input.actions.map((action) => ({ ...action }))

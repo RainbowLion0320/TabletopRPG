@@ -1055,6 +1055,28 @@ describe('turnGuards', () => {
     }));
   });
 
+  it('recognizes the player calling S01 by what its backdrop shows', () => {
+    // S01 的背景图是 客厅.png，正式名却是「摩勒住宅」。玩家按画面说「客厅」时
+    // 也必须认得出来，否则人物和背景都停在原地。
+    for (const action of ['我们回客厅吧', '回到客厅', '回摩勒家客厅看看', '回摩勒住宅']) {
+      const state = makeState({ currentScene: 'S02' });
+      state.scenarioProgress = createScenarioProgress();
+      expect(inferSceneChangeFromActions([{ player: '亨利', action }], state, kb), action)
+        .toEqual(expect.objectContaining({
+          name: 'propose_scene_change',
+          arguments: expect.objectContaining({ targetSceneId: 'S01' })
+        }));
+    }
+  });
+
+  it('does not turn a reply or a recollection into a scene move', () => {
+    const state = makeState({ currentScene: 'S02' });
+    state.scenarioProgress = createScenarioProgress();
+    for (const action of ['回答局长的问题', '回想客厅里那张合影', '回复伊莎贝拉的信']) {
+      expect(inferSceneChangeFromActions([{ player: '亨利', action }], state, kb), action).toBeNull();
+    }
+  });
+
   it('does not treat 去向 in a clue search as movement after the destination unlocks', () => {
     const state = makeState({ currentScene: 'S04' });
     state.scenarioProgress = createScenarioProgress();

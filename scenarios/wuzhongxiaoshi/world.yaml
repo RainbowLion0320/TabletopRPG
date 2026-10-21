@@ -18,7 +18,7 @@ scenes:
     name: 摩勒住宅
     chapterTitle: 第一幕：接受委托
     description: 纽伦上街101-102号的维多利亚式别墅，伊莎贝拉·摩勒在此等待调查员。
-    aliases: [摩勒家, 住宅, 别墅]
+    aliases: [摩勒家, 住宅, 别墅, 客厅, 摩勒家客厅]
     assetId: scene.S01
     npcIds: [N01]
     itemIds: [I01, I02, I03, I04, I05, I06]
