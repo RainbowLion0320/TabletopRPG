@@ -37,8 +37,33 @@ jobs:
       - name: Smoke tests
         run: npm run test:smoke
 
-      # Without this a red run only says "Smoke tests failed"; the per-test error
-      # context and traces are what actually identify which assertion moved.
+      # A red run otherwise only says "Smoke tests failed". Surface each failing
+      # spec as an annotation so the cause is visible without the raw job log.
+      - name: Report failing specs
+        if: failure()
+        run: |
+          node -e '
+            const fs = require("fs");
+            let report;
+            try { report = JSON.parse(fs.readFileSync("test-results/report.json", "utf8")); }
+            catch { console.log("::warning title=Smoke report::report.json missing"); process.exit(0); }
+            let failures = 0;
+            const walk = (suite) => {
+              for (const spec of suite.specs ?? []) {
+                for (const test of spec.tests ?? []) {
+                  if (test.status === "unexpected") {
+                    failures++;
+                    console.log(`::error title=Smoke failure::${spec.file} :: ${spec.title}`);
+                  }
+                }
+              }
+              for (const child of suite.suites ?? []) walk(child);
+            };
+            for (const suite of report.suites ?? []) walk(suite);
+            console.log(`::notice title=Smoke summary::${failures} unexpected failure(s)`);
+          '
+
+      # Without this a red run leaves no per-test error context behind.
       - name: Upload smoke artifacts
         if: failure()
         uses: actions/upload-artifact@v4

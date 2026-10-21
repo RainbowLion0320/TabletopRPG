@@ -16,7 +16,11 @@ export default defineConfig({
   // Frame-timing assertions can lose a sample to a busy runner; one retry absorbs
   // that without hiding a real failure, and only costs time when something trips.
   retries: process.env.CI ? 1 : 0,
-  reporter: [['list']],
+  // On CI also write the machine-readable report: the workflow turns it into
+  // annotations, which are readable without repository admin rights.
+  reporter: process.env.CI
+    ? [['list'], ['json', { outputFile: 'test-results/report.json' }]]
+    : [['list']],
   use: {
     baseURL: `http://127.0.0.1:${port}`,
     // Existing flow regressions represent returning players. Fresh opening and
